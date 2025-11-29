@@ -1,0 +1,1186 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+{% block title %}我的任务 / My Tasks{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="智能任务管理，高效完成工作 / Smart task management for efficient work completion" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --primary-3: #60a5fa;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --success-2: #059669;
+            --warning: #f59e0b;
+            --warning-2: #d97706;
+            --danger: #ef4444;
+            --danger-2: #dc2626;
+            --info: #8b5cf6;
+            --bg-card: rgba(255, 255, 255, 0.98);
+            --bg-section: rgba(248, 250, 252, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            --border-light: rgba(226, 232, 240, 0.8);
+            --border-medium: rgba(203, 213, 225, 0.6);
+            --border-hover: rgba(59, 130, 246, 0.3);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --border-radius: 20px;
+            --card-spacing: 20px;
+            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.15);
+            --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.2);
+            --priority-high: #dc2626;
+            --priority-medium: #f59e0b;
+            --priority-low: #10b981;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f0f9ff 50%, #fef3c7 75%, #f0fdf4 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-primary);
+            line-height: 1.6;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Hero Section */
+        .hero { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 40px 48px; 
+            box-shadow: var(--shadow-lg); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+            animation: heroFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--success));
+            opacity: 0.9;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hero-content {
+            display: flex;
+            align-items: center;
+            gap: 48px;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+        
+        .hero-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .hero-eyebrow {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero-eyebrow::before {
+            content: '';
+            width: 24px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 1px;
+        }
+        
+        .hero-title { 
+            font-size: clamp(28px, 4vw, 36px); 
+            margin: 0 0 16px 0; 
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary), #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        
+        .hero-subtitle { 
+            font-size: 16px; 
+            margin: 0; 
+            line-height: 1.6;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        
+        .hero-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-end;
+            min-width: 200px;
+        }
+        
+        .meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08));
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .meta-chip:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.25);
+        }
+
+        .meta-chip .icon {
+            font-size: 16px;
+        }
+
+        .meta-chip.warning {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.06));
+            border-color: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+        
+        .meta-chip.warning:hover {
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
+        }
+        
+        .filters-section { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 32px; 
+            margin-bottom: var(--card-spacing); 
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .filters-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.8;
+        }
+        
+        .filters-section::after {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite;
+        }
+        
+        .filters { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 20px; 
+            align-items: end; 
+        }
+        
+        .filter-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px;
+        }
+        
+        .filter-group label { 
+            font-size: 13px; 
+            font-weight: 700; 
+            color: var(--text-primary); 
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        input, select { 
+            width: 100%; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-light); 
+            padding: 14px 18px; 
+            font-size: 14px; 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            backdrop-filter: blur(10px);
+        }
+        
+        input:hover, select:hover {
+            border-color: var(--border-hover);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+        
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            background: white;
+            transform: translateY(-2px);
+        }
+        
+        .filter-actions { 
+            display: flex; 
+            gap: 12px; 
+            align-items: end; 
+            flex-wrap: wrap; 
+            margin-top: 8px;
+        }
+        
+        .bulk-bar { 
+            display: flex; 
+            gap: 12px; 
+            align-items: center; 
+            margin-bottom: var(--card-spacing); 
+            padding: 16px 20px; 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.06)); 
+            border-radius: var(--border-radius); 
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            flex-wrap: wrap;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bulk-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.6;
+        }
+        @media (max-width: 720px){
+            .bulk-bar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); }
+            .btn, .filter-actions .btn { padding: 8px 12px; font-size: 12px; }
+        }
+        
+        .task-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
+            gap: 20px; 
+        }
+        
+        .task-card { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 28px; 
+            box-shadow: var(--shadow-md); 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            word-break: break-word;
+            overflow: hidden;
+        }
+        
+        .task-card:hover { 
+            transform: translateY(-8px) scale(1.02); 
+            box-shadow: var(--shadow-lg); 
+            border-color: var(--border-hover);
+        }
+        
+        .task-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .task-card:hover::before {
+            opacity: 1;
+        }
+        
+        .task-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            animation: float 8s ease-in-out infinite;
+        }
+        
+        .task-card:hover::after {
+            opacity: 1;
+        }
+        
+        .task-header { 
+            display: flex; 
+            gap: 10px; 
+            align-items: flex-start; 
+            flex-wrap: wrap;
+        }
+        
+        .task-checkbox {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .task-title { 
+            margin: 0 0 6px 0; 
+            font-size: 14px; 
+            font-weight: 600; 
+            line-height: 1.3; 
+            word-break: break-word;
+        }
+        
+        .task-title a {
+            color: #1f2937;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        
+        .task-title a:hover {
+            color: var(--primary);
+        }
+        
+        .task-meta { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+            margin: 6px 0 8px;
+            align-items: center;
+        }
+        
+        .task-info-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 11px;
+            color: #6b7280;
+        }
+        
+        .badge { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 4px; 
+            padding: 8px 14px; 
+            border-radius: 12px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            border: 1px solid;
+            white-space: nowrap;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+        }
+        
+        .badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .badge:hover::before {
+            left: 100%;
+        }
+        
+        .project-badge {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.25);
+        }
+        
+        .status-badge { 
+            display: inline-flex; 
+            align-items: center; 
+            padding: 8px 14px; 
+            border-radius: 12px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            border: 1px solid;
+            white-space: nowrap;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+        }
+        
+        .status-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .status-badge:hover::before {
+            left: 100%;
+        }
+        
+        .status-pending { 
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)); 
+            color: var(--warning); 
+            border-color: rgba(245, 158, 11, 0.3); 
+        }
+        .status-in-progress { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); 
+            color: var(--primary); 
+            border-color: rgba(59, 130, 246, 0.3); 
+        }
+        .status-on-hold { 
+            background: linear-gradient(135deg, rgba(107, 114, 128, 0.1), rgba(107, 114, 128, 0.05)); 
+            color: var(--text-secondary); 
+            border-color: rgba(107, 114, 128, 0.3); 
+        }
+        .status-completed { 
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
+            color: var(--success); 
+            border-color: rgba(16, 185, 129, 0.3); 
+        }
+        .status-overdue { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); 
+            color: var(--danger); 
+            border-color: rgba(239, 68, 68, 0.3); 
+        }
+        .status-reopened { 
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05)); 
+            color: #6366f1; 
+            border-color: rgba(99, 102, 241, 0.3); 
+        }
+        .status-sla { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.04)); 
+            color: var(--primary); 
+            border-color: rgba(59, 130, 246, 0.2); 
+        }
+        
+        .priority-high { border-left: 3px solid var(--priority-high); }
+        .priority-medium { border-left: 3px solid var(--priority-medium); }
+        .priority-low { border-left: 3px solid var(--priority-low); }
+        
+        .task-description { 
+            margin: 8px 0 10px 0; 
+            color: #4b5563; 
+            font-size: 12px; 
+            line-height: 1.4; 
+            display: -webkit-box; 
+            -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical; 
+            overflow: hidden;
+        }
+        
+        .task-actions { 
+            display: flex; 
+            gap: 6px; 
+            justify-content: flex-start; 
+            margin-top: auto;
+            flex-wrap: wrap;
+        }
+        
+        .btn { 
+            border-radius: 10px; 
+            border: none; 
+            padding: 10px 16px; 
+            font-size: 13px; 
+            font-weight: 600; 
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 6px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+            outline: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-ghost { 
+            background: rgba(59, 130, 246, 0.05);
+            color: var(--primary);
+            border: 1px solid var(--border-light);
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--border-hover);
+        }
+        
+        .empty-state { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
+            border: 2px dashed rgba(148, 163, 184, 0.4); 
+            border-radius: var(--border-radius); 
+            padding: 48px 32px; 
+            text-align: center; 
+            color: var(--text-secondary); 
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .empty-state::before {
+            content: '📋';
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .empty-state::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.02) 0%, transparent 70%);
+            animation: float 15s ease-in-out infinite;
+        }
+        
+        .pagination { 
+            display: flex; 
+            gap: 10px; 
+            justify-content: center; 
+            flex-wrap: wrap; 
+            font-size: 13px; 
+            margin-top: calc(var(--card-spacing) * 2); 
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(248, 250, 252, 0.4));
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+        }
+        
+        .page-link, .page-current, .page-disabled { 
+            padding: 10px 18px; 
+            border-radius: 10px; 
+            border: 1px solid var(--border-light); 
+            text-decoration: none; 
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-link:hover {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .page-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .page-link:hover::before {
+            left: 100%;
+        }
+        
+        .page-current { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
+            color: #fff; 
+            border-color: transparent; 
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .page-disabled { 
+            color: var(--text-muted); 
+            background: rgba(15, 23, 42, 0.03); 
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        @media (max-width: 860px) {
+            .hero {
+                padding: 24px 28px;
+                flex-direction: column;
+                gap: 24px;
+                align-items: flex-start;
+            }
+            
+            .hero-content {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            
+            .hero h1 {
+                font-size: 26px;
+            }
+            
+            .hero-meta {
+                align-items: flex-start;
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .filters { 
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                gap: 16px; 
+            }
+            
+            .filter-actions { 
+                justify-content: flex-start; 
+            }
+            
+            .filter-actions .btn {
+                flex: 0 0 auto;
+                justify-content: flex-start;
+            }
+            
+            .task-grid { 
+                grid-template-columns: 1fr; 
+                gap: 16px;
+            }
+            
+            .task-card { 
+                padding: 20px; 
+            }
+            
+            .bulk-bar { 
+                flex-direction: column; 
+                align-items: stretch; 
+                gap: 12px;
+            }
+            
+            .task-actions { 
+                justify-content: flex-start; 
+            }
+            
+            .task-actions .btn {
+                flex: 0 0 auto;
+                justify-content: flex-start;
+            }
+            
+            .pagination {
+                padding: 16px;
+                gap: 8px;
+            }
+            
+            .page-link, .page-current, .page-disabled {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            :root {
+                --card-spacing: 12px;
+                --border-radius: 12px;
+            }
+            
+            .hero {
+                padding: 20px 24px;
+            }
+            
+            .hero h1 {
+                font-size: 22px;
+            }
+            
+            .hero .lede {
+                font-size: 14px;
+            }
+            
+            .filters {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .filter-group input,
+            .filter-group select {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            
+            .filter-actions {
+                justify-content: stretch;
+                margin-top: 12px;
+                gap: 8px;
+            }
+            
+            .filter-actions .btn {
+                flex: 1;
+                justify-content: center;
+                padding: 12px 16px;
+                font-size: 12px;
+            }
+            
+            .task-card { 
+                padding: 16px; 
+                gap: 16px;
+            }
+            
+            .filters-section { 
+                padding: 20px; 
+            }
+            
+            .bulk-bar { 
+                padding: 12px 16px; 
+                gap: 8px;
+            }
+            
+            .badge, .status-badge {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            
+            .task-actions {
+                gap: 4px;
+            }
+            
+            .task-actions .btn {
+                padding: 8px 10px;
+                font-size: 11px;
+            }
+            
+            .pagination {
+                padding: 12px;
+                gap: 6px;
+            }
+            
+            .page-link, .page-current, .page-disabled {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            
+            .empty-state {
+                padding: 32px 20px;
+            }
+            
+            .empty-state::before {
+                font-size: 36px;
+                margin-bottom: 12px;
+            }
+        }
+{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <div>
+            <p class="hero-eyebrow">团队 · 任务 / Team · Tasks</p>
+            <h1 class="hero-title">我的任务列表 / My Tasks</h1>
+            <p class="lede">查看分配给你的任务，完成后点击“已完成”并同步时间 / Review assigned tasks and mark them done.</p>
+        </div>
+    </div>
+
+    <section class="filters-section">
+        <form method="get" class="filters">
+            <div class="filter-group">
+                <label for="q">
+                    <span>🔍</span>
+                    关键词搜索 / Search
+                </label>
+                <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
+            </div>
+            <div class="filter-group">
+                <label for="project">
+                    <span>📁</span>
+                    项目 / Project
+                </label>
+                <select id="project" name="project">
+                    <option value="">全部项目 / All Projects</option>
+                    {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="status">
+                    <span>📊</span>
+                    状态 / Status
+                </label>
+                <select id="status" name="status">
+                    <option value="">全部状态 / All Status</option>
+                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
+                    <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
+                    <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
+                    <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
+                    <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
+                    <option value="reopened" {% if status == 'reopened' %}selected{% endif %}>重新打开 / Reopened</option>
+                </select>
+            </div>
+            <div class="filter-group" style="align-self:flex-end;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#4b5563;">
+                    <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %}>
+                    仅看紧张/逾期 / Hot & Overdue
+                </label>
+            </div>
+            <div class="filter-actions">
+                <a class="btn btn-ghost" href="{% url 'reports:task_list' %}">🔄 重置 / Reset</a>
+                <button type="submit" class="btn btn-primary">🔍 筛选 / Filter</button>
+                <a class="btn btn-primary" href="{% url 'reports:task_export' %}?status={{ status }}&project={{ project_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">📥 导出 / Export</a>
+            </div>
+        </form>
+    </section>
+
+    {% if tasks %}
+        <form id="bulk-form" method="post" action="{% url 'reports:task_bulk_action' %}">
+            {% csrf_token %}
+            <div class="bulk-bar">
+                <label style="font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+                    <input type="checkbox" id="select-all"> 全选
+                </label>
+                <select name="bulk_action" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;">
+                    <option value="">批量操作</option>
+                    <option value="complete">批量完成</option>
+                    <option value="reopen">批量重新打开</option>
+                </select>
+                <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+                <button type="submit" id="bulk-submit" class="btn btn-primary" disabled>执行</button>
+                <button type="submit" formaction="{% url 'reports:task_export_selected' %}" formmethod="post" class="btn btn-ghost" id="bulk-export" disabled>导出选中</button>
+            </div>
+        </form>
+        <div class="task-grid">
+            {% for t in tasks %}
+            <article class="task-card {% if t.status == 'overdue' or t.is_due_soon %}priority-high{% elif t.status == 'in_progress' %}priority-medium{% else %}priority-low{% endif %}">
+                <div class="task-header">
+                    <input type="checkbox" name="task_ids" value="{{ t.id }}" form="bulk-form" class="task-checkbox">
+                    <div class="task-content">
+                        <h3 class="task-title">
+                            <a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">{{ t.title }}</a>
+                        </h3>
+                        
+                    <div class="task-meta" style="margin-top:6px;">
+                            <span class="badge project-badge">{{ t.project.name }}</span>
+                            {% if t.status == 'pending' %}
+                                <span class="status-badge status-pending">未开始</span>
+                            {% elif t.status == 'in_progress' %}
+                                <span class="status-badge status-in-progress">进行中</span>
+                            {% elif t.status == 'on_hold' %}
+                                <span class="status-badge status-on-hold">挂起</span>
+                            {% elif t.status == 'completed' %}
+                                <span class="status-badge status-completed">已完成</span>
+                            {% elif t.status == 'reopened' %}
+                                <span class="status-badge status-reopened">重新打开</span>
+                            {% else %}
+                                <span class="status-badge status-overdue">逾期</span>
+                            {% endif %}
+                            {% if t.sla_info %}
+                                {% if t.sla_info.status == 'overdue' %}
+                                    <span class="status-badge status-overdue">SLA 已超时</span>
+                                {% elif t.sla_info.status == 'tight' %}
+                                    <span class="status-badge status-pending">SLA 剩余 {{ t.sla_info.remaining_hours }}h</span>
+                                {% else %}
+                                    <span class="status-badge status-sla">SLA 剩余 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        
+                        <div class="task-info-row">
+                            {% if t.due_at %}
+                                <span class="status-badge status-sla">截止 {{ t.due_at|localtime|date:"m-d H:i" }}</span>
+                            {% else %}
+                                <span class="status-badge status-on-hold">未设截止</span>
+                            {% endif %}
+                            {% if t.completed_at %}
+                                <span class="status-badge status-completed">完成 {{ t.completed_at|localtime|date:"m-d H:i" }}</span>
+                            {% endif %}
+                            <span>创建 {{ t.created_at|localtime|date:"m-d H:i" }}</span>
+                        </div>
+                        
+                        {% if t.content %}
+                        <p class="task-description">{{ t.content }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="task-actions">
+                    <a class="btn btn-ghost" href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">查看</a>
+                    {% if t.status != 'completed' %}
+                    <form method="post" action="{% url 'reports:task_complete' t.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">完成</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% if page_obj.has_other_pages %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}">上一页</a>
+                {% else %}<span class="page-disabled">上一页</span>{% endif %}
+                <span class="page-current">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+                {% if page_obj.has_next %}
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}">下一页</a>
+                {% else %}<span class="page-disabled">下一页</span>{% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <p style="margin: 0; font-size: 14px; font-weight: 500;">暂无任务</p>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #9ca3af;">请调整筛选条件或等待新任务分配</p>
+        </div>
+    {% endif %}
+<script>
+    (function(){
+        // 同步导出按钮链接
+        const form = document.querySelector('form.filters');
+        const exportBtn = document.querySelector('.filter-actions .btn.btn-primary[href*="task_export"]');
+        if (form && exportBtn) {
+            function syncExport() {
+                const params = new URLSearchParams();
+                ['status','project','q'].forEach(name => {
+                    const el = form.querySelector(`[name="${name}"]`);
+                    if (el && el.value) params.set(name, el.value);
+                });
+                exportBtn.href = `${exportBtn.pathname}?${params.toString()}`;
+            }
+            form.addEventListener('change', syncExport);
+            form.addEventListener('input', syncExport);
+            syncExport();
+        }
+        
+        // 全选功能
+        const selectAllCheckbox = document.getElementById('select-all');
+        const taskCheckboxes = document.querySelectorAll('input[name="task_ids"]');
+        const submitBtn = document.getElementById('bulk-submit');
+        const bulkExportBtn = document.getElementById('bulk-export');
+
+        function updateBulkState() {
+            const allChecked = Array.from(taskCheckboxes).every(cb => cb.checked);
+            const someChecked = Array.from(taskCheckboxes).some(cb => cb.checked);
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = someChecked && !allChecked;
+            }
+            if (submitBtn) submitBtn.disabled = !someChecked;
+            if (bulkExportBtn) bulkExportBtn.disabled = !someChecked;
+        }
+
+        if (selectAllCheckbox && taskCheckboxes.length > 0) {
+            selectAllCheckbox.addEventListener('change', function() {
+                taskCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkState();
+            });
+            
+            taskCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateBulkState);
+            });
+            updateBulkState();
+        }
+        
+        // 批量操作验证
+        const bulkForm = document.getElementById('bulk-form');
+        if (bulkForm) {
+            bulkForm.addEventListener('submit', function(e) {
+                const selectedTasks = document.querySelectorAll('input[name="task_ids"]:checked');
+                const actionSelect = this.querySelector('select[name="bulk_action"]');
+                
+                if (selectedTasks.length === 0) {
+                    e.preventDefault();
+                    alert('请先选择要操作的任务');
+                    return;
+                }
+                
+                if (!actionSelect.value) {
+                    e.preventDefault();
+                    alert('请选择要执行的批量操作');
+                    return;
+                }
+                if (!confirm(`确定要对选中的 ${selectedTasks.length} 个任务执行"${actionSelect.options[actionSelect.selectedIndex].text}"操作吗？`)) {
+                    e.preventDefault();
+                    return;
+                }
+                if (submitBtn) submitBtn.disabled = true;
+                if (exportBtn) exportBtn.disabled = true;
+            });
+        }
+        
+        // 任务卡片点击效果
+        const taskCards = document.querySelectorAll('.task-card');
+        taskCards.forEach(card => {
+            const checkbox = card.querySelector('.task-checkbox');
+            const titleLink = card.querySelector('.task-title a');
+            
+            // 点击卡片空白区域（非链接和按钮）时切换选中状态
+            card.addEventListener('click', function(e) {
+                if (e.target === checkbox || 
+                    e.target.closest('a') || 
+                    e.target.closest('button') || 
+                    e.target.closest('form')) {
+                    return;
+                }
+                
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

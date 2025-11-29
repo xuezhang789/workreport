@@ -1,0 +1,425 @@
+{% extends "base_topbar.html" %}
+{% block title %}发布任务 / New Task{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="发布任务 / New Task" nav_subtitle="仅管理员可发布" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --accent: #06b6d4;
+            --card: rgba(255, 255, 255, 0.95);
+            --border: rgba(226, 232, 240, 0.8);
+            --ink: #1e293b;
+            --muted: #64748b;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+        }
+
+        .hero h1 {
+            margin: 0 0 8px;
+            font-size: clamp(22px, 3vw, 28px);
+            background: linear-gradient(135deg, var(--ink), #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .lede {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 11px;
+            color: var(--muted);
+            margin: 0 0 8px;
+            font-weight: 600;
+        }
+
+        .card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover::before {
+            opacity: 0.6;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 12px; 
+        }
+
+        label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--ink); 
+            display: block; 
+            margin-bottom: 8px; 
+        }
+
+        input, select, textarea { 
+            width: 100%; 
+            border-radius: var(--radius-md); 
+            border: 1px solid var(--border); 
+            padding: 12px 14px; 
+            font-size: 14px; 
+            background: rgba(255, 255, 255, 0.8); 
+            color: var(--ink);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .actions-row { 
+            display: flex; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            justify-content: flex-end; 
+            margin-top: 16px; 
+        }
+
+        .btn { 
+            border-radius: var(--radius-md); 
+            border: none; 
+            padding: 12px 18px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:active { 
+            transform: translateY(1px) scale(0.98); 
+        }
+
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
+            color: #fff; 
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost { 
+            background: rgba(15, 23, 42, 0.06); 
+            color: var(--ink); 
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(15, 23, 42, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .errors { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05)); 
+            border: 1px solid rgba(239, 68, 68, 0.2); 
+            color: #991b1b; 
+            padding: 12px 14px; 
+            border-radius: var(--radius-md); 
+            margin-bottom: 12px; 
+            font-size: 13px;
+        }
+
+        .note {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        @media (max-width: 860px) {
+            .hero {
+                padding: 20px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+{% endblock %}
+
+{% block content %}
+    <section class="card">
+        <h2 style="margin:0 0 10px;">发布任务</h2>
+        {% if errors %}
+            <div class="errors">
+                {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+            </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-grid">
+                <div>
+                    <label>任务标题 *</label>
+                    <input type="text" name="title" value="{{ form_values.title|default:'' }}" required>
+                </div>
+                <div>
+                    <label>任务 URL（可选，下拉或自填）</label>
+                    <input list="url_options" type="url" name="url" value="{{ form_values.url|default:'' }}" placeholder="可选择历史 URL 或自行填写">
+                    <datalist id="url_options">
+                        {% for u in existing_urls %}
+                            <option value="{{ u }}">{{ u }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>任务内容（可选，支持 Markdown；URL 为空时需填写）</label>
+                    <textarea name="content" placeholder="示例：- 完成 XX 模块用例\n- 提交报告并通知 PM">{{ form_values.content|default:'' }}</textarea>
+                </div>
+                <div>
+                    <label>所属项目 *</label>
+                    <input type="text" id="project-typeahead" list="project-options" placeholder="输入项目名搜索" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
+                    <datalist id="project-options"></datalist>
+                    <select name="project" id="project-select" required>
+                        <option value="">请选择</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if form_values.project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>目标用户 *（远程搜索）</label>
+                    <input type="text" id="user-typeahead" list="user-options" placeholder="输入用户名或姓名搜索" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
+                    <datalist id="user-options"></datalist>
+                    <select name="user" id="user-select">
+                        <option value="">请选择</option>
+                        {% for u in users %}
+                            <option value="{{ u.id }}" {% if form_values.user_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="note">选择下拉或输入后选中建议，自动填充目标用户。</p>
+                </div>
+                <div>
+                    <label>完成时间（截止）</label>
+                    <input type="datetime-local" name="due_at" value="{{ form_values.due_at|default:'' }}" aria-describedby="due-tip">
+                    <p id="due-tip" class="note">未设置截止将按项目 SLA 计算 / If empty, project SLA applies</p>
+                </div>
+                <div>
+                    <label>状态</label>
+                    <select name="status">
+                        {% for val,label in task_status_choices %}
+                            <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="actions-row">
+                <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">返回列表</a>
+                <button type="submit" class="btn btn-primary">发布任务</button>
+            </div>
+        </form>
+    </section>
+    <script>
+        (function() {
+            const projectTypeahead = document.getElementById('project-typeahead');
+            const projectOptions = document.getElementById('project-options');
+            const projectSelect = document.getElementById('project-select');
+            const projectApi = "{% url 'reports:project_search_api' %}";
+            async function fetchProjects(q) {
+                if (!projectOptions) return;
+                projectOptions.innerHTML = '';
+                try {
+                    const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    (data.results || []).forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = `${item.name}（${item.code}）`;
+                        opt.dataset.id = item.id;
+                        projectOptions.appendChild(opt);
+                    });
+                } catch (e) {
+                    // ignore
+                }
+            }
+            function applySelectedProject() {
+                if (!projectSelect || !projectTypeahead) return;
+                const text = projectTypeahead.value;
+                const match = Array.from(projectOptions.options).find(o => o.value === text);
+                if (!match) return;
+                const pid = match.dataset.id;
+                let opt = Array.from(projectSelect.options).find(o => o.value === pid);
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = pid;
+                    opt.textContent = text;
+                    projectSelect.appendChild(opt);
+                }
+                projectSelect.value = pid;
+            }
+
+            const userTypeahead = document.getElementById('user-typeahead');
+            const userOptions = document.getElementById('user-options');
+            const select = document.getElementById('user-select');
+            const api = "{% url 'reports:user_search_api' %}";
+            if (projectTypeahead) {
+                projectTypeahead.addEventListener('input', (e) => {
+                    const q = e.target.value;
+                    if (q && q.length >= 1) fetchProjects(q);
+                });
+                projectTypeahead.addEventListener('change', applySelectedProject);
+            }
+
+            if (!userTypeahead || !select) return;
+            const form = document.querySelector('form');
+            function validateTaskForm(e) {
+                const title = (form.querySelector('input[name="title"]') || {}).value || '';
+                const projectVal = projectSelect ? projectSelect.value : '';
+                const userVal = select.value;
+                const url = (form.querySelector('input[name="url"]') || {}).value || '';
+                const content = (form.querySelector('textarea[name="content"]') || {}).value || '';
+                if (!title.trim()) { alert('请填写任务标题'); e.preventDefault(); return false; }
+                if (!projectVal) { alert('请选择项目'); e.preventDefault(); return false; }
+                if (!userVal) { alert('请选择目标用户'); e.preventDefault(); return false; }
+                if (!url.trim() && !content.trim()) { alert('请输入 URL 或内容'); e.preventDefault(); return false; }
+                return true;
+            }
+            if (form) {
+                form.addEventListener('submit', validateTaskForm);
+            }
+
+            async function fetchUsers(q) {
+                if (!userOptions) return;
+                userOptions.innerHTML = '';
+                try {
+                    const res = await fetch(`${api}?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    (data.results || []).forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = `${item.name} (${item.username})`;
+                        opt.dataset.id = item.id;
+                        userOptions.appendChild(opt);
+                    });
+                } catch (e) {
+                    // ignore
+                }
+            }
+            function applySelectedUser() {
+                const text = userTypeahead.value;
+                const match = Array.from(userOptions.options).find(o => o.value === text);
+                if (!match) return;
+                const uid = match.dataset.id;
+                let opt = Array.from(select.options).find(o => o.value === uid);
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = uid;
+                    opt.textContent = text;
+                    select.appendChild(opt);
+                }
+                select.value = uid;
+            }
+            userTypeahead.addEventListener('input', (e) => {
+                const q = e.target.value;
+                if (q && q.length >= 1) fetchUsers(q);
+            });
+            userTypeahead.addEventListener('change', applySelectedUser);
+        })();
+    </script>
+{% endblock %}

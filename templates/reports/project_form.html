@@ -1,0 +1,301 @@
+{% extends "base_topbar.html" %}
+{% block title %}项目管理 / Project{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理 / Project" nav_subtitle="管理员可创建/编辑项目" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --accent: #06b6d4;
+            --card: rgba(255, 255, 255, 0.95);
+            --border: rgba(226, 232, 240, 0.8);
+            --ink: #1e293b;
+            --muted: #64748b;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+
+        .hero { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border); 
+            border-radius: var(--radius-lg); 
+            padding: 24px 28px; 
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
+            display: grid; 
+            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+            gap: 16px; 
+            align-items: center; 
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.8;
+        }
+
+        .hero-content h1 {
+            margin: 0 0 8px;
+            font-size: clamp(22px, 3vw, 28px);
+            background: linear-gradient(135deg, var(--ink), #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-content .lede {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 11px;
+            color: var(--muted);
+            margin: 0 0 8px;
+            font-weight: 600;
+        }
+
+        .card { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border); 
+            border-radius: var(--radius-lg); 
+            padding: 20px 24px; 
+            box-shadow: var(--shadow); 
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover::before {
+            opacity: 0.6;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        form { display: grid; gap: 16px; }
+        label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--ink); 
+            display: block; 
+            margin-bottom: 8px; 
+        }
+        input, select, textarea {
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--ink);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        textarea { resize: vertical; min-height: 120px; line-height: 1.55; }
+        select[multiple] { min-height: 160px; }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+        .btn { 
+            border-radius: var(--radius-md); 
+            border: none; 
+            padding: 12px 18px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
+            transform: translateY(-2px);
+        }
+        .btn-secondary { 
+            background: linear-gradient(135deg, #e5e7eb, #f1f5f9); 
+            color: var(--ink);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #d1d5db, #e2e8f0);
+            transform: translateY(-1px);
+        }
+        .btn-ghost { 
+            background: rgba(15, 23, 42, 0.06); 
+            color: var(--ink);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+        .btn-ghost:hover {
+            background: rgba(15, 23, 42, 0.1);
+            transform: translateY(-1px);
+        }
+        .actions-row { 
+            display: flex; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            justify-content: flex-end; 
+            margin-top: 16px;
+        }
+        .errors, .non-field-errors { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.18); color: #991b1b; font-size: 12px; }
+{% endblock %}
+
+{% block content %}
+        <section class="card">
+            {% if form.non_field_errors %}
+                <ul class="non-field-errors">
+                    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ form.name.id_for_label }}">名称 / Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}<ul class="errors">{% for e in form.name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.code.id_for_label }}">代码 / Code</label>
+                    {{ form.code }}
+                    {% if form.code.errors %}<ul class="errors">{% for e in form.code.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.description.id_for_label }}">描述 / Description</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<ul class="errors">{% for e in form.description.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                    <div>
+                        <label for="{{ form.start_date.id_for_label }}">开始日期 / Start</label>
+                        {{ form.start_date }}
+                        {% if form.start_date.errors %}<ul class="errors">{% for e in form.start_date.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.end_date.id_for_label }}">结束日期 / End</label>
+                        {{ form.end_date }}
+                        {% if form.end_date.errors %}<ul class="errors">{% for e in form.end_date.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.sla_hours.id_for_label }}">SLA 提醒（小时）</label>
+                        {{ form.sla_hours }}
+                        <p style="color:#6b7280;font-size:12px;margin:4px 0 0;">为空则使用全局 SLA 配置。</p>
+                        {% if form.sla_hours.errors %}<ul class="errors">{% for e in form.sla_hours.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <label for="{{ form.owner.id_for_label }}">负责人 / Owner</label>
+                    {{ form.owner }}
+                    {% if form.owner.errors %}<ul class="errors">{% for e in form.owner.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div>
+                    <label for="member-filter">成员筛选 / Member filter</label>
+                    <input type="text" id="member-filter" placeholder="输入用户名过滤" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
+                    {{ form.members }}
+                    {% if form.members.errors %}<ul class="errors">{% for e in form.members.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div>
+                    <label for="manager-filter">管理员筛选 / Manager filter</label>
+                    <input type="text" id="manager-filter" placeholder="输入用户名过滤" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
+                    {{ form.managers }}
+                    {% if form.managers.errors %}<ul class="errors">{% for e in form.managers.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    <p style="color:#6b7280;font-size:12px;margin:6px 0 0;">项目管理员可查看项目关联日报、管理成员与任务。</p>
+                </div>
+                <div>
+                    <label for="{{ form.is_active.id_for_label }}">是否启用 / Active</label>
+                    {{ form.is_active }}
+                </div>
+
+                <div class="actions-row">
+                    <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">取消</a>
+                    <button type="submit" class="btn btn-primary">{% if mode == 'edit' %}保存{% else %}创建{% endif %}</button>
+                </div>
+            </form>
+        </section>
+        <script>
+            (function() {
+                function bindFilter(inputId, selectEl) {
+                    const input = document.getElementById(inputId);
+                    if (!input || !selectEl) return;
+                    input.addEventListener('input', () => {
+                        const q = input.value.toLowerCase();
+                        Array.from(selectEl.options).forEach(opt => {
+                            if (!opt.value) return;
+                            opt.style.display = opt.textContent.toLowerCase().includes(q) ? '' : 'none';
+                        });
+                    });
+                }
+                bindFilter('member-filter', document.getElementById('members-select'));
+                bindFilter('manager-filter', document.getElementById('managers-select'));
+            })();
+        </script>
+{% endblock %}

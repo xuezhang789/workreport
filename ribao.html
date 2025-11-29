@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>团队在线日报系统 / Team Online Daily Report System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        :root {
+            --bg: #f5f6fb;
+            --card-bg: #ffffff;
+            --primary: #2563eb;
+            --primary-soft: #e0ecff;
+            --text-main: #111827;
+            --text-sub: #6b7280;
+            --border: #e5e7eb;
+            --danger: #ef4444;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC",
+                "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: radial-gradient(circle at top, #e0ecff 0, #f5f6fb 40%, #f9fafb 100%);
+            color: var(--text-main);
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            background: rgba(248, 250, 252, 0.85);
+            border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header .title {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header .title-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        header .subtitle {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        main {
+            flex: 1;
+            padding: 16px 24px 24px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 960px) {
+            main {
+                padding: 12px 12px 20px;
+            }
+            header {
+                padding: 10px 12px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-title span.icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-size: 12px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 720px) {
+            .form-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        label .required {
+            color: var(--danger);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            margin-top: 4px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            padding: 8px 11px;
+            font-size: 13px;
+            outline: none;
+            background: #f9fafb;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        textarea {
+            border-radius: var(--radius-md);
+            min-height: 70px;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+            background: #ffffff;
+        }
+
+        .section {
+            margin-bottom: 14px;
+        }
+
+        .section-heading {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #111827;
+        }
+
+        .section-hint {
+            font-size: 11px;
+            color: var(--text-sub);
+        }
+
+        .role-hints {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-sub);
+        }
+
+        .role-hints span {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.03);
+            border: 1px dashed rgba(148, 163, 184, 0.7);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        button {
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 8px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: #4b5563;
+        }
+
+        .preview-area {
+            background: #020617;
+            color: #e5e7eb;
+            border-radius: var(--radius-lg);
+            padding: 12px 14px;
+            font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 520px;
+            overflow: auto;
+            border: 1px solid rgba(15, 23, 42, 0.7);
+        }
+
+        .preview-area pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .pill-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: rgba(15, 23, 42, 0.85);
+            color: #9ca3af;
+            margin-bottom: 6px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-sub);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            margin-right: 4px;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.6);
+            z-index: 50;
+        }
+
+        .toast.show {
+            display: inline-flex;
+        }
+
+        .toast-icon {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <div>
+            <div class="title">
+                团队在线日报系统 / Team Online Daily Report System
+                <span class="title-badge">Daily Report · 内部使用 / Internal Use</span>
+            </div>
+            <div class="subtitle">
+                适用于开发 / 测试 / 产品 / UI / 运维 / 管理 的统一日报填写页面 · Unified daily report for Dev / QA / Product / UI / Ops / PM
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="layout">
+            <!-- 左侧：表单 / Left: Form -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">✏️</span>
+                        填写日报 / Fill Daily Report
+                    </div>
+                    <div class="card-subtitle">
+                        请用 3–8 条要点描述今天与明天的关键工作 · Use 3–8 bullet points for today & tomorrow
+                    </div>
+                </div>
+
+                <!-- 基本信息 / Basic Info -->
+                <div class="section">
+                    <div class="section-heading">
+                        <span>基本信息 / Basic Information</span>
+                    </div>
+                    <div class="form-grid">
+                        <div>
+                            <label>姓名 / Name <span class="required">*</span></label>
+                            <input type="text" id="name" placeholder="例如：张三 / Example: Zhang San" />
+                        </div>
+                        <div>
+                            <label>日期 / Date <span class="required">*</span></label>
+                            <input type="date" id="date" />
+                        </div>
+                        <div>
+                            <label>角色 / Role <span class="required">*</span></label>
+                            <select id="role">
+                                <option value="">请选择角色 / Select Role</option>
+                                <option value="dev">开发 / Developer</option>
+                                <option value="qa">测试 / QA</option>
+                                <option value="pm">产品 / Product Manager</option>
+                                <option value="ui">设计 / UI / UX</option>
+                                <option value="ops">运维 / Ops</option>
+                                <option value="mgr">项目管理 / PM / PMO</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>项目 / Project</label>
+                            <input type="text" id="project" placeholder="例如：瞬聊 APP / LiteChat Gateway" />
+                        </div>
+                    </div>
+
+                    <div class="role-hints">
+                        <span>开发：今日完成、进度、问题、明日计划 / Dev: today’s work, progress, issues, tomorrow plan</span>
+                        <span>测试：测试范围、用例完成、Bug 统计、回归计划 / QA: scope, cases, bugs, regression</span>
+                        <span>运维：监控、故障处理、变更记录 / Ops: monitoring, incidents, changes</span>
+                    </div>
+                </div>
+
+                <!-- 角色：开发 / Role: Developer -->
+                <div id="role-dev" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日完成工作（开发） / Work Completed Today (Dev)</span>
+                            <span class="section-hint">请列出已完成的开发 / 联调 / 自测内容 · List completed development / integration / self-test</span>
+                        </div>
+                        <textarea id="dev-today" placeholder="- 完成 xxx 功能开发 / Completed feature xxx
+- 接口联调：用户登录 + 会话列表 / API integration: login & session list
+- 修复群聊禁言逻辑异常 / Fixed mute logic issue in group chat"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 今日进展 & 问题 / Progress & Issues Today</span>
+                            <span class="section-hint">例如受需求变更、接口未准备、环境异常等 / e.g. requirement change, API not ready, env issues</span>
+                        </div>
+                        <textarea id="dev-progress" placeholder="- 群公告功能因交互变更，进度延迟 0.5 天 / Group announcement delayed 0.5 day due to UX change
+- 测试环境偶发 500，已与后端排查日志 / Sporadic 500 errors in test env, under investigation"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. 明日工作计划 / Plan for Tomorrow</span>
+                            <span class="section-hint">明日计划开发 / 重构 / 修复内容 · Planned development / refactor / fixes</span>
+                        </div>
+                        <textarea id="dev-tomorrow" placeholder="- 完成好友推荐接口开发与自测 / Complete friend recommendation API & self-test
+- 联调商户后台企业权限模块 / Integrate merchant admin permissions
+- 修复测试反馈的登录相关 Bug / Fix login-related bugs from QA"></textarea>
+                    </div>
+                </div>
+
+                <!-- 角色：测试 / Role: QA -->
+                <div id="role-qa" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日测试范围 / Today’s Testing Scope</span>
+                            <span class="section-hint">说明测试的应用与模块 · App & modules tested today</span>
+                        </div>
+                        <textarea id="qa-scope" placeholder="- 瞬聊 APP：登录 / 注册 / 私聊 / ShunLiao APP: login / register / single chat
+- 商户后台：企业码配置 / 用户管理 / Merchant admin: enterprise code, user management"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 测试完成情况 / Testing Progress</span>
+                            <span class="section-hint">用例执行数量、通过/失败情况 · Executed cases, pass/fail</span>
+                        </div>
+                        <textarea id="qa-progress" placeholder="- 共执行用例 32 条，通过 28 条，失败 4 条 / 32 cases executed, 28 passed, 4 failed
+- 已回归昨天修复的 5 个 Bug，均验证通过 / 5 bugs regressed and all passed"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. Bug 统计 / Bug Summary</span>
+                            <span class="section-hint">今日新发现 Bug 数量 + 严重程度 · New bugs & severity</span>
+                        </div>
+                        <textarea id="qa-bugs" placeholder="- 今日新增 Bug：7 个（严重 2 / 中等 3 / 轻微 2） / 7 new bugs (2 critical, 3 major, 2 minor)
+- 未解决的关键问题：#IM-102 群公告偶发不展示 / Key unresolved: #IM-102 group announcement missing randomly"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>4. 明日测试计划 / Plan for Tomorrow</span>
+                            <span class="section-hint">继续测试或回归的范围 · Next test/regression scope</span>
+                        </div>
+                        <textarea id="qa-tomorrow" placeholder="- 继续执行群聊、@消息、消息撤回相关测试 / Continue testing group chat, @mention, recall
+- 回归今日修复的登录闪退问题 / Regression for today’s login crash fix"></textarea>
+                    </div>
+                </div>
+
+                <!-- 角色：产品 / Role: Product -->
+                <div id="role-pm" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日产品推进内容 / Product Progress Today</span>
+                        </div>
+                        <textarea id="pm-today" placeholder="- 完成「群欢迎语配置」PRD 初稿 / Completed PRD draft: group welcome message
+- 完成「内部账号标识」需求评审 / Finished review: internal account flag"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 今日协调 / 决策事项 / Coordination & Decisions</span>
+                        </div>
+                        <textarea id="pm-coord" placeholder="- 与开发确认企业码 + 邀请码并存逻辑 / Confirmed enterprise code + invite code logic with Dev
+- 与测试确认登录场景用例覆盖范围 / Aligned login scenario coverage with QA"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. 明日计划 / Plan for Tomorrow</span>
+                        </div>
+                        <textarea id="pm-tomorrow" placeholder="- 输出「多企业多租户网关」需求文档 / Deliver multi-tenant gateway PRD
+- 安排 LiteChat 网关 V2.1 版本排期评审 / Schedule LiteChat Gateway V2.1 review"></textarea>
+                    </div>
+                </div>
+
+                <!-- 角色：UI / Role: UI -->
+                <div id="role-ui" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日完成设计 / Designs Completed Today</span>
+                        </div>
+                        <textarea id="ui-today" placeholder="- 完成「下载页」新版 UI（Web + iPad） / New download page UI (Web + iPad)
+- 优化聊天室消息气泡视觉层级 / Optimized chat bubble visual hierarchy"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 反馈与修改 / Feedback & Revisions</span>
+                        </div>
+                        <textarea id="ui-feedback" placeholder="- 根据产品反馈微调按钮文案与布局 / Adjusted button text & layout per PM feedback
+- 修复暗色模式下图标对比度不足问题 / Fixed icon contrast in dark mode"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. 明日计划 / Plan for Tomorrow</span>
+                        </div>
+                        <textarea id="ui-tomorrow" placeholder="- 输出 PC 端群管理页面交互稿 / Deliver PC group management UX
+- 启动 LiteChat 官网解决方案栏目改版设计 / Start redesign of solution section on website"></textarea>
+                    </div>
+                </div>
+
+                <!-- 角色：运维 / Role: Ops -->
+                <div id="role-ops" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日运维工作 / Operations Tasks Today</span>
+                        </div>
+                        <textarea id="ops-today" placeholder="- 调整 Kafka 集群分区与副本，优化吞吐 / Tuned Kafka partitions & replicas
+- 巡检 MongoDB、Redis、Nginx、OpenIM 进程状态 / Checked MongoDB, Redis, Nginx, OpenIM processes"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 监控与故障情况 / Monitoring & Incidents</span>
+                        </div>
+                        <textarea id="ops-monitor" placeholder="- 监控到新加坡节点 CPU 峰值 85%，已扩容 1 台 / SG node CPU peak 85%, scaled out 1 node
+- LiteChat 消息通道无异常，错误率 &lt; 0.1% / LiteChat message channel stable, error &lt; 0.1%"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. 明日计划 / Plan for Tomorrow</span>
+                        </div>
+                        <textarea id="ops-tomorrow" placeholder="- 完成 LiteChat 网关 TLS 证书自动续期脚本 / Finish TLS auto-renew script
+- 联合开发排查偶发连接超时问题 / Debug intermittent connection timeout with Dev"></textarea>
+                    </div>
+                </div>
+
+                <!-- 角色：管理 / Role: PMO -->
+                <div id="role-mgr" class="role-section" style="display:none;">
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>1. 今日项目进度概览 / Project Progress Overview</span>
+                        </div>
+                        <textarea id="mgr-progress" placeholder="- LiteChat 网关 V2.1 版本整体进度约 65% / LiteChat Gateway V2.1 ~65% complete
+- 瞬聊 APP iOS 提审版本已通过内部自测 / ShunLiao iOS release candidate passed internal QA"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>2. 风险与阻塞点 / Risks & Blockers</span>
+                        </div>
+                        <textarea id="mgr-risk" placeholder="- 企业白名单功能交互仍不确定，需产品尽快拍板 / Enterprise whitelist UX not finalized, needs PM decision
+- 测试人力紧张，回归压力较大 / QA capacity tight, heavy regression load"></textarea>
+                    </div>
+                    <div class="section">
+                        <div class="section-heading">
+                            <span>3. 明日推进重点 / Key Focus for Tomorrow</span>
+                        </div>
+                        <textarea id="mgr-tomorrow" placeholder="- 推进 LiteChat 网关 V2.1 版本评审与发布时间确认 / Push V2.1 review & release date
+- 与各组确认年终节点前交付范围 / Confirm delivery scope with all teams before year-end"></textarea>
+                    </div>
+                </div>
+
+                <!-- 按钮 / Buttons -->
+                <div class="btn-row">
+                    <button type="button" class="btn-ghost" id="btn-clear">重置表单 / Reset Form</button>
+                    <button type="button" class="btn-secondary" id="btn-sample">填入示例 / Fill Sample</button>
+                    <button type="button" class="btn-primary" id="btn-generate">
+                        生成日报内容 / Generate Report
+                    </button>
+                </div>
+            </section>
+
+            <!-- 右侧：预览 / Right: Preview -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📄</span>
+                        日报预览 / Daily Report Preview
+                    </div>
+                    <div class="card-subtitle">
+                        左侧填写后点击「生成」，可一键复制发送到群 / 系统 · Generate then copy to IM / system
+                    </div>
+                </div>
+
+                <div class="preview-area" id="preview">
+                    <div class="pill-badge">No Report Generated</div>
+                    <pre>请在左侧填写信息后，点击「生成日报内容」按钮。
+Please fill in the form on the left and click "Generate Report".</pre>
+                </div>
+
+                <div class="status-bar">
+                    <div class="status-left">
+                        <span class="status-dot"></span>
+                        <span id="status-text">等待生成日报… / Waiting to generate report…</span>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-secondary" id="btn-copy">
+                            复制日报内容 / Copy Report
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div class="toast" id="toast">
+    <span class="toast-icon">✅</span>
+    <span id="toast-text">已复制到剪贴板 / Copied to clipboard</span>
+</div>
+
+<script>
+    // 自动填充今天日期 / Auto-fill today's date
+    (function setToday() {
+        const input = document.getElementById("date");
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        input.value = yyyy + "-" + mm + "-" + dd;
+    })();
+
+    const roleSelect = document.getElementById("role");
+    const roleSections = {
+        dev: document.getElementById("role-dev"),
+        qa: document.getElementById("role-qa"),
+        pm: document.getElementById("role-pm"),
+        ui: document.getElementById("role-ui"),
+        ops: document.getElementById("role-ops"),
+        mgr: document.getElementById("role-mgr"),
+    };
+
+    roleSelect.addEventListener("change", () => {
+        const value = roleSelect.value;
+        Object.keys(roleSections).forEach((key) => {
+            roleSections[key].style.display = key === value ? "block" : "none";
+        });
+    });
+
+    function showToast(text) {
+        const toast = document.getElementById("toast");
+        const toastText = document.getElementById("toast-text");
+        toastText.textContent = text;
+        toast.classList.add("show");
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 2000);
+    }
+
+    function generateReport() {
+        const name = document.getElementById("name").value.trim();
+        const date = document.getElementById("date").value;
+        const role = document.getElementById("role").value;
+        const project = document.getElementById("project").value.trim();
+
+        if (!name || !date || !role) {
+            showToast("请先填写姓名、日期和角色 / Please fill in name, date and role first");
+            return "";
+        }
+
+        const roleMap = {
+            dev: "开发 / Developer",
+            qa: "测试 / QA",
+            pm: "产品 / Product Manager",
+            ui: "设计 / UI / UX",
+            ops: "运维 / Ops",
+            mgr: "项目管理 / PM / PMO",
+        };
+
+        let text = "";
+        text += `《项目每日工作报告 / IM Project Daily Report》\n\n`;
+        text += `【基本信息 / Basic Info】\n`;
+        text += `姓名 / Name：${name}\n`;
+        text += `日期 / Date：${date}\n`;
+        text += `角色 / Role：${roleMap[role] || role}\n`;
+        if (project) {
+            text += `项目 / Project：${project}\n`;
+        }
+        text += `\n`;
+
+        if (role === "dev") {
+            const t1 = document.getElementById("dev-today").value.trim();
+            const t2 = document.getElementById("dev-progress").value.trim();
+            const t3 = document.getElementById("dev-tomorrow").value.trim();
+            text += `一、今日完成工作（开发） / Work Completed Today (Dev)\n${t1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、今日进展 & 问题 / Progress & Issues Today\n${t2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、明日工作计划 / Plan for Tomorrow\n${t3 || "- （待填写 / To be filled）"}\n`;
+        } else if (role === "qa") {
+            const s1 = document.getElementById("qa-scope").value.trim();
+            const s2 = document.getElementById("qa-progress").value.trim();
+            const s3 = document.getElementById("qa-bugs").value.trim();
+            const s4 = document.getElementById("qa-tomorrow").value.trim();
+            text += `一、今日测试范围 / Today’s Testing Scope\n${s1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、测试完成情况 / Testing Progress\n${s2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、Bug 统计 / Bug Summary\n${s3 || "- （待填写 / To be filled）"}\n\n`;
+            text += `四、明日测试计划 / Plan for Tomorrow\n${s4 || "- （待填写 / To be filled）"}\n`;
+        } else if (role === "pm") {
+            const p1 = document.getElementById("pm-today").value.trim();
+            const p2 = document.getElementById("pm-coord").value.trim();
+            const p3 = document.getElementById("pm-tomorrow").value.trim();
+            text += `一、今日产品推进内容 / Product Progress Today\n${p1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、今日协调 / 决策事项 / Coordination & Decisions\n${p2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、明日计划 / Plan for Tomorrow\n${p3 || "- （待填写 / To be filled）"}\n`;
+        } else if (role === "ui") {
+            const u1 = document.getElementById("ui-today").value.trim();
+            const u2 = document.getElementById("ui-feedback").value.trim();
+            const u3 = document.getElementById("ui-tomorrow").value.trim();
+            text += `一、今日完成设计 / Designs Completed Today\n${u1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、反馈与修改 / Feedback & Revisions\n${u2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、明日计划 / Plan for Tomorrow\n${u3 || "- （待填写 / To be filled）"}\n`;
+        } else if (role === "ops") {
+            const o1 = document.getElementById("ops-today").value.trim();
+            const o2 = document.getElementById("ops-monitor").value.trim();
+            const o3 = document.getElementById("ops-tomorrow").value.trim();
+            text += `一、今日运维工作 / Operations Tasks Today\n${o1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、监控与故障情况 / Monitoring & Incidents\n${o2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、明日计划 / Plan for Tomorrow\n${o3 || "- （待填写 / To be filled）"}\n`;
+        } else if (role === "mgr") {
+            const m1 = document.getElementById("mgr-progress").value.trim();
+            const m2 = document.getElementById("mgr-risk").value.trim();
+            const m3 = document.getElementById("mgr-tomorrow").value.trim();
+            text += `一、今日项目进度概览 / Project Progress Overview\n${m1 || "- （待填写 / To be filled）"}\n\n`;
+            text += `二、风险与阻塞点 / Risks & Blockers\n${m2 || "- （待填写 / To be filled）"}\n\n`;
+            text += `三、明日推进重点 / Key Focus for Tomorrow\n${m3 || "- （待填写 / To be filled）"}\n`;
+        }
+
+        return text;
+    }
+
+    document.getElementById("btn-generate").addEventListener("click", () => {
+        const preview = document.getElementById("preview");
+        const statusText = document.getElementById("status-text");
+        const report = generateReport();
+        if (!report) return;
+        preview.innerHTML = `<div class="pill-badge">Generated · 已生成</div><pre>${report}</pre>`;
+        statusText.textContent = "已生成日报，可点击右下角按钮复制。 / Report generated, you can copy it now.";
+    });
+
+    document.getElementById("btn-copy").addEventListener("click", async () => {
+        const preview = document.getElementById("preview");
+        const pre = preview.querySelector("pre");
+        if (!pre) {
+            showToast("当前没有可复制的日报内容 / No report content to copy");
+            return;
+        }
+        const text = pre.textContent;
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast("日报内容已复制到剪贴板 / Report copied to clipboard");
+        } catch (e) {
+            showToast("复制失败，可手动选择文本复制 / Copy failed, please copy manually");
+        }
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => {
+        if (!confirm("确认重置表单内容？ / Confirm reset form?")) return;
+        document.getElementById("name").value = "";
+        document.getElementById("project").value = "";
+        // 重置角色和各区域内容 / Reset role and sections
+        roleSelect.value = "";
+        Object.keys(roleSections).forEach((key) => {
+            roleSections[key].style.display = "none";
+        });
+
+        const idsToClear = [
+            "dev-today","dev-progress","dev-tomorrow",
+            "qa-scope","qa-progress","qa-bugs","qa-tomorrow",
+            "pm-today","pm-coord","pm-tomorrow",
+            "ui-today","ui-feedback","ui-tomorrow",
+            "ops-today","ops-monitor","ops-tomorrow",
+            "mgr-progress","mgr-risk","mgr-tomorrow"
+        ];
+        idsToClear.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+
+        const preview = document.getElementById("preview");
+        const statusText = document.getElementById("status-text");
+        preview.innerHTML = `<div class="pill-badge">No Report Generated</div><pre>请在左侧填写信息后，点击「生成日报内容」按钮。
+Please fill in the form on the left and click "Generate Report".</pre>`;
+        statusText.textContent = "等待生成日报… / Waiting to generate report…";
+        showToast("表单已重置 / Form has been reset");
+    });
+
+    document.getElementById("btn-sample").addEventListener("click", () => {
+        // 默认填充一个开发角色示例 / Fill sample for Dev
+        document.getElementById("name").value = "张三 / Zhang San";
+        document.getElementById("project").value = "LiteChat 网关 V2.1 / LiteChat Gateway V2.1";
+        roleSelect.value = "dev";
+        roleSelect.dispatchEvent(new Event("change"));
+
+        document.getElementById("dev-today").value =
+`- 完成登录模块 Token 续期逻辑开发与自测 / Implemented and self-tested token renewal logic
+- 调整网关多企业路由配置，支持企业粒度隔离 / Adjusted multi-tenant routing for enterprise-level isolation
+- 修复 LiteChat PC 群聊禁言逻辑异常问题 / Fixed mute logic issue in LiteChat PC group chat`;
+
+        document.getElementById("dev-progress").value =
+`- 网关灰度发布脚本仍在调试阶段，预计还需 0.5 天 / Gateway canary release script still under tuning (~0.5 day)
+- 等待测试补充多终端登录场景用例 / Waiting for QA to add multi-device login cases`;
+
+        document.getElementById("dev-tomorrow").value =
+`- 完成网关发布脚本优化与联调 / Finish gateway release script & integration
+- 配合测试修复登录 / 群聊相关 Bug / Work with QA on login & group chat bug fixes
+- 预研企业 IP 白名单与安全组配置实现方案 / Research enterprise IP whitelist & security group design`;
+
+        showToast("已填入开发示例内容，可直接修改后使用 / Sample Dev data filled, you can edit and use");
+    });
+</script>
+</body>
+</html>
