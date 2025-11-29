@@ -1,0 +1,387 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+{% block title %}角色模板管理{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="角色模板管理" nav_subtitle="为各角色配置提示与占位" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --accent: #06b6d4;
+            --card: rgba(255, 255, 255, 0.95);
+            --border: rgba(226, 232, 240, 0.8);
+            --ink: #1e293b;
+            --muted: #64748b;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(24px, 4vw, 32px);
+            background: linear-gradient(135deg, var(--ink), #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .card { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border); 
+            border-radius: var(--radius-lg); 
+            padding: 24px 28px; 
+            box-shadow: var(--shadow); 
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover::before {
+            opacity: 0.6;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card h2 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--ink); 
+            display: block; 
+            margin-bottom: 8px; 
+        }
+
+        select, textarea { 
+            width: 100%; 
+            border-radius: var(--radius-md); 
+            border: 1px solid var(--border); 
+            padding: 12px 14px; 
+            font-size: 14px; 
+            background: rgba(255, 255, 255, 0.8); 
+            color: var(--ink);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+
+        textarea { 
+            min-height: 160px; 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            resize: vertical;
+        }
+
+        .btn { 
+            border-radius: var(--radius-md); 
+            border: none; 
+            padding: 12px 18px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost { 
+            background: rgba(15, 23, 42, 0.06); 
+            color: var(--ink);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(15, 23, 42, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .note { 
+            font-size: 13px; 
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .alert { 
+            border-radius: var(--radius-md); 
+            padding: 14px 16px; 
+            margin-bottom: 16px; 
+            font-size: 13px;
+            border: 1px solid;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success { 
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05)); 
+            color: #065f46; 
+            border: 1px solid rgba(16, 185, 129, 0.2); 
+        }
+
+        .alert-error { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05)); 
+            color: #991b1b; 
+            border: 1px solid rgba(239, 68, 68, 0.2); 
+        }
+
+        .layout { 
+            display: grid; 
+            grid-template-columns: 2fr 1fr; 
+            gap: 20px; 
+            align-items: start; 
+        }
+
+        .info-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+            backdrop-filter: blur(16px);
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+            border-radius: var(--radius-lg); 
+            padding: 20px; 
+            display: grid; 
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .info-panel:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.1);
+        }
+
+        .info-panel strong {
+            color: var(--ink);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .info-panel ul {
+            margin: 8px 0;
+            padding-left: 20px;
+            font-size: 13px;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+
+        .info-panel li {
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 900px) { 
+            .layout { 
+                grid-template-columns: 1fr; 
+                gap: 16px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .hero {
+                padding: 20px;
+            }
+        }
+{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <h1>角色模板管理</h1>
+        <p>为各角色配置提示与占位 · 提升日报填写体验</p>
+    </div>
+
+    <section class="card">
+        <h2>角色模板管理</h2>
+        <p class="note">配置提示语与占位，日报填写页加载后自动应用（含角色对应字段）。</p>
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+        <div class="layout">
+            <form method="post" style="display:grid; gap:10px;">
+                {% csrf_token %}
+                <div>
+                    <label for="role">角色 / Role</label>
+                    <select id="role" name="role" onchange="this.form.submit()">
+                        {% for val,label in roles %}
+                            <option value="{{ val }}" {% if selected_role == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="hint">提示语（可为空）</label>
+                    <textarea id="hint" name="hint" placeholder="例如：按 3-5 条要点输出，突出进展与风险">{{ hint_text }}</textarea>
+                </div>
+                <div>
+                    <label for="sample_md">示例 Markdown（可为空，填写页一键套用）</label>
+                    <textarea id="sample_md" name="sample_md" placeholder="示例：\n- 今日完成：\n- 风险与依赖：\n- 明日计划：">{{ sample_text }}</textarea>
+                </div>
+                <div>
+                    <label for="placeholders">字段占位 JSON（key 为字段名，value 为 placeholder 文本）</label>
+                    <textarea id="placeholders" name="placeholders" placeholder='{"today_work": "示例占位","progress_issues": "示例"}'>{{ placeholders_text }}</textarea>
+                    <p class="note">格式：标准 JSON 对象；仅填写当前角色相关字段（见右侧）。</p>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <label style="display:flex; align-items:center; gap:6px;">
+                        <input type="checkbox" name="is_active" {% if is_active %}checked{% endif %}>
+                        模板启用 / Active
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px;">
+                        排序（小的在前）<input type="number" name="sort_order" value="{{ sort_order_value }}" style="width:100px;">
+                    </label>
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-ghost" id="btn-format">校验并格式化 JSON</button>
+                    <a class="btn btn-ghost" href="?role={{ selected_role }}">重置</a>
+                    <button type="submit" class="btn btn-primary">保存模板</button>
+                </div>
+            </form>
+            <div style="background:rgba(15,23,42,0.02); border:1px dashed rgba(148,163,184,0.7); border-radius:12px; padding:12px; display:grid; gap:8px;">
+                <div>
+                    <strong>当前角色字段</strong>
+                    <ul style="margin:6px 0; padding-left:16px; font-size:12px; color:#111827;">
+                        {% for field in current_fields %}
+                            <li>{{ field }}</li>
+                        {% empty %}<li>暂无字段</li>{% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <strong>更新记录</strong>
+                    <p class="note">{% if updated_at %}最近更新：{{ updated_at|localtime|date:"Y-m-d H:i" }}{% else %}尚未保存模板{% endif %}</p>
+                </div>
+                <div>
+                    <strong>提示</strong>
+                    <p class="note">仅保存 JSON 中的已填写字段；填写无效字段不会生效。日报前端加载时，会应用提示语和占位。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        (function(){
+            const textarea = document.getElementById('placeholders');
+            const btnFormat = document.getElementById('btn-format');
+            if (!textarea || !btnFormat) return;
+            function formatJson() {
+                const raw = textarea.value || '{}';
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+                        alert('请输入 JSON 对象，例如 {"today_work":"占位"}');
+                        return;
+                    }
+                    textarea.value = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    alert('JSON 解析失败：' + e.message);
+                }
+            }
+            btnFormat.addEventListener('click', formatJson);
+        })();
+    </script>
+{% endblock %}

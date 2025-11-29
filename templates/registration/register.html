@@ -1,0 +1,868 @@
+{% extends "base_topbar.html" %}
+{% block title %}注册 / Register{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="注册 / Register" nav_subtitle="加入团队协作平台 / Join team collaboration platform" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            /* 统一色彩系统 */
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --primary-3: #60a5fa;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            
+            /* 中性色 */
+            --ink: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            
+            /* 背景色 */
+            --bg-primary: rgba(255, 255, 255, 0.98);
+            --bg-secondary: rgba(248, 250, 252, 0.95);
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            
+            /* 边框色 */
+            --border: rgba(226, 232, 240, 0.8);
+            --border-hover: rgba(59, 130, 246, 0.3);
+            --border-focus: rgba(59, 130, 246, 0.5);
+            
+            /* 圆角 */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            
+            /* 阴影 */
+            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.15);
+            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.2);
+            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+            
+            /* 动画 */
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f0f9ff 50%, #fef3c7 75%, #f0fdf4 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--ink);
+            line-height: 1.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .auth-container {
+            width: min(1200px, 100%);
+            max-width: 1200px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth {
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .auth::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--success));
+            opacity: 0.9;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .auth:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+        }
+
+        .panel {
+            padding: clamp(32px, 5vw, 48px);
+            position: relative;
+        }
+
+        .form-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(6, 182, 212, 0.08));
+            border-left: 1px solid rgba(59, 130, 246, 0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 24px;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.6;
+        }
+
+        .logo { 
+            width: 64px; height: 64px; 
+            border-radius: 20px; 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--accent)); 
+            color: #fff; 
+            display: grid; 
+            place-items: center; 
+            font-size: 24px;
+            font-weight: 800; 
+            letter-spacing: 0.02em; 
+            margin-bottom: 24px; 
+            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.35);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            transition: transform 0.6s ease;
+        }
+
+        .logo:hover::before {
+            transform: rotate(45deg) translate(100%, 100%);
+        }
+
+        .logo:hover {
+            transform: scale(1.08) rotate(2deg);
+            box-shadow: 0 16px 36px rgba(59, 130, 246, 0.45);
+        }
+
+        .form-header {
+            margin-bottom: 32px;
+        }
+
+        .form-header h2 {
+            margin: 0 0 8px;
+            font-size: clamp(24px, 3vw, 28px);
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+
+        .form-header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .label-hint {
+            font-size: 11px;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
+        input, select {
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            padding: 16px 20px;
+            font-size: 15px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+            color: var(--ink);
+            outline: none;
+            transition: var(--transition);
+            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+            position: relative;
+            font-family: inherit;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        input::placeholder {
+            color: var(--text-light);
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        input:focus::placeholder {
+            opacity: 0.4;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 8px 24px rgba(59, 130, 246, 0.2);
+            background: rgba(255, 255, 255, 0.98);
+            transform: translateY(-2px);
+        }
+
+        input:hover, select:hover {
+            border-color: var(--border-hover);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+            transform: translateY(-1px);
+        }
+
+
+
+        .password-strength {
+            margin-top: 8px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .password-strength-bar.weak {
+            width: 33%;
+            background: var(--danger);
+        }
+
+        .password-strength-bar.medium {
+            width: 66%;
+            background: var(--warning);
+        }
+
+        .password-strength-bar.strong {
+            width: 100%;
+            background: var(--success);
+        }
+
+        .password-requirements {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-light);
+            display: grid;
+            gap: 4px;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 2px 0;
+            transition: color 0.3s ease;
+        }
+
+        .requirement.met {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .password-score {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .errors, .non-field-errors {
+            margin: 0;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.04));
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .errors::before, .non-field-errors::before {
+            content: '⚠️';
+            font-size: 14px;
+        }
+
+        .errors li, .non-field-errors li {
+            margin: 2px 0;
+        }
+
+        .success-message {
+            margin: 0;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            color: #065f46;
+            font-size: 13px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--primary-3));
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+            letter-spacing: 0.02em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.45);
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .subtext {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            margin: 24px 0 0;
+        }
+
+        .subtext a {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .subtext a:hover {
+            color: var(--primary-2);
+            text-decoration: underline;
+        }
+
+        .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 11px;
+            color: var(--primary);
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(26px, 4vw, 32px);
+            line-height: 1.3;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .hero .lede {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .benefits-list {
+            margin-top: 24px;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .benefit-item:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: var(--border-hover);
+            transform: translateX(4px);
+        }
+
+        .benefit-icon {
+            font-size: 20px;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .benefit-content {
+            flex: 1;
+        }
+
+        .benefit-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            margin: 0 0 4px;
+        }
+
+        .benefit-desc {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px dashed rgba(15, 23, 42, 0.12);
+            background: rgba(15, 23, 42, 0.02);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 820px) { 
+            .auth-container {
+                padding: 16px;
+            }
+            
+            .auth { 
+                grid-template-columns: 1fr; 
+                max-width: 500px;
+            } 
+            
+            .hero { 
+                order: -1; 
+                border-left: none; 
+                border-bottom: 1px solid var(--border);
+                padding: clamp(24px, 6vw, 32px);
+            }
+
+            .panel {
+                padding: clamp(24px, 6vw, 32px);
+            }
+
+            .logo {
+                width: 56px;
+                height: 56px;
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            h1 {
+                font-size: clamp(20px, 4vw, 24px);
+            }
+
+            h2 {
+                font-size: clamp(18px, 3.5vw, 20px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 12px;
+            }
+
+            .auth {
+                border-radius: var(--radius-md);
+            }
+
+            .panel {
+                padding: 20px;
+            }
+
+            .form-header h2 {
+                font-size: 22px;
+            }
+
+            input, select {
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 14px 20px;
+                font-size: 14px;
+            }
+        }
+{% endblock %}
+
+{% block content %}
+    <div class="auth-container">
+        <div class="auth">
+            <div class="panel form-panel">
+                <div class="logo">IM</div>
+                
+                <div class="form-header">
+                    <h2>加入团队 / Join Team</h2>
+                    <p>创建账户，开始高效的团队协作之旅 / Create an account and start your efficient team collaboration journey</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <ul class="non-field-errors">
+                        {% for error in form.non_field_errors %}
+                            <li>⚠️ {{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <form method="post" novalidate id="register-form">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="{{ form.username.id_for_label }}">用户名 / Username</label>
+                        {{ form.username }}
+                        <div class="label-hint">用户名将作为您的唯一标识，建议使用英文字母和数字 / Username will be your unique identifier</div>
+                        {% if form.username.errors %}
+                            <ul class="errors">
+                                {% for error in form.username.errors %}
+                                    <li>⚠️ {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.full_name.id_for_label }}">姓名 / Your Name</label>
+                        {{ form.full_name }}
+                        <div class="label-hint">用于展示和识别，可填写中文姓名 / Used for display and identification</div>
+                        {% if form.full_name.errors %}
+                            <ul class="errors">
+                                {% for error in form.full_name.errors %}
+                                    <li>⚠️ {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.position.id_for_label }}">职位角色 / Position</label>
+                        {{ form.position }}
+                        <div class="label-hint">选择您在团队中的主要角色 / Select your primary role in the team</div>
+                        {% if form.position.errors %}
+                            <ul class="errors">
+                                {% for error in form.position.errors %}
+                                    <li>⚠️ {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.password1.id_for_label }}">设置密码 / Password</label>
+                        {{ form.password1 }}
+                        <div class="password-strength">
+                            <div class="password-strength-bar" id="password-strength-bar"></div>
+                        </div>
+                        <div class="password-score" id="password-score-text">强度评分：0/6（至少 {{ password_min_score|default:3 }} 项）</div>
+                        <div class="password-requirements">
+                            <div class="requirement" id="req-length-8">• 至少8个字符 / At least 8 characters</div>
+                            <div class="requirement" id="req-length-12">• 至少12个字符 / At least 12 characters</div>
+                            <div class="requirement" id="req-upper">• 包含大写字母 / Contains uppercase</div>
+                            <div class="requirement" id="req-lower">• 包含小写字母 / Contains lowercase</div>
+                            <div class="requirement" id="req-number">• 包含数字 / Contains number</div>
+                            <div class="requirement" id="req-symbol">• 包含符号 / Contains symbol</div>
+                        </div>
+                        {% if form.password1.errors %}
+                            <ul class="errors">
+                                {% for error in form.password1.errors %}
+                                    <li>⚠️ {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="{{ form.password2.id_for_label }}">确认密码 / Confirm Password</label>
+                        {{ form.password2 }}
+                        <div class="label-hint">请再次输入密码以确认 / Please re-enter password to confirm</div>
+                        {% if form.password2.errors %}
+                            <ul class="errors">
+                                {% for error in form.password2.errors %}
+                                    <li>⚠️ {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn" id="register-btn">
+                        <span>🎉</span>
+                        <span>创建账户 / Create Account</span>
+                    </button>
+                </form>
+
+                <p class="subtext">
+                    已有账号？ <a href="{% url 'login' %}">返回登录 / Back to login</a> 
+                    
+                </p>
+            </div>
+
+            <div class="panel hero">
+                <div>
+                    <p class="eyebrow">TM 团队 · 协作平台 / Team · Collaboration Platform</p>
+                    <h1>开启高效团队协作新体验</h1>
+                    <p class="lede">🎯 智能角色适配 · 📊 数据可视化 · 📱 移动端友好 · 🔔 实时通知</p>
+                </div>
+
+                <div class="benefits-list">
+                    <div class="benefit-item">
+                        <span class="benefit-icon">🎯</span>
+                        <div class="benefit-content">
+                            <div class="benefit-title">智能角色适配 / Smart Role Adaptation</div>
+                            <div class="benefit-desc">根据您的职位自动优化日报表单，提升填写效率</div>
+                        </div>
+                    </div>
+                    
+                    <div class="benefit-item">
+                        <span class="benefit-icon">📊</span>
+                        <div class="benefit-content">
+                            <div class="benefit-title">数据可视化 / Data Visualization</div>
+                            <div class="benefit-desc">直观的图表和统计，实时掌握项目进度</div>
+                        </div>
+                    </div>
+                    
+                    <div class="benefit-item">
+                        <span class="benefit-icon">🔔</span>
+                        <div class="benefit-content">
+                            <div class="benefit-title">实时通知 / Real-time Notifications</div>
+                            <div class="benefit-desc">任务提醒、日报催交、项目更新及时推送</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chip">🚀 注册后立即体验日报、任务、项目全流程管理 / Experience full workflow management immediately after registration</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const password1Input = document.querySelector('input[name="password1"]');
+            const password2Input = document.querySelector('input[name="password2"]');
+            const strengthBar = document.getElementById('password-strength-bar');
+            const scoreText = document.getElementById('password-score-text');
+            const registerForm = document.getElementById('register-form');
+            const registerBtn = document.getElementById('register-btn');
+            const MIN_SCORE = {{ password_min_score|default:3 }};
+
+            // 密码强度检测（6 项打分：8/12 长度、大写、小写、数字、符号）
+            function checkPasswordStrength(password) {
+                const requirements = {
+                    len8: password.length >= 8,
+                    len12: password.length >= 12,
+                    upper: /[A-Z]/.test(password),
+                    lower: /[a-z]/.test(password),
+                    number: /[0-9]/.test(password),
+                    symbol: /[^A-Za-z0-9]/.test(password)
+                };
+                const ids = {
+                    len8: 'req-length-8',
+                    len12: 'req-length-12',
+                    upper: 'req-upper',
+                    lower: 'req-lower',
+                    number: 'req-number',
+                    symbol: 'req-symbol'
+                };
+                let score = 0;
+                Object.entries(requirements).forEach(([key, met]) => {
+                    const el = document.getElementById(ids[key]);
+                    if (el) el.classList.toggle('met', met);
+                    if (met) score++;
+                });
+
+                const percent = (score / 6) * 100;
+                strengthBar.className = 'password-strength-bar';
+                strengthBar.style.width = percent + '%';
+                if (score <= 2) {
+                    strengthBar.classList.add('weak');
+                } else if (score <= 4) {
+                    strengthBar.classList.add('medium');
+                } else {
+                    strengthBar.classList.add('strong');
+                }
+
+                if (scoreText) {
+                    scoreText.textContent = `强度评分：${score}/6（至少 ${MIN_SCORE} 项）`;
+                    scoreText.style.color = score >= MIN_SCORE ? '#065f46' : '#991b1b';
+                }
+
+                return score;
+            }
+
+            password1Input.addEventListener('input', function() {
+                checkPasswordStrength(this.value);
+            });
+
+            // 密码匹配验证
+            function checkPasswordMatch() {
+                if (password2Input.value && password1Input.value !== password2Input.value) {
+                    password2Input.setCustomValidity('密码不匹配 / Passwords do not match');
+                } else {
+                    password2Input.setCustomValidity('');
+                }
+            }
+
+            password1Input.addEventListener('change', checkPasswordMatch);
+            password2Input.addEventListener('input', checkPasswordMatch);
+
+            // 表单提交处理
+            registerForm.addEventListener('submit', function(e) {
+                const passwordStrength = checkPasswordStrength(password1Input.value);
+                
+                if (passwordStrength < MIN_SCORE) {
+                    e.preventDefault();
+                    alert('密码强度不足，请参考下方提示补全长度、大小写、数字或符号后再提交。');
+                    return false;
+                }
+
+                registerBtn.disabled = true;
+                registerBtn.innerHTML = '<span>⏳</span><span>创建中... / Creating...</span>';
+                
+                // 10秒后恢复按钮状态
+                setTimeout(() => {
+                    registerBtn.disabled = false;
+                    registerBtn.innerHTML = '<span>🎉</span><span>创建账户 / Create Account</span>';
+                }, 10000);
+            });
+
+            // 输入框焦点效果
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'scale(1.02)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'scale(1)';
+                });
+            });
+
+            // 用户名实时验证
+            const usernameInput = document.querySelector('input[name="username"]');
+            usernameInput.addEventListener('blur', function() {
+                const username = this.value.trim();
+                if (username && username.length < 3) {
+                    this.setCustomValidity('用户名至少需要3个字符 / Username must be at least 3 characters');
+                } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                    this.setCustomValidity('用户名只能包含字母、数字和下划线 / Username can only contain letters, numbers and underscores');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+        });
+    </script>
+{% endblock %}
