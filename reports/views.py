@@ -31,6 +31,7 @@ from .forms import (
     TaskTemplateForm,
 )
 from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion
+from .signals import _invalidate_stats_cache
 from django.conf import settings
 
 MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
