@@ -43,6 +43,7 @@
     <section style="margin:24px 0;padding:18px 20px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
         <h1 style="margin:0 0 8px 0;font-size:20px;font-weight:800;">模板创建 / Create template</h1>
         <p style="margin:0 0 14px 0;color:#475569;">支持项目/角色的共享模板，并自动记录版本。双语文案 / Bilingual copy.</p>
+        <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">当前排序 / Current sort: {% if sort == 'updated' %}按更新时间 / By updated{% else %}按版本 / By version{% endif %}</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
             <form method="post" action="" class="card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
                 {% csrf_token %}
@@ -116,7 +117,7 @@
                 <input type="hidden" name="project" value="{{ project_filter }}">
                 <input type="hidden" name="sort" value="{{ sort }}">
                 <label style="font-size:12px;color:#475569;">跳转 / Jump</label>
-                <input type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">
+                <input type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;" required>
                 <button class="btn btn-ghost" type="submit" style="padding:8px 10px;">Go</button>
             </form>
         </div>

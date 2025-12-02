@@ -490,6 +490,9 @@
                         <a class="btn btn-primary" href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}">导出当前筛选</a>
                     {% endif %}
                 </div>
+                {% if request.user.is_staff %}
+                <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
+                {% endif %}
             </form>
         </section>
 

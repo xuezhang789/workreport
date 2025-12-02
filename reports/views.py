@@ -1334,7 +1334,7 @@ def my_reports_export(request):
             Q(mgr_tomorrow__icontains=q)
         )
     if qs.count() > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出。", status=400)
+        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
     rows = (
         [
@@ -1687,7 +1687,7 @@ def task_export(request):
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
     total_count = tasks.count() if hasattr(tasks, 'count') else len(tasks)
     if total_count > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出。", status=400)
+        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
     rows = (
         [
@@ -1711,7 +1711,7 @@ def task_export(request):
 def task_export_selected(request):
     """导出选中的任务（我的任务）。"""
     if request.method != 'POST':
-        return HttpResponseForbidden("仅允许 POST")
+        return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
     tasks = Task.objects.select_related('project').filter(user=request.user, id__in=ids)
     _mark_overdue_tasks(tasks)
@@ -1752,7 +1752,7 @@ def task_complete(request, pk: int):
 @login_required
 def task_bulk_action(request):
     if request.method != 'POST':
-        return HttpResponseForbidden("仅允许 POST")
+        return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
     action = request.POST.get('bulk_action')
     redirect_to = request.POST.get('redirect_to') or None
@@ -1973,7 +1973,7 @@ def admin_task_bulk_action(request):
     if not is_admin and not manageable_project_ids:
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
     if request.method != 'POST':
-        return HttpResponseForbidden("仅允许 POST")
+        return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
     action = request.POST.get('bulk_action')
     redirect_to = request.POST.get('redirect_to') or None
@@ -2034,7 +2034,7 @@ def admin_task_export(request):
 
     total_count = tasks.count() if hasattr(tasks, 'count') else len(tasks)
     if total_count > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出。", status=400)
+        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
     rows = (
         [
@@ -2339,7 +2339,7 @@ def admin_reports_export(request):
         return HttpResponse("请至少指定用户名或项目过滤后再导出。", status=400)
 
     if reports.count() > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出。", status=400)
+        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
     rows = (
         [
@@ -2870,7 +2870,7 @@ def project_export(request):
         return HttpResponse("请至少提供搜索关键词、负责人或日期范围后再导出。", status=400)
 
     if projects.count() > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出。", status=400)
+        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
     rows = (
         [
