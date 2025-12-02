@@ -1,0 +1,123 @@
+{% extends "base_topbar.html" %}
+{% block title %}绩效看板 / Performance Board{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="绩效与统计看板 / Performance & Stats" nav_subtitle="项目与角色完成率、逾期率、连签趋势 / Completion, overdue, streak insights" %}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:1200px;">
+    <header class="hero" style="margin:24px 0;padding:20px 24px;background:linear-gradient(135deg,#eef2ff,#ecfeff);border-radius:16px;border:1px solid #e5e7eb;">
+        <div>
+            <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">绩效总览 / Performance Snapshot</h1>
+            <p style="margin:0;color:#475569;">项目、角色维度完成率与逾期率，连签趋势与周报导出 / Project & role completion/overdue rates, streak trends, and weekly digest export.</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <a class="btn btn-primary" href="{% url 'reports:performance_export' %}?scope=project">导出项目 / Export projects</a>
+            <a class="btn btn-ghost" href="{% url 'reports:performance_export' %}?scope=role">导出角色 / Export roles</a>
+            <a class="btn btn-ghost" href="{% url 'reports:performance_export' %}?scope=streak">导出连签 / Export streaks</a>
+            <a class="btn btn-ghost" href="?send_weekly=1">发送周报 / Send weekly digest</a>
+        </div>
+    </header>
+
+    <section class="card" style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;background:#fff;">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div class="stat-chip" style="flex:1;min-width:180px;background:linear-gradient(135deg,#ecfeff,#eef2ff);padding:12px 14px;border-radius:12px;border:1px solid #dbeafe;">
+                <div style="font-size:13px;color:#475569;">总任务 / Total tasks</div>
+                <div style="font-size:22px;font-weight:800;color:#0f172a;">{{ total_tasks }}</div>
+            </div>
+            <div class="stat-chip" style="flex:1;min-width:180px;background:linear-gradient(135deg,#fff7ed,#fef9c3);padding:12px 14px;border-radius:12px;border:1px solid #fed7aa;">
+                <div style="font-size:13px;color:#92400e;">紧急 / Urgent (Red SLA)</div>
+                <div style="font-size:22px;font-weight:800;color:#b91c1c;">{{ urgent_tasks }}</div>
+            </div>
+            <div class="stat-chip" style="flex:1;min-width:180px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);padding:12px 14px;border-radius:12px;border:1px solid #bbf7d0;">
+                <div style="font-size:13px;color:#166534;">连签最高 / Max streak (all roles)</div>
+                <div style="font-size:22px;font-weight:800;color:#15803d;">
+                    {% with streaks=role_streaks|dictsortreversed:"max_streak" %}{% if streaks %}{{ streaks.0.max_streak }}{% else %}0{% endif %}{% endwith %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card" style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;background:#fff;">
+        <h2 style="margin:0 0 12px 0;font-size:18px;">项目完成率 / Project completion rate</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>项目 / Project</th>
+                        <th>总任务 / Total</th>
+                        <th>完成 / Done</th>
+                        <th>逾期 / Overdue</th>
+                        <th>完成率 / Completion</th>
+                        <th>逾期率 / Overdue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in project_stats %}
+                    <tr>
+                        <td>{{ p.project }}</td>
+                        <td>{{ p.total }}</td>
+                        <td>{{ p.completed }}</td>
+                        <td>{{ p.overdue }}</td>
+                        <td>{{ p.completion_rate|floatformat:1 }}%</td>
+                        <td>{{ p.overdue_rate|floatformat:1 }}%</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" style="text-align:center;color:#94a3b8;">暂无数据 / No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card" style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;background:#fff;">
+        <h2 style="margin:0 0 12px 0;font-size:18px;">角色完成率 / Role completion rate</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>角色 / Role</th>
+                        <th>总任务 / Total</th>
+                        <th>完成 / Done</th>
+                        <th>逾期 / Overdue</th>
+                        <th>完成率 / Completion</th>
+                        <th>逾期率 / Overdue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in role_stats %}
+                    <tr>
+                        <td>{{ r.role_label }}</td>
+                        <td>{{ r.total }}</td>
+                        <td>{{ r.completed }}</td>
+                        <td>{{ r.overdue }}</td>
+                        <td>{{ r.completion_rate|floatformat:1 }}%</td>
+                        <td>{{ r.overdue_rate|floatformat:1 }}%</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" style="text-align:center;color:#94a3b8;">暂无数据 / No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card" style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;background:#fff;">
+        <h2 style="margin:0 0 12px 0;font-size:18px;">连签趋势 / Streak trend (7 days)</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            {% for item in trend %}
+                <div style="flex:1;min-width:120px;padding:12px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;">
+                    <div style="font-size:13px;color:#475569;">{{ item.date|date:"m-d" }}</div>
+                    <div style="font-size:20px;font-weight:700;color:#1f2937;">{{ item.count }}</div>
+                    <div style="font-size:12px;color:#94a3b8;">已提交日报 / Submitted reports</div>
+                </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+            {% for s in role_streaks %}
+                <div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#fffaf0;">
+                    <div style="font-weight:700;">{{ s.role_label }}</div>
+                    <div style="color:#475569;font-size:13px;">平均连签 / Avg: {{ s.avg_streak }} 天 | 最高 / Max: {{ s.max_streak }} 天</div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

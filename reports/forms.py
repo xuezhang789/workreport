@@ -3,10 +3,11 @@ from django.contrib.auth import password_validation
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.db import models
 import re
 from typing import Tuple, List
 
-from .models import Profile, Project
+from .models import Profile, Project, ReportTemplateVersion, TaskTemplateVersion
 
 
 class RegistrationForm(UserCreationForm):
@@ -183,3 +184,52 @@ class ProjectForm(forms.ModelForm):
         self.fields['managers'].queryset = User.objects.order_by('username')
         self.fields['members'].widget.attrs.update({'id': 'members-select'})
         self.fields['managers'].widget.attrs.update({'id': 'managers-select'})
+
+
+class ReportTemplateForm(forms.ModelForm):
+    class Meta:
+        model = ReportTemplateVersion
+        fields = ['name', 'role', 'project', 'content', 'placeholders', 'is_shared']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 6, 'placeholder': '模板正文 / Template content'}),
+            'placeholders': forms.Textarea(attrs={'rows': 3, 'placeholder': '{"today_work": "..."}'}),
+        }
+
+    def save(self, created_by=None, commit=True):
+        instance: ReportTemplateVersion = super().save(commit=False)
+        if created_by:
+            instance.created_by = created_by
+        base_qs = ReportTemplateVersion.objects.filter(
+            name=instance.name,
+            role=instance.role,
+            project=instance.project,
+        )
+        max_version = base_qs.aggregate(models.Max('version')).get('version__max') or 0
+        instance.version = max_version + 1
+        if commit:
+            instance.save()
+        return instance
+
+
+class TaskTemplateForm(forms.ModelForm):
+    class Meta:
+        model = TaskTemplateVersion
+        fields = ['name', 'project', 'role', 'title', 'content', 'url', 'is_shared']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 5, 'placeholder': '任务内容模板 / Task content template'}),
+        }
+
+    def save(self, created_by=None, commit=True):
+        instance: TaskTemplateVersion = super().save(commit=False)
+        if created_by:
+            instance.created_by = created_by
+        base_qs = TaskTemplateVersion.objects.filter(
+            name=instance.name,
+            role=instance.role,
+            project=instance.project,
+        )
+        max_version = base_qs.aggregate(models.Max('version')).get('version__max') or 0
+        instance.version = max_version + 1
+        if commit:
+            instance.save()
+        return instance
