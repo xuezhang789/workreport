@@ -1,0 +1,15 @@
+{% extends "base_topbar.html" %}
+{% block title %}无权限 / Access Denied{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="无权限 / Access Denied" nav_subtitle="请联系管理员获取访问权限 / Contact admin for access" %}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;padding:24px;">
+    <div style="background:linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.95));border:1px solid rgba(226,232,240,0.9);border-radius:16px;padding:20px 24px;box-shadow:0 16px 40px rgba(15,23,42,0.12);">
+        <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;">无权限访问 / Access denied</h1>
+        <p style="margin:0 0 12px;color:#475569;">当前账户没有访问该页面的权限。如需开通，请联系管理员。</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a class="ghost-link" href="{% url 'reports:workbench' %}">返回工作台 / Back to workbench</a>
+            <a class="ghost-link" href="{% url 'account_settings' %}">个人中心 / Account settings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

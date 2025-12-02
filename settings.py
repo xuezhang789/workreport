@@ -117,3 +117,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/reports/workbench/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# SLA 阈值（小时）：可通过 SystemSetting.sla_thresholds 覆盖
+SLA_TIGHT_HOURS_DEFAULT = 6
+SLA_CRITICAL_HOURS_DEFAULT = 2

@@ -954,6 +954,12 @@
             <span class="icon">🚨</span>
             紧急任务 {{ urgent_count }} 个需优先处理 / {{ urgent_count }} urgent tasks need attention
         </div>
+        {% if sla_thresholds %}
+        <div class="meta-chip">
+            <span class="icon">⏱️</span>
+            SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -1023,6 +1029,7 @@
                 <button type="submit" id="bulk-submit" class="btn btn-primary" disabled>执行</button>
                 <button type="submit" formaction="{% url 'reports:task_export_selected' %}" formmethod="post" class="btn btn-ghost" id="bulk-export" disabled>导出选中</button>
             </div>
+            <p class="hint" style="margin-top:8px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤条件 / If export is large, narrow filters first.</p>
         </form>
         <div class="task-grid">
             {% for t in tasks %}

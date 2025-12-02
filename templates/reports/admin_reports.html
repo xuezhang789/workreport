@@ -516,6 +516,7 @@
                 <button type="submit" class="btn btn-secondary">筛选</button>
                 <a class="btn btn-primary" href="{% url 'reports:admin_reports_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&role={{ role }}&username={{ username }}&project={{ project_id }}&status={{ status }}">导出 CSV</a>
             </div>
+            <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
         </form>
     </section>
 
@@ -524,14 +525,14 @@
             <table class="table">
                 <thead>
                 <tr>
-                    <th>日期</th>
-                    <th>角色</th>
-                    <th>项目</th>
-                    <th>作者</th>
-                    <th>摘要</th>
-                    <th>状态</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
+                    <th>日期 / Date</th>
+                    <th>角色 / Role</th>
+                    <th>项目 / Project</th>
+                    <th>作者 / Author</th>
+                    <th>摘要 / Summary</th>
+                    <th>状态 / Status</th>
+                    <th>创建时间 / Created</th>
+                    <th>操作 / Action</th>
                 </tr>
                 </thead>
                 <tbody>

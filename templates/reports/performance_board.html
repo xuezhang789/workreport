@@ -605,7 +605,15 @@
         <section class="performance-hero">
             <div class="hero-content">
                 <h1>绩效总览 / Performance Overview</h1>
-                <p class="lede">项目、角色维度完成率与逾期率，连签趋势与周报导出 / Project & role completion/overdue rates, streak trends, and weekly digest export</p>
+                <p class="lede">项目与角色完成率、逾期率、连签趋势，一键导出与周报（数据约每 10 分钟刷新一次）/ Project & role completion, overdue, streaks with exports & weekly digest (cache ~10min)</p>
+                {% if generated_at %}
+                <p class="lede">上次刷新：{{ generated_at|date:"Y-m-d H:i" }}（本地时区）/ Last refreshed (local): {{ generated_at|date:"Y-m-d H:i" }}</p>
+                {% endif %}
+                {% if sla_thresholds %}
+                <p class="lede">SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h（正常状态高于黄） / SLA: Red {{ sla_thresholds.red }}h · Amber {{ sla_thresholds.amber }}h</p>
+                {% endif %}
+                <a href="" class="btn secondary" onclick="location.reload(); return false;" style="max-width:220px;">🔄 刷新数据 / Refresh data</a>
+                <p class="lede" style="margin-top:4px;">提示：如遇导出数据过大，请先缩小过滤范围 / If export is too large, narrow filters first.</p>
             </div>
             <div class="hero-actions">
                 <a href="{% url 'reports:performance_export' %}?scope=project" class="btn">📊 导出项目 / Export Projects</a>

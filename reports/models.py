@@ -137,6 +137,7 @@ class DailyReport(models.Model):
             models.Index(fields=['user', 'date']),
             models.Index(fields=['user', 'status']),
             models.Index(fields=['role', 'date']),
+            models.Index(fields=['status']),
         ]
 
     def __str__(self):

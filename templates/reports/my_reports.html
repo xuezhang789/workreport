@@ -864,6 +864,7 @@
                         <button type="submit" class="btn btn-secondary">🔍 筛选 / Filter</button>
                         <a class="btn btn-primary" href="{% url 'reports:my_reports_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&project={{ project_id }}&role={{ role }}&status={{ status }}&q={{ q }}">📥 导出当前筛选</a>
                     </div>
+                    <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
                 </form>
             </div>
 
