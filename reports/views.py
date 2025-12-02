@@ -2,6 +2,7 @@ from django.contrib.auth import login, logout, get_user_model, update_session_au
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Q, Count
 from django.http import HttpResponse, HttpResponseForbidden, StreamingHttpResponse, JsonResponse
@@ -1649,6 +1650,7 @@ def admin_task_export(request):
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
     q = (request.GET.get('q') or '').strip()
+    hot = request.GET.get('hot') == '1'
 
     tasks = Task.objects.select_related('project', 'user').order_by('-created_at')
     _mark_overdue_tasks(tasks)
@@ -2054,6 +2056,7 @@ def stats(request):
                         'last_date': last_map.get(u.id)
                     } for u in users
                 ],
+                'last_map': last_map,
             })
         cache.set(cache_key, (missing_projects, total_missing), 300)
 
