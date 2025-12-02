@@ -27,6 +27,8 @@ urlpatterns = [
     path('tasks/admin/export/', views.admin_task_export, name='admin_task_export'),
     path('sla/settings/', views.sla_settings, name='sla_settings'),
     path('workbench/', views.workbench, name='workbench'),
+    path('performance/', views.performance_board, name='performance_board'),
+    path('performance/export/', views.performance_export, name='performance_export'),
     path('admin/reports/', views.admin_reports, name='admin_reports'),
     path('admin/reports/export/', views.admin_reports_export, name='admin_reports_export'),
     path('my/<int:pk>/edit/', views.report_edit, name='report_edit'),
@@ -40,4 +42,6 @@ urlpatterns = [
     path('stats/export/', views.stats_export, name='stats_export'),
     path('audit/', views.audit_logs, name='audit_logs'),
     path('audit/export/', views.audit_logs_export, name='audit_logs_export'),
+    path('templates/center/', views.template_center, name='template_center'),
+    path('templates/api/apply/', views.template_apply_api, name='template_apply_api'),
 ]

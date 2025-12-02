@@ -578,6 +578,21 @@
             color: var(--primary); 
             border-color: rgba(59, 130, 246, 0.2); 
         }
+        .status-sla-green {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            color: #0f766e;
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+        .status-sla-amber {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(251, 191, 36, 0.08));
+            color: #92400e;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        .status-sla-red {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(248, 113, 113, 0.08));
+            color: #b91c1c;
+            border-color: rgba(239, 68, 68, 0.35);
+        }
         
         .priority-high { border-left: 3px solid var(--priority-high); }
         .priority-medium { border-left: 3px solid var(--priority-medium); }
@@ -933,6 +948,15 @@
         </div>
     </div>
 
+    {% if urgent_count %}
+    <div style="margin:16px 0;display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="meta-chip warning">
+            <span class="icon">🚨</span>
+            紧急任务 {{ urgent_count }} 个需优先处理 / {{ urgent_count }} urgent tasks need attention
+        </div>
+    </div>
+    {% endif %}
+
     <section class="filters-section">
         <form method="get" class="filters">
             <div class="filter-group">
@@ -1026,12 +1050,14 @@
                                 <span class="status-badge status-overdue">逾期</span>
                             {% endif %}
                             {% if t.sla_info %}
-                                {% if t.sla_info.status == 'overdue' %}
-                                    <span class="status-badge status-overdue">SLA 已超时</span>
-                                {% elif t.sla_info.status == 'tight' %}
-                                    <span class="status-badge status-pending">SLA 剩余 {{ t.sla_info.remaining_hours }}h</span>
+                                {% if t.sla_info.level == 'red' %}
+                                    <span class="status-badge status-sla-red">SLA 紧急 / Critical · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% elif t.sla_info.level == 'amber' %}
+                                    <span class="status-badge status-sla-amber">SLA 提醒 / Warning · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% elif t.sla_info.level == 'green' %}
+                                    <span class="status-badge status-sla-green">SLA 正常 / Normal · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
                                 {% else %}
-                                    <span class="status-badge status-sla">SLA 剩余 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                    <span class="status-badge status-sla">SLA 未启用 / SLA off</span>
                                 {% endif %}
                             {% endif %}
                         </div>

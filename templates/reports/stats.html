@@ -81,9 +81,6 @@
             margin: 0 0 8px;
             font-weight: 600;
         }
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
 
         .hero h1 {
             margin: 0;
@@ -222,6 +219,59 @@
             transition: all 0.3s ease;
         }
 
+        @media (max-width: 768px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tr {
+                margin-bottom: 16px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-md);
+                background: #fff;
+                padding: 16px;
+                box-shadow: var(--shadow);
+            }
+
+            td {
+                border: none;
+                padding: 8px 0;
+                position: relative;
+                padding-left: 120px;
+            }
+
+            td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0;
+                top: 8px;
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                width: 110px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            td:first-child {
+                padding-left: 0;
+                font-weight: 600;
+                color: var(--ink);
+            }
+
+            td:first-child::before {
+                display: none;
+            }
+        }
+
         th { 
             color: var(--muted); 
             text-transform: uppercase; 
@@ -256,14 +306,133 @@
             text-decoration: underline;
         }
 
+        .filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filters > div {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        input[type="date"], select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--ink);
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 140px;
+        }
+
+        input[type="date"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+            background: rgba(15, 23, 42, 0.06);
+            color: var(--ink);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(15, 23, 42, 0.1);
+            transform: translateY(-1px);
+        }
+
         @media (max-width: 860px) { 
-            .grid { 
-                grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); 
+            .hero {
+                grid-template-columns: 1fr;
+                padding: 20px;
                 gap: 16px;
             }
 
-            .hero {
-                padding: 20px;
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .filters > div {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .filters label {
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            input[type="date"], select {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .grid { 
+                grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); 
+                gap: 16px;
             }
 
             .card {
@@ -280,8 +449,8 @@
         }
 
         @media (max-width: 640px) {
-            .grid {
-                grid-template-columns: 1fr;
+            .hero {
+                padding: 16px;
             }
 
             .hero h1 {
@@ -290,6 +459,86 @@
 
             .hero p {
                 font-size: 14px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .section-card {
+                padding: 16px;
+            }
+
+            .metric {
+                font-size: 24px;
+            }
+
+            .filters {
+                padding: 0;
+            }
+
+            .filters > div {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .btn {
+                padding: 12px 16px;
+                font-size: 13px;
+            }
+
+            table {
+                font-size: 13px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 12px;
+            }
+
+            .section-card {
+                padding: 12px;
+            }
+
+            .metric {
+                font-size: 20px;
+            }
+
+            .filters {
+                gap: 8px;
+            }
+
+            input[type="date"], select {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .btn {
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 6px;
             }
         }
 {% endblock %}
@@ -308,7 +557,7 @@
             <div>
                 <label for="project">项目 / Project</label>
                 <select id="project" name="project">
-                    <option value="">全部</option>
+                    <option value="">全部 / All</option>
                     {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
@@ -317,15 +566,15 @@
             <div>
                 <label for="role">角色 / Role</label>
                 <select id="role" name="role">
-                    <option value="">全部</option>
+                    <option value="">全部 / All</option>
                     {% for val,label in report_roles %}
                         <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button class="btn btn-primary" type="submit">筛选</button>
+            <button class="btn btn-primary" type="submit">🔍 筛选 / Filter</button>
             {% if missing_projects %}
-                <a class="btn btn-ghost" href="?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1">一键催报</a>
+                <a class="btn btn-ghost" href="?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1">📧 一键催报 / Send Reminder</a>
             {% endif %}
         </form>
     </div>
@@ -333,54 +582,54 @@
     <div class="grid">
         <div class="card">
             <p class="metric">{{ metrics.total_reports }}</p>
-            <p class="label">总日报数</p>
+            <p class="label">总日报数 / Total Reports</p>
         </div>
         <div class="card">
             <p class="metric">{{ metrics.total_projects }}</p>
-            <p class="label">活跃项目数</p>
+            <p class="label">活跃项目数 / Active Projects</p>
         </div>
         <div class="card">
             <p class="metric">{{ metrics.active_users }}</p>
-            <p class="label">提交过日报的用户数</p>
+            <p class="label">提交过日报的用户数 / Active Users</p>
         </div>
         <div class="card">
             <p class="metric">{{ metrics.last_date|default:'—' }}</p>
-            <p class="label">最近日期</p>
+            <p class="label">最近日期 / Latest Date</p>
         </div>
         <div class="card">
             <p class="metric">{{ metrics.missing_today }}</p>
-            <p class="label">今日未提交</p>
+            <p class="label">今日未提交 / Missing Today</p>
         </div>
         <div class="card">
             <p class="metric">{{ sla_remind }}h</p>
-            <p class="label">SLA 提醒窗口</p>
+            <p class="label">SLA 提醒窗口 / SLA Reminder Window</p>
         </div>
     </div>
 
     <div class="grid">
         <div class="section-card">
-            <h3>按角色统计</h3>
+            <h3>按角色统计 / Role Statistics</h3>
             <table>
-                <thead><tr><th>角色</th><th>数量</th></tr></thead>
+                <thead><tr><th>角色 / Role</th><th>数量 / Count</th></tr></thead>
                 <tbody>
                 {% for role, count in role_counts %}
-                    <tr><td>{{ role }}</td><td>{{ count }}</td></tr>
+                    <tr><td data-label="角色 / Role">{{ role }}</td><td data-label="数量 / Count">{{ count }}</td></tr>
                 {% empty %}
-                    <tr><td colspan="2">无数据</td></tr>
+                    <tr><td colspan="2">无数据 / No Data</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
 
         <div class="section-card">
-            <h3>项目日报 Top 5</h3>
+            <h3>项目日报 Top 5 / Top 5 Project Reports</h3>
             <table>
-                <thead><tr><th>项目</th><th>日报数</th></tr></thead>
+                <thead><tr><th>项目 / Project</th><th>日报数 / Reports</th></tr></thead>
                 <tbody>
                 {% for p in top_projects %}
-                    <tr><td>{{ p.name }}</td><td>{{ p.report_count }}</td></tr>
+                    <tr><td data-label="项目 / Project">{{ p.name }}</td><td data-label="日报数 / Reports">{{ p.report_count }}</td></tr>
                 {% empty %}
-                    <tr><td colspan="2">无数据</td></tr>
+                    <tr><td colspan="2">无数据 / No Data</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -419,31 +668,31 @@
 
     <div class="grid">
         <div class="section-card">
-            <h3>数据质量提醒</h3>
+            <h3>数据质量提醒 / Data Quality Alerts</h3>
             <table>
-                <thead><tr><th>项</th><th>数量</th></tr></thead>
+                <thead><tr><th>项目 / Item</th><th>数量 / Count</th></tr></thead>
                 <tbody>
-                    <tr><td>未设置截止的任务</td><td>{{ metrics.tasks_missing_due }}</td></tr>
-                    <tr><td>今日缺报</td><td>{{ metrics.missing_today }}</td></tr>
+                    <tr><td data-label="项目 / Item">未设置截止的任务 / Tasks Without Due Date</td><td data-label="数量 / Count">{{ metrics.tasks_missing_due }}</td></tr>
+                    <tr><td data-label="项目 / Item">今日缺报 / Missing Today</td><td data-label="数量 / Count">{{ metrics.missing_today }}</td></tr>
                 </tbody>
             </table>
         </div>
 
         <div class="section-card">
-            <h3>超时任务榜单</h3>
+            <h3>超时任务榜单 / Overdue Tasks</h3>
             <table>
-                <thead><tr><th>任务</th><th>项目</th><th>指派人</th><th>截止</th><th>操作</th></tr></thead>
+                <thead><tr><th>任务 / Task</th><th>项目 / Project</th><th>指派人 / Assignee</th><th>截止 / Due Date</th><th>操作 / Action</th></tr></thead>
                 <tbody>
                     {% for t in overdue_top %}
                         <tr>
-                            <td>{{ t.title }}</td>
-                            <td>{{ t.project.name }}</td>
-                            <td>{{ t.user.get_full_name|default:t.user.username }}</td>
-                            <td>{% if t.due_at %}{{ t.due_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
-                            <td><a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer" class="link">查看</a></td>
+                            <td data-label="任务 / Task">{{ t.title }}</td>
+                            <td data-label="项目 / Project">{{ t.project.name }}</td>
+                            <td data-label="指派人 / Assignee">{{ t.user.get_full_name|default:t.user.username }}</td>
+                            <td data-label="截止 / Due Date">{% if t.due_at %}{{ t.due_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+                            <td data-label="操作 / Action"><a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer" class="link">查看 / View</a></td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="5">暂无超时任务</td></tr>
+                        <tr><td colspan="5">暂无超时任务 / No Overdue Tasks</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -451,27 +700,27 @@
     </div>
 
     <div class="section-card">
-        <h3>项目 SLA 达成率</h3>
+        <h3>项目 SLA 达成率 / Project SLA Achievement Rate</h3>
         <div style="display:flex; justify-content:flex-end; margin-bottom:8px; gap:8px;">
-            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=project_sla">导出项目 SLA</a>
-            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=user_sla">导出用户 SLA</a>
+            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=project_sla">导出项目 SLA / Export Project SLA</a>
+            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=user_sla">导出用户 SLA / Export User SLA</a>
         </div>
         <table>
-            <thead><tr><th>项目</th><th>完成</th><th>逾期</th><th>SLA 内完成</th><th>达成率</th><th>操作</th></tr></thead>
+            <thead><tr><th>项目 / Project</th><th>完成 / Completed</th><th>逾期 / Overdue</th><th>SLA 内完成 / Within SLA</th><th>达成率 / Rate</th><th>操作 / Action</th></tr></thead>
             <tbody>
                 {% for row in project_sla_stats %}
                     <tr>
-                        <td>{{ row.project.name }}</td>
-                        <td>{{ row.completed }}/{{ row.total }}</td>
-                        <td>{{ row.overdue }}</td>
-                        <td>{{ row.within_sla }}</td>
-                        <td>{{ row.sla_rate|floatformat:1 }}%</td>
-                        <td>
-                            <a href="{% url 'reports:admin_task_list' %}?project={{ row.project.id }}&status=overdue" class="link">逾期任务</a>
+                        <td data-label="项目 / Project">{{ row.project.name }}</td>
+                        <td data-label="完成 / Completed">{{ row.completed }}/{{ row.total }}</td>
+                        <td data-label="逾期 / Overdue">{{ row.overdue }}</td>
+                        <td data-label="SLA 内完成 / Within SLA">{{ row.within_sla }}</td>
+                        <td data-label="达成率 / Rate">{{ row.sla_rate|floatformat:1 }}%</td>
+                        <td data-label="操作 / Action">
+                            <a href="{% url 'reports:admin_task_list' %}?project={{ row.project.id }}&status=overdue" class="link">逾期任务 / Overdue</a>
                         </td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="6">无数据</td></tr>
+                    <tr><td colspan="6">无数据 / No Data</td></tr>
                 {% endfor %}
             </tbody>
         </table>

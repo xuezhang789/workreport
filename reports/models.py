@@ -312,3 +312,48 @@ class TaskHistory(models.Model):
 
     def __str__(self):
         return f"{self.task_id} {self.field}: {self.old_value} -> {self.new_value}"
+
+
+class ReportTemplateVersion(models.Model):
+    """日报模板版本：按角色 / 项目存储，支持共享与历史追溯。"""
+    name = models.CharField(max_length=200)
+    role = models.CharField(max_length=10, choices=Profile.ROLE_CHOICES, null=True, blank=True)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='report_templates')
+    content = models.TextField(blank=True)
+    placeholders = models.JSONField(default=dict, blank=True)
+    is_shared = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='report_template_versions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name', '-version']
+        unique_together = ('name', 'project', 'role', 'version')
+
+    def __str__(self):
+        target = self.project.name if self.project else 'global'
+        role = dict(Profile.ROLE_CHOICES).get(self.role, self.role or 'all')
+        return f"{self.name} ({target}/{role}) v{self.version}"
+
+
+class TaskTemplateVersion(models.Model):
+    """任务模板版本：按项目保存任务标题/内容/链接模板，支持共享与版本记录。"""
+    name = models.CharField(max_length=200)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='task_templates')
+    role = models.CharField(max_length=10, choices=Profile.ROLE_CHOICES, null=True, blank=True)
+    title = models.CharField(max_length=200)
+    content = models.TextField(blank=True)
+    url = models.URLField(blank=True)
+    is_shared = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='task_template_versions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name', '-version']
+        unique_together = ('name', 'project', 'role', 'version')
+
+    def __str__(self):
+        target = self.project.name if self.project else 'global'
+        role = dict(Profile.ROLE_CHOICES).get(self.role, self.role or 'all')
+        return f"{self.name} ({target}/{role}) v{self.version}"

@@ -27,8 +27,10 @@ from .forms import (
     UsernameUpdateForm,
     EmailVerificationRequestForm,
     EmailVerificationConfirmForm,
+    ReportTemplateForm,
+    TaskTemplateForm,
 )
-from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer
+from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion
 from django.conf import settings
 
 MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
@@ -129,22 +131,42 @@ def _calc_sla_info(task: Task):
 
     sla_deadline = None
     remaining_hours = None
-    if task.project.sla_hours:
-        sla_deadline = task.created_at + timedelta(hours=task.project.sla_hours, seconds=paused_seconds)
+    sla_hours = get_sla_hours(task.project)
+    if sla_hours:
+        sla_deadline = task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
 
     status = 'normal'
+    level = 'green'
     if sla_deadline:
         delta = sla_deadline - now
         remaining_hours = round(delta.total_seconds() / 3600, 1)
         if remaining_hours <= 0:
             status = 'overdue'
-        elif remaining_hours <= 4:
+            level = 'red'
+        elif remaining_hours <= 2:
             status = 'tight'
+            level = 'red'
+        elif remaining_hours <= 6:
+            status = 'tight'
+            level = 'amber'
+        else:
+            level = 'green'
+    else:
+        level = 'grey'
+
+    sort_value = {
+        'red': 0,
+        'amber': 1,
+        'green': 2,
+        'grey': 3,
+    }.get(level, 3)
     return {
         'deadline': sla_deadline,
         'remaining_hours': remaining_hours,
         'status': status,
         'paused': bool(timer.paused_at),
+        'level': level,
+        'sort': sort_value,
     }
 
 
@@ -163,6 +185,129 @@ def has_project_manage_permission(user, project: Project):
     if has_manage_permission(user):
         return True
     return project.managers.filter(id=user.id).exists()
+
+
+def _streak_map():
+    """计算用户连签天数字典，键为 user_id。"""
+    submissions = DailyReport.objects.filter(status='submitted').values('user_id', 'date')
+    user_dates = {}
+    for item in submissions:
+        user_dates.setdefault(item['user_id'], set()).add(item['date'])
+    today = timezone.localdate()
+    streaks = {}
+    for uid, dates in user_dates.items():
+        curr = today
+        streak = 0
+        while curr in dates:
+            streak += 1
+            curr = curr - timedelta(days=1)
+        streaks[uid] = streak
+    return streaks
+
+
+def _performance_stats():
+    """计算项目/角色维度的完成率、逾期率以及连签趋势。"""
+    tasks = Task.objects.select_related('project', 'user', 'user__profile')
+    project_rows = tasks.values('project__id', 'project__name').annotate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        overdue=Count('id', filter=Q(status='overdue')),
+    ).order_by('project__name')
+    project_stats = []
+    for row in project_rows:
+        total = row['total']
+        comp = row['completed']
+        ovd = row['overdue']
+        project_stats.append({
+            'project_id': row['project__id'],
+            'project': row['project__name'] or '未分配 / Unassigned',
+            'total': total,
+            'completed': comp,
+            'overdue': ovd,
+            'completion_rate': (comp / total * 100) if total else 0,
+            'overdue_rate': (ovd / total * 100) if total else 0,
+        })
+
+    role_rows = tasks.values('user__profile__position').annotate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        overdue=Count('id', filter=Q(status='overdue')),
+    )
+    role_stats = []
+    role_map = dict(Profile.ROLE_CHOICES)
+    for row in role_rows:
+        role_key = row['user__profile__position'] or 'unknown'
+        total = row['total']
+        comp = row['completed']
+        ovd = row['overdue']
+        role_stats.append({
+            'role': role_key,
+            'role_label': role_map.get(role_key, role_key),
+            'total': total,
+            'completed': comp,
+            'overdue': ovd,
+            'completion_rate': (comp / total * 100) if total else 0,
+            'overdue_rate': (ovd / total * 100) if total else 0,
+        })
+
+    streaks = _streak_map()
+    User = get_user_model()
+    role_streaks = []
+    for role_key, role_label in Profile.ROLE_CHOICES:
+        user_ids = list(User.objects.filter(profile__position=role_key).values_list('id', flat=True))
+        values = [streaks.get(uid, 0) for uid in user_ids] or [0]
+        avg_streak = sum(values) / len(values) if values else 0
+        role_streaks.append({
+            'role': role_key,
+            'role_label': role_label,
+            'avg_streak': round(avg_streak, 1),
+            'max_streak': max(values) if values else 0,
+        })
+
+    today = timezone.localdate()
+    trend = []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        count = DailyReport.objects.filter(date=day, status='submitted').count()
+        trend.append({'date': day, 'count': count})
+
+    return {
+        'project_stats': project_stats,
+        'role_stats': role_stats,
+        'role_streaks': role_streaks,
+        'trend': trend,
+    }
+
+
+def _send_weekly_digest(recipient: str, stats: dict):
+    """发送周报邮件，汇总项目/角色完成率与连签情况。"""
+    top_projects = sorted(stats.get('project_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
+    top_roles = sorted(stats.get('role_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
+    streaks = stats.get('role_streaks', [])
+
+    lines = [
+        "Weekly Performance Digest / 周度绩效简报",
+        "",
+        "Top Projects / 项目排名：",
+    ]
+    for p in top_projects:
+        lines.append(f"- {p['project']}: 完成 {p['completion_rate']:.1f}%, 逾期 {p['overdue_rate']:.1f}%")
+    lines.append("")
+    lines.append("Top Roles / 角色维度：")
+    for r in top_roles:
+        lines.append(f"- {r['role_label']}: 完成 {r['completion_rate']:.1f}%, 逾期 {r['overdue_rate']:.1f}%")
+    lines.append("")
+    lines.append("Streaks / 连签：")
+    for s in streaks:
+        lines.append(f"- {s['role_label']}: Avg 平均 {s['avg_streak']} 天, Max 最高 {s['max_streak']} 天")
+
+    send_mail(
+        subject="Weekly Performance Digest / 周度绩效简报",
+        message="\n".join(lines),
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+        recipient_list=[recipient],
+        fail_silently=True,
+    )
 
 
 def _filtered_reports(request):
@@ -645,6 +790,103 @@ def role_template_manage(request):
         'current_fields': role_fields.get(selected_role, []),
         'is_active': is_active,
         'sort_order_value': sort_order_value,
+    })
+
+
+@login_required
+def template_center(request):
+    """模板中心：保存日报/任务模板，按项目/角色共享并保留版本。"""
+    if not has_manage_permission(request.user):
+        return HttpResponseForbidden("需要管理员权限")
+
+    report_form = ReportTemplateForm()
+    task_form = TaskTemplateForm()
+
+    def _latest_versions(model):
+        seen = set()
+        latest = []
+        for item in model.objects.order_by('name', 'project_id', 'role', '-version'):
+            key = (item.name, item.project_id, item.role)
+            if key not in seen:
+                seen.add(key)
+                latest.append(item)
+        return latest
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'report':
+            report_form = ReportTemplateForm(request.POST)
+            if report_form.is_valid():
+                tmpl = report_form.save(created_by=request.user)
+                messages.success(request, f"日报模板已保存 v{tmpl.version} / Report template saved.")
+                return redirect('reports:template_center')
+        elif action == 'task':
+            task_form = TaskTemplateForm(request.POST)
+            if task_form.is_valid():
+                tmpl = task_form.save(created_by=request.user)
+                messages.success(request, f"任务模板已保存 v{tmpl.version} / Task template saved.")
+                return redirect('reports:template_center')
+
+    return render(request, 'reports/template_center.html', {
+        'report_form': report_form,
+        'task_form': task_form,
+        'report_templates': _latest_versions(ReportTemplateVersion),
+        'task_templates': _latest_versions(TaskTemplateVersion),
+    })
+
+
+@login_required
+def template_apply_api(request):
+    """一键套用模板：按 type=report|task + role + project 获取最新共享版本。"""
+    if request.method != 'GET':
+        return HttpResponseForbidden("只允许 GET")
+    tpl_type = (request.GET.get('type') or 'report').strip()
+    role = (request.GET.get('role') or '').strip() or None
+    project_id = request.GET.get('project')
+    name = (request.GET.get('name') or '').strip() or None
+    project = None
+    if project_id and project_id.isdigit():
+        project = Project.objects.filter(id=int(project_id)).first()
+
+    def base_filter(model):
+        q = Q(is_shared=True)
+        if request.user.is_authenticated:
+            q |= Q(created_by=request.user)
+        qs = model.objects.filter(q)
+        if role:
+            qs = qs.filter(role=role)
+        if project:
+            qs = qs.filter(project=project)
+        if name:
+            qs = qs.filter(name=name)
+        return qs.order_by('-version', '-created_at')
+
+    if tpl_type == 'task':
+        tmpl = base_filter(TaskTemplateVersion).first()
+        if not tmpl:
+            return JsonResponse({'error': 'no task template'}, status=404)
+        return JsonResponse({
+            'type': 'task',
+            'name': tmpl.name,
+            'title': tmpl.title,
+            'content': tmpl.content,
+            'url': tmpl.url,
+            'version': tmpl.version,
+            'project': tmpl.project_id,
+            'role': tmpl.role,
+        })
+
+    tmpl = base_filter(ReportTemplateVersion).first()
+    if not tmpl:
+        return JsonResponse({'error': 'no report template'}, status=404)
+    return JsonResponse({
+        'type': 'report',
+        'name': tmpl.name,
+        'content': tmpl.content,
+        'placeholders': tmpl.placeholders or {},
+        'version': tmpl.version,
+        'project': tmpl.project_id,
+        'role': tmpl.role,
     })
 
 @login_required
@@ -1275,34 +1517,45 @@ def task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
-    _mark_overdue_tasks(tasks)
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
+    _mark_overdue_tasks(tasks_qs)
     now = timezone.now()
     project_obj = None
     if project_id and project_id.isdigit():
         project_obj = Project.objects.filter(id=int(project_id)).first()
     sla_hours = get_sla_hours(project_obj)
-    due_soon_ids = set(tasks.filter(
+    due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
         due_at__lte=now + timezone.timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
     if status in dict(Task.STATUS_CHOICES):
-        tasks = tasks.filter(status=status)
+        tasks_qs = tasks_qs.filter(status=status)
     if project_id and project_id.isdigit():
-        tasks = tasks.filter(project_id=int(project_id))
+        tasks_qs = tasks_qs.filter(project_id=int(project_id))
     if q:
-        tasks = tasks.filter(Q(title__icontains=q) | Q(content__icontains=q))
+        tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
+    tasks = list(tasks_qs)
     if hot:
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
 
-    paginator = Paginator(tasks, 10)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    now_ts = timezone.now()
-    for t in page_obj:
+    far_future = now + timezone.timedelta(days=365)
+    urgent_count = 0
+    for t in tasks:
         t.is_due_soon = t.id in due_soon_ids
         t.sla_info = _calc_sla_info(t)
+        if t.sla_info and t.sla_info.get('level') == 'red':
+            urgent_count += 1
+    tasks.sort(key=lambda t: (
+        t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
+        t.sla_info.get('remaining_hours') if hasattr(t, 'sla_info') and t.sla_info.get('remaining_hours') is not None else 9999,
+        t.due_at or far_future,
+        -t.created_at.timestamp(),
+    ))
+
+    paginator = Paginator(tasks, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'reports/task_list.html', {
         'tasks': page_obj,
         'page_obj': page_obj,
@@ -1314,6 +1567,7 @@ def task_list(request):
         'sla_config_hours': sla_hours,
         'hot': hot,
         'redirect_to': request.get_full_path(),
+        'urgent_count': urgent_count,
     })
 
 
@@ -1348,7 +1602,7 @@ def task_export(request):
             t.completed_at.isoformat() if t.completed_at else '',
             t.url or '',
         ]
-        for t in tasks.iterator()
+        for t in (tasks if isinstance(tasks, list) else tasks.iterator())
     )
     header = ["标题", "项目", "状态", "截止", "完成时间", "URL"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1545,39 +1799,47 @@ def admin_task_list(request):
     hot = request.GET.get('hot') == '1'
     hot = request.GET.get('hot') == '1'
 
-    tasks = Task.objects.select_related('project', 'user', 'user__profile').order_by('-created_at')
-    _mark_overdue_tasks(tasks)
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').order_by('-created_at')
+    _mark_overdue_tasks(tasks_qs)
     now = timezone.now()
     sla_hours = get_sla_hours()
-    due_soon_ids = set(tasks.filter(
+    due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
         due_at__lte=now + timezone.timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
     if not is_admin:
-        tasks = tasks.filter(project_id__in=manageable_project_ids)
+        tasks_qs = tasks_qs.filter(project_id__in=manageable_project_ids)
     if status in dict(Task.STATUS_CHOICES):
-        tasks = tasks.filter(status=status)
+        tasks_qs = tasks_qs.filter(status=status)
     if project_id and project_id.isdigit():
         pid = int(project_id)
         if is_admin or pid in manageable_project_ids:
-            tasks = tasks.filter(project_id=pid)
+            tasks_qs = tasks_qs.filter(project_id=pid)
         else:
-            tasks = tasks.none()
+            tasks_qs = tasks_qs.none()
     if user_id and user_id.isdigit():
-        tasks = tasks.filter(user_id=int(user_id))
+        tasks_qs = tasks_qs.filter(user_id=int(user_id))
     if q:
-        tasks = tasks.filter(Q(title__icontains=q) | Q(content__icontains=q))
+        tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
+    tasks = list(tasks_qs)
     if hot:
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
 
-    paginator = Paginator(tasks, 15)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    now_ts = timezone.now()
-    for t in page_obj:
+    far_future = now + timezone.timedelta(days=365)
+    for t in tasks:
         t.is_due_soon = t.id in due_soon_ids
         t.sla_info = _calc_sla_info(t)
+    tasks.sort(key=lambda t: (
+        t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
+        t.sla_info.get('remaining_hours') if hasattr(t, 'sla_info') and t.sla_info.get('remaining_hours') is not None else 9999,
+        t.due_at or far_future,
+        -t.created_at.timestamp(),
+    ))
+
+    paginator = Paginator(tasks, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
     User = get_user_model()
     if is_admin:
         user_objs = User.objects.all().order_by('username')
@@ -1685,7 +1947,7 @@ def admin_task_export(request):
             t.completed_at.isoformat() if t.completed_at else '',
             t.url or '',
         ]
-        for t in tasks.iterator()
+        for t in (tasks if isinstance(tasks, list) else tasks.iterator())
     )
     header = ["标题", "项目", "用户", "状态", "截止", "完成时间", "URL"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1824,6 +2086,7 @@ def admin_task_stats_export(request):
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
     tasks = Task.objects.select_related('project', 'user')
+    _mark_overdue_tasks(tasks)
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
     if project_id and project_id.isdigit():
@@ -2128,8 +2391,89 @@ def stats(request):
         'project_sla_stats': project_sla_stats,
         'overdue_top': overdue_top,
         'project_filter': int(project_filter) if project_filter and project_filter.isdigit() else '',
+        'role_filter': role_filter,
+        'report_roles': Profile.ROLE_CHOICES,
         'projects': Project.objects.filter(is_active=True).order_by('name'),
     })
+
+
+@login_required
+def performance_board(request):
+    """绩效与统计看板：项目/角色完成率、逾期率、连签趋势，可触发周报邮件。"""
+    if not has_manage_permission(request.user):
+        return HttpResponseForbidden("需要管理员权限")
+
+    stats = _performance_stats()
+    urgent_tasks = Task.objects.filter(status='overdue').count()
+    total_tasks = Task.objects.count()
+
+    if request.GET.get('send_weekly') == '1':
+        recipient = request.user.email
+        if not recipient:
+            messages.error(request, "请先在个人中心绑定邮箱 / Please bind email first.")
+        else:
+            _send_weekly_digest(recipient, stats)
+            messages.success(request, "周报已发送到绑定邮箱 / Weekly digest sent.")
+
+    return render(request, 'reports/performance_board.html', {
+        **stats,
+        'urgent_tasks': urgent_tasks,
+        'total_tasks': total_tasks,
+    })
+
+
+@login_required
+def performance_export(request):
+    """导出绩效看板数据，scope=project|role|streak。"""
+    if not has_manage_permission(request.user):
+        return HttpResponseForbidden("需要管理员权限")
+    scope = (request.GET.get('scope') or 'project').strip()
+    stats = _performance_stats()
+
+    if scope == 'role':
+        rows = [
+            [
+                item['role_label'],
+                item['total'],
+                item['completed'],
+                item['overdue'],
+                f"{item['completion_rate']:.1f}%",
+                f"{item['overdue_rate']:.1f}%",
+            ]
+            for item in stats['role_stats']
+        ]
+        header = ["角色 / Role", "任务总数", "完成", "逾期", "完成率", "逾期率"]
+        filename = "performance_role.csv"
+    elif scope == 'streak':
+        rows = [
+            [
+                item['role_label'],
+                item['avg_streak'],
+                item['max_streak'],
+            ]
+            for item in stats['role_streaks']
+        ]
+        header = ["角色 / Role", "平均连签天数 / Avg streak", "最高连签天数 / Max streak"]
+        filename = "performance_streak.csv"
+    else:
+        rows = [
+            [
+                item['project'],
+                item['total'],
+                item['completed'],
+                item['overdue'],
+                f"{item['completion_rate']:.1f}%",
+                f"{item['overdue_rate']:.1f}%",
+            ]
+            for item in stats['project_stats']
+        ]
+        header = ["项目 / Project", "任务总数", "完成", "逾期", "完成率", "逾期率"]
+        filename = "performance_project.csv"
+
+    response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    log_action(request, 'export', f"performance scope={scope}")
+    return response
 
 
 @login_required
