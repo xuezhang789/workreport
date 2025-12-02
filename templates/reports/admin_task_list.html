@@ -447,43 +447,50 @@
 {% block content %}
     <div class="hero">
         <div>
-            <p class="eyebrow">团队 · 任务</p>
-            <h1>任务管理</h1>
-            <p class="lede">管理员发布、筛选、查看任务完成情况。</p>
+            <p class="eyebrow">团队 · 任务 / Team · Tasks</p>
+            <h1>任务管理 / Tasks Admin</h1>
+            <p class="lede">管理员发布、筛选、查看任务完成情况 / Admins create, filter and review tasks.</p>
         </div>
         <div style="text-align:right;">
-            <a class="btn btn-primary" href="{% url 'reports:admin_task_create' %}">发布新任务</a>
+            <a class="btn btn-primary" href="{% url 'reports:admin_task_create' %}">发布新任务 / New Task</a>
         </div>
     </div>
+    {% if sla_thresholds %}
+    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="chip" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid rgba(59,130,246,0.2);color:#1e293b;">
+            ⏱️ SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h
+        </span>
+    </div>
+    {% endif %}
 
     <section class="card">
         <form method="get" class="filters">
             <div>
-                <label for="q">关键词</label>
-                <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索">
+                <label for="q">关键词 / Keyword</label>
+                <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
             </div>
             <div>
-                <label for="project">项目</label>
+                <label for="project">项目 / Project</label>
                 <select id="project" name="project">
-                    <option value="">全部</option>
+                    <option value="">全部 / All</option>
                     {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label for="user">用户</label>
+                <label for="user">用户 / User</label>
                 <select id="user" name="user">
-                    <option value="">全部</option>
+                    <option value="">全部 / All</option>
                     {% for u in users %}
                         <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label for="status">状态</label>
+                <label for="status">状态 / Status</label>
                 <select id="status" name="status">
-                    <option value="">全部</option>
+                    <option value="">全部 / All</option>
                     {% for val,label in task_status_choices %}
                         <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
@@ -505,6 +512,7 @@
     <section class="card">
         <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
             <a class="btn btn-primary" href="{% url 'reports:admin_task_export' %}?status={{ status }}&project={{ project_id }}&user={{ user_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">导出当前筛选</a>
+            <span class="note" style="font-size:12px;color:#64748b;">导出提示：若数据量大，请先缩小过滤条件 / If export is large, narrow filters first.</span>
         </div>
         {% if tasks %}
             <form method="post" action="{% url 'reports:admin_task_bulk_action' %}">
@@ -512,9 +520,9 @@
                 <div class="actions-row" style="justify-content:flex-start; gap:8px; margin-bottom:8px;">
                     <label style="font-size:12px; color:var(--muted);"><input type="checkbox" id="select-all"> 全选</label>
                     <select name="bulk_action" style="padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                        <option value="complete">批量完成</option>
-                        <option value="reopen">批量重新打开</option>
-                        <option value="overdue">批量标记逾期</option>
+                        <option value="complete">批量完成 / Complete</option>
+                        <option value="reopen">批量重新打开 / Reopen</option>
+                        <option value="overdue">批量标记逾期 / Mark overdue</option>
                     </select>
                     <button type="submit" class="btn btn-secondary">批量执行</button>
                 </div>

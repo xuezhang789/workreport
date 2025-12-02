@@ -230,20 +230,32 @@
         <div>
             <p class="eyebrow">IM 团队 · 配置</p>
             <h1>SLA 配置中心</h1>
-            <p class="lede">设置任务 SLA 提醒窗口（小时）。到期前会在列表显示"24h 内到期"提示。</p>
+            <p class="lede">设置任务 SLA 提醒窗口与多级阈值（绿/黄/红），列表将显示即将到期提示。</p>
         </div>
     </div>
 
     <section class="card">
         <h2>SLA 提醒设置</h2>
-        <p>配置任务到期前的提醒时间窗口，系统会自动在任务列表中显示即将到期的任务。</p>
+        <p>配置任务到期前的提醒窗口与阈值：绿色（正常）、黄色（提醒）、红色（紧急）。</p>
         <form method="post">
             {% csrf_token %}
-            <label for="sla_hours">提醒窗口（小时）</label>
-            <input type="number" min="1" name="sla_hours" id="sla_hours" value="{{ sla_hours }}" placeholder="例如：24">
+            <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                <div>
+                    <label for="sla_hours">提醒窗口（小时） / Reminder window</label>
+                    <input type="number" min="1" name="sla_hours" id="sla_hours" value="{{ sla_hours }}" placeholder="例如：24" required>
+                </div>
+                <div>
+                    <label for="sla_amber">黄色阈值（小时） / Amber threshold</label>
+                    <input type="number" min="1" name="sla_amber" id="sla_amber" value="{{ sla_amber|default:6 }}" placeholder="例如：6" required>
+                </div>
+                <div>
+                    <label for="sla_red">红色阈值（小时） / Red threshold</label>
+                    <input type="number" min="1" name="sla_red" id="sla_red" value="{{ sla_red|default:2 }}" placeholder="例如：2" required>
+                </div>
+            </div>
             <div class="actions">
                 <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">返回</a>
-                <button type="submit" class="btn btn-primary">保存配置</button>
+                <button type="submit" class="btn btn-primary">保存配置 / Save</button>
             </div>
         </form>
     </section>

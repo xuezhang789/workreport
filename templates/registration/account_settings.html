@@ -737,7 +737,7 @@
                 <div class="field">
                     <label for="{{ email_request_form.email.id_for_label }}">邮箱地址 / Email Address</label>
                     {{ email_request_form.email }}
-                    <p class="hint">点击下方按钮获取验证码，演示环境会直接显示验证码便于测试 / Click below to get verification code, demo environment will show it directly for testing</p>
+                    <p class="hint">点击下方按钮获取验证码，生产环境将通过邮件接收（开发环境可能直接显示提示） / Click to get a code; production sends via email (dev may show it directly)</p>
                     {% if email_request_form.email.errors %}
                         <div class="errors">
                             {% for error in email_request_form.email.errors %}{{ error }}{% endfor %}

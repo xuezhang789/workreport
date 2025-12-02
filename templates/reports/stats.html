@@ -547,7 +547,15 @@
     <div class="hero">
         <div>
             <h1>统计看板</h1>
-            <p>日报与项目概览 · 实时数据监控</p>
+            <p>日报与项目概览 · 数据约每 10 分钟刷新一次 / Reports & projects overview (cache ~10min)</p>
+            {% if sla_thresholds %}
+            <p style="margin:4px 0 0;color:#475569;font-size:13px;">SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h / SLA: Red {{ sla_thresholds.red }}h · Amber {{ sla_thresholds.amber }}h</p>
+            {% endif %}
+            {% if generated_at %}
+            <p style="margin:4px 0 0;color:#475569;font-size:13px;">上次刷新：{{ generated_at|date:"Y-m-d H:i" }}（本地时区） / Last refreshed (local): {{ generated_at|date:"Y-m-d H:i" }}</p>
+            {% endif %}
+            <a class="btn btn-ghost" href="" onclick="location.reload(); return false;" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;">🔄 刷新数据 / Refresh</a>
+            <p style="margin:4px 0 0;color:#64748b;font-size:12px;">导出提示：若数据过大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
         </div>
         <form method="get" class="filters" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
             <div>
@@ -640,6 +648,7 @@
         <h3>今日缺报 / Missing Today ({{ today }})</h3>
         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
             <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=missing&date={{ today }}&role={{ role_filter }}">导出缺报 CSV</a>
+            <span style="font-size:12px;color:#64748b;margin-left:8px;">若数据量过大将提示缩小筛选范围 / Large data may require narrowing filters</span>
         </div>
         <table>
             <thead><tr><th>项目 / Project</th><th>未提交人数 / Missing</th><th>名单 / Users</th><th>最后提交 / Last Submit</th></tr></thead>

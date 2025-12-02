@@ -252,6 +252,10 @@
                 {% for e in errors %}<div>{{ e }}</div>{% endfor %}
             </div>
         {% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+            <input id="task-tpl-name" type="text" placeholder="模板名称（可选） / Template name (optional)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
+            <button type="button" class="btn btn-ghost" id="apply-task-template">套用任务模板 / Apply Template</button>
+        </div>
         <form method="post">
             {% csrf_token %}
             <div class="form-grid">
@@ -420,6 +424,43 @@
                 if (q && q.length >= 1) fetchUsers(q);
             });
             userTypeahead.addEventListener('change', applySelectedUser);
+
+            // Task template apply
+            const tplBtn = document.getElementById('apply-task-template');
+            const tplName = document.getElementById('task-tpl-name');
+            const titleInput = document.querySelector('input[name="title"]');
+            const contentInput = document.querySelector('textarea[name="content"]');
+            const urlInput = document.querySelector('input[name="url"]');
+            const tplApi = "{% url 'reports:template_apply_api' %}";
+            async function applyTaskTemplate() {
+                const name = tplName ? tplName.value.trim() : '';
+                const projectVal = projectSelect ? projectSelect.value : '';
+                const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
+                const params = new URLSearchParams({type: 'task'});
+                if (name) params.append('name', name);
+                if (projectVal) params.append('project', projectVal);
+                if (roleVal) params.append('role', roleVal);
+                try {
+                    const res = await fetch(`${tplApi}?${params.toString()}`);
+                    const data = await res.json();
+                    if (!res.ok) { alert((data.error || '未找到模板 / No template found') + ' · 可尝试清空筛选或选择全局模板'); return; }
+                    if (titleInput && data.title) titleInput.value = data.title;
+                    if (contentInput && data.content) contentInput.value = data.content;
+                    if (urlInput && data.url) urlInput.value = data.url;
+                    if (data.project && projectSelect) {
+                        let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
+                        if (opt) projectSelect.value = String(data.project);
+                    }
+                    if (data.fallback) {
+                        alert('已套用默认模板（匹配角色/全局） / Applied fallback template');
+                    } else {
+                        alert('模板已套用 / Template applied');
+                    }
+                } catch (e) {
+                    alert('加载模板失败，请稍后再试');
+                }
+            }
+            if (tplBtn) tplBtn.addEventListener('click', applyTaskTemplate);
         })();
     </script>
 {% endblock %}

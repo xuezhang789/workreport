@@ -83,6 +83,11 @@ def _throttle(request, key: str, min_interval=0.8):
     return False
 
 
+def _admin_forbidden(request, message="需要管理员权限 / Admin access required"):
+    messages.error(request, message)
+    return render(request, '403.html', status=403)
+
+
 def _notify(request, users, message, category="info"):
     """
     简易通知闭环：写入审计日志，并可扩展为邮件/Webhook。
@@ -118,6 +123,22 @@ def _ensure_sla_timer(task: Task) -> TaskSlaTimer:
     return TaskSlaTimer.objects.create(task=task)
 
 
+def get_sla_thresholds():
+    """返回 SLA 阈值配置，单位小时。"""
+    default_amber = getattr(settings, 'SLA_TIGHT_HOURS_DEFAULT', 6)
+    default_red = getattr(settings, 'SLA_CRITICAL_HOURS_DEFAULT', 2)
+    cfg = SystemSetting.objects.filter(key='sla_thresholds').first()
+    if cfg:
+        try:
+            data = json.loads(cfg.value)
+            amber = int(data.get('amber', default_amber))
+            red = int(data.get('red', default_red))
+            return {'amber': amber, 'red': red}
+        except Exception:
+            pass
+    return {'amber': default_amber, 'red': default_red}
+
+
 def _calc_sla_info(task: Task):
     """
     计算 SLA 截止、剩余小时与颜色状态。
@@ -137,16 +158,19 @@ def _calc_sla_info(task: Task):
 
     status = 'normal'
     level = 'green'
+    thresholds = get_sla_thresholds()
+    amber_limit = thresholds.get('amber', 6)
+    red_limit = thresholds.get('red', 2)
     if sla_deadline:
         delta = sla_deadline - now
         remaining_hours = round(delta.total_seconds() / 3600, 1)
         if remaining_hours <= 0:
             status = 'overdue'
             level = 'red'
-        elif remaining_hours <= 2:
+        elif remaining_hours <= red_limit:
             status = 'tight'
             level = 'red'
-        elif remaining_hours <= 6:
+        elif remaining_hours <= amber_limit:
             status = 'tight'
             level = 'amber'
         else:
@@ -207,6 +231,12 @@ def _streak_map():
 
 def _performance_stats():
     """计算项目/角色维度的完成率、逾期率以及连签趋势。"""
+    cache_key = "performance_stats_v1"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    generated_at = timezone.now()
     tasks = Task.objects.select_related('project', 'user', 'user__profile')
     project_rows = tasks.values('project__id', 'project__name').annotate(
         total=Count('id'),
@@ -271,19 +301,25 @@ def _performance_stats():
         count = DailyReport.objects.filter(date=day, status='submitted').count()
         trend.append({'date': day, 'count': count})
 
-    return {
+    result = {
         'project_stats': project_stats,
         'role_stats': role_stats,
         'role_streaks': role_streaks,
         'trend': trend,
+        'generated_at': generated_at,
     }
+    cache.set(cache_key, result, 600)
+    return result
 
 
 def _send_weekly_digest(recipient: str, stats: dict):
     """发送周报邮件，汇总项目/角色完成率与连签情况。"""
+    if not recipient:
+        return False
     top_projects = sorted(stats.get('project_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
     top_roles = sorted(stats.get('role_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
     streaks = stats.get('role_streaks', [])
+    overdue_top = Task.objects.filter(status='overdue').select_related('project', 'user').order_by('-due_at')[:5]
 
     lines = [
         "Weekly Performance Digest / 周度绩效简报",
@@ -301,6 +337,12 @@ def _send_weekly_digest(recipient: str, stats: dict):
     for s in streaks:
         lines.append(f"- {s['role_label']}: Avg 平均 {s['avg_streak']} 天, Max 最高 {s['max_streak']} 天")
 
+    if overdue_top:
+        lines.append("")
+        lines.append("Overdue Tasks / 逾期任务 Top5：")
+        for t in overdue_top:
+            lines.append(f"- {t.title} [{t.project.name if t.project else 'N/A'}] by {t.user.get_full_name() or t.user.username}")
+
     send_mail(
         subject="Weekly Performance Digest / 周度绩效简报",
         message="\n".join(lines),
@@ -308,6 +350,7 @@ def _send_weekly_digest(recipient: str, stats: dict):
         recipient_list=[recipient],
         fail_silently=True,
     )
+    return True
 
 
 def _filtered_reports(request):
@@ -493,7 +536,7 @@ def project_search_api(request):
 def user_search_api(request):
     """人员远程搜索，用于任务指派等场景。"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
     if request.method != 'GET':
         return HttpResponseForbidden("只允许 GET")
     if _throttle(request, 'user_search_ts'):
@@ -712,7 +755,7 @@ def generate_workbench_guidance(total, completed, overdue, in_progress, pending,
 def role_template_manage(request):
     """管理员配置角色模板占位和提示语。"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     selected_role = (request.POST.get('role') or request.GET.get('role') or 'dev').strip()
     message = ''
@@ -774,6 +817,7 @@ def role_template_manage(request):
                 }
             )
             message = "模板已保存"
+            _invalidate_stats_cache()
             hint_text = tmpl.hint or ''
             sample_text = tmpl.sample_md or ''
             placeholders_text = json.dumps(tmpl.placeholders or {}, ensure_ascii=False, indent=2)
@@ -797,20 +841,42 @@ def role_template_manage(request):
 def template_center(request):
     """模板中心：保存日报/任务模板，按项目/角色共享并保留版本。"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        messages.error(request, "需要管理员权限 / Admin access required")
+        return render(request, '403.html', status=403)
 
     report_form = ReportTemplateForm()
     task_form = TaskTemplateForm()
+    q = (request.GET.get('q') or '').strip()
+    role_filter = (request.GET.get('role') or '').strip()
+    project_filter = request.GET.get('project')
+    tpl_type = (request.GET.get('type') or '').strip()
+    sort = (request.GET.get('sort') or 'version').strip()  # version|updated
 
-    def _latest_versions(model):
+    def _latest_versions(qs):
         seen = set()
         latest = []
-        for item in model.objects.order_by('name', 'project_id', 'role', '-version'):
+        order_fields = ['name', 'project_id', 'role', '-version']
+        if sort == 'updated':
+            order_fields = ['name', 'project_id', 'role', '-created_at', '-version']
+        for item in qs.order_by(*order_fields):
             key = (item.name, item.project_id, item.role)
             if key not in seen:
                 seen.add(key)
                 latest.append(item)
         return latest
+
+    report_qs = ReportTemplateVersion.objects.all()
+    task_qs = TaskTemplateVersion.objects.all()
+    if role_filter:
+        report_qs = report_qs.filter(role=role_filter)
+        task_qs = task_qs.filter(role=role_filter)
+    if project_filter and project_filter.isdigit():
+        pid = int(project_filter)
+        report_qs = report_qs.filter(project_id=pid)
+        task_qs = task_qs.filter(project_id=pid)
+    if q:
+        report_qs = report_qs.filter(Q(name__icontains=q) | Q(content__icontains=q))
+        task_qs = task_qs.filter(Q(name__icontains=q) | Q(title__icontains=q) | Q(content__icontains=q))
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -819,19 +885,31 @@ def template_center(request):
             if report_form.is_valid():
                 tmpl = report_form.save(created_by=request.user)
                 messages.success(request, f"日报模板已保存 v{tmpl.version} / Report template saved.")
+                _invalidate_stats_cache()
                 return redirect('reports:template_center')
         elif action == 'task':
             task_form = TaskTemplateForm(request.POST)
             if task_form.is_valid():
                 tmpl = task_form.save(created_by=request.user)
                 messages.success(request, f"任务模板已保存 v{tmpl.version} / Task template saved.")
+                _invalidate_stats_cache()
                 return redirect('reports:template_center')
+
+    report_latest = _latest_versions(report_qs)
+    task_latest = _latest_versions(task_qs)
+    report_page = Paginator(report_latest, 10).get_page(request.GET.get('rpage'))
+    task_page = Paginator(task_latest, 10).get_page(request.GET.get('tpage'))
 
     return render(request, 'reports/template_center.html', {
         'report_form': report_form,
         'task_form': task_form,
-        'report_templates': _latest_versions(ReportTemplateVersion),
-        'task_templates': _latest_versions(TaskTemplateVersion),
+        'report_templates': report_page,
+        'task_templates': task_page,
+        'q': q,
+        'role_filter': role_filter,
+        'project_filter': int(project_filter) if project_filter and project_filter.isdigit() else '',
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'sort': sort,
     })
 
 
@@ -842,27 +920,33 @@ def template_apply_api(request):
         return HttpResponseForbidden("只允许 GET")
     tpl_type = (request.GET.get('type') or 'report').strip()
     role = (request.GET.get('role') or '').strip() or None
-    project_id = request.GET.get('project')
+    project_ids = request.GET.getlist('project') or [request.GET.get('project')]
     name = (request.GET.get('name') or '').strip() or None
-    project = None
-    if project_id and project_id.isdigit():
-        project = Project.objects.filter(id=int(project_id)).first()
+    projects = []
+    for pid in project_ids:
+        if pid and str(pid).isdigit():
+            proj = Project.objects.filter(id=int(pid)).first()
+            if proj:
+                projects.append(proj)
 
-    def base_filter(model):
+    def qs_for(model):
         q = Q(is_shared=True)
         if request.user.is_authenticated:
             q |= Q(created_by=request.user)
         qs = model.objects.filter(q)
         if role:
             qs = qs.filter(role=role)
-        if project:
-            qs = qs.filter(project=project)
         if name:
             qs = qs.filter(name=name)
-        return qs.order_by('-version', '-created_at')
+        return qs
 
     if tpl_type == 'task':
-        tmpl = base_filter(TaskTemplateVersion).first()
+        qs = qs_for(TaskTemplateVersion)
+        primary = qs.filter(project__in=projects) if projects else qs
+        tmpl = primary.order_by('-version', '-created_at').first()
+        if not tmpl and role:
+            fallback_qs = qs.filter(project__isnull=True)
+            tmpl = fallback_qs.order_by('-version', '-created_at').first()
         if not tmpl:
             return JsonResponse({'error': 'no task template'}, status=404)
         return JsonResponse({
@@ -874,9 +958,15 @@ def template_apply_api(request):
             'version': tmpl.version,
             'project': tmpl.project_id,
             'role': tmpl.role,
+            'fallback': tmpl.project_id is None,
         })
 
-    tmpl = base_filter(ReportTemplateVersion).first()
+    qs = qs_for(ReportTemplateVersion)
+    primary = qs.filter(project__in=projects) if projects else qs
+    tmpl = primary.order_by('-version', '-created_at').first()
+    if not tmpl and role:
+        fallback_qs = qs.filter(project__isnull=True)
+        tmpl = fallback_qs.order_by('-version', '-created_at').first()
     if not tmpl:
         return JsonResponse({'error': 'no report template'}, status=404)
     return JsonResponse({
@@ -887,6 +977,7 @@ def template_apply_api(request):
         'version': tmpl.version,
         'project': tmpl.project_id,
         'role': tmpl.role,
+        'fallback': tmpl.project_id is None,
     })
 
 @login_required
@@ -1357,7 +1448,10 @@ def account_settings(request):
                 request.session['email_verification_last_send'] = now_ts
                 request.session.modified = True
                 masked = _mask_email(email)
-                messages.success(request, f"验证码已发送到 {masked}，10 分钟内有效。（演示验证码：{code}）")
+                if settings.DEBUG:
+                    messages.success(request, f"验证码已发送到 {masked}，10 分钟内有效。（演示验证码：{code}）")
+                else:
+                    messages.success(request, f"验证码已发送到 {masked}，10 分钟内有效。")
                 log_action(request, 'update', f"send email code to {masked}")
                 return redirect('account_settings')
             messages.error(request, "邮箱格式有误，请检查后再试")
@@ -1465,7 +1559,7 @@ def report_edit(request, pk: int):
 @login_required
 def admin_reports(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     reports, role, start_date, end_date = _filtered_reports(request)
     username = (request.GET.get('username') or '').strip()
@@ -1556,6 +1650,7 @@ def task_list(request):
 
     paginator = Paginator(tasks, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
+    thresholds = get_sla_thresholds()
     return render(request, 'reports/task_list.html', {
         'tasks': page_obj,
         'page_obj': page_obj,
@@ -1568,6 +1663,7 @@ def task_list(request):
         'hot': hot,
         'redirect_to': request.get_full_path(),
         'urgent_count': urgent_count,
+        'sla_thresholds': thresholds,
     })
 
 
@@ -1618,6 +1714,7 @@ def task_export_selected(request):
         return HttpResponseForbidden("仅允许 POST")
     ids = request.POST.getlist('task_ids')
     tasks = Task.objects.select_related('project').filter(user=request.user, id__in=ids)
+    _mark_overdue_tasks(tasks)
     if not tasks.exists():
         return HttpResponse("请选择任务后导出", status=400)
     rows = (
@@ -1671,6 +1768,7 @@ def task_bulk_action(request):
             _add_history(t, request.user, 'status', t.status, 'reopened')
         tasks.update(status='reopened', completed_at=None)
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
+    _invalidate_stats_cache()
     return redirect(redirect_to or 'reports:task_list')
 
 
@@ -1790,7 +1888,7 @@ def admin_task_list(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
     is_admin = has_manage_permission(request.user)
     if not is_admin and not manageable_project_ids:
-        return HttpResponseForbidden("需要管理员或项目管理员权限")
+        return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     status = (request.GET.get('status') or '').strip()
     project_id = request.GET.get('project')
@@ -1864,6 +1962,7 @@ def admin_task_list(request):
         'due_soon_ids': due_soon_ids,
         'sla_config_hours': sla_hours,
         'redirect_to': request.get_full_path(),
+        'sla_thresholds': get_sla_thresholds(),
     })
 
 
@@ -1872,7 +1971,7 @@ def admin_task_bulk_action(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
     is_admin = has_manage_permission(request.user)
     if not is_admin and not manageable_project_ids:
-        return HttpResponseForbidden("需要管理员或项目管理员权限")
+        return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
     if request.method != 'POST':
         return HttpResponseForbidden("仅允许 POST")
     ids = request.POST.getlist('task_ids')
@@ -1897,6 +1996,7 @@ def admin_task_bulk_action(request):
             _add_history(t, request.user, 'status', t.status, 'overdue')
         tasks.update(status='overdue')
         log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
+    _invalidate_stats_cache()
     return redirect(redirect_to or 'reports:admin_task_list')
 
 
@@ -1905,7 +2005,7 @@ def admin_task_export(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
     is_admin = has_manage_permission(request.user)
     if not is_admin and not manageable_project_ids:
-        return HttpResponseForbidden("需要管理员或项目管理员权限")
+        return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     status = (request.GET.get('status') or '').strip()
     project_id = request.GET.get('project')
@@ -1958,22 +2058,31 @@ def admin_task_export(request):
 @login_required
 def sla_settings(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
     current = get_sla_hours()
+    thresholds = get_sla_thresholds()
     if request.method == 'POST':
         hours_str = (request.POST.get('sla_hours') or '').strip()
+        amber_str = (request.POST.get('sla_amber') or '').strip()
+        red_str = (request.POST.get('sla_red') or '').strip()
         try:
             hours = int(hours_str)
-            if hours < 1:
+            amber = int(amber_str)
+            red = int(red_str)
+            if hours < 1 or amber < 1 or red < 1:
                 raise ValueError("必须大于 0")
         except Exception:
             messages.error(request, "请输入有效的小时数（正整数）")
         else:
             SystemSetting.objects.update_or_create(key='sla_hours', defaults={'value': str(hours)})
-            messages.success(request, "SLA 提醒窗口已保存")
+            SystemSetting.objects.update_or_create(key='sla_thresholds', defaults={'value': json.dumps({'amber': amber, 'red': red})})
+            messages.success(request, "SLA 提醒窗口与阈值已保存")
             current = hours
+            thresholds = {'amber': amber, 'red': red}
     return render(request, 'reports/sla_settings.html', {
         'sla_hours': current,
+        'sla_amber': thresholds.get('amber'),
+        'sla_red': thresholds.get('red'),
     })
 
 
@@ -1982,7 +2091,7 @@ def admin_task_stats(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
     is_admin = has_manage_permission(request.user)
     if not is_admin and not manageable_project_ids:
-        return HttpResponseForbidden("需要管理员或项目管理员权限")
+        return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
@@ -2080,7 +2189,7 @@ def admin_task_stats_export(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
     is_admin = has_manage_permission(request.user)
     if not is_admin and not manageable_project_ids:
-        return HttpResponseForbidden("需要管理员或项目管理员权限")
+        return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
@@ -2129,7 +2238,7 @@ def admin_task_stats_export(request):
 @login_required
 def admin_task_create(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     projects = Project.objects.filter(is_active=True).annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
@@ -2205,7 +2314,7 @@ def admin_task_create(request):
 @login_required
 def admin_reports_export(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     reports, role, start_date, end_date = _filtered_reports(request)
 
@@ -2274,12 +2383,16 @@ def project_list(request):
 @login_required
 def stats(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     qs = DailyReport.objects.all()
     target_date = parse_date(request.GET.get('date') or '') or timezone.localdate()
     project_filter = request.GET.get('project')
     role_filter = (request.GET.get('role') or '').strip()
+    cache_key_metrics = f"stats_metrics_v1_{target_date}_{project_filter}_{role_filter}"
+    thresholds = get_sla_thresholds()
+    generated_at = timezone.now()
+
     todays_user_ids = set(qs.filter(date=target_date).values_list('user_id', flat=True))
     active_projects = Project.objects.filter(is_active=True).prefetch_related('members', 'managers', 'reports')
     if project_filter and project_filter.isdigit():
@@ -2346,40 +2459,45 @@ def stats(request):
 
     tasks_qs = Task.objects.all()
     tasks_missing_due = tasks_qs.filter(due_at__isnull=True).count()
-    project_sla_stats = []
-    projects = Project.objects.filter(is_active=True).order_by('name')
-    for p in projects:
-        total = tasks_qs.filter(project=p).count()
-        completed = tasks_qs.filter(project=p, status='completed').count()
-        overdue = tasks_qs.filter(project=p, status='overdue').count()
-        within_sla = tasks_qs.filter(
-            project=p,
-            status='completed',
-            due_at__isnull=False,
-            completed_at__isnull=False,
-            completed_at__lte=models.F('due_at')
-        ).count()
-        project_sla_stats.append({
-            'project': p,
-            'total': total,
-            'completed': completed,
-            'overdue': overdue,
-            'within_sla': within_sla,
-            'sla_rate': (within_sla / completed * 100) if completed else 0,
-        })
+    cached_stats = cache.get(cache_key_metrics)
+    if cached_stats:
+        metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at = cached_stats
+    else:
+        project_sla_stats = []
+        projects = Project.objects.filter(is_active=True).order_by('name')
+        for p in projects:
+            total = tasks_qs.filter(project=p).count()
+            completed = tasks_qs.filter(project=p, status='completed').count()
+            overdue = tasks_qs.filter(project=p, status='overdue').count()
+            within_sla = tasks_qs.filter(
+                project=p,
+                status='completed',
+                due_at__isnull=False,
+                completed_at__isnull=False,
+                completed_at__lte=models.F('due_at')
+            ).count()
+            project_sla_stats.append({
+                'project': p,
+                'total': total,
+                'completed': completed,
+                'overdue': overdue,
+                'within_sla': within_sla,
+                'sla_rate': (within_sla / completed * 100) if completed else 0,
+            })
 
-    overdue_top = tasks_qs.filter(status='overdue').select_related('project', 'user').order_by('-due_at')[:10]
+        overdue_top = tasks_qs.filter(status='overdue').select_related('project', 'user').order_by('-due_at')[:10]
 
-    metrics = {
-        'total_reports': qs.count(),
-        'total_projects': Project.objects.filter(is_active=True).count(),
-        'active_users': qs.values('user').distinct().count(),
-        'last_date': qs.order_by('-date').first().date if qs.exists() else None,
-        'missing_today': total_missing,
-        'tasks_missing_due': tasks_missing_due,
-    }
-    role_counts = qs.values_list('role').annotate(c=Count('id')).order_by('-c')
-    top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
+        metrics = {
+            'total_reports': qs.count(),
+            'total_projects': Project.objects.filter(is_active=True).count(),
+            'active_users': qs.values('user').distinct().count(),
+            'last_date': qs.order_by('-date').first().date if qs.exists() else None,
+            'missing_today': total_missing,
+            'tasks_missing_due': tasks_missing_due,
+        }
+        role_counts = qs.values_list('role').annotate(c=Count('id')).order_by('-c')
+        top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
+        cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
     return render(request, 'reports/stats.html', {
         'metrics': metrics,
         'role_counts': role_counts,
@@ -2387,12 +2505,14 @@ def stats(request):
         'missing_projects': missing_projects,
         'today': target_date,
         'sla_remind': get_sla_hours(),
+        'sla_thresholds': thresholds,
         'project_sla_stats': project_sla_stats,
         'overdue_top': overdue_top,
         'project_filter': int(project_filter) if project_filter and project_filter.isdigit() else '',
         'role_filter': role_filter,
         'report_roles': Profile.ROLE_CHOICES,
         'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'generated_at': generated_at,
     })
 
 
@@ -2400,24 +2520,30 @@ def stats(request):
 def performance_board(request):
     """绩效与统计看板：项目/角色完成率、逾期率、连签趋势，可触发周报邮件。"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        messages.error(request, "需要管理员权限 / Admin access required")
+        return render(request, '403.html', status=403)
 
     stats = _performance_stats()
     urgent_tasks = Task.objects.filter(status='overdue').count()
     total_tasks = Task.objects.count()
+    thresholds = get_sla_thresholds()
 
     if request.GET.get('send_weekly') == '1':
-        recipient = request.user.email
+        recipient = (request.user.email or '').strip()
         if not recipient:
             messages.error(request, "请先在个人中心绑定邮箱 / Please bind email first.")
         else:
-            _send_weekly_digest(recipient, stats)
-            messages.success(request, "周报已发送到绑定邮箱 / Weekly digest sent.")
+            sent = _send_weekly_digest(recipient, stats)
+            if sent:
+                messages.success(request, "周报已发送到绑定邮箱 / Weekly digest sent.")
+            else:
+                messages.error(request, "周报发送失败，请稍后再试 / Weekly digest failed.")
 
     return render(request, 'reports/performance_board.html', {
         **stats,
         'urgent_tasks': urgent_tasks,
         'total_tasks': total_tasks,
+        'sla_thresholds': thresholds,
     })
 
 
@@ -2425,7 +2551,8 @@ def performance_board(request):
 def performance_export(request):
     """导出绩效看板数据，scope=project|role|streak。"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        messages.error(request, "需要管理员权限 / Admin access required")
+        return render(request, '403.html', status=403)
     scope = (request.GET.get('scope') or 'project').strip()
     stats = _performance_stats()
 
@@ -2479,7 +2606,7 @@ def performance_export(request):
 def stats_export(request):
     """导出统计相关数据：type=missing|project_sla|user_sla"""
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     export_type = (request.GET.get('type') or 'missing').strip()
     target_date = parse_date(request.GET.get('date') or '') or timezone.localdate()
@@ -2565,7 +2692,7 @@ def stats_export(request):
 @login_required
 def audit_logs(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
@@ -2608,7 +2735,7 @@ def audit_logs(request):
 @login_required
 def audit_logs_export(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
@@ -2687,7 +2814,7 @@ def project_detail(request, pk: int):
 @login_required
 def project_create(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     if request.method == 'POST':
         form = ProjectForm(request.POST)
@@ -2704,13 +2831,14 @@ def project_create(request):
 def project_edit(request, pk: int):
     project = get_object_or_404(Project, pk=pk)
     if not has_project_manage_permission(request.user, project):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request, "需要管理员权限 / Admin or project manager required")
 
     if request.method == 'POST':
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
             project = form.save()
             log_action(request, 'update', f"project {project.id} {project.code}")
+            _invalidate_stats_cache()
             return redirect('reports:project_detail', pk=project.pk)
     else:
         form = ProjectForm(instance=project)
@@ -2721,11 +2849,12 @@ def project_edit(request, pk: int):
 def project_delete(request, pk: int):
     project = get_object_or_404(Project, pk=pk)
     if not has_project_manage_permission(request.user, project):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request, "需要管理员权限 / Admin or project manager required")
     if request.method == 'POST':
         project.is_active = False
         project.save(update_fields=['is_active'])
         log_action(request, 'delete', f"project {project.id} {project.code}")
+        _invalidate_stats_cache()
         return redirect('reports:project_list')
     return render(request, 'reports/project_confirm_delete.html', {'project': project})
 
@@ -2733,7 +2862,7 @@ def project_delete(request, pk: int):
 @login_required
 def project_export(request):
     if not has_manage_permission(request.user):
-        return HttpResponseForbidden("需要管理员权限")
+        return _admin_forbidden(request)
 
     projects, q, start_date, end_date, owner = _filtered_projects(request)
 

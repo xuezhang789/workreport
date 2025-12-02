@@ -3,6 +3,43 @@
 {% block nav_header %}{% include "partials/nav.html" with nav_title="模板中心 / Template Center" nav_subtitle="按角色与项目共享日报与任务模板 / Share report & task templates by role/project" %}{% endblock %}
 {% block content %}
 <div class="container" style="max-width:1100px;">
+    <section style="margin:16px 0;padding:14px 16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
+        <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end;">
+            <div>
+                <label style="font-weight:700;font-size:13px;">关键词 / Keyword</label>
+                <input type="text" name="q" value="{{ q }}" placeholder="按名称/内容搜索 / Search by name or content" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
+            </div>
+            <div>
+                <label style="font-weight:700;font-size:13px;">角色 / Role</label>
+                <select name="role" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
+                    <option value="">全部 / All</option>
+                    {% for val,label in report_form.fields.role.choices %}
+                        <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:700;font-size:13px;">项目 / Project</label>
+                <select name="project" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
+                    <option value="">全部 / All</option>
+                    {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:700;font-size:13px;">排序 / Sort</label>
+                <select name="sort" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
+                    <option value="version" {% if sort == 'version' %}selected{% endif %}>按版本 / By version</option>
+                    <option value="updated" {% if sort == 'updated' %}selected{% endif %}>按更新时间 / By updated</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary" style="padding:10px 14px;">🔍 筛选 / Filter</button>
+                <a href="{% url 'reports:template_center' %}" class="btn btn-ghost" style="padding:10px 14px;">重置 / Reset</a>
+            </div>
+        </form>
+    </section>
     <section style="margin:24px 0;padding:18px 20px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
         <h1 style="margin:0 0 8px 0;font-size:20px;font-weight:800;">模板创建 / Create template</h1>
         <p style="margin:0 0 14px 0;color:#475569;">支持项目/角色的共享模板，并自动记录版本。双语文案 / Bilingual copy.</p>
@@ -26,6 +63,7 @@
 
     <section style="margin:24px 0;padding:18px 20px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;">
         <h2 style="margin:0 0 12px 0;">最新模板 / Latest versions</h2>
+        <p style="margin:0 0 12px 0;color:#64748b;font-size:13px;">优先显示符合筛选条件的最新版本；未匹配时可尝试清空筛选或更换项目/角色。 / Shows latest versions for current filters; clear or adjust filters if no match.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
             {% for tmpl in report_templates %}
             <article style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
@@ -38,6 +76,22 @@
             <div style="color:#94a3b8;">暂无日报模板 / No report template</div>
             {% endfor %}
         </div>
+        {% if report_templates.has_other_pages %}
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;font-size:13px;">
+            {% if report_templates.has_previous %}<a class="btn btn-ghost" href="?rpage={{ report_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
+            <span class="chip">第 {{ report_templates.number }} / {{ report_templates.paginator.num_pages }} 页 / Page</span>
+            {% if report_templates.has_next %}<a class="btn btn-ghost" href="?rpage={{ report_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
+            <form method="get" style="display:flex;gap:6px;align-items:center;">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="role" value="{{ role_filter }}">
+                <input type="hidden" name="project" value="{{ project_filter }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <label style="font-size:12px;color:#475569;">跳转 / Jump</label>
+                <input type="number" name="rpage" min="1" max="{{ report_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">
+                <button class="btn btn-ghost" type="submit" style="padding:8px 10px;">Go</button>
+            </form>
+        </div>
+        {% endif %}
         <h3 style="margin:16px 0 10px 0;">任务模板 / Task templates</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
             {% for tmpl in task_templates %}
@@ -51,6 +105,22 @@
             <div style="color:#94a3b8;">暂无任务模板 / No task template</div>
             {% endfor %}
         </div>
+        {% if task_templates.has_other_pages %}
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;font-size:13px;">
+            {% if task_templates.has_previous %}<a class="btn btn-ghost" href="?tpage={{ task_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
+            <span class="chip">第 {{ task_templates.number }} / {{ task_templates.paginator.num_pages }} 页 / Page</span>
+            {% if task_templates.has_next %}<a class="btn btn-ghost" href="?tpage={{ task_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
+            <form method="get" style="display:flex;gap:6px;align-items:center;">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="role" value="{{ role_filter }}">
+                <input type="hidden" name="project" value="{{ project_filter }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <label style="font-size:12px;color:#475569;">跳转 / Jump</label>
+                <input type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">
+                <button class="btn btn-ghost" type="submit" style="padding:8px 10px;">Go</button>
+            </form>
+        </div>
+        {% endif %}
     </section>
 </div>
 {% endblock %}

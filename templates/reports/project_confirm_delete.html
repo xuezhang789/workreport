@@ -193,19 +193,19 @@
     <div class="hero">
         <div>
             <p class="eyebrow">IM 团队 · 项目</p>
-            <h1>删除项目</h1>
-            <p class="lede">确认删除项目：{{ project.name }}（{{ project.code }}）</p>
+            <h1>删除项目 / Delete Project</h1>
+            <p class="lede">确认删除项目：{{ project.name }}（{{ project.code }}） / Confirm deleting project</p>
         </div>
     </div>
 
     <section class="card">
-        <h2>确认删除项目？</h2>
-        <p>此操作不可撤销，请确认是否继续删除项目 <strong>{{ project.name }}</strong>（代码：{{ project.code }}）</p>
+        <h2>确认删除项目？ / Confirm deletion</h2>
+        <p>此操作不可撤销，请确认是否继续删除项目 <strong>{{ project.name }}</strong>（代码：{{ project.code }}） / This action cannot be undone. Delete project <strong>{{ project.name }}</strong> ({{ project.code }})?</p>
         <form method="post">
             {% csrf_token %}
             <div class="actions">
-                <a class="btn btn-ghost" href="{% url 'reports:project_detail' project.pk %}">取消</a>
-                <button type="submit" class="btn btn-danger">确认删除</button>
+                <a class="btn btn-ghost" href="{% url 'reports:project_detail' project.pk %}">取消 / Cancel</a>
+                <button type="submit" class="btn btn-danger">确认删除 / Confirm</button>
             </div>
         </form>
     </section>
