@@ -84,7 +84,40 @@ class CacheAndTemplateTests(TestCase):
             Task.objects.create(title='t2', user=self.admin, project=self.project)
             resp = self.client.get(reverse('reports:task_export'))
             self.assertEqual(resp.status_code, 400)
+            content = resp.content.decode()
+            self.assertIn("数据量过大", content)
+            self.assertIn("Data too large", content)
+        finally:
+            report_views.MAX_EXPORT_ROWS = original
+
+    def test_admin_reports_export_limit(self):
+        original = report_views.MAX_EXPORT_ROWS
+        report_views.MAX_EXPORT_ROWS = 1
+        try:
+            today = timezone.localdate()
+            DailyReport.objects.create(user=self.admin, date=today, role='dev', status='submitted')
+            DailyReport.objects.create(user=self.admin, date=today, role='qa', status='submitted')
+            resp = self.client.get(reverse('reports:admin_reports_export'), {
+                'start_date': today,
+                'end_date': today,
+                'username': self.admin.username,
+            })
+            self.assertEqual(resp.status_code, 400)
             self.assertIn("数据量过大", resp.content.decode())
+        finally:
+            report_views.MAX_EXPORT_ROWS = original
+
+    def test_admin_task_export_limit(self):
+        original = report_views.MAX_EXPORT_ROWS
+        report_views.MAX_EXPORT_ROWS = 1
+        try:
+            Task.objects.create(title='t1', user=self.admin, project=self.project)
+            Task.objects.create(title='t2', user=self.admin, project=self.project)
+            resp = self.client.get(reverse('reports:admin_task_export'))
+            self.assertEqual(resp.status_code, 400)
+            content = resp.content.decode()
+            self.assertIn("数据量过大", content)
+            self.assertIn("Data too large", content)
         finally:
             report_views.MAX_EXPORT_ROWS = original
 
@@ -103,6 +136,14 @@ class CacheAndTemplateTests(TestCase):
         resp = self.client.get(reverse('reports:template_center'))
         page = resp.context['report_templates']
         self.assertTrue(page.paginator.num_pages >= 2)
+        # 排序参数保持
+        resp_sort = self.client.get(reverse('reports:template_center'), {'sort': 'updated'})
+        self.assertEqual(resp_sort.context['sort'], 'updated')
+
+    def test_post_only_endpoint_forbidden(self):
+        resp = self.client.get(reverse('reports:task_bulk_action'))
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn("POST only".lower(), resp.content.decode().lower())
 
     def test_sla_threshold_display_in_task_list(self):
         # 创建即将超时的任务以触发 SLA 提示
