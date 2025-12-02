@@ -1797,7 +1797,6 @@ def admin_task_list(request):
     user_id = request.GET.get('user')
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
-    hot = request.GET.get('hot') == '1'
 
     tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').order_by('-created_at')
     _mark_overdue_tasks(tasks_qs)
