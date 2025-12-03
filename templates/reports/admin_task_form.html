@@ -253,8 +253,15 @@
             </div>
         {% endif %}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+            <select id="task-tpl-recommend" style="min-width:200px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;flex:1;">
+                <option value="">智能推荐 / Smart suggestions</option>
+            </select>
             <input id="task-tpl-name" type="text" placeholder="模板名称（可选） / Template name (optional)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
-            <button type="button" class="btn btn-ghost" id="apply-task-template">套用任务模板 / Apply Template</button>
+            <button type="button" class="btn btn-ghost" id="apply-task-template">替换套用 / Replace</button>
+            <button type="button" class="btn btn-ghost" id="append-task-template">追加套用 / Append</button>
+            <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">
+                优先级：项目 → 角色 → 全局，未命中会回退默认模板并提示 / Priority: Project → Role → Global; falls back with a notice if not found.
+            </p>
         </div>
         <form method="post">
             {% csrf_token %}
@@ -427,12 +434,14 @@
 
             // Task template apply
             const tplBtn = document.getElementById('apply-task-template');
+            const tplAppendBtn = document.getElementById('append-task-template');
             const tplName = document.getElementById('task-tpl-name');
+            const tplRecommend = document.getElementById('task-tpl-recommend');
             const titleInput = document.querySelector('input[name="title"]');
             const contentInput = document.querySelector('textarea[name="content"]');
             const urlInput = document.querySelector('input[name="url"]');
             const tplApi = "{% url 'reports:template_apply_api' %}";
-            async function applyTaskTemplate() {
+            async function applyTaskTemplate(mode = 'replace') {
                 const name = tplName ? tplName.value.trim() : '';
                 const projectVal = projectSelect ? projectSelect.value : '';
                 const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
@@ -444,8 +453,20 @@
                     const res = await fetch(`${tplApi}?${params.toString()}`);
                     const data = await res.json();
                     if (!res.ok) { alert((data.error || '未找到模板 / No template found') + ' · 可尝试清空筛选或选择全局模板'); return; }
-                    if (titleInput && data.title) titleInput.value = data.title;
-                    if (contentInput && data.content) contentInput.value = data.content;
+                    if (titleInput && data.title) {
+                        if (mode === 'append' && titleInput.value) {
+                            titleInput.value = `${titleInput.value} / ${data.title}`;
+                        } else {
+                            titleInput.value = data.title;
+                        }
+                    }
+                    if (contentInput && data.content) {
+                        if (mode === 'append' && contentInput.value) {
+                            contentInput.value = contentInput.value + "\n" + data.content;
+                        } else {
+                            contentInput.value = data.content;
+                        }
+                    }
                     if (urlInput && data.url) urlInput.value = data.url;
                     if (data.project && projectSelect) {
                         let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
@@ -460,7 +481,39 @@
                     alert('加载模板失败，请稍后再试');
                 }
             }
-            if (tplBtn) tplBtn.addEventListener('click', applyTaskTemplate);
+            if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
+            if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
+
+            async function loadTaskRecommendations() {
+                if (!tplRecommend) return;
+                const recApi = "{% url 'reports:template_recommend_api' %}";
+                const params = new URLSearchParams({type: 'task'});
+                const projectVal = projectSelect ? projectSelect.value : '';
+                const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
+                if (roleVal) params.append('role', roleVal);
+                if (projectVal) params.append('project', projectVal);
+                try {
+                    const res = await fetch(`${recApi}?${params.toString()}`);
+                    const data = await res.json();
+                    tplRecommend.innerHTML = '<option value=\"\">智能推荐 / Smart suggestions</option>';
+                    (data.results || []).forEach(item => {
+                        const label = `${item.name} · ${item.project_name || '全局/Global'} · v${item.version}`;
+                        const opt = document.createElement('option');
+                        opt.value = item.name;
+                        opt.textContent = label;
+                        tplRecommend.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.warn('task tpl recommend failed', e);
+                }
+            }
+            if (tplRecommend) {
+                tplRecommend.addEventListener('change', (e) => {
+                    if (tplName) tplName.value = e.target.value;
+                });
+                loadTaskRecommendations();
+                if (projectSelect) projectSelect.addEventListener('change', loadTaskRecommendations);
+            }
         })();
     </script>
 {% endblock %}

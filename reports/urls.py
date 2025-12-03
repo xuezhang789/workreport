@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_preferences
 
 app_name = 'reports'
 
@@ -44,4 +45,9 @@ urlpatterns = [
     path('audit/export/', views.audit_logs_export, name='audit_logs_export'),
     path('templates/center/', views.template_center, name='template_center'),
     path('templates/api/apply/', views.template_apply_api, name='template_apply_api'),
+    path('templates/api/recommend/', views.template_recommend_api, name='template_recommend_api'),
+    path('export/jobs/<int:job_id>/', views.export_job_status, name='export_job_status'),
+    path('export/jobs/<int:job_id>/download/', views.export_job_download, name='export_job_download'),
+    path('prefs/', views_preferences.preference_get_api, name='preference_get_api'),
+    path('prefs/save/', views_preferences.preference_save_api, name='preference_save_api'),
 ]

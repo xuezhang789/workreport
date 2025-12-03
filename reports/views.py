@@ -5,7 +5,9 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Q, Count
-from django.http import HttpResponse, HttpResponseForbidden, StreamingHttpResponse, JsonResponse
+import os
+
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse, FileResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -30,7 +32,7 @@ from .forms import (
     ReportTemplateForm,
     TaskTemplateForm,
 )
-from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion
+from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion, ExportJob
 from .signals import _invalidate_stats_cache
 from django.conf import settings
 
@@ -86,7 +88,12 @@ def _throttle(request, key: str, min_interval=0.8):
 
 def _admin_forbidden(request, message="需要管理员权限 / Admin access required"):
     messages.error(request, message)
-    return render(request, '403.html', status=403)
+    return render(request, '403.html', {'detail': message}, status=403)
+
+
+def _friendly_forbidden(request, message):
+    """统一的友好 403 返回，带双语提示。"""
+    return render(request, '403.html', {'detail': message}, status=403)
 
 
 def _notify(request, users, message, category="info"):
@@ -435,6 +442,33 @@ def _stream_csv(rows, header):
     return generate()
 
 
+def _create_export_job(user, export_type):
+    expires = timezone.now() + timedelta(days=3)
+    return ExportJob.objects.create(user=user, export_type=export_type, status='running', progress=10, expires_at=expires)
+
+
+def _generate_export_file(job, header, rows_iterable):
+    """生成 CSV 临时文件，更新 Job 状态，返回文件路径。"""
+    import tempfile
+    import csv as pycsv
+    import os
+    fd, path = tempfile.mkstemp(prefix=f'export_{job.export_type}_', suffix='.csv')
+    with os.fdopen(fd, 'w', encoding='utf-8', newline='') as f:
+        writer = pycsv.writer(f)
+        writer.writerow(header)
+        total = 0
+        for total, row in enumerate(rows_iterable, start=1):
+            writer.writerow(row)
+            if total % 50 == 0:
+                job.progress = min(95, job.progress + 5)
+                job.save(update_fields=['progress', 'updated_at'])
+        job.progress = 100
+        job.status = 'done'
+        job.file_path = path
+        job.save(update_fields=['status', 'progress', 'file_path', 'updated_at'])
+    return path
+
+
 def _mark_overdue_tasks(qs):
     """将过期未完成的任务标记为逾期。"""
     now = timezone.now()
@@ -515,7 +549,7 @@ def role_template_api(request):
 def project_search_api(request):
     """项目远程搜索，支持常用项目置顶。"""
     if request.method != 'GET':
-        return HttpResponseForbidden("只允许 GET")
+        return _friendly_forbidden(request, "仅允许 GET / GET only")
     if _throttle(request, 'project_search_ts'):
         return JsonResponse({'error': '请求过于频繁'}, status=429)
     q = (request.GET.get('q') or '').strip()
@@ -539,7 +573,7 @@ def user_search_api(request):
     if not has_manage_permission(request.user):
         return _admin_forbidden(request)
     if request.method != 'GET':
-        return HttpResponseForbidden("只允许 GET")
+        return _friendly_forbidden(request, "仅允许 GET / GET only")
     if _throttle(request, 'user_search_ts'):
         return JsonResponse({'error': '请求过于频繁'}, status=429)
     q = (request.GET.get('q') or '').strip()
@@ -560,7 +594,7 @@ def user_search_api(request):
 def username_check_api(request):
     """实时检查用户名是否可用。"""
     if request.method != 'GET':
-        return HttpResponseForbidden("只允许 GET")
+        return _friendly_forbidden(request, "仅允许 GET / GET only")
     if _throttle(request, 'username_check_ts', min_interval=0.4):
         return JsonResponse({'error': '请求过于频繁'}, status=429)  # 简易节流防抖
     username = (request.GET.get('username') or '').strip()
@@ -590,7 +624,7 @@ def workbench(request):
     today_tasks = tasks.filter(due_at__date=today.date()).exclude(status='completed')
     upcoming_tasks = tasks.filter(
         due_at__date__gt=today.date(),
-        due_at__date__lte=today.date() + timezone.timedelta(days=3)
+        due_at__date__lte=today.date() + timedelta(days=3)
     ).exclude(status='completed')
 
     # daily report streak and today's report status
@@ -601,7 +635,7 @@ def workbench(request):
     curr = today_date
     while curr in date_set:
         streak += 1
-        curr = curr - timezone.timedelta(days=1)
+        curr = curr - timedelta(days=1)
     
     # 检查今日是否已提交日报
     today_report = DailyReport.objects.filter(user=request.user, date=today_date).first()
@@ -851,7 +885,7 @@ def template_center(request):
     role_filter = (request.GET.get('role') or '').strip()
     project_filter = request.GET.get('project')
     tpl_type = (request.GET.get('type') or '').strip()
-    sort = (request.GET.get('sort') or 'version').strip()  # version|updated
+    sort = (request.GET.get('sort') or 'version').strip()  # version|updated|usage
 
     def _latest_versions(qs):
         seen = set()
@@ -859,6 +893,8 @@ def template_center(request):
         order_fields = ['name', 'project_id', 'role', '-version']
         if sort == 'updated':
             order_fields = ['name', 'project_id', 'role', '-created_at', '-version']
+        if sort == 'usage':
+            order_fields = ['name', 'project_id', 'role', '-usage_count', '-created_at', '-version']
         for item in qs.order_by(*order_fields):
             key = (item.name, item.project_id, item.role)
             if key not in seen:
@@ -918,7 +954,7 @@ def template_center(request):
 def template_apply_api(request):
     """一键套用模板：按 type=report|task + role + project 获取最新共享版本。"""
     if request.method != 'GET':
-        return HttpResponseForbidden("只允许 GET")
+        return _friendly_forbidden(request, "仅允许 GET / GET only")
     tpl_type = (request.GET.get('type') or 'report').strip()
     role = (request.GET.get('role') or '').strip() or None
     project_ids = request.GET.getlist('project') or [request.GET.get('project')]
@@ -945,11 +981,15 @@ def template_apply_api(request):
         qs = qs_for(TaskTemplateVersion)
         primary = qs.filter(project__in=projects) if projects else qs
         tmpl = primary.order_by('-version', '-created_at').first()
+        fallback = False
         if not tmpl and role:
             fallback_qs = qs.filter(project__isnull=True)
             tmpl = fallback_qs.order_by('-version', '-created_at').first()
+            fallback = bool(tmpl)
         if not tmpl:
             return JsonResponse({'error': 'no task template'}, status=404)
+        tmpl.usage_count = (tmpl.usage_count or 0) + 1
+        tmpl.save(update_fields=['usage_count'])
         return JsonResponse({
             'type': 'task',
             'name': tmpl.name,
@@ -959,17 +999,22 @@ def template_apply_api(request):
             'version': tmpl.version,
             'project': tmpl.project_id,
             'role': tmpl.role,
-            'fallback': tmpl.project_id is None,
+            'fallback': fallback,
+            'hit': not fallback,
         })
 
     qs = qs_for(ReportTemplateVersion)
     primary = qs.filter(project__in=projects) if projects else qs
     tmpl = primary.order_by('-version', '-created_at').first()
+    fallback = False
     if not tmpl and role:
         fallback_qs = qs.filter(project__isnull=True)
         tmpl = fallback_qs.order_by('-version', '-created_at').first()
+        fallback = bool(tmpl)
     if not tmpl:
         return JsonResponse({'error': 'no report template'}, status=404)
+    tmpl.usage_count = (tmpl.usage_count or 0) + 1
+    tmpl.save(update_fields=['usage_count'])
     return JsonResponse({
         'type': 'report',
         'name': tmpl.name,
@@ -978,8 +1023,65 @@ def template_apply_api(request):
         'version': tmpl.version,
         'project': tmpl.project_id,
         'role': tmpl.role,
-        'fallback': tmpl.project_id is None,
+        'fallback': fallback,
+        'hit': not fallback,
     })
+
+
+@login_required
+def template_recommend_api(request):
+    """推荐模板：按 type + role + project 优先顺序返回，排序使用 usage_count 与最新更新时间。"""
+    if request.method != 'GET':
+        return _friendly_forbidden(request, "仅允许 GET / GET only")
+    tpl_type = (request.GET.get('type') or 'report').strip()
+    role = (request.GET.get('role') or '').strip() or None
+    project_ids = request.GET.getlist('project') or [request.GET.get('project')]
+    limit = int(request.GET.get('limit') or 8)
+    limit = max(1, min(limit, 20))
+    projects = []
+    for pid in project_ids:
+        if pid and str(pid).isdigit():
+            proj = Project.objects.filter(id=int(pid)).first()
+            if proj:
+                projects.append(proj)
+
+    def base_qs(model):
+        q = Q(is_shared=True)
+        if request.user.is_authenticated:
+            q |= Q(created_by=request.user)
+        qs = model.objects.filter(q)
+        if role:
+            qs = qs.filter(role=role)
+        return qs
+
+    if tpl_type == 'task':
+        qs = base_qs(TaskTemplateVersion)
+    else:
+        qs = base_qs(ReportTemplateVersion)
+
+    ordered = []
+    if projects:
+        ordered.extend(list(qs.filter(project__in=projects).order_by('-usage_count', '-created_at', '-version')[:limit]))
+    ordered.extend(list(qs.filter(project__isnull=True).order_by('-usage_count', '-created_at', '-version')[:limit]))
+    seen = set()
+    recs = []
+    for item in ordered:
+        key = (item.name, item.project_id, item.role)
+        if key in seen:
+            continue
+        seen.add(key)
+        recs.append({
+            'id': item.id,
+            'name': item.name,
+            'role': item.role,
+            'project': item.project_id,
+            'project_name': item.project.name if item.project else None,
+            'usage_count': item.usage_count,
+            'version': item.version,
+        })
+        if len(recs) >= limit:
+            break
+    return JsonResponse({'results': recs})
 
 @login_required
 def daily_report_create(request):
@@ -1124,7 +1226,7 @@ def daily_report_create(request):
         if edit_report_id:
             report = get_object_or_404(DailyReport, pk=edit_report_id)
             if not (report.user == request.user or has_manage_permission(request.user)):
-                return HttpResponseForbidden("无权限编辑该日报")
+                return _friendly_forbidden(request, "无权限编辑该日报 / No permission to edit this report")
             conflict_exists = DailyReport.objects.filter(user=user, date=date, role=role).exclude(pk=report.pk).exists()
             # 编辑时避免与其他日报冲突
             if conflict_exists:
@@ -1270,7 +1372,7 @@ def my_reports(request):
     date_set = set(dates)
     while curr in date_set:
         streak += 1
-        curr = curr - timezone.timedelta(days=1)
+        curr = curr - timedelta(days=1)
 
     context = {
         'reports': page_obj,
@@ -1503,7 +1605,7 @@ def report_detail(request, pk: int):
         report = get_object_or_404(qs, pk=pk)
         can_manage_project = report.projects.filter(managers=request.user).exists()
         if not (report.user == request.user or can_manage_project):
-            return HttpResponseForbidden("无权限查看该日报")
+            return _friendly_forbidden(request, "无权限查看该日报 / No permission to view this report")
 
     sections = _build_sections(report)
 
@@ -1519,7 +1621,7 @@ def report_detail(request, pk: int):
 def report_submit(request, pk: int):
     report = get_object_or_404(DailyReport, pk=pk)
     if not (report.user == request.user or has_manage_permission(request.user)):
-        return HttpResponseForbidden("无权限提交该日报")
+        return _friendly_forbidden(request, "无权限提交该日报 / No permission to submit this report")
     report.status = 'submitted'
     report.save(update_fields=['status', 'updated_at'])
     return redirect('reports:report_detail', pk=pk)
@@ -1529,7 +1631,7 @@ def report_submit(request, pk: int):
 def report_edit(request, pk: int):
     report = get_object_or_404(DailyReport.objects.select_related('user').prefetch_related('projects'), pk=pk)
     if not (report.user == request.user or has_manage_permission(request.user)):
-        return HttpResponseForbidden("无权限编辑该日报")
+        return _friendly_forbidden(request, "无权限编辑该日报 / No permission to edit this report")
 
     position = getattr(getattr(report.user, 'profile', None), 'position', 'dev')
     project_filter = Q(is_active=True)
@@ -1622,7 +1724,7 @@ def task_list(request):
     due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
-        due_at__lte=now + timezone.timedelta(hours=sla_hours)
+        due_at__lte=now + timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
     if status in dict(Task.STATUS_CHOICES):
         tasks_qs = tasks_qs.filter(status=status)
@@ -1635,7 +1737,7 @@ def task_list(request):
     if hot:
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
 
-    far_future = now + timezone.timedelta(days=365)
+    far_future = now + timedelta(days=365)
     urgent_count = 0
     for t in tasks:
         t.is_due_soon = t.id in due_soon_ids
@@ -1688,7 +1790,32 @@ def task_export(request):
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
     total_count = tasks.count() if hasattr(tasks, 'count') else len(tasks)
     if total_count > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
+        if request.GET.get('queue') != '1':
+            return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters. 如需排队导出，请带 queue=1 参数 / Use queue=1 to enqueue export.", status=400)
+        # 走异步导出队列（简化为后台生成 + 轮询）
+        job = _create_export_job(request.user, 'my_tasks')
+        try:
+            path = _generate_export_file(
+                job,
+                ["标题", "项目", "状态", "截止", "完成时间", "URL"],
+                (
+                    [
+                        t.title,
+                        t.project.name,
+                        t.get_status_display(),
+                        t.due_at.isoformat() if t.due_at else '',
+                        t.completed_at.isoformat() if t.completed_at else '',
+                        t.url or '',
+                    ]
+                    for t in (tasks if isinstance(tasks, list) else tasks.iterator())
+                )
+            )
+            return JsonResponse({'queued': True, 'job_id': job.id})
+        except Exception as e:
+            job.status = 'failed'
+            job.message = str(e)
+            job.save(update_fields=['status', 'message', 'updated_at'])
+            return JsonResponse({'error': 'export failed'}, status=500)
 
     rows = (
         [
@@ -1737,10 +1864,38 @@ def task_export_selected(request):
 
 
 @login_required
+def export_job_status(request, job_id: int):
+    job = get_object_or_404(ExportJob, id=job_id, user=request.user)
+    if job.expires_at and job.expires_at < timezone.now():
+        job.status = 'failed'
+        job.message = '导出已过期 / Export expired'
+        job.save(update_fields=['status', 'message', 'updated_at'])
+    data = {
+        'job_id': job.id,
+        'status': job.status,
+        'progress': job.progress,
+        'message': job.message,
+        'download_url': reverse('reports:export_job_download', args=[job.id]) if job.status == 'done' else '',
+    }
+    return JsonResponse(data)
+
+
+@login_required
+def export_job_download(request, job_id: int):
+    job = get_object_or_404(ExportJob, id=job_id, user=request.user, status='done')
+    if job.expires_at and job.expires_at < timezone.now():
+        return _friendly_forbidden(request, "文件已过期，请重新导出 / File expired, please export again")
+    if not job.file_path or not os.path.exists(job.file_path):
+        return _friendly_forbidden(request, "文件不存在 / File missing")
+    filename = f"{job.export_type}.csv"
+    return FileResponse(open(job.file_path, 'rb'), filename=filename)
+
+
+@login_required
 def task_complete(request, pk: int):
     task = get_object_or_404(Task, pk=pk, user=request.user)
     if request.method != 'POST':
-        return HttpResponseForbidden("仅允许 POST")
+        return _friendly_forbidden(request, "仅允许 POST / POST only")
     # 完成任务
     _add_history(task, request.user, 'status', task.status, 'completed')
     task.status = 'completed'
@@ -1904,7 +2059,7 @@ def admin_task_list(request):
     due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
-        due_at__lte=now + timezone.timedelta(hours=sla_hours)
+        due_at__lte=now + timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
     if not is_admin:
         tasks_qs = tasks_qs.filter(project_id__in=manageable_project_ids)
@@ -1925,7 +2080,7 @@ def admin_task_list(request):
     if hot:
         tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
 
-    far_future = now + timezone.timedelta(days=365)
+    far_future = now + timedelta(days=365)
     for t in tasks:
         t.is_due_soon = t.id in due_soon_ids
         t.sla_info = _calc_sla_info(t)
@@ -2339,8 +2494,34 @@ def admin_reports_export(request):
     if not (username or project_id):
         return HttpResponse("请至少指定用户名或项目过滤后再导出。", status=400)
 
-    if reports.count() > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
+    total_count = reports.count()
+    if total_count > MAX_EXPORT_ROWS:
+        if request.GET.get('queue') != '1':
+            return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters. 如需排队导出，请带 queue=1 参数 / Use queue=1 to enqueue export.", status=400)
+        job = _create_export_job(request.user, 'admin_reports_filtered')
+        try:
+            _generate_export_file(
+                job,
+                ["日期", "角色", "项目", "用户", "状态", "摘要", "创建时间"],
+                (
+                    [
+                        str(r.date),
+                        r.get_role_display(),
+                        r.project_names or "",
+                        r.user.get_full_name() or r.user.username,
+                        r.get_status_display(),
+                        r.summary or "",
+                        timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"),
+                    ]
+                    for r in reports.iterator()
+                )
+            )
+            return JsonResponse({'queued': True, 'job_id': job.id})
+        except Exception as e:
+            job.status = 'failed'
+            job.message = str(e)
+            job.save(update_fields=['status', 'message', 'updated_at'])
+            return JsonResponse({'error': 'export failed'}, status=500)
 
     rows = (
         [
@@ -2387,6 +2568,7 @@ def stats(request):
         return _admin_forbidden(request)
 
     qs = DailyReport.objects.all()
+    sla_only = request.GET.get('sla_only') == '1'
     target_date = parse_date(request.GET.get('date') or '') or timezone.localdate()
     project_filter = request.GET.get('project')
     role_filter = (request.GET.get('role') or '').strip()
@@ -2499,6 +2681,18 @@ def stats(request):
         role_counts = qs.values_list('role').annotate(c=Count('id')).order_by('-c')
         top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
         cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
+    sla_urgent_tasks = []
+    for t in Task.objects.select_related('project', 'user').exclude(status='completed'):
+        info = _calc_sla_info(t)
+        if info and info.get('status') in ('tight', 'overdue'):
+            t.sla_info = info
+            sla_urgent_tasks.append(t)
+    sla_urgent_tasks.sort(key=lambda t: (
+        t.sla_info.get('sort', 3),
+        t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
+        -t.created_at.timestamp(),
+    ))
+
     return render(request, 'reports/stats.html', {
         'metrics': metrics,
         'role_counts': role_counts,
@@ -2514,6 +2708,8 @@ def stats(request):
         'report_roles': Profile.ROLE_CHOICES,
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'generated_at': generated_at,
+        'sla_only': sla_only,
+        'sla_urgent_tasks': sla_urgent_tasks,
     })
 
 
@@ -2528,6 +2724,18 @@ def performance_board(request):
     urgent_tasks = Task.objects.filter(status='overdue').count()
     total_tasks = Task.objects.count()
     thresholds = get_sla_thresholds()
+    sla_only = request.GET.get('sla_only') == '1'
+    sla_urgent_tasks = []
+    for t in Task.objects.select_related('project', 'user').exclude(status='completed'):
+        info = _calc_sla_info(t)
+        if info and info.get('status') in ('tight', 'overdue'):
+            t.sla_info = info
+            sla_urgent_tasks.append(t)
+    sla_urgent_tasks.sort(key=lambda t: (
+        t.sla_info.get('sort', 3),
+        t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
+        -t.created_at.timestamp(),
+    ))
 
     if request.GET.get('send_weekly') == '1':
         recipient = (request.user.email or '').strip()
@@ -2545,6 +2753,8 @@ def performance_board(request):
         'urgent_tasks': urgent_tasks,
         'total_tasks': total_tasks,
         'sla_thresholds': thresholds,
+        'sla_only': sla_only,
+        'sla_urgent_tasks': sla_urgent_tasks,
     })
 
 
