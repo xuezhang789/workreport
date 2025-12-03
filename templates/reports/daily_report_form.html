@@ -1298,6 +1298,10 @@
         <span id="toast-text">操作成功 / Success</span>
     </div>
 
+    {% if initial_values %}
+    {{ initial_values|json_script:"initial-report-data" }}
+    {% endif %}
+
 <script>
     // Initialize today's date
     (function setToday() {
@@ -1326,6 +1330,40 @@
     let templateSample = '';
     const templateApi = "{% url 'reports:role_template_api' %}";
     const projectApi = "{% url 'reports:project_search_api' %}";
+    // preload initial report content when editing
+    (function preloadReport() {
+        const dataEl = document.getElementById('initial-report-data');
+        if (!dataEl) return;
+        let data = {};
+        try { data = JSON.parse(dataEl.textContent); } catch (e) { data = {}; }
+        const fieldToId = {
+            today_work: 'dev-today',
+            progress_issues: 'dev-progress',
+            tomorrow_plan: 'dev-tomorrow',
+            testing_scope: 'qa-scope',
+            testing_progress: 'qa-progress',
+            bug_summary: 'qa-bugs',
+            testing_tomorrow: 'qa-tomorrow',
+            product_today: 'pm-today',
+            product_coordination: 'pm-coord',
+            product_tomorrow: 'pm-tomorrow',
+            ui_today: 'ui-today',
+            ui_feedback: 'ui-feedback',
+            ui_tomorrow: 'ui-tomorrow',
+            ops_today: 'ops-today',
+            ops_monitoring: 'ops-monitor',
+            ops_tomorrow: 'ops-tomorrow',
+            mgr_progress: 'mgr-progress',
+            mgr_risks: 'mgr-risk',
+            mgr_tomorrow: 'mgr-tomorrow'
+        };
+        Object.entries(fieldToId).forEach(([field, elId]) => {
+            if (data[field]) {
+                const el = document.getElementById(elId);
+                if (el) el.value = data[field];
+            }
+        });
+    })();
     
     // Role sections configuration
     const roleSections = {
