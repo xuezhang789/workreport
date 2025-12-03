@@ -70,6 +70,26 @@
    ```
 6. **生产部署要点**：关闭 DEBUG，设置 SECRET_KEY/ALLOWED_HOSTS，使用 gunicorn/uwsgi + Nginx，执行 `collectstatic` 提供静态资源。
 
+## 宝塔计划任务 / BT Panel Cron
+- 目的：在宝塔面板中定时运行 Django 管理命令（如 SLA 检查、催报邮件）。
+- 前置：确认项目路径与虚拟环境路径（示例 `/Users/arlo/Downloads/workreport`，虚拟环境 `.venv`），并设置 `DJANGO_SETTINGS_MODULE=settings`。
+- 在“计划任务”选择“Shell 脚本”，示例脚本：
+  - 每小时运行 SLA/逾期检查：
+    ```bash
+    cd /Users/arlo/Downloads/workreport
+    source .venv/bin/activate
+    export DJANGO_SETTINGS_MODULE=settings
+    python manage.py check_task_sla
+    ```
+  - 每天 20:00 催报/发送周报（根据需要启用）：
+    ```bash
+    cd /Users/arlo/Downloads/workreport
+    source .venv/bin/activate
+    export DJANGO_SETTINGS_MODULE=settings
+    python manage.py send_report_reminders
+    ```
+- 提示：使用绝对路径，勾选日志输出便于排查；如需其他命令，将 `manage.py your_command` 替换即可。
+
 ## 配置说明 / Configuration
 - `DEBUG`, `SECRET_KEY`, `ALLOWED_HOSTS`：安全基础配置。
 - 邮件：`EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_SSL/TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`，用于验证码/通知。
