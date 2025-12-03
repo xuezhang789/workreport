@@ -1,6 +1,7 @@
-from datetime import time
+from datetime import time, timedelta
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class Profile(models.Model):
@@ -135,6 +136,7 @@ class DailyReport(models.Model):
         ordering = ['-date', '-created_at']
         indexes = [
             models.Index(fields=['user', 'date']),
+            models.Index(fields=['date']),
             models.Index(fields=['user', 'status']),
             models.Index(fields=['role', 'date']),
             models.Index(fields=['status']),
@@ -228,6 +230,8 @@ class Task(models.Model):
     due_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     overdue_notified_at = models.DateTimeField(null=True, blank=True)
+    amber_notified_at = models.DateTimeField(null=True, blank=True)
+    red_notified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -236,6 +240,9 @@ class Task(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['project', 'status']),
             models.Index(fields=['user', 'status']),
+            models.Index(fields=['project']),
+            models.Index(fields=['user']),
+            models.Index(fields=['created_at']),
             models.Index(fields=['due_at']),
         ]
 
@@ -299,6 +306,42 @@ class SystemSetting(models.Model):
         return f"{self.key}={self.value}"
 
 
+def default_export_expiry():
+    return timezone.now() + timedelta(days=3)
+
+
+class ExportJob(models.Model):
+    """导出任务队列：记录状态与生成的文件路径。"""
+    STATUS_CHOICES = [
+        ('pending', '待处理 / Pending'),
+        ('running', '处理中 / Running'),
+        ('done', '完成 / Done'),
+        ('failed', '失败 / Failed'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='export_jobs')
+    export_type = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    progress = models.IntegerField(default=0)
+    file_path = models.CharField(max_length=500, blank=True)
+    message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(default=default_export_expiry)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.export_type} {self.status}"
+
+
+class UserPreference(models.Model):
+    """用户偏好，存储仪表卡片等设置。"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    data = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class TaskHistory(models.Model):
     """任务变更历史：状态、截止时间、指派人等变更记录。"""
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='histories')
@@ -324,6 +367,7 @@ class ReportTemplateVersion(models.Model):
     placeholders = models.JSONField(default=dict, blank=True)
     is_shared = models.BooleanField(default=True)
     version = models.PositiveIntegerField(default=1)
+    usage_count = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='report_template_versions')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -347,6 +391,7 @@ class TaskTemplateVersion(models.Model):
     url = models.URLField(blank=True)
     is_shared = models.BooleanField(default=True)
     version = models.PositiveIntegerField(default=1)
+    usage_count = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='task_template_versions')
     created_at = models.DateTimeField(auto_now_add=True)
 

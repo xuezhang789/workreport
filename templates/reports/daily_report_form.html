@@ -1007,8 +1007,15 @@
                         </div>
                         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center;">
                             <button type="button" id="apply-sample" class="btn btn-ghost">一键套用角色示例 / Apply Sample</button>
+                            <select id="tpl-recommend" style="min-width:200px;padding:10px 12px;border:1px solid var(--border-light);border-radius:10px;flex:1;">
+                                <option value="">智能推荐 / Smart suggestions</option>
+                            </select>
                             <input type="text" id="tpl-name" placeholder="模板名称（可选） / Template name (optional)" style="flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--border-light);border-radius:10px;">
-                            <button type="button" id="apply-template" class="btn btn-primary">套用模板 / Apply Template</button>
+                            <button type="button" id="apply-template" class="btn btn-primary">替换套用 / Replace</button>
+                            <button type="button" id="apply-template-append" class="btn btn-ghost">追加套用 / Append</button>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+                            匹配优先级：项目 → 角色 → 全局；若未命中会自动回退并提示 / Priority: Project → Role → Global; will fallback with notice if not found.
                         </div>
                     </div>
 
@@ -1940,8 +1947,10 @@
     }
 
     const tplBtn = document.getElementById('apply-template');
+    const tplAppendBtn = document.getElementById('apply-template-append');
     const tplNameInput = document.getElementById('tpl-name');
-    async function applyReportTemplate() {
+    const tplRecommend = document.getElementById('tpl-recommend');
+    async function applyReportTemplate(mode = 'replace') {
         const tplApi = "{% url 'reports:template_apply_api' %}";
         const params = new URLSearchParams({type: 'report'});
         const role = roleSelect ? roleSelect.value : '';
@@ -1964,7 +1973,13 @@
             const placeholders = data.placeholders || {};
             Object.entries(placeholders).forEach(([key, val]) => {
                 const field = document.querySelector(`[name="${key}"]`);
-                if (field) field.value = val;
+                if (field) {
+                    if (mode === 'append' && field.value) {
+                        field.value = field.value + "\n" + val;
+                    } else {
+                        field.value = val;
+                    }
+                }
             });
             if (data.content) {
                 const primary = role === 'qa' ? 'testing_scope'
@@ -1974,7 +1989,13 @@
                     : role === 'mgr' ? 'mgr_progress'
                     : 'today_work';
                 const field = document.querySelector(`[name="${primary}"]`);
-                if (field && !field.value) field.value = data.content;
+                if (field) {
+                    if (mode === 'append' && field.value) {
+                        field.value = field.value + "\n" + data.content;
+                    } else if (!field.value || mode === 'replace') {
+                        field.value = data.content;
+                    }
+                }
             }
             if (data.fallback) {
                 showToast('✅ 已套用默认模板（匹配角色/全局） / Applied fallback template');
@@ -1985,6 +2006,45 @@
             showToast('⚠️ 模板加载失败，请稍后再试 / Failed to load template');
         }
     }
-    if (tplBtn) tplBtn.addEventListener('click', applyReportTemplate);
+    if (tplBtn) tplBtn.addEventListener('click', () => applyReportTemplate('replace'));
+    if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyReportTemplate('append'));
+
+    async function loadTemplateRecommendations() {
+        if (!tplRecommend) return;
+        const recApi = "{% url 'reports:template_recommend_api' %}";
+        const params = new URLSearchParams({type: 'report'});
+        const role = roleSelect ? roleSelect.value : '';
+        const projectSelect = document.getElementById('projects');
+        if (role) params.append('role', role);
+        if (projectSelect) {
+            const selected = projectSelect.selectedOptions;
+            if (selected && selected.length) {
+                Array.from(selected).forEach(opt => params.append('project', opt.value));
+            }
+        }
+        try {
+            const res = await fetch(`${recApi}?${params.toString()}`);
+            const data = await res.json();
+            tplRecommend.innerHTML = '<option value=\"\">智能推荐 / Smart suggestions</option>';
+            (data.results || []).forEach(item => {
+                const label = `${item.name} · ${item.project_name || '全局/Global'} · v${item.version}`;
+                const opt = document.createElement('option');
+                opt.value = item.name;
+                opt.textContent = label;
+                tplRecommend.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn('recommend fetch failed', e);
+        }
+    }
+    if (tplRecommend) {
+        tplRecommend.addEventListener('change', (e) => {
+            if (tplNameInput) tplNameInput.value = e.target.value;
+        });
+        loadTemplateRecommendations();
+        if (roleSelect) roleSelect.addEventListener('change', loadTemplateRecommendations);
+        const projectSelect = document.getElementById('projects');
+        if (projectSelect) projectSelect.addEventListener('change', loadTemplateRecommendations);
+    }
 </script>
 {% endblock %}

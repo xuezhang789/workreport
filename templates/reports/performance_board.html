@@ -620,8 +620,48 @@
                 <a href="{% url 'reports:performance_export' %}?scope=role" class="btn secondary">👥 导出角色 / Export Roles</a>
                 <a href="{% url 'reports:performance_export' %}?scope=streak" class="btn secondary">🔥 导出连签 / Export Streaks</a>
                 <a href="?send_weekly=1" class="btn secondary">📧 发送周报 / Send Weekly Digest</a>
+                {% if sla_only %}
+                    <a href="{% url 'reports:performance_board' %}" class="btn secondary">🔍 显示全部 / Show all</a>
+                {% else %}
+                    <a href="?sla_only=1" class="btn secondary">⚠️ 仅看 SLA 预警 / SLA alerts only</a>
+                {% endif %}
             </div>
         </section>
+
+        {% if sla_only %}
+        <section class="card">
+            <h2>⚠️ SLA 预警 / SLA Alerts</h2>
+            <p class="lede">仅显示红/黄等级或逾期任务；红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h。</p>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>任务 / Task</th>
+                            <th>项目 / Project</th>
+                            <th>等级 / Level</th>
+                            <th>剩余小时 / Remaining (h)</th>
+                            <th>指派人 / Assignee</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in sla_urgent_tasks %}
+                        <tr>
+                            <td>{{ t.title }}</td>
+                            <td>{{ t.project.name }}</td>
+                            <td>
+                                {% if t.sla_info.level == 'red' %}Red{% elif t.sla_info.level == 'amber' %}Amber{% else %}Overdue{% endif %}
+                            </td>
+                            <td>{{ t.sla_info.remaining_hours|default:"--" }}</td>
+                            <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" style="text-align:center;color:#94a3b8;">暂无 SLA 预警任务 / No SLA alerts</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
 
         <section class="card">
             <h2>📊 核心指标 / Key Metrics</h2>
@@ -732,4 +772,69 @@
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 绩效看板卡片选择：同步服务端偏好（Fallback 本地）
+    (function() {
+        const key = 'performance_cards';
+        const cards = document.querySelectorAll('.metrics-grid .metric-card');
+        let prefs = {};
+
+        function applyPrefs() {
+            cards.forEach((card, idx) => {
+                const name = card.dataset.card || `card${idx}`;
+                if (prefs[name] === false) card.style.display = 'none';
+                else card.style.display = '';
+            });
+        }
+
+        async function loadPrefs() {
+            try {
+                const res = await fetch("{% url 'reports:preference_get_api' %}?key=" + key);
+                const data = await res.json();
+                prefs = data.data || {};
+                applyPrefs();
+            } catch (e) {
+                prefs = JSON.parse(localStorage.getItem(key) || '{}');
+                applyPrefs();
+            }
+        }
+
+        async function savePrefs() {
+            const form = new FormData();
+            form.append('key', key);
+            form.append('value', JSON.stringify(prefs));
+            try { await fetch("{% url 'reports:preference_save_api' %}", {method:'POST', body: form, headers:{'X-CSRFToken':'{{ csrf_token }}'}}); }
+            catch(e){ localStorage.setItem(key, JSON.stringify(prefs)); }
+        }
+
+        const panel = document.createElement('div');
+        panel.style.display = 'flex';
+        panel.style.gap = '8px';
+        panel.style.flexWrap = 'wrap';
+        panel.style.margin = '8px 0 12px';
+        panel.innerHTML = '<strong style="font-size:13px;">显示卡片 / Show cards:</strong>';
+        const names = Array.from(cards).map((c, idx) => c.dataset.card || `card${idx}`);
+        names.forEach((name, i) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = `卡片${i+1}`;
+            btn.className = 'btn secondary';
+            btn.style.padding = '8px 12px';
+            btn.onclick = () => {
+                const card = cards[i];
+                const hidden = card.style.display === 'none';
+                card.style.display = hidden ? '' : 'none';
+                prefs[name] = hidden;
+                savePrefs();
+            };
+            panel.appendChild(btn);
+        });
+        const shell = document.querySelector('.performance-shell');
+        if (shell) shell.insertBefore(panel, shell.children[1] || null);
+        loadPrefs();
+    })();
+</script>
 {% endblock %}

@@ -1,127 +1,653 @@
 {% extends "base_topbar.html" %}
 {% block title %}模板中心 / Template Center{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="模板中心 / Template Center" nav_subtitle="按角色与项目共享日报与任务模板 / Share report & task templates by role/project" %}{% endblock %}
-{% block content %}
-<div class="container" style="max-width:1100px;">
-    <section style="margin:16px 0;padding:14px 16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
-        <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end;">
-            <div>
-                <label style="font-weight:700;font-size:13px;">关键词 / Keyword</label>
-                <input type="text" name="q" value="{{ q }}" placeholder="按名称/内容搜索 / Search by name or content" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
-            </div>
-            <div>
-                <label style="font-weight:700;font-size:13px;">角色 / Role</label>
-                <select name="role" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
-                    <option value="">全部 / All</option>
-                    {% for val,label in report_form.fields.role.choices %}
-                        <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label style="font-weight:700;font-size:13px;">项目 / Project</label>
-                <select name="project" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
-                    <option value="">全部 / All</option>
-                    {% for p in projects %}
-                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label style="font-weight:700;font-size:13px;">排序 / Sort</label>
-                <select name="sort" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;">
-                    <option value="version" {% if sort == 'version' %}selected{% endif %}>按版本 / By version</option>
-                    <option value="updated" {% if sort == 'updated' %}selected{% endif %}>按更新时间 / By updated</option>
-                </select>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="submit" class="btn btn-primary" style="padding:10px 14px;">🔍 筛选 / Filter</button>
-                <a href="{% url 'reports:template_center' %}" class="btn btn-ghost" style="padding:10px 14px;">重置 / Reset</a>
-            </div>
-        </form>
-    </section>
-    <section style="margin:24px 0;padding:18px 20px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
-        <h1 style="margin:0 0 8px 0;font-size:20px;font-weight:800;">模板创建 / Create template</h1>
-        <p style="margin:0 0 14px 0;color:#475569;">支持项目/角色的共享模板，并自动记录版本。双语文案 / Bilingual copy.</p>
-        <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">当前排序 / Current sort: {% if sort == 'updated' %}按更新时间 / By updated{% else %}按版本 / By version{% endif %}</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
-            <form method="post" action="" class="card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="report">
-                <h3 style="margin:0 0 10px 0;">日报模板 / Report template</h3>
-                {{ report_form.as_p }}
-                <button type="submit" class="btn btn-primary" style="margin-top:8px;">保存日报模板 / Save report template</button>
-            </form>
-            <form method="post" action="" class="card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="task">
-                <h3 style="margin:0 0 10px 0;">任务模板 / Task template</h3>
-                {{ task_form.as_p }}
-                <button type="submit" class="btn btn-primary" style="margin-top:8px;">保存任务模板 / Save task template</button>
-            </form>
-        </div>
-    </section>
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #8b5cf6;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-section: rgba(248, 250, 252, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --border-light: rgba(226, 232, 240, 0.7);
+            --border-strong: rgba(59, 130, 246, 0.2);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-    <section style="margin:24px 0;padding:18px 20px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;">
-        <h2 style="margin:0 0 12px 0;">最新模板 / Latest versions</h2>
-        <p style="margin:0 0 12px 0;color:#64748b;font-size:13px;">优先显示符合筛选条件的最新版本；未匹配时可尝试清空筛选或更换项目/角色。 / Shows latest versions for current filters; clear or adjust filters if no match.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
-            {% for tmpl in report_templates %}
-            <article style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
-                <div style="font-weight:700;">📄 {{ tmpl.name }}</div>
-                <div style="font-size:12px;color:#475569;">角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}</div>
-                <div style="font-size:12px;color:#475569;">版本 / Version: v{{ tmpl.version }}</div>
-                <div style="margin-top:6px;font-size:12px;color:#64748b;">{{ tmpl.content|truncatechars:120 }}</div>
-            </article>
-            {% empty %}
-            <div style="color:#94a3b8;">暂无日报模板 / No report template</div>
-            {% endfor %}
-        </div>
-        {% if report_templates.has_other_pages %}
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;font-size:13px;">
-            {% if report_templates.has_previous %}<a class="btn btn-ghost" href="?rpage={{ report_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
-            <span class="chip">第 {{ report_templates.number }} / {{ report_templates.paginator.num_pages }} 页 / Page</span>
-            {% if report_templates.has_next %}<a class="btn btn-ghost" href="?rpage={{ report_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
-            <form method="get" style="display:flex;gap:6px;align-items:center;">
-                <input type="hidden" name="q" value="{{ q }}">
-                <input type="hidden" name="role" value="{{ role_filter }}">
-                <input type="hidden" name="project" value="{{ project_filter }}">
-                <input type="hidden" name="sort" value="{{ sort }}">
-                <label style="font-size:12px;color:#475569;">跳转 / Jump</label>
-                <input type="number" name="rpage" min="1" max="{{ report_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;">
-                <button class="btn btn-ghost" type="submit" style="padding:8px 10px;">Go</button>
+        * { box-sizing: border-box; }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: 'Space Grotesk', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .template-page {
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-shell {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+            padding: 4px 0 24px;
+        }
+
+        .banner {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: clamp(24px, 4vw, 36px);
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+            gap: 20px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.8;
+        }
+
+        .banner::after {
+            content: '';
+            position: absolute;
+            right: -20%;
+            bottom: -40%;
+            width: 360px;
+            height: 360px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 65%);
+        }
+
+        .eyebrow {
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: 0 0 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .banner h1 {
+            margin: 0 0 8px;
+            font-size: clamp(24px, 3vw, 30px);
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .subtitle {
+            margin: 0 0 14px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(255, 255, 255, 0.9));
+            border: 1px solid var(--border-light);
+            font-size: 13px;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .chip strong { color: var(--text-primary); }
+
+        .callout {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(6, 182, 212, 0.05));
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.55;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .callout h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+        }
+
+        .callout ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .card-block {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-section));
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 22px clamp(18px, 3vw, 26px);
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-block::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05), transparent 35%);
+            pointer-events: none;
+        }
+
+        .card-block:hover { box-shadow: var(--shadow-lg); }
+
+        .section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .muted {
+            margin: 4px 0 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--text-primary);
+            font-size: 12px;
+            border: 1px solid var(--border-strong);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filters-card .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .field label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field label::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        input, select {
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            padding: 13px 14px;
+            font-size: 14px;
+            background: var(--bg-glass);
+            color: var(--text-primary);
+            outline: none;
+            transition: var(--transition);
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+            font-family: inherit;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            background: #fff;
+        }
+
+        .form-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-ghost {
+            background: linear-gradient(135deg, #ffffff, var(--bg-section));
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-card h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-card p {
+            margin: 0 0 10px;
+            display: grid;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .form-card label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .form-card input, .form-card select, .form-card textarea {
+            width: 100%;
+        }
+
+        .template-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .template-card.new {
+            border-color: rgba(59, 130, 246, 0.35);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.18);
+        }
+
+        .template-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.05), transparent 30%);
+            pointer-events: none;
+        }
+
+        .template-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+        .template-header {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .template-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .template-content {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .subhead {
+            margin: 18px 0 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .empty-state {
+            margin: 6px 0;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px dashed var(--border-light);
+            color: var(--text-muted);
+            text-align: center;
+            background: linear-gradient(135deg, rgba(148, 163, 184, 0.06), rgba(255, 255, 255, 0.95));
+        }
+
+        .pagination {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+
+        .page-stat {
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: rgba(37, 99, 235, 0.08);
+            border: 1px solid var(--border-strong);
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+
+        .jump-form {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .jump-form input[type="number"] {
+            width: 80px;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        .jump-label {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .note {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 960px) {
+            .banner {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .page-shell { gap: 16px; }
+            .card-block, .banner { border-radius: 16px; padding: 18px; }
+            .template-grid { grid-template-columns: 1fr; }
+            .filters-card .form-grid { grid-template-columns: 1fr; }
+            .form-actions { justify-content: flex-start; }
+            .btn { width: 100%; justify-content: center; }
+            .jump-form { width: 100%; justify-content: center; }
+        }
+{% endblock %}
+{% block content %}
+<div class="template-page">
+    <div class="page-shell">
+        <section class="banner">
+            <div>
+                <p class="eyebrow">📋 模板管理 / Template Management</p>
+                <h1>模板中心 / Template Center</h1>
+                <p class="subtitle">按角色与项目共享日报与任务模板，保持与工作台一致的视觉与交互体验 / Share report & task templates by role/project with the same visual language as the workbench.</p>
+                <div class="chip-row">
+                    <span class="chip"><strong>类型 / Types:</strong> 日报 · 任务</span>
+                    <span class="chip"><strong>范围 / Scope:</strong> 项目 · 角色 · 全局</span>
+                    <span class="chip"><strong>版本 / Version:</strong> 自动记录 / Auto versioned</span>
+                </div>
+            </div>
+            <div class="callout">
+                <h4>优先级 / Priority</h4>
+                <ul>
+                    <li>按 项目 → 角色 → 全局 匹配最新版本 / Match by Project → Role → Global (latest version).</li>
+                    <li>未命中时会提示并回退默认模板 / When missing, fallback to default and show notice.</li>
+                    <li>保持双语文案与工作台一致 / Bilingual copy aligned with workbench tone.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="card-block filters-card">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">筛选 / Filter</p>
+                    <h2 class="section-title">快速定位模板 / Quickly find templates</h2>
+                    <p class="muted">可按关键词、角色、项目与排序组合检索 / Search by keyword, role, project, and sort.</p>
+                </div>
+                <div class="pill">当前排序 / Current: {% if sort == 'updated' %}按更新时间 / By updated{% else %}按版本 / By version{% endif %}</div>
+            </div>
+            <form method="get" class="form-grid">
+                <div class="field">
+                    <label>关键词 / Keyword</label>
+                    <input type="text" name="q" value="{{ q }}" placeholder="按名称/内容搜索 / Search by name or content">
+                </div>
+                <div class="field">
+                    <label>角色 / Role</label>
+                    <select name="role">
+                        <option value="">全部 / All</option>
+                        {% for val,label in report_form.fields.role.choices %}
+                            <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>项目 / Project</label>
+                    <select name="project">
+                        <option value="">全部 / All</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>排序 / Sort</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="submit" name="sort" value="version" class="btn {% if sort == 'version' %}{% else %}btn-ghost{% endif %}">版本优先 / Version first</button>
+                        <button type="submit" name="sort" value="updated" class="btn {% if sort == 'updated' %}{% else %}btn-ghost{% endif %}">更新时间优先 / Updated first</button>
+                        <button type="submit" name="sort" value="usage" class="btn {% if sort == 'usage' %}{% else %}btn-ghost{% endif %}">使用次数 / By usage</button>
+                    </div>
+                    <p class="note">提示：版本优先常用于历史回溯；更新时间优先便于查看最新编辑；按使用次数能快速找到常用模板 / Version=history, Updated=latest, Usage=popular.</p>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">🔍 筛选 / Filter</button>
+                    <a href="{% url 'reports:template_center' %}" class="btn btn-ghost">重置 / Reset</a>
+                </div>
             </form>
-        </div>
-        {% endif %}
-        <h3 style="margin:16px 0 10px 0;">任务模板 / Task templates</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;">
-            {% for tmpl in task_templates %}
-            <article style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
-                <div style="font-weight:700;">✅ {{ tmpl.name }}</div>
-                <div style="font-size:12px;color:#475569;">角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}</div>
-                <div style="font-size:12px;color:#475569;">版本 / Version: v{{ tmpl.version }}</div>
-                <div style="margin-top:6px;font-size:12px;color:#64748b;">{{ tmpl.title }} — {{ tmpl.content|truncatechars:120 }}</div>
-            </article>
-            {% empty %}
-            <div style="color:#94a3b8;">暂无任务模板 / No task template</div>
-            {% endfor %}
-        </div>
-        {% if task_templates.has_other_pages %}
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;font-size:13px;">
-            {% if task_templates.has_previous %}<a class="btn btn-ghost" href="?tpage={{ task_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
-            <span class="chip">第 {{ task_templates.number }} / {{ task_templates.paginator.num_pages }} 页 / Page</span>
-            {% if task_templates.has_next %}<a class="btn btn-ghost" href="?tpage={{ task_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
-            <form method="get" style="display:flex;gap:6px;align-items:center;">
-                <input type="hidden" name="q" value="{{ q }}">
-                <input type="hidden" name="role" value="{{ role_filter }}">
-                <input type="hidden" name="project" value="{{ project_filter }}">
-                <input type="hidden" name="sort" value="{{ sort }}">
-                <label style="font-size:12px;color:#475569;">跳转 / Jump</label>
-                <input type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" style="width:70px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;" required>
-                <button class="btn btn-ghost" type="submit" style="padding:8px 10px;">Go</button>
-            </form>
-        </div>
-        {% endif %}
-    </section>
+        </section>
+
+        <section class="card-block">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">创建 / Create</p>
+                    <h2 class="section-title">模板创建 / Create Templates</h2>
+                    <p class="muted">支持项目/角色共享并自动记录版本，保持双语填写指引 / Share by project & role with auto versioning and bilingual hints.</p>
+                </div>
+            </div>
+            <div class="template-grid">
+                <form method="post" action="" class="form-card">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="report">
+                    <h3>📄 日报模板 / Report Template</h3>
+                    {{ report_form.as_p }}
+                    <button type="submit" class="btn">保存日报模板 / Save Report Template</button>
+                </form>
+                <form method="post" action="" class="form-card">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="task">
+                    <h3>✅ 任务模板 / Task Template</h3>
+                    {{ task_form.as_p }}
+                    <button type="submit" class="btn">保存任务模板 / Save Task Template</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="card-block">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">最新 / Latest</p>
+                    <h2 class="section-title">最新模板 / Latest Templates</h2>
+                    <p class="muted">优先显示符合筛选的最新版本；未匹配时可清空筛选或切换项目/角色 / Shows latest for current filters; clear or switch filters if none.</p>
+                </div>
+                <span class="pill">排序 / Sort: {% if sort == 'updated' %}更新时间 / Updated{% else %}版本号 / Version{% endif %}</span>
+            </div>
+
+            <h3 class="subhead">📄 日报模板 / Report Templates</h3>
+            <div class="template-grid">
+                {% for tmpl in report_templates %}
+                <article class="template-card {% if report_templates.number == 1 and forloop.first %}new{% endif %}">
+                    <div class="template-header">📄 {{ tmpl.name }}</div>
+                    <div class="template-meta">
+                        角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}
+                    </div>
+                    <div class="template-meta">版本 / Version: v{{ tmpl.version }}</div>
+                    <div class="template-meta">使用次数 / Usage: {{ tmpl.usage_count|default:0 }}</div>
+                    <div class="template-content">{{ tmpl.content|truncatechars:120 }}</div>
+                </article>
+                {% empty %}
+                <div class="empty-state">暂无日报模板 / No Report Templates Available</div>
+                {% endfor %}
+            </div>
+            {% if report_templates.has_other_pages %}
+            <div class="pagination">
+                {% if report_templates.has_previous %}<a class="btn btn-ghost" href="?rpage={{ report_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
+                <span class="page-stat">第 {{ report_templates.number }} / {{ report_templates.paginator.num_pages }} 页 / Page</span>
+                {% if report_templates.has_next %}<a class="btn btn-ghost" href="?rpage={{ report_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
+                <form method="get" class="jump-form">
+                    <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="role" value="{{ role_filter }}">
+                    <input type="hidden" name="project" value="{{ project_filter }}">
+                    <input type="hidden" name="sort" value="{{ sort }}">
+                    <label class="jump-label" for="rpage-input">跳转 / Jump</label>
+                    <input id="rpage-input" type="number" name="rpage" min="1" max="{{ report_templates.paginator.num_pages }}">
+                    <button class="btn btn-ghost" type="submit">Go</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <h3 class="subhead">✅ 任务模板 / Task Templates</h3>
+            <div class="template-grid">
+                {% for tmpl in task_templates %}
+                <article class="template-card {% if task_templates.number == 1 and forloop.first %}new{% endif %}">
+                    <div class="template-header">✅ {{ tmpl.name }}</div>
+                    <div class="template-meta">
+                        角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}
+                    </div>
+                    <div class="template-meta">版本 / Version: v{{ tmpl.version }}</div>
+                    <div class="template-meta">使用次数 / Usage: {{ tmpl.usage_count|default:0 }}</div>
+                    <div class="template-content">{{ tmpl.title }} — {{ tmpl.content|truncatechars:120 }}</div>
+                </article>
+                {% empty %}
+                <div class="empty-state">暂无任务模板 / No Task Templates Available</div>
+                {% endfor %}
+            </div>
+            {% if task_templates.has_other_pages %}
+            <div class="pagination">
+                {% if task_templates.has_previous %}<a class="btn btn-ghost" href="?tpage={{ task_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
+                <span class="page-stat">第 {{ task_templates.number }} / {{ task_templates.paginator.num_pages }} 页 / Page</span>
+                {% if task_templates.has_next %}<a class="btn btn-ghost" href="?tpage={{ task_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
+                <form method="get" class="jump-form">
+                    <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="role" value="{{ role_filter }}">
+                    <input type="hidden" name="project" value="{{ project_filter }}">
+                    <input type="hidden" name="sort" value="{{ sort }}">
+                    <label class="jump-label" for="tpage-input">跳转 / Jump</label>
+                    <input id="tpage-input" type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" required>
+                    <button class="btn btn-ghost" type="submit">Go</button>
+                </form>
+            </div>
+            {% endif %}
+        </section>
+    </div>
 </div>
 {% endblock %}

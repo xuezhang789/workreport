@@ -1058,11 +1058,11 @@
                             {% endif %}
                             {% if t.sla_info %}
                                 {% if t.sla_info.level == 'red' %}
-                                    <span class="status-badge status-sla-red">SLA 紧急 / Critical · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                    <span class="status-badge status-sla-red">SLA 紧急 / Critical (Red) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
                                 {% elif t.sla_info.level == 'amber' %}
-                                    <span class="status-badge status-sla-amber">SLA 提醒 / Warning · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                    <span class="status-badge status-sla-amber">SLA 提醒 / Warning (Amber) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
                                 {% elif t.sla_info.level == 'green' %}
-                                    <span class="status-badge status-sla-green">SLA 正常 / Normal · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                    <span class="status-badge status-sla-green">SLA 正常 / Normal (Green) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
                                 {% else %}
                                     <span class="status-badge status-sla">SLA 未启用 / SLA off</span>
                                 {% endif %}

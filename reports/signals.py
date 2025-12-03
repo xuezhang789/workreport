@@ -32,3 +32,8 @@ def clear_cache_on_task_delete(sender, **kwargs):
 @receiver(post_delete, sender=DailyReport)
 def clear_cache_on_report_delete(sender, **kwargs):
     _invalidate_stats_cache()
+
+
+@receiver(m2m_changed, sender=DailyReport.projects.through)
+def clear_cache_on_report_project_link(sender, **kwargs):
+    _invalidate_stats_cache()

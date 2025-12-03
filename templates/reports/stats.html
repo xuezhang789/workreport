@@ -580,12 +580,55 @@
                     {% endfor %}
                 </select>
             </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label>过滤 / Filter</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    {% if sla_only %}
+                        <a class="btn btn-ghost" href="{% url 'reports:stats' %}?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}">显示全部 / Show all</a>
+                    {% else %}
+                        <a class="btn btn-ghost" href="?sla_only=1&date={{ today }}&project={{ project_filter }}&role={{ role_filter }}">仅看 SLA 预警 / SLA only</a>
+                    {% endif %}
+                </div>
+            </div>
             <button class="btn btn-primary" type="submit">🔍 筛选 / Filter</button>
             {% if missing_projects %}
                 <a class="btn btn-ghost" href="?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1">📧 一键催报 / Send Reminder</a>
             {% endif %}
         </form>
     </div>
+
+    {% if sla_only %}
+    <div class="card" style="margin-top:16px;">
+        <h3>SLA 预警任务 / SLA Alerts</h3>
+        <p style="margin:4px 0 10px;color:#475569;font-size:13px;">仅显示红/黄等级或逾期任务。SLA：红 {{ thresholds.red }}h / 黄 {{ thresholds.amber }}h。</p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>任务 / Task</th>
+                        <th>项目 / Project</th>
+                        <th>等级 / Level</th>
+                        <th>剩余小时 / Remaining (h)</th>
+                        <th>指派人 / Assignee</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in sla_urgent_tasks %}
+                    <tr>
+                        <td>{{ t.title }}</td>
+                        <td>{{ t.project.name }}</td>
+                        <td>{% if t.sla_info.level == 'red' %}Red{% elif t.sla_info.level == 'amber' %}Amber{% else %}Overdue{% endif %}</td>
+                        <td>{{ t.sla_info.remaining_hours|default:"--" }}</td>
+                        <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align:center;color:#94a3b8;">暂无 SLA 预警任务 / No SLA alerts</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="grid">
         <div class="card">

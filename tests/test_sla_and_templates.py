@@ -103,7 +103,9 @@ class CacheAndTemplateTests(TestCase):
                 'username': self.admin.username,
             })
             self.assertEqual(resp.status_code, 400)
-            self.assertIn("数据量过大", resp.content.decode())
+            content = resp.content.decode()
+            self.assertIn("数据量过大", content)
+            self.assertIn("Data too large", content)
         finally:
             report_views.MAX_EXPORT_ROWS = original
 
@@ -155,3 +157,12 @@ class CacheAndTemplateTests(TestCase):
     def test_sla_threshold_display_in_performance_board(self):
         resp = self.client.get(reverse('reports:performance_board'))
         self.assertContains(resp, "SLA 阈值")
+
+    def test_cache_invalidated_on_report_m2m_change(self):
+        from django.core.cache import cache
+        today = timezone.localdate()
+        report = DailyReport.objects.create(user=self.admin, date=today, role='dev', status='submitted')
+        cache_key = f"stats_metrics_v1_{today}_None_"
+        cache.set(cache_key, {'dummy': True})
+        report.projects.add(self.project)  # 触发 m2m_changed 信号
+        self.assertIsNone(cache.get(cache_key))
