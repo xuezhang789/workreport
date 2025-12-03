@@ -6,7 +6,7 @@
             <div class="brand-sub">{{ nav_subtitle|default:"日报与项目 / Daily & Projects" }}</div>
         </div>
     </div>
-    <button class="nav-toggle" id="nav-toggle" aria-label="切换菜单">☰ 菜单</button>
+    <button class="nav-toggle" id="nav-toggle" aria-label="切换菜单 / Toggle menu">☰ 菜单 / Menu</button>
     <div class="actions" id="nav-actions">
         <!-- 个人工作台 - 首页概览 -->
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'workbench' %}active{% endif %}" href="{% url 'reports:workbench' %}">个人工作台 / Workbench</a>
@@ -30,13 +30,13 @@
                     <div class="admin-menu" id="admin-menu">
                         <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
                         <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'reports:stats' %}">统计看板 / Stats</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Tasks Stats</a>
+                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>
+                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'reports:stats' %}">统计看板 / Stats Board</a>
+                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
                         <a class="{% if request.resolver_match and request.resolver_match.url_name == 'template_center' %}active{% endif %}" href="{% url 'reports:template_center' %}">模板中心 / Template Center</a>
                         <a class="{% if request.resolver_match and request.resolver_match.url_name == 'role_template_manage' %}active{% endif %}" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'reports:sla_settings' %}">SLA 配置</a>
+                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>
+                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'reports:sla_settings' %}">SLA 配置 / SLA Settings</a>
                     </div>
                 </div>
             {% endif %}
