@@ -7,15 +7,22 @@
             --primary: #2563eb;
             --primary-2: #3b82f6;
             --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-section: rgba(248, 250, 252, 0.8);
+            --border-light: rgba(226, 232, 240, 0.6);
+            --border-hover: rgba(59, 130, 246, 0.3);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border-radius: 16px;
+            --card-spacing: 24px;
+            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
+            --shadow-hover: 0 16px 56px rgba(59, 130, 246, 0.15);
         }
 
         * {
@@ -26,22 +33,21 @@
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
         .hero { 
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
             backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 24px 28px; 
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 32px 36px; 
             box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: grid; 
-            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-            gap: 16px; 
+            display: flex; 
             align-items: center; 
-            margin-bottom: 20px;
+            justify-content: space-between;
+            margin-bottom: var(--card-spacing);
             position: relative;
             overflow: hidden;
         }
@@ -52,14 +58,40 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
+            height: 4px;
             background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
         }
 
+        .hero-content {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+        
         .hero-content h1 {
             margin: 0 0 8px;
             font-size: clamp(22px, 3vw, 28px);
-            background: linear-gradient(135deg, var(--ink), #334155);
+            background: linear-gradient(135deg, var(--text-primary), #334155);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -67,7 +99,7 @@
 
         .hero-content .lede {
             margin: 0;
-            color: var(--muted);
+            color: var(--text-secondary);
             font-size: 14px;
             line-height: 1.5;
         }
@@ -76,7 +108,7 @@
             text-transform: uppercase;
             letter-spacing: 0.12em;
             font-size: 11px;
-            color: var(--muted);
+            color: var(--text-muted);
             margin: 0 0 8px;
             font-weight: 600;
         }
@@ -88,35 +120,35 @@
             align-items: end;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
             backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--card-spacing);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .filters:hover {
             box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
+            transform: translateY(-4px);
         }
 
         label { 
             font-size: 13px; 
             font-weight: 600; 
-            color: var(--ink); 
+            color: var(--text-primary); 
             margin-bottom: 8px; 
             display: block; 
         }
 
         input, select { 
             width: 100%; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border); 
+            border-radius: var(--border-radius); 
+            border: 1px solid var(--border-light); 
             padding: 12px 14px; 
             font-size: 14px; 
             background: rgba(255, 255, 255, 0.8); 
-            color: var(--ink);
+            color: var(--text-primary);
             outline: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -125,17 +157,17 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
             background: #fff;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
         .card { 
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
             backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 20px 24px; 
-            box-shadow: var(--shadow); 
-            margin-bottom: 20px;
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 28px 32px; 
+            box-shadow: var(--shadow-md); 
+            margin-bottom: var(--card-spacing);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
@@ -147,25 +179,25 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 2px;
+            height: 3px;
             background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
         .card:hover::before {
-            opacity: 0.6;
+            opacity: 0.8;
         }
 
         .card:hover {
             box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
+            transform: translateY(-6px);
         }
 
         .btn { 
-            border-radius: var(--radius-md); 
+            border-radius: var(--border-radius); 
             border: none; 
-            padding: 12px 18px; 
+            padding: 12px 20px; 
             font-size: 14px; 
             font-weight: 600; 
             text-decoration: none; 
@@ -204,30 +236,32 @@
         }
 
         .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.4);
+            transform: translateY(-3px);
         }
 
         .btn-ghost { 
             background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink);
+            color: var(--text-primary);
             border: 1px solid rgba(15, 23, 42, 0.1);
         }
 
         .btn-ghost:hover {
             background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
         }
 
         .btn-secondary { 
             background: linear-gradient(135deg, #e5e7eb, #f1f5f9); 
-            color: var(--ink);
+            color: var(--text-primary);
             border: 1px solid rgba(15, 23, 42, 0.1);
         }
 
         .btn-secondary:hover {
             background: linear-gradient(135deg, #d1d5db, #e2e8f0);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
         }
 
         .actions-row {
@@ -242,49 +276,176 @@
             width: 100%; 
             border-collapse: collapse; 
             font-size: 14px;
-            border-radius: var(--radius-md);
+            border-radius: var(--border-radius);
             overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
         }
 
         .table th, .table td { 
-            padding: 14px 12px; 
-            border-bottom: 1px solid rgba(226, 232, 240, 0.6); 
+            padding: 16px 14px; 
+            border-bottom: 1px solid var(--border-light); 
             text-align: left; 
             vertical-align: top;
             transition: all 0.3s ease;
+            word-break: break-word;
         }
 
         .table th { 
             font-size: 12px; 
-            color: var(--muted); 
+            color: var(--text-muted); 
             text-transform: uppercase; 
             letter-spacing: 0.06em;
             font-weight: 700;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08));
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .table tbody tr {
             transition: all 0.3s ease;
+            position: relative;
         }
 
         .table tbody tr:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.02), rgba(6, 182, 212, 0.02));
-            transform: scale(1.01);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(6, 182, 212, 0.04));
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
         }
 
         .table tbody tr:hover td {
+            color: var(--text-primary);
+        }
+
+        .table tbody tr:hover td:first-child {
             color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .table tbody tr:nth-child(even) {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.3), rgba(241, 245, 249, 0.2));
+        }
+        
+        .table tbody tr:nth-child(even):hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(6, 182, 212, 0.04));
+        }
+
+        /* 任务标题链接换行不溢出 */
+        .table td a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 700;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+        
+        /* 批量操作栏样式 */
+        .bulk-actions-bar {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bulk-actions-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.6;
+        }
+        
+        .select-all-label:hover {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: var(--border-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        
+        .select-all-label:has(input:checked) {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.08));
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .bulk-action-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            background: #fff;
+            transform: translateY(-1px);
+        }
+        
+        .bulk-submit-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bulk-submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .bulk-submit-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+        
+        /* 筛选操作区域样式 */
+        .filter-actions {
+            position: relative;
+        }
+        
+        .filter-actions::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+        }
+        
+        .export-btn {
+            position: relative;
+            overflow: hidden;
+            font-size: 13px;
+            padding: 10px 18px;
+        }
+        
+        .export-btn::after {
+            content: '📊';
+            margin-left: 6px;
+            font-size: 14px;
+        }
+        
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+        
+        .export-hint {
+            max-width: 240px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .export-section:hover .export-hint {
+            opacity: 1;
         }
 
         .status-badge { 
             display: inline-flex; 
             align-items: center; 
-            padding: 6px 12px; 
+            padding: 6px 14px; 
             border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 600;
+            font-size: 11px; 
+            font-weight: 700;
             border: 1px solid;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .status-pending { 
@@ -340,18 +501,18 @@
 
         .pagination { 
             display: flex; 
-            gap: 10px; 
+            gap: 12px; 
             justify-content: flex-end; 
             flex-wrap: wrap; 
-            margin-top: 20px; 
+            margin-top: 24px; 
             font-size: 13px; 
-            color: var(--muted);
+            color: var(--text-muted);
         }
 
         .page-link, .page-current, .page-disabled { 
-            padding: 10px 16px; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border); 
+            padding: 12px 18px; 
+            border-radius: var(--border-radius); 
+            border: 1px solid var(--border-light); 
             text-decoration: none; 
             font-weight: 600;
             transition: all 0.3s ease;
@@ -361,7 +522,8 @@
             background: linear-gradient(135deg, var(--primary), var(--primary-2));
             color: #fff;
             border-color: transparent;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
         .page-current { 
@@ -380,27 +542,43 @@
         .empty-state {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
             backdrop-filter: blur(16px);
-            border: 2px dashed var(--border);
-            border-radius: var(--radius-lg);
-            padding: 32px;
+            border: 2px dashed var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 48px;
             text-align: center;
-            color: var(--muted);
-            box-shadow: var(--shadow);
+            color: var(--text-muted);
+            box-shadow: var(--shadow-md);
+        }
+
+        @media (max-width: 1024px) {
+            .hero {
+                padding: 24px 28px;
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .hero::after {
+                display: none;
+            }
         }
 
         @media (max-width: 860px) {
             .hero {
-                grid-template-columns: 1fr;
                 padding: 20px;
-                gap: 12px;
+                gap: 16px;
             }
 
             .filters {
                 grid-template-columns: 1fr;
-                padding: 16px;
-                gap: 12px;
+                padding: 20px;
+                gap: 16px;
             }
 
+            .card {
+                padding: 20px;
+            }
+            
             .table, .table thead, .table tbody, .table th, .table td, .table tr { 
                 display: block; 
                 width: 100%; 
@@ -409,25 +587,31 @@
             .table thead{display:none;} 
 
             .table tr{ 
-                margin-bottom: 16px; 
-                border: 1px solid var(--border); 
-                border-radius: var(--radius-md); 
-                background: #fff; 
-                padding: 16px;
-                box-shadow: var(--shadow);
+                margin-bottom: 20px; 
+                border: 1px solid var(--border-light); 
+                border-radius: var(--border-radius); 
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
+                padding: 20px;
+                box-shadow: var(--shadow-md);
+                transition: all 0.3s ease;
             } 
+            
+            .table tr:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-hover);
+            }
 
             .table td{ 
                 border: none; 
-                padding: 8px 0; 
+                padding: 12px 0; 
             } 
 
             .table td::before{ 
                 content: attr(data-label); 
                 display: block; 
                 font-size: 12px; 
-                color: var(--muted); 
-                margin-bottom: 4px; 
+                color: var(--text-muted); 
+                margin-bottom: 6px; 
                 text-transform: uppercase; 
                 letter-spacing: 0.04em;
                 font-weight: 600;
@@ -435,11 +619,73 @@
 
             .actions-row {
                 justify-content: stretch;
+                margin-top: 16px;
             }
 
             .actions-row .btn {
                 flex: 1;
                 justify-content: center;
+                padding: 14px 16px;
+            }
+            
+            .status-badge {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+            
+            .empty-state {
+                padding: 32px;
+            }
+            
+            .bulk-actions-bar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 16px;
+            }
+            
+            .bulk-actions-bar::before {
+                display: none;
+            }
+            
+            .select-all-label {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .bulk-actions-bar > div[style*="flex:1"] {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .bulk-submit-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .filter-actions {
+                flex-direction: column;
+                gap: 16px;
+                align-items: stretch;
+                padding-top: 12px;
+            }
+            
+            .filter-actions::before {
+                left: 16px;
+                right: 16px;
+            }
+            
+            .filter-buttons {
+                justify-content: center;
+            }
+            
+            .export-section {
+                align-items: center;
+                text-align: center;
+            }
+            
+            .export-hint {
+                text-align: center;
+                max-width: 100%;
             }
         }
 {% endblock %}
@@ -451,20 +697,20 @@
             <h1>任务管理 / Tasks Admin</h1>
             <p class="lede">管理员发布、筛选、查看任务完成情况 / Admins create, filter and review tasks.</p>
         </div>
-        <div style="text-align:right;">
-            <a class="btn btn-primary" href="{% url 'reports:admin_task_create' %}">发布新任务 / New Task</a>
+        <div style="text-align:right; position:relative; z-index:2;">
+            <a class="btn btn-primary" style="position:relative;" href="{% url 'reports:admin_task_create' %}">发布新任务 / New Task</a>
         </div>
     </div>
     {% if sla_thresholds %}
-    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;">
-        <span class="chip" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid rgba(59,130,246,0.2);color:#1e293b;">
+    <div style="margin:16px 0;display:flex;gap:12px;flex-wrap:wrap;">
+        <span class="chip" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--border-radius);border:1px solid var(--border-light);background:linear-gradient(135deg, rgba(255,255,255,0.9), rgba(248,250,252,0.8));color:var(--text-primary);font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(15,23,42,0.06);">
             ⏱️ SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h
         </span>
     </div>
     {% endif %}
 
     <section class="card">
-        <form method="get" class="filters">
+        <form method="get" class="filters" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
             <div>
                 <label for="q">关键词 / Keyword</label>
                 <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
@@ -497,48 +743,77 @@
                 </select>
             </div>
             <div style="align-self:flex-end;">
-                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); font-weight:600;">
                     <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %}>
                     仅看紧张/逾期 / Hot & Overdue
                 </label>
             </div>
-            <div class="actions-row">
-                <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">重置</a>
-                <button type="submit" class="btn btn-secondary">筛选</button>
+            <div class="filter-actions" style="grid-column: 1 / -1; display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-start; align-items:center; margin-top:6px;">
+                <button type="submit" class="btn btn-primary">🔍 筛选 / Filter</button>
+                <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">🔄 重置 / Reset</a>
+                <a class="btn btn-secondary export-btn" href="{% url 'reports:admin_task_export' %}?status={{ status }}&project={{ project_id }}&user={{ user_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">⬇ 导出当前筛选 / Export</a>
             </div>
         </form>
     </section>
 
     <section class="card">
-        <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-            <a class="btn btn-primary" href="{% url 'reports:admin_task_export' %}?status={{ status }}&project={{ project_id }}&user={{ user_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">导出当前筛选</a>
-            <span class="note" style="font-size:12px;color:#64748b;">导出提示：若数据量大，请先缩小过滤条件 / If export is large, narrow filters first.</span>
-        </div>
         {% if tasks %}
             <form method="post" action="{% url 'reports:admin_task_bulk_action' %}">
                 {% csrf_token %}
-                <div class="actions-row" style="justify-content:flex-start; gap:8px; margin-bottom:8px;">
-                    <label style="font-size:12px; color:var(--muted);"><input type="checkbox" id="select-all"> 全选</label>
-                    <select name="bulk_action" style="padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                        <option value="complete">批量完成 / Complete</option>
-                        <option value="reopen">批量重新打开 / Reopen</option>
-                        <option value="overdue">批量标记逾期 / Mark overdue</option>
-                    </select>
-                    <button type="submit" class="btn btn-secondary">批量执行</button>
+                <div class="bulk-actions-bar" style="display:flex; align-items:center; gap:12px; padding:12px 16px; background:linear-gradient(135deg, rgba(59,130,246,0.04), rgba(6,182,212,0.03)); border:1px solid var(--border-light); border-radius:var(--border-radius); margin-bottom:16px; flex-wrap:wrap; position:sticky; top:12px; z-index:5;">
+                    <label class="select-all-label" style="font-size:13px; color:var(--text-secondary); font-weight:600; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="select-all" style="width:16px; height:16px; accent-color:var(--primary);">
+                        <span>全选</span>
+                    </label>
+                    
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1; min-width:200px;">
+                        <select name="bulk_action" class="bulk-action-select" style="flex:1; min-width:180px; padding:8px 12px; border-radius:var(--border-radius); border:1px solid var(--border-light); background:rgba(255,255,255,0.9); font-size:13px; font-weight:500; color:var(--text-primary); outline:none; transition:all 0.3s ease;">
+                            <option value="">选择操作 / Select Action</option>
+                            <option value="complete">批量完成 / Complete</option>
+                            <option value="reopen">批量重新打开 / Reopen</option>
+                            <option value="overdue">批量设为逾期 / Mark Overdue</option>
+                            <option value="update">批量更新状态/截止/负责人 / Update fields</option>
+                        </select>
+                        <select name="status_value" style="flex:1; min-width:160px; padding:8px 10px; border-radius:var(--border-radius); border:1px solid var(--border-light); background:rgba(255,255,255,0.9); font-size:12px;">
+                            <option value="">状态（可选）/ Status (optional)</option>
+                            {% for val,label in task_status_choices %}
+                                <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="datetime-local" name="due_at" style="flex:1; min-width:180px; padding:8px 10px; border-radius:var(--border-radius); border:1px solid var(--border-light);" placeholder="截止时间（可选）/ Due optional">
+                        <select name="assign_role_filter" id="assign-role-filter" style="flex:1; min-width:140px; padding:8px 10px; border-radius:var(--border-radius); border:1px solid var(--border-light); background:rgba(255,255,255,0.9); font-size:12px;">
+                            <option value="">角色筛选 / Role filter</option>
+                            <option value="dev">开发 / Dev</option>
+                            <option value="qa">测试 / QA</option>
+                            <option value="pm">产品 / PM</option>
+                            <option value="ui">设计 / UI</option>
+                            <option value="ops">运维 / Ops</option>
+                            <option value="mgr">项目管理 / PMO</option>
+                        </select>
+                        <select name="assign_to" id="assign-to-select" style="flex:1; min-width:160px; padding:8px 10px; border-radius:var(--border-radius); border:1px solid var(--border-light); background:rgba(255,255,255,0.9); font-size:12px;">
+                            <option value="">负责人（可选）/ Assignee (optional)</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}" data-role="{{ u.profile.position|default:'' }}">{{ u.get_full_name|default:u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary bulk-submit-btn" style="padding:10px 16px; font-size:13px; font-weight:600; white-space:nowrap;">
+                        执行 / Apply
+                    </button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all-2"></th>
-                            <th>标题</th>
-                            <th>项目</th>
-                            <th>用户</th>
-                            <th>状态</th>
+                            <th>标题 / Title</th>
+                            <th>项目 / Project</th>
+                            <th>用户 / User</th>
+                            <th>状态 / Status</th>
                             <th>SLA 剩余</th>
-                            <th>截止时间</th>
-                            <th>完成时间</th>
-                            <th>发布时间</th>
-                            <th>操作</th>
+                            <th>截止 / Due</th>
+                            <th>完成 / Done</th>
+                            <th>操作 / Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -550,39 +825,40 @@
                                 <td data-label="用户">{{ t.user.get_full_name|default:t.user.username }}</td>
                             <td data-label="状态">
                                 {% if t.status == 'pending' %}
-                                    <span class="status-badge status-pending">未开始</span>
+                                    <span class="status-badge status-pending">未开始 / Pending</span>
                                 {% elif t.status == 'in_progress' %}
-                                    <span class="status-badge status-in-progress">进行中</span>
+                                    <span class="status-badge status-in-progress">进行中 / In Progress</span>
                                     {% elif t.status == 'on_hold' %}
-                                        <span class="status-badge status-on-hold">挂起</span>
+                                        <span class="status-badge status-on-hold">挂起 / On Hold</span>
                                     {% elif t.status == 'completed' %}
-                                        <span class="status-badge status-completed">已完成</span>
+                                        <span class="status-badge status-completed">已完成 / Completed</span>
                                     {% elif t.status == 'reopened' %}
-                                        <span class="status-badge status-reopened">重新打开</span>
+                                        <span class="status-badge status-reopened">重新打开 / Reopened</span>
                                     {% else %}
-                                        <span class="status-badge status-overdue">逾期</span>
+                                        <span class="status-badge status-overdue">逾期 / Overdue</span>
                                     {% endif %}
-                                    {% if t.is_due_soon %}
-                                        <span class="status-badge status-on-hold">24h 内到期</span>
-                                    {% endif %}
-                                    {% if not t.due_at %}<span class="status-badge status-on-hold">未设截止</span>{% endif %}
-                                </td>
-                            <td data-label="SLA 剩余">
-                                {% if t.sla_info %}
-                                    {% if t.sla_info.level == 'red' %}
-                                        <span class="status-badge status-sla-red">紧急 / Critical · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                    {% elif t.sla_info.level == 'amber' %}
-                                        <span class="status-badge status-sla-amber">提醒 / Warning · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                    {% elif t.sla_info.level == 'green' %}
-                                        <span class="status-badge status-sla-green">正常 / Normal · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                    {% else %}
-                                        <span class="status-badge status-on-hold">未开启 / Off</span>
-                                    {% endif %}
-                                {% else %}—{% endif %}
-                            </td>
-                            <td data-label="截止时间">{% if t.due_at %}{{ t.due_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
-                                <td data-label="完成时间">{% if t.completed_at %}{{ t.completed_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
-                                <td data-label="发布时间">{{ t.created_at|localtime|date:"Y-m-d H:i" }}</td>
+                            {% if t.is_due_soon %}
+                                <span class="status-badge status-on-hold">24h 内到期</span>
+                            {% endif %}
+                            {% if not t.due_at %}<span class="status-badge status-on-hold">未设截止</span>{% endif %}
+                        </td>
+                        <td data-label="SLA 剩余">
+                            {% if t.status == 'completed' %}
+                                <span class="status-badge status-completed">已完成 / Completed</span>
+                            {% elif t.sla_info %}
+                                {% if t.sla_info.level == 'red' %}
+                                    <span class="status-badge status-sla-red">紧急 / Critical · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% elif t.sla_info.level == 'amber' %}
+                                    <span class="status-badge status-sla-amber">提醒 / Warning · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% elif t.sla_info.level == 'green' %}
+                                    <span class="status-badge status-sla-green">正常 / Normal · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                {% else %}
+                                    <span class="status-badge status-on-hold">未开启 / Off</span>
+                                {% endif %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td data-label="截止时间">{% if t.due_at %}{{ t.due_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+                            <td data-label="完成时间">{% if t.completed_at %}{{ t.completed_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
                                     <td data-label="操作">
                                         <div class="actions-row" style="justify-content:flex-start; gap:6px;">
                                             <a class="btn btn-ghost" href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">查看</a>
@@ -604,38 +880,149 @@
                     {% else %}<span class="page-disabled">下一页</span>{% endif %}
                 </div>
             {% endif %}
-        {% else %}
-            <div class="empty-state">暂无任务数据</div>
-        {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <p style="margin:0 0 8px;">暂无任务数据 / No tasks yet</p>
+                    <a class="btn btn-primary" href="{% url 'reports:admin_task_create' %}">发布新任务 / New Task</a>
+                </div>
+            {% endif %}
     </section>
 <script>
     (function(){
         const form = document.querySelector('form.filters');
-        const exportBtn = document.querySelector('.card a.btn.btn-primary[href*="admin_task_export"]');
+        const exportBtn = document.querySelector('.card a[href*=\"admin_task_export\"]');
         const selectAll = document.getElementById('select-all');
         const selectAll2 = document.getElementById('select-all-2');
-        const boxes = document.querySelectorAll('input[name="task_ids"]');
-        if (!form || !exportBtn) return;
-        function syncExport() {
-            const params = new URLSearchParams();
-            ['q','project','user','status'].forEach(name => {
-                const el = form.querySelector(`[name="${name}"]`);
-                if (el && el.value) params.set(name, el.value);
-            });
-            exportBtn.href = `${exportBtn.pathname}?${params.toString()}`;
+        const boxes = document.querySelectorAll('input[name=\"task_ids\"]');
+
+        if (form && exportBtn) {
+            function syncExport() {
+                const params = new URLSearchParams();
+                ['q','project','user','status','hot'].forEach(name => {
+                    const el = form.querySelector(`[name=\"${name}\"]`);
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            if (el.checked) params.set(name, '1');
+                        } else if (el.value) {
+                            params.set(name, el.value);
+                        }
+                    }
+                });
+                exportBtn.href = `${exportBtn.pathname}?${params.toString()}`;
+            }
+            form.addEventListener('change', syncExport);
+            form.addEventListener('input', syncExport);
+            syncExport();
         }
-        form.addEventListener('change', syncExport);
-        form.addEventListener('input', syncExport);
-        syncExport();
         function bindSelect(ctrl) {
             if (!ctrl) return;
             ctrl.addEventListener('change', () => {
                 boxes.forEach(b => b.checked = ctrl.checked);
                 [selectAll, selectAll2].forEach(other => { if (other && other !== ctrl) other.checked = ctrl.checked; });
+                updateBulkActionsState();
             });
         }
         bindSelect(selectAll);
         bindSelect(selectAll2);
+        
+        // 监听单个复选框变化
+        boxes.forEach(box => {
+            box.addEventListener('change', updateBulkActionsState);
+        });
+        
+        // 更新批量操作状态
+        function updateBulkActionsState() {
+            const selectedCount = Array.from(boxes).filter(b => b.checked).length;
+            const bulkSelect = document.querySelector('.bulk-action-select');
+            const submitBtn = document.querySelector('.bulk-submit-btn');
+            const selectAllLabel = document.querySelector('.select-all-label span');
+            
+            if (selectAll) {
+                const allChecked = selectedCount === boxes.length && boxes.length > 0;
+                selectAll.checked = allChecked;
+                selectAll.indeterminate = selectedCount > 0 && !allChecked;
+            }
+            if (selectAll2) {
+                const allChecked = selectedCount === boxes.length && boxes.length > 0;
+                selectAll2.checked = allChecked;
+                selectAll2.indeterminate = selectedCount > 0 && !allChecked;
+            }
+
+            if (selectAllLabel) {
+                selectAllLabel.textContent = selectedCount > 0 ? `已选 ${selectedCount} 项` : '全选';
+            }
+            
+            const hasSelection = selectedCount > 0;
+            const hasAction = bulkSelect && bulkSelect.value !== '';
+            if (submitBtn) submitBtn.disabled = !(hasSelection && hasAction);
+            
+            if (submitBtn) {
+                if (hasSelection && hasAction) {
+                    const actionText = bulkSelect.options[bulkSelect.selectedIndex].text;
+                    submitBtn.textContent = `${actionText} (${selectedCount})`;
+                } else {
+                    submitBtn.textContent = '批量执行 / Apply';
+                }
+            }
+        }
+        
+        const bulkSelectEl = document.querySelector('.bulk-action-select');
+        if (bulkSelectEl) {
+            bulkSelectEl.addEventListener('change', updateBulkActionsState);
+        }
+
+        // 角色筛选下拉：仅展示匹配角色的负责人
+        const roleFilter = document.getElementById('assign-role-filter');
+        const assignSelect = document.getElementById('assign-to-select');
+        if (roleFilter && assignSelect) {
+            roleFilter.addEventListener('change', () => {
+                const role = roleFilter.value;
+                Array.from(assignSelect.options).forEach(opt => {
+                    if (!opt.value) return;
+                    const optRole = opt.getAttribute('data-role') || '';
+                    opt.style.display = !role || optRole === role ? '' : 'none';
+                });
+            });
+        }
+
+        const bulkForm = document.querySelector('form[action*="admin_task_bulk_action"]');
+        if (bulkForm) {
+            bulkForm.addEventListener('submit', (e) => {
+                const selected = Array.from(boxes).filter(b => b.checked);
+                if (!selected.length) {
+                    e.preventDefault();
+                    alert('请选择至少一个任务 / Select at least one task');
+                    return;
+                }
+                const action = bulkForm.querySelector('[name="bulk_action"]')?.value || '';
+                const statusVal = bulkForm.querySelector('[name="status_value"]')?.value || '';
+                const dueVal = bulkForm.querySelector('[name="due_at"]')?.value || '';
+                const assignVal = bulkForm.querySelector('[name="assign_to"]')?.value || '';
+                if (action === 'update') {
+                    const fields = [];
+                    if (statusVal) fields.push(`状态: ${statusVal}`);
+                    if (dueVal) fields.push(`截止: ${dueVal}`);
+                    if (assignVal) fields.push(`负责人: ${bulkForm.querySelector('[name="assign_to"] option:checked')?.textContent || assignVal}`);
+                    if (!fields.length) {
+                        e.preventDefault();
+                        alert('批量更新需至少选择状态/截止/负责人之一 / Choose at least one field');
+                        return;
+                    }
+                    if (!confirm(`即将更新 ${selected.length} 条任务：${fields.join('，')}，确认继续？`)) {
+                        e.preventDefault();
+                    }
+                } else {
+                    if (!action) {
+                        e.preventDefault();
+                        alert('请选择批量操作 / Select bulk action');
+                    } else if (!confirm(`确认对 ${selected.length} 条任务执行 ${action}？`)) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+        
+        updateBulkActionsState();
     })();
 </script>
 {% endblock %}

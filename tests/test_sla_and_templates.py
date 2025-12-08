@@ -1,9 +1,10 @@
 import json
+from datetime import timedelta
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
+from django.core.cache import cache
 
 from reports.models import Project, DailyReport, Task, SystemSetting, ReportTemplateVersion
 from reports import views as report_views
@@ -51,12 +52,11 @@ class CacheAndTemplateTests(TestCase):
     def test_cache_invalidation_on_task_save(self):
         Task.objects.create(title='t1', user=self.admin, project=self.project)
         # 写入一个假的缓存键，再触发 save 来刷新
-        from django.core.cache import cache
-        cache.set('performance_stats_v1', {'dummy': True})
+        cache.set('performance_stats_v1_None_None', {'dummy': True})
         t = Task.objects.first()
         t.title = 't1-updated'
         t.save()
-        self.assertIsNone(cache.get('performance_stats_v1'))
+        self.assertIsNone(cache.get('performance_stats_v1_None_None'))
 
     def test_admin_forbidden_uses_template(self):
         # 非管理员访问管理员页应 403 并渲染友好页
@@ -166,3 +166,40 @@ class CacheAndTemplateTests(TestCase):
         cache.set(cache_key, {'dummy': True})
         report.projects.add(self.project)  # 触发 m2m_changed 信号
         self.assertIsNone(cache.get(cache_key))
+
+    def test_sla_uses_due_date_when_present(self):
+        # 设置未来 4 小时的截止时间，预期进入 Amber 区间（默认为 6/2 小时阈值）
+        due_at = timezone.now() + timedelta(hours=4)
+        task = Task.objects.create(title='t1', user=self.admin, project=self.project, due_at=due_at)
+        info = report_views._calc_sla_info(task)
+        self.assertEqual(info['status'], 'tight')
+        self.assertEqual(info['level'], 'amber')
+
+    def test_sla_pause_extends_deadline(self):
+        # 截止 1 小时后，但暂停了 30 分钟，应延长剩余时间避免立即超时
+        due_at = timezone.now() + timedelta(hours=1)
+        task = Task.objects.create(title='t2', user=self.admin, project=self.project, due_at=due_at, status='on_hold')
+        timer = report_views._ensure_sla_timer(task)
+        timer.paused_at = timezone.now() - timedelta(minutes=30)
+        timer.save(update_fields=['paused_at'])
+        info = report_views._calc_sla_info(task)
+        self.assertGreater(info['remaining_hours'], 1.2)  # 延长后剩余时间应大于原始 1 小时
+
+    def test_performance_stats_sla_and_leadtime(self):
+        cache.clear()
+        now = timezone.now()
+        # 先创建，再回写时间字段
+        t1 = Task.objects.create(title='t1', user=self.admin, project=self.project, status='completed', due_at=now)
+        Task.objects.filter(id=t1.id).update(created_at=now - timedelta(hours=2), completed_at=now - timedelta(hours=1))
+        t1.refresh_from_db()
+        t2 = Task.objects.create(title='t2', user=self.admin, project=self.project, status='completed', due_at=now - timedelta(hours=1))
+        Task.objects.filter(id=t2.id).update(created_at=now - timedelta(hours=4), completed_at=now)
+        t2.refresh_from_db()
+        stats = report_views._performance_stats()
+        self.assertEqual(stats['overall_sla_on_time_rate'], 50.0)
+        self.assertIsNotNone(stats['overall_lead_p50'])
+        # 项目指标带上 SLA 和 lead time
+        project = next((p for p in stats['project_stats'] if p['project'] == self.project.name), None)
+        self.assertIsNotNone(project)
+        self.assertIn('sla_on_time_rate', project)
+        self.assertIn('lead_time_p50', project)

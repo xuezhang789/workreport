@@ -7,7 +7,15 @@ from .models import Task, DailyReport
 
 
 def _invalidate_stats_cache():
-    cache.delete("performance_stats_v1")
+    # 清除绩效缓存，包含带筛选的前缀
+    prefixes = ["performance_stats_v1", "performance_stats_v1_None_None"]
+    for key in prefixes:
+        cache.delete(key)
+    if hasattr(cache, "delete_pattern"):
+        try:
+            cache.delete_pattern("performance_stats_v1_*")
+        except Exception:
+            pass
     today = timezone.localdate()
     for project_filter in ("", "None", None):
         for role_filter in ("", "None", None):

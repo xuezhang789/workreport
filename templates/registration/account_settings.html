@@ -635,7 +635,7 @@
             <div class="status-card">
                 <div class="status-row">
                     <span class="label">🔐 密码保护 / Password Protection</span>
-                    <span class="badge">原密码验证 + 强度校验 / Old Password + Strength Check</span>
+                    <span class="badge">原密码验证 + 8位混合字符 / Old Password + 8-char mix</span>
                 </div>
                 <div class="status-row">
                     <span class="label">👤 用户名唯一性 / Username Uniqueness</span>
@@ -651,8 +651,8 @@
     <div class="settings-grid">
         <section class="card" id="password-card">
             <h2>🔒 密码修改 / Change Password</h2>
-            <p>需要输入原密码，并满足强度要求后方可修改 / Enter current password and meet strength requirements to change</p>
-            <form method="post" class="settings-form">
+            <p>需要输入原密码，新密码至少 8 位且包含大写、小写与数字。保存后将自动退出，请用新密码重新登录。 / Enter current password, then use a new password (min 8 chars with upper/lower/digit). You will be logged out after saving.</p>
+            <form method="post" class="settings-form" id="password-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="change_password">
                 <div class="field">
@@ -668,14 +668,12 @@
                     <label for="{{ password_form.new_password1.id_for_label }}">新密码 / New Password</label>
                     {{ password_form.new_password1 }}
                     <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-                    <div class="password-score" id="password-score-text">强度评分：0/6（至少 {{ password_min_score|default:3 }} 项）</div>
+                    <div class="password-score" id="password-score-text">需满足：至少 8 位，且包含大写/小写/数字</div>
                     <div class="requirements" id="requirements">
                         <span id="req-len">• 至少8位 / At least 8 characters</span>
-                        <span id="req-len12">• 至少12位 / At least 12 characters</span>
                         <span id="req-upper">• 包含大写字母 / Contains uppercase</span>
                         <span id="req-lower">• 包含小写字母 / Contains lowercase</span>
                         <span id="req-num">• 包含数字 / Contains number</span>
-                        <span id="req-symbol">• 包含符号 / Contains symbol</span>
                     </div>
                     {% if password_form.new_password1.errors %}
                         <div class="errors">
@@ -699,24 +697,33 @@
                 {% endif %}
                 <div class="form-actions">
                     <button type="submit" class="btn">💾 保存新密码 / Save New Password</button>
-                    <p class="hint">提交后保持登录状态，同时更新登录凭据 / You will remain logged in after submission</p>
+                    <p class="hint">提交后将退出登录，请用新密码重新登录 / You will be logged out and must log in again</p>
                 </div>
             </form>
         </section>
 
         <section class="card" id="username-card">
             <h2>👤 用户名修改 / Change Username</h2>
-            <p>保持团队唯一性，保存前会自动检测是否被占用 / Maintain team uniqueness, automatic availability check before saving</p>
+            <p>保持团队唯一性，保存前会自动检测是否被占用，并需输入当前密码确认 / Automatic availability check; current password required to confirm</p>
             <form method="post" class="settings-form" id="username-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="change_username">
                 <div class="field">
                     <label for="{{ username_form.username.id_for_label }}">新的用户名 / New Username</label>
                     {{ username_form.username }}
-                    <p class="hint" id="username-hint">仅可包含字母、数字、下划线、点、加号或减号 / Letters, numbers, underscore, dot, plus or hyphen only</p>
+                    <p class="hint" id="username-hint">需输入当前密码以确认，更改前会实时检查占用状态 / Current password required; availability checked in real time</p>
                     {% if username_form.username.errors %}
                         <div class="errors">
                             {% for error in username_form.username.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="field">
+                    <label for="{{ username_form.password.id_for_label }}">当前密码 / Current Password</label>
+                    {{ username_form.password }}
+                    {% if username_form.password.errors %}
+                        <div class="errors">
+                            {% for error in username_form.password.errors %}{{ error }}{% endfor %}
                         </div>
                     {% endif %}
                 </div>
@@ -786,52 +793,76 @@
 <script>
     (function() {
         const newPwd = document.getElementById("{{ password_form.new_password1.id_for_label }}");
+        const confirmPwd = document.getElementById("{{ password_form.new_password2.id_for_label }}");
+        const passwordForm = document.getElementById('password-form');
         const strengthFill = document.getElementById('strength-fill');
         const scoreText = document.getElementById('password-score-text');
-        const MIN_SCORE = {{ password_min_score|default:3 }};
         const reqs = {
             len: document.getElementById('req-len'),
-            len12: document.getElementById('req-len12'),
             upper: document.getElementById('req-upper'),
             lower: document.getElementById('req-lower'),
             num: document.getElementById('req-num'),
-            symbol: document.getElementById('req-symbol'),
         };
+        function calcState(password) {
+            return {
+                len: password.length >= 8,
+                upper: /[A-Z]/.test(password),
+                lower: /[a-z]/.test(password),
+                num: /[0-9]/.test(password),
+            };
+        }
         function updateStrength(password) {
-            let score = 0;
-            const hasLen = password.length >= 8;
-            const hasLen12 = password.length >= 12;
-            const hasUpper = /[A-Z]/.test(password);
-            const hasLower = /[a-z]/.test(password);
-            const hasNum = /[0-9]/.test(password);
-            const hasSymbol = /[^A-Za-z0-9]/.test(password);
-            reqs.len.classList.toggle('met', hasLen);
-            reqs.len12.classList.toggle('met', hasLen12);
-            reqs.upper.classList.toggle('met', hasUpper);
-            reqs.lower.classList.toggle('met', hasLower);
-            reqs.num.classList.toggle('met', hasNum);
-            reqs.symbol.classList.toggle('met', hasSymbol);
-            score += hasLen + hasLen12 + hasUpper + hasLower + hasNum + hasSymbol;
-            const percent = (score / 6) * 100;
-            strengthFill.style.width = percent + '%';
-            if (score <= 2) {
-                strengthFill.style.background = '#ef4444';
-            } else if (score <= 4) {
-                strengthFill.style.background = '#f59e0b';
-            } else {
-                strengthFill.style.background = '#10b981';
+            const state = calcState(password);
+            Object.entries(reqs).forEach(([key, el]) => {
+                if (!el) return;
+                el.classList.toggle('met', !!state[key]);
+            });
+            const metCount = ['len', 'upper', 'lower', 'num'].filter(k => state[k]).length;
+            if (strengthFill) {
+                const percent = (metCount / 4) * 100;
+                strengthFill.style.width = percent + '%';
+                strengthFill.style.background = state.len && state.upper && state.lower && state.num ? '#10b981' : '#f59e0b';
             }
             if (scoreText) {
-                scoreText.textContent = `强度评分：${score}/6（至少 ${MIN_SCORE} 项）`;
-                scoreText.style.color = score >= MIN_SCORE ? '#065f46' : '#991b1b';
+                if (state.len && state.upper && state.lower && state.num) {
+                    scoreText.textContent = '满足复杂度要求 ✅';
+                    scoreText.style.color = '#065f46';
+                } else {
+                    scoreText.textContent = '需满足：至少8位，且包含大写/小写/数字';
+                    scoreText.style.color = '#991b1b';
+                }
             }
+            return state;
         }
         if (newPwd) {
             newPwd.addEventListener('input', (e) => updateStrength(e.target.value));
         }
+        if (passwordForm && newPwd) {
+            passwordForm.addEventListener('submit', (e) => {
+                const state = updateStrength(newPwd.value || '');
+                const confirmVal = confirmPwd ? (confirmPwd.value || '') : '';
+                const ok = state.len && state.upper && state.lower && state.num;
+                if (!ok) {
+                    e.preventDefault();
+                    if (scoreText) {
+                        scoreText.textContent = '请确保新密码至少8位并包含大写、小写和数字';
+                        scoreText.style.color = '#991b1b';
+                    }
+                    return;
+                }
+                if (confirmPwd && confirmVal !== (newPwd.value || '')) {
+                    e.preventDefault();
+                    if (scoreText) {
+                        scoreText.textContent = '两次输入的新密码需一致';
+                        scoreText.style.color = '#991b1b';
+                    }
+                }
+            });
+        }
 
         // 用户名唯一性校验
         const usernameInput = document.getElementById("{{ username_form.username.id_for_label }}");
+        const usernamePwdInput = document.getElementById("{{ username_form.password.id_for_label }}");
         const statusText = document.getElementById('username-status-text');
         const statusChip = document.getElementById('username-status-chip');
         let usernameTimer;
@@ -847,8 +878,8 @@
             }
         }
         async function checkUsername(value) {
-            if (!value || value.length < 3) {
-                setStatus('请输入至少3个字符的用户名 / Please enter at least 3 characters', false);
+            if (!value) {
+                setStatus('请输入要检测的用户名 / Please enter a username to check', false);
                 return;
             }
             setStatus('检测中... / Checking...', true);
@@ -873,6 +904,22 @@
                 usernameTimer = setTimeout(() => checkUsername(value), 400);
             });
             usernameInput.addEventListener('blur', (e) => checkUsername(e.target.value.trim()));
+        }
+        const usernameForm = document.getElementById('username-form');
+        if (usernameForm) {
+            usernameForm.addEventListener('submit', (e) => {
+                const val = (usernameInput && usernameInput.value || '').trim();
+                const pwdVal = usernamePwdInput ? usernamePwdInput.value : '';
+                if (!val) {
+                    e.preventDefault();
+                    setStatus('请输入要修改的用户名 / Please enter a username', false);
+                    return;
+                }
+                if (!pwdVal) {
+                    e.preventDefault();
+                    setStatus('请输入当前密码以确认 / Please enter your current password', false);
+                }
+            });
         }
 
         // 邮箱验证码倒计时提示

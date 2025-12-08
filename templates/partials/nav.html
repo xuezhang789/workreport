@@ -21,22 +21,27 @@
         
         <!-- 管理功能 - 管理员专用（下拉合并） -->
         {% if request.user.is_authenticated %}
-            {% if request.user.is_staff or request.user.managed_projects.all %}
+            {% if can_view_admin_project or can_view_admin_global %}
+                {% comment %}仅管理员或管理角色/具备项目管理关系的用户可见管理入口{% endcomment %}
                 <div class="admin-dropdown">
                     <button type="button" class="ghost-link admin-toggle" id="admin-toggle">
                         管理入口 / Admin
                         <span aria-hidden="true">▾</span>
                     </button>
                     <div class="admin-menu" id="admin-menu">
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'reports:stats' %}">统计看板 / Stats Board</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'template_center' %}active{% endif %}" href="{% url 'reports:template_center' %}">模板中心 / Template Center</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'role_template_manage' %}active{% endif %}" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>
-                        <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'reports:sla_settings' %}">SLA 配置 / SLA Settings</a>
+                        {% if can_view_admin_project %}
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
+                        {% endif %}
+                        {% if can_view_admin_global %}
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'reports:stats' %}">统计看板 / Stats Board</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'template_center' %}active{% endif %}" href="{% url 'reports:template_center' %}">模板中心 / Template Center</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'role_template_manage' %}active{% endif %}" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'reports:sla_settings' %}">SLA 配置 / SLA Settings</a>
+                        {% endif %}
                     </div>
                 </div>
             {% endif %}

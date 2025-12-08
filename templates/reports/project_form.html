@@ -208,6 +208,323 @@
             margin-top: 16px;
         }
         .errors, .non-field-errors { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.18); color: #991b1b; font-size: 12px; }
+
+        /* 多选组件样式 */
+        .multi-select-container {
+            position: relative;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .multi-select-container:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .multi-select-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+        }
+
+        .search-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.03), rgba(6, 182, 212, 0.02));
+            border-bottom: 1px solid var(--border);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+        }
+
+        .search-header svg {
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .search-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 14px;
+            color: var(--ink);
+            placeholder-color: var(--muted);
+        }
+
+        .selected-count {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+
+        .multi-select-dropdown {
+            max-height: 280px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .select-all-container {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(6, 182, 212, 0.03));
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .options-container {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+            position: relative;
+        }
+
+        .option-item:hover {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.05));
+            transform: translateX(4px);
+        }
+
+        .option-item:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            margin: 0;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            position: relative;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .option-item:hover .checkmark {
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        input[type="checkbox"]:checked + .checkmark {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            border-color: var(--primary);
+        }
+
+        input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .user-info {
+            flex: 1;
+            margin-left: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--ink);
+            font-size: 14px;
+        }
+
+        .user-username {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: 'Courier New', monospace;
+        }
+
+        .selected-tags {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.7));
+            border-top: 1px solid var(--border);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 48px;
+            align-items: center;
+        }
+
+        .selected-tags:empty {
+            display: none;
+        }
+
+        .selected-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+            transition: all 0.2s ease;
+            animation: tagAppear 0.3s ease-out;
+        }
+
+        @keyframes tagAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .selected-tag:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+
+        .selected-tag .remove-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .selected-tag .remove-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.2);
+        }
+
+        /* 隐藏原始的select元素 */
+        select[multiple] {
+            display: none;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .search-header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+            }
+
+            .selected-count {
+                align-self: center;
+            }
+
+            .option-item {
+                padding: 16px;
+            }
+
+            .user-info {
+                margin-left: 16px;
+            }
+
+            .selected-tags {
+                padding: 16px;
+            }
+
+            .multi-select-dropdown {
+                max-height: 240px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .search-header {
+                padding: 12px;
+            }
+
+            .option-item {
+                padding: 12px;
+            }
+
+            .selected-tags {
+                padding: 12px;
+            }
+        }
+
+        /* 滚动条美化 */
+        .options-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .options-container::-webkit-scrollbar-track {
+            background: rgba(248, 250, 252, 0.5);
+            border-radius: 3px;
+        }
+
+        .options-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        .options-container::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-2);
+        }
+
+        /* 加载状态 */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            padding: 32px 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
 {% endblock %}
 
 {% block content %}
@@ -259,16 +576,86 @@
                 </div>
                 <div>
                     <label for="member-filter">成员筛选 / Member filter</label>
-                    <input type="text" id="member-filter" placeholder="输入用户名过滤" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                    {{ form.members }}
-                    {% if form.members.errors %}<ul class="errors">{% for e in form.members.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    <div class="multi-select-container">
+                        <div class="search-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="member-filter" placeholder="搜索成员名称..." class="search-input">
+                            <span class="selected-count">已选择 <span id="member-count">0</span> 人</span>
+                        </div>
+                        <div class="multi-select-dropdown" id="members-container">
+                            <div class="select-all-container">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="select-all-members" class="select-all-checkbox">
+                                    <span class="checkmark"></span>
+                                    <span>全选 / Select All</span>
+                                </label>
+                            </div>
+                            <div class="options-container" id="members-options">
+                                {% for user in form.members.field.queryset %}
+                                    <label class="option-item">
+                                        <input type="checkbox" name="members" value="{{ user.pk }}" 
+                                               {% if form.members.value %}{% if user.pk|stringformat:"s" in form.members.value|stringformat:"s" %}checked{% endif %}{% endif %}
+                                               class="member-checkbox">
+                                        <span class="checkmark"></span>
+                                        <div class="user-info">
+                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                            <span class="user-username">@{{ user.username }}</span>
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="selected-tags" id="selected-members-tags">
+                            <!-- 动态生成已选择的成员标签 -->
+                        </div>
+                        {{ form.members }} <!-- 隐藏原select元素用于表单提交 -->
+                        {% if form.members.errors %}<ul class="errors">{% for e in form.members.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
                 </div>
                 <div>
                     <label for="manager-filter">管理员筛选 / Manager filter</label>
-                    <input type="text" id="manager-filter" placeholder="输入用户名过滤" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                    {{ form.managers }}
-                    {% if form.managers.errors %}<ul class="errors">{% for e in form.managers.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-                    <p style="color:#6b7280;font-size:12px;margin:6px 0 0;">项目管理员可查看项目关联日报、管理成员与任务。</p>
+                    <div class="multi-select-container">
+                        <div class="search-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="manager-filter" placeholder="搜索管理员名称..." class="search-input">
+                            <span class="selected-count">已选择 <span id="manager-count">0</span> 人</span>
+                        </div>
+                        <div class="multi-select-dropdown" id="managers-container">
+                            <div class="select-all-container">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="select-all-managers" class="select-all-checkbox">
+                                    <span class="checkmark"></span>
+                                    <span>全选 / Select All</span>
+                                </label>
+                            </div>
+                            <div class="options-container" id="managers-options">
+                                {% for user in form.managers.field.queryset %}
+                                    <label class="option-item">
+                                        <input type="checkbox" name="managers" value="{{ user.pk }}" 
+                                               {% if form.managers.value %}{% if user.pk|stringformat:"s" in form.managers.value|stringformat:"s" %}checked{% endif %}{% endif %}
+                                               class="manager-checkbox">
+                                        <span class="checkmark"></span>
+                                        <div class="user-info">
+                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                            <span class="user-username">@{{ user.username }}</span>
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="selected-tags" id="selected-managers-tags">
+                            <!-- 动态生成已选择的管理员标签 -->
+                        </div>
+                        {{ form.managers }} <!-- 隐藏原select元素用于表单提交 -->
+                        {% if form.managers.errors %}<ul class="errors">{% for e in form.managers.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                    <p style="color:#6b7280;font-size:12px;margin:8px 0 0;">项目管理员可查看项目关联日报、管理成员与任务。</p>
                 </div>
                 <div>
                     <label for="{{ form.is_active.id_for_label }}">是否启用 / Active</label>
@@ -283,19 +670,306 @@
         </section>
         <script>
             (function() {
-                function bindFilter(inputId, selectEl) {
-                    const input = document.getElementById(inputId);
-                    if (!input || !selectEl) return;
-                    input.addEventListener('input', () => {
-                        const q = input.value.toLowerCase();
-                        Array.from(selectEl.options).forEach(opt => {
-                            if (!opt.value) return;
-                            opt.style.display = opt.textContent.toLowerCase().includes(q) ? '' : 'none';
+                // 多选组件管理器
+                class MultiSelectManager {
+                    constructor(containerId, filterInputId, selectAllId, countId, tagsId) {
+                        this.container = document.getElementById(containerId);
+                        this.filterInput = document.getElementById(filterInputId);
+                        this.selectAllCheckbox = document.getElementById(selectAllId);
+                        this.countElement = document.getElementById(countId);
+                        this.tagsElement = document.getElementById(tagsId);
+                        this.checkboxes = [];
+                        this.selectedUsers = new Map();
+                        
+                        this.init();
+                    }
+
+                    init() {
+                        if (!this.container) return;
+                        
+                        // 获取所有复选框
+                        this.checkboxes = this.container.querySelectorAll('.option-item input[type="checkbox"]');
+                        
+                        // 绑定事件
+                        this.bindEvents();
+                        
+                        // 初始化选中状态
+                        this.updateSelectedState();
+                    }
+
+                    bindEvents() {
+                        // 搜索过滤
+                        if (this.filterInput) {
+                            this.filterInput.addEventListener('input', (e) => {
+                                this.filterOptions(e.target.value);
+                            });
+                        }
+
+                        // 全选功能
+                        if (this.selectAllCheckbox) {
+                            this.selectAllCheckbox.addEventListener('change', (e) => {
+                                this.selectAll(e.target.checked);
+                            });
+                        }
+
+                        // 单个选择
+                        this.checkboxes.forEach(checkbox => {
+                            checkbox.addEventListener('change', () => {
+                                this.updateSelectedState();
+                            });
+                        });
+                    }
+
+                    filterOptions(query) {
+                        const lowerQuery = query.toLowerCase();
+                        let visibleCount = 0;
+                        
+                        this.checkboxes.forEach(checkbox => {
+                            const optionItem = checkbox.closest('.option-item');
+                            const userName = optionItem.querySelector('.user-name').textContent.toLowerCase();
+                            const userUsername = optionItem.querySelector('.user-username').textContent.toLowerCase();
+                            
+                            const matches = userName.includes(lowerQuery) || userUsername.includes(lowerQuery);
+                            optionItem.style.display = matches ? '' : 'none';
+                            
+                            if (matches) visibleCount++;
+                        });
+
+                        // 显示/隐藏空状态
+                        this.showEmptyState(visibleCount === 0);
+                    }
+
+                    showEmptyState(show) {
+                        const container = this.container.querySelector('.options-container');
+                        let emptyState = container.querySelector('.empty-state');
+                        
+                        if (show && !emptyState) {
+                            emptyState = document.createElement('div');
+                            emptyState.className = 'empty-state';
+                            emptyState.innerHTML = `
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                                <div>未找到匹配的用户</div>
+                                <div style="font-size: 12px; margin-top: 4px;">请尝试其他搜索词</div>
+                            `;
+                            container.appendChild(emptyState);
+                        } else if (!show && emptyState) {
+                            emptyState.remove();
+                        }
+                    }
+
+                    selectAll(checked) {
+                        const visibleCheckboxes = Array.from(this.checkboxes).filter(checkbox => {
+                            const optionItem = checkbox.closest('.option-item');
+                            return optionItem.style.display !== 'none';
+                        });
+
+                        visibleCheckboxes.forEach(checkbox => {
+                            checkbox.checked = checked;
+                        });
+
+                        this.updateSelectedState();
+                    }
+
+                    updateSelectedState() {
+                        this.selectedUsers.clear();
+                        let selectedCount = 0;
+
+                        this.checkboxes.forEach(checkbox => {
+                            if (checkbox.checked) {
+                                const optionItem = checkbox.closest('.option-item');
+                                const userName = optionItem.querySelector('.user-name').textContent;
+                                const userValue = checkbox.value;
+                                
+                                this.selectedUsers.set(userValue, userName);
+                                selectedCount++;
+                            }
+                        });
+
+                        // 更新计数
+                        if (this.countElement) {
+                            this.countElement.textContent = selectedCount;
+                        }
+
+                        // 更新全选状态
+                        if (this.selectAllCheckbox) {
+                            const visibleCheckboxes = Array.from(this.checkboxes).filter(checkbox => {
+                                const optionItem = checkbox.closest('.option-item');
+                                return optionItem.style.display !== 'none';
+                            });
+                            
+                            const visibleChecked = visibleCheckboxes.filter(cb => cb.checked).length;
+                            
+                            if (visibleChecked === 0) {
+                                this.selectAllCheckbox.checked = false;
+                                this.selectAllCheckbox.indeterminate = false;
+                            } else if (visibleChecked === visibleCheckboxes.length) {
+                                this.selectAllCheckbox.checked = true;
+                                this.selectAllCheckbox.indeterminate = false;
+                            } else {
+                                this.selectAllCheckbox.checked = false;
+                                this.selectAllCheckbox.indeterminate = true;
+                            }
+                        }
+
+                        // 更新标签显示
+                        this.updateTags();
+
+                        // 更新隐藏的select元素
+                        this.updateHiddenSelect();
+                    }
+
+                    updateTags() {
+                        if (!this.tagsElement) return;
+
+                        this.tagsElement.innerHTML = '';
+
+                        this.selectedUsers.forEach((name, value) => {
+                            const tag = document.createElement('div');
+                            tag.className = 'selected-tag';
+                            tag.innerHTML = `
+                                <span>${name}</span>
+                                <button type="button" class="remove-btn" data-value="${value}">×</button>
+                            `;
+
+                            const removeBtn = tag.querySelector('.remove-btn');
+                            removeBtn.addEventListener('click', () => {
+                                this.removeUser(value);
+                            });
+
+                            this.tagsElement.appendChild(tag);
+                        });
+
+                        // 显示/隐藏标签区域
+                        this.tagsElement.style.display = this.selectedUsers.size > 0 ? '' : 'none';
+                    }
+
+                    removeUser(value) {
+                        const checkbox = this.container.querySelector(`input[value="${value}"]`);
+                        if (checkbox) {
+                            checkbox.checked = false;
+                            this.updateSelectedState();
+                        }
+                    }
+
+                    updateHiddenSelect() {
+                        const hiddenSelect = this.container.querySelector('select[multiple]');
+                        if (!hiddenSelect) return;
+
+                        // 清除所有选中项
+                        Array.from(hiddenSelect.options).forEach(option => {
+                            option.selected = false;
+                        });
+
+                        // 设置选中项
+                        this.selectedUsers.forEach((name, value) => {
+                            const option = hiddenSelect.querySelector(`option[value="${value}"]`);
+                            if (option) {
+                                option.selected = true;
+                            }
+                        });
+                    }
+
+                    // 设置初始值
+                    setInitialValues(values) {
+                        if (!values) return;
+                        
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        
+                        this.checkboxes.forEach(checkbox => {
+                            checkbox.checked = valuesArray.includes(checkbox.value);
+                        });
+
+                        this.updateSelectedState();
+                    }
+                }
+
+                // 初始化成员选择器
+                const memberManager = new MultiSelectManager(
+                    'members-container',
+                    'member-filter',
+                    'select-all-members',
+                    'member-count',
+                    'selected-members-tags'
+                );
+
+                // 初始化管理员选择器
+                const managerManager = new MultiSelectManager(
+                    'managers-container',
+                    'manager-filter',
+                    'select-all-managers',
+                    'manager-count',
+                    'selected-managers-tags'
+                );
+
+                // 设置初始值
+                document.addEventListener('DOMContentLoaded', function() {
+                    // 从隐藏的select元素获取初始值
+                    const membersSelect = document.querySelector('select[name="members"]');
+                    const managersSelect = document.querySelector('select[name="managers"]');
+                    
+                    if (membersSelect) {
+                        const selectedMembers = Array.from(membersSelect.selectedOptions).map(option => option.value);
+                        memberManager.setInitialValues(selectedMembers);
+                    }
+                    
+                    if (managersSelect) {
+                        const selectedManagers = Array.from(managersSelect.selectedOptions).map(option => option.value);
+                        managerManager.setInitialValues(selectedManagers);
+                    }
+                });
+
+                // 键盘快捷键支持
+                document.addEventListener('keydown', function(e) {
+                    // Ctrl/Cmd + A 全选当前焦点容器的可见项
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                        const activeElement = document.activeElement;
+                        
+                        if (activeElement && activeElement.id === 'member-filter') {
+                            e.preventDefault();
+                            memberManager.selectAll(true);
+                        } else if (activeElement && activeElement.id === 'manager-filter') {
+                            e.preventDefault();
+                            managerManager.selectAll(true);
+                        }
+                    }
+                    
+                    // Escape 清除搜索
+                    if (e.key === 'Escape') {
+                        if (memberManager.filterInput && document.activeElement === memberManager.filterInput) {
+                            memberManager.filterInput.value = '';
+                            memberManager.filterOptions('');
+                        } else if (managerManager.filterInput && document.activeElement === managerManager.filterInput) {
+                            managerManager.filterInput.value = '';
+                            managerManager.filterOptions('');
+                        }
+                    }
+                });
+
+                // 移动端触摸优化
+                if ('ontouchstart' in window) {
+                    document.querySelectorAll('.option-item').forEach(item => {
+                        item.addEventListener('touchstart', function() {
+                            this.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                        });
+                        
+                        item.addEventListener('touchend', function() {
+                            setTimeout(() => {
+                                this.style.backgroundColor = '';
+                            }, 150);
                         });
                     });
                 }
-                bindFilter('member-filter', document.getElementById('members-select'));
-                bindFilter('manager-filter', document.getElementById('managers-select'));
+
+                // 防止表单提交时的验证问题
+                document.querySelector('form').addEventListener('submit', function(e) {
+                    // 确保隐藏的select元素有正确的选中值
+                    memberManager.updateHiddenSelect();
+                    managerManager.updateHiddenSelect();
+                });
+
             })();
         </script>
 {% endblock %}
