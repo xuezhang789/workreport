@@ -1,177 +1,547 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
 {% block title %}统计看板 / Stats{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="统计看板 / Stats" nav_subtitle="日报与项目概览 / Reports & projects overview" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="统计看板 / Stats" nav_subtitle="智能数据分析与可视化 / Smart Analytics & Visualization" %}{% endblock %}
 {% block extra_styles %}
         :root {
+            /* 现代化设计系统 - 与绩效看板完全一致 */
             --primary: #2563eb;
             --primary-2: #3b82f6;
+            --primary-3: #60a5fa;
             --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+            --accent-2: #0891b2;
+            --success: #10b981;
+            --success-2: #059669;
+            --warning: #f59e0b;
+            --warning-2: #d97706;
+            --danger: #ef4444;
+            --danger-2: #dc2626;
+            --info: #8b5cf6;
+            --info-2: #7c3aed;
+            --bg-card: rgba(255, 255, 255, 0.98);
+            --bg-section: rgba(248, 250, 252, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --bg-glass-heavy: rgba(255, 255, 255, 0.95);
+            --border-light: rgba(226, 232, 240, 0.7);
+            --border-hover: rgba(59, 130, 246, 0.4);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-radius: 24px;
+            --border-radius-sm: 16px;
+            --border-radius-xs: 12px;
+            --card-spacing: 24px;
+            --shadow-sm: 0 4px 24px rgba(15, 23, 42, 0.08);
+            --shadow-md: 0 8px 32px rgba(15, 23, 42, 0.12);
+            --shadow-lg: 0 12px 48px rgba(15, 23, 42, 0.18);
+            --shadow-xl: 0 20px 80px rgba(15, 23, 42, 0.25);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
-
         * {
             box-sizing: border-box;
         }
 
         body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                linear-gradient(135deg, #f8fafc 0%, #e2e8f0 30%, #f1f5f9 60%, #f8fafc 100%);
+            background-attachment: fixed;
             min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            color: var(--text-primary);
             line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
         }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 24px 28px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 35px,
+                    rgba(255, 255, 255, 0.02) 35px,
+                    rgba(255, 255, 255, 0.02) 70px
+                );
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .stats-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 24px 32px;
+            position: relative;
+        }
+
+        .performance-shell { 
             display: grid; 
-            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-            gap: 16px; 
-            align-items: center; 
-            margin-bottom: 20px;
+            gap: var(--card-spacing);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* 增强的智能引导区域样式 */
+        .guidance-banner {
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(6, 182, 212, 0.02));
+            backdrop-filter: blur(30px) saturate(1.2);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            box-shadow: 
+                var(--shadow-lg),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
             position: relative;
             overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideInDown 0.8s ease-out;
+            display: grid;
+            grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+            gap: 32px;
         }
 
-        .hero::before {
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .guidance-banner::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.8;
+            height: 6px;
+            background: 
+                linear-gradient(90deg, 
+                    var(--primary) 0%, 
+                    var(--primary-2) 20%, 
+                    var(--accent) 40%, 
+                    var(--success) 60%, 
+                    var(--warning) 80%, 
+                    var(--info) 100%);
+            opacity: 0.9;
+            animation: gradientShift 4s ease-in-out infinite;
+            background-size: 200% 100%;
         }
 
-        .hero-content h1 {
-            margin: 0 0 8px;
-            font-size: clamp(22px, 3vw, 28px);
-            background: linear-gradient(135deg, var(--ink), #334155);
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .guidance-banner::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+        }
+
+        .guidance-banner:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 
+                var(--shadow-xl),
+                0 0 0 1px rgba(99, 102, 241, 0.2);
+            border-color: var(--border-hover);
+        }
+        .guidance-copy h1 {
+            margin: 2px 0 12px;
+            font-size: clamp(28px, 4vw, 36px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary), #334155);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-        }
-
-        .hero-content .lede {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.2;
         }
 
         .eyebrow {
             text-transform: uppercase;
             letter-spacing: 0.12em;
-            font-size: 11px;
-            color: var(--muted);
-            margin: 0 0 8px;
-            font-weight: 600;
-        }
-
-        .hero h1 {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
             margin: 0;
-            font-size: clamp(24px, 4vw, 32px);
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
-        .hero p {
-            margin: 8px 0 0;
-            color: var(--muted);
-            font-size: 16px;
+        .lede { 
+            color: var(--text-secondary); 
+            margin: 0 0 16px; 
+            font-size: 15px; 
+            line-height: 1.6;
         }
 
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            gap: 20px; 
-            margin-bottom: 24px;
+        .chip-row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            margin: 16px 0; 
         }
 
-        .card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            backdrop-filter: blur(20px); 
-            border-radius: var(--radius-lg); 
-            border: 1px solid var(--border); 
-            box-shadow: var(--shadow); 
-            padding: 24px 28px; 
-            margin-bottom: 0; 
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-light);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.05));
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            transition: var(--transition);
+            cursor: default;
+        }
+
+        .chip:hover {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.08));
+            transform: translateY(-2px) scale(1.02);
+            border-color: var(--border-hover);
+        }
+
+        .chip.muted { 
+            background: linear-gradient(135deg, rgba(100, 116, 139, 0.08), rgba(148, 163, 184, 0.05)); 
+            color: var(--text-secondary);
+            border-color: rgba(100, 116, 139, 0.2);
+        }
+        
+        .chip.success { 
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05)); 
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .quick-actions { 
+            display: flex; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            margin-top: 16px; 
+        }
+        /* 增强的按钮系统 */
+        .btn {
+            border: none;
+            border-radius: var(--border-radius-xs);
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            font-family: inherit;
+            letter-spacing: 0.02em;
+            text-transform: none;
+            white-space: nowrap;
+            user-select: none;
         }
 
-        .card::before {
+        .btn::before {
             content: '';
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent, rgba(0, 0, 0, 0.05));
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
-        .card:hover::before {
-            opacity: 0.6;
+        .btn:hover::before {
+            left: 100%;
         }
 
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
+        .btn:hover::after {
+            opacity: 1;
         }
 
-        .metric { 
-            font-size: 36px; 
+        .btn:active {
+            transform: translateY(2px) scale(0.96);
+        }
+
+        .btn-primary {
+            background: 
+                linear-gradient(135deg, var(--primary), var(--primary-2), var(--primary-3)),
+                linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(59, 130, 246, 0.9));
+            color: #fff;
+            box-shadow: 
+                0 4px 20px rgba(37, 99, 235, 0.35),
+                0 2px 8px rgba(37, 99, 235, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 
+                0 8px 32px rgba(37, 99, 235, 0.45),
+                0 4px 16px rgba(37, 99, 235, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-4px) scale(1.02);
+        }
+
+        .btn-ghost {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.03));
+            color: var(--text-primary);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-ghost:hover {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.06));
+            border-color: var(--border-hover);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-outline {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), var(--bg-glass));
+            color: var(--text-secondary);
+            border: 2px dashed var(--border-light);
+            backdrop-filter: blur(8px);
+        }
+
+        .btn-outline:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-md);
+        }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        label { font-weight: 700; font-size: 13px; color: var(--ink); }
+        input[type="date"], select {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            color: var(--ink);
+            transition: var(--transition);
+        }
+        input[type="date"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.95);
+        }
+        .toggle input { width: 18px; height: 18px; }
+        /* 增强的KPI网格系统 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            position: relative;
+        }
+
+        .kpi-card {
+            position: relative;
+            padding: 28px 24px;
+            border-radius: var(--border-radius);
+            border: 2px solid var(--border-light);
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(6, 182, 212, 0.02));
+            backdrop-filter: blur(20px) saturate(1.1);
+            box-shadow: 
+                var(--shadow-md),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            cursor: pointer;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.08), transparent 60%);
+            opacity: 0.8;
+            transition: opacity 0.4s ease;
+        }
+
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .kpi-card:hover::before {
+            opacity: 1;
+        }
+
+        .kpi-card:hover::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-8px) scale(1.04);
+            box-shadow: 
+                var(--shadow-xl),
+                0 0 0 1px rgba(99, 102, 241, 0.15),
+                0 0 40px rgba(99, 102, 241, 0.1);
+            border-color: var(--border-hover);
+        }
+
+        .kpi-label { 
+            font-size: 13px; 
+            color: var(--text-secondary); 
+            margin: 0 0 12px; 
             font-weight: 700; 
-            margin: 0; 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            text-transform: uppercase; 
+            letter-spacing: 0.08em; 
+            position: relative;
+            z-index: 1;
+        }
+
+        .kpi-value { 
+            font-size: 42px; 
+            font-weight: 900; 
+            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--primary-3));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            transition: all 0.3s ease;
-            line-height: 1.2;
+            margin: 0; 
+            position: relative; 
+            z-index: 1;
+            line-height: 1.1;
+            transition: var(--transition-bounce);
         }
 
-        .card:hover .metric {
-            transform: scale(1.05);
+        .kpi-card:hover .kpi-value {
+            transform: scale(1.08);
         }
 
-        .label { 
-            color: var(--muted); 
+        .kpi-sub { 
+            color: var(--text-secondary); 
             font-size: 13px; 
-            margin: 8px 0 0; 
-            font-weight: 600; 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em;
+            margin-top: 8px; 
+            position: relative; 
+            z-index: 1;
+            font-weight: 500;
         }
 
+        .kpi-card.accent-warning { 
+            border-color: rgba(245, 158, 11, 0.35);
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(245, 158, 11, 0.02), rgba(251, 191, 36, 0.02));
+        }
+        
+        .kpi-card.accent-warning::before {
+            background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.08), transparent 60%);
+        }
+
+        .kpi-card.accent-warning .kpi-value { 
+            background: linear-gradient(135deg, var(--warning), var(--warning-2), #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-card.accent-primary { 
+            border-color: rgba(37, 99, 235, 0.25); 
+        }
+
+        .kpi-card.accent-success { 
+            border-color: rgba(16, 185, 129, 0.25);
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(16, 185, 129, 0.02), rgba(5, 150, 105, 0.02));
+        }
+
+        .kpi-card.accent-success::before {
+            background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.08), transparent 60%);
+        }
+
+        .kpi-card.accent-success .kpi-value { 
+            background: linear-gradient(135deg, var(--success), var(--success-2), #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        /* 增强的表格和卡片系统 */
         .section-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            padding: 24px 28px;
-            margin-bottom: 20px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.01), rgba(6, 182, 212, 0.01));
+            backdrop-filter: blur(25px) saturate(1.15);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius);
+            box-shadow: 
+                var(--shadow-md),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            padding: 32px;
+            transition: var(--transition-smooth);
             position: relative;
             overflow: hidden;
         }
@@ -182,427 +552,1127 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--info));
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .section-card::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
             opacity: 0;
             transition: opacity 0.4s ease;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
         }
 
         .section-card:hover::before {
-            opacity: 0.8;
+            opacity: 0.9;
+        }
+
+        .section-card:hover::after {
+            opacity: 1;
         }
 
         .section-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 
+                var(--shadow-xl),
+                0 0 0 1px rgba(99, 102, 241, 0.1),
+                0 0 40px rgba(99, 102, 241, 0.08);
+            border-color: var(--border-hover);
         }
 
-        .section-card h3 {
-            margin: 0 0 16px;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--ink);
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title { 
+            margin: 0; 
+            font-size: 22px; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-sub { 
+            margin: 0; 
+            color: var(--text-secondary); 
+            font-size: 14px; 
+            margin-top: 4px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            background: var(--bg-card);
+            position: relative;
+            z-index: 1;
         }
 
         table { 
-            width:100%; 
+            width: 100%; 
             border-collapse: collapse; 
-            font-size: 14px;
-            border-radius: var(--radius-md);
+            font-size: 14px; 
+            border-radius: var(--border-radius);
             overflow: hidden;
+            background: var(--bg-card);
         }
 
         th, td { 
-            padding:14px 12px; 
-            border-bottom:1px solid rgba(226,232,240,0.6); 
-            text-align:left; 
-            transition: all 0.3s ease;
+            padding: 16px 14px; 
+            border-bottom: 1px solid var(--border-light); 
+            text-align: left; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
         }
 
-        @media (max-width: 768px) {
-            table, thead, tbody, th, td, tr {
-                display: block;
-                width: 100%;
-            }
-
-            thead {
-                display: none;
-            }
-
-            tr {
-                margin-bottom: 16px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius-md);
-                background: #fff;
-                padding: 16px;
-                box-shadow: var(--shadow);
-            }
-
-            td {
-                border: none;
-                padding: 8px 0;
-                position: relative;
-                padding-left: 120px;
-            }
-
-            td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 0;
-                top: 8px;
-                font-size: 12px;
-                color: var(--muted);
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                width: 110px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            td:first-child {
-                padding-left: 0;
-                font-weight: 600;
-                color: var(--ink);
-            }
-
-            td:first-child::before {
-                display: none;
-            }
+        th {
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 12px;
+            font-weight: 800;
+            background: 
+                linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08)),
+                linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(6, 182, 212, 0.05));
+            border-bottom: 2px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(10px);
         }
 
-        th { 
-            color: var(--muted); 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em; 
-            font-size:12px; 
-            font-weight:700;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
+        th::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
+            opacity: 0.6;
         }
 
         tbody tr {
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        tbody tr::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         tbody tr:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(6, 182, 212, 0.03));
-            transform: scale(1.01);
+            background: 
+                linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(6, 182, 212, 0.04)),
+                linear-gradient(135deg, rgba(37, 99, 235, 0.02), rgba(6, 182, 212, 0.02));
+            transform: translateX(4px) scale(1.01);
+        }
+
+        tbody tr:hover::before {
+            opacity: 1;
         }
 
         tbody tr:hover td {
             color: var(--primary);
+            font-weight: 500;
         }
 
-        .link {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
+        tbody tr:nth-child(even) {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.3), rgba(241, 245, 249, 0.2));
         }
-
-        .link:hover {
-            color: var(--primary-2);
-            text-decoration: underline;
-        }
-
-        .filters {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-
-        .filters > div {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--ink);
-        }
-
-        input[type="date"], select {
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-size: 14px;
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--ink);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            min-width: 140px;
-        }
-
-        input[type="date"]:focus, select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            background: #fff;
-            transform: translateY(-1px);
-        }
-
-        .btn {
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
+        /* 增强的数据可视化组件 */
+        .pill {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            transition: var(--transition);
+            cursor: default;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .pill:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .pill.danger { 
+            background: linear-gradient(135deg, var(--danger), var(--danger-2));
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .pill.warning { 
+            background: linear-gradient(135deg, var(--warning), var(--warning-2)); 
+            color: #fff;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        .pill.success { 
+            background: linear-gradient(135deg, var(--success), var(--success-2));
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .pill.muted { 
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e1); 
+            color: #475569;
+            border-color: rgba(75, 85, 105, 0.2);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: var(--bg-section);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            border-radius: 10px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
 
-        .btn::before {
+        .progress-bar::after {
             content: '';
             position: absolute;
             top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s ease-in-out infinite;
         }
 
-        .btn:hover::before {
-            left: 100%;
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
-        .btn:active {
-            transform: translateY(1px) scale(0.98);
+        .progress-bar.success {
+            background: linear-gradient(90deg, var(--success), var(--success-2), #34d399);
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        .progress-bar.warning {
+            background: linear-gradient(90deg, var(--warning), var(--warning-2), #fbbf24);
         }
 
-        .btn-primary:hover {
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        .progress-bar.danger {
+            background: linear-gradient(90deg, var(--danger), var(--danger-2), #f87171);
+        }
+
+        /* 数据标签样式 */
+        .data-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1));
+            color: var(--primary);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            margin: 2px;
+            transition: var(--transition);
+        }
+
+        .data-label:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        .data-label.success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .data-label.warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .data-label.danger {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .link { 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-weight: 700; 
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .link:hover::after {
+            transform: scaleX(1);
+        }
+
+        .empty { 
+            text-align: center; 
+            color: var(--text-secondary); 
+            padding: 40px 20px; 
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass)),
+                linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(99, 102, 241, 0.02));
+            backdrop-filter: blur(16px) saturate(1.1);
+            border: 2px dashed var(--border-light);
+            border-radius: var(--border-radius-sm);
+            transition: var(--transition);
+        }
+
+        .empty:hover {
+            border-color: var(--border-hover);
             transform: translateY(-2px);
         }
 
-        .btn-ghost {
-            background: rgba(15, 23, 42, 0.06);
-            color: var(--ink);
-            border: 1px solid rgba(15, 23, 42, 0.1);
+        .table-responsive { 
+            overflow-x: auto; 
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            background: var(--bg-card);
         }
 
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
+        /* 新增的图表容器样式 */
+        .chart-container {
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.01), rgba(6, 182, 212, 0.01));
+            backdrop-filter: blur(25px) saturate(1.15);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            position: relative;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+            overflow: hidden;
         }
 
-        @media (max-width: 860px) { 
-            .hero {
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--info));
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .chart-container:hover::before {
+            opacity: 0.8;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--border-hover);
+        }
+
+        .chart-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .chart-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        /* 数据钻取样式 */
+        .drill-down {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .drill-down:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+            transform: translateY(-2px) scale(1.05);
+            border-color: var(--border-hover);
+        }
+
+        /* 筛选器优化 */
+        .filter-sidebar {
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(6, 182, 212, 0.02));
+            backdrop-filter: blur(25px) saturate(1.15);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: var(--transition-smooth);
+        }
+
+        .filter-sidebar:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--border-hover);
+        }
+
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* 时间范围选择器 */
+        .time-range-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .time-range-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--border-radius-xs);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 252, 0.6));
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .time-range-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1));
+            transform: translateY(-2px);
+        }
+
+        .time-range-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* 实时数据指示器 */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            color: var(--success);
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+
+        /* 性能优化样式 */
+        .gpu-accelerated {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        .will-change-transform {
+            will-change: transform;
+        }
+
+        .will-change-opacity {
+            will-change: opacity;
+        }
+
+        /* 主内容区域布局优化 */
+        .stats-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* 响应式布局调整 */
+        @media (max-width: 1024px) {
+            .stats-layout {
                 grid-template-columns: 1fr;
-                padding: 20px;
-                gap: 16px;
             }
 
-            .filters {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 12px;
+            .filter-sidebar {
+                position: relative;
+                top: 0;
+                max-height: none;
+            }
+        }
+
+        /* 数据卡片网格优化 */
+        .data-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .data-card {
+            background: 
+                linear-gradient(135deg, var(--bg-card), var(--bg-glass-heavy)),
+                linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(6, 182, 212, 0.02));
+            backdrop-filter: blur(25px) saturate(1.15);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .data-card:hover::before {
+            opacity: 0.8;
+        }
+
+        .data-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--border-hover);
+        }
+        /* 增强的响应式设计 */
+        @media (max-width: 1200px) {
+            .stats-container {
+                max-width: 100%;
+                padding: 0 20px;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            }
+        }
+
+        @media (max-width: 980px) {
+            .guidance-banner {
+                grid-template-columns: 1fr;
+                gap: 28px;
+                padding: 32px;
             }
 
-            .filters > div {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
             }
+        }
 
-            .filters label {
-                margin: 0;
-                flex-shrink: 0;
+        @media (max-width: 768px) {
+            .stats-container {
+                padding: 0 16px;
             }
-
-            input[type="date"], select {
-                flex: 1;
-                min-width: 0;
-            }
-
-            .grid { 
-                grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); 
-                gap: 16px;
-            }
-
-            .card {
-                padding: 20px;
+            
+            .guidance-banner {
+                padding: 24px;
+                border-radius: var(--border-radius);
             }
 
             .section-card {
-                padding: 20px;
+                padding: 24px;
+                border-radius: var(--border-radius);
             }
 
-            .metric {
-                font-size: 28px;
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 16px;
+            }
+
+            .section-head {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            th, td { 
+                padding: 12px 10px; 
+                font-size: 13px; 
+            }
+
+            .kpi-value {
+                font-size: 36px;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .quick-actions .btn {
+                width: 100%;
+                justify-content: center;
             }
         }
 
         @media (max-width: 640px) {
-            .hero {
-                padding: 16px;
+            .stats-container {
+                padding: 0 12px;
             }
 
-            .hero h1 {
-                font-size: 24px;
+            .guidance-banner {
+                padding: 20px;
+                border-radius: var(--border-radius-sm);
             }
 
-            .hero p {
-                font-size: 14px;
+            .section-card {
+                padding: 20px;
+                border-radius: var(--border-radius-sm);
             }
 
-            .grid {
+            .kpi-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
 
-            .card {
-                padding: 16px;
+            .kpi-value {
+                font-size: 32px;
             }
 
-            .section-card {
-                padding: 16px;
-            }
-
-            .metric {
-                font-size: 24px;
-            }
-
-            .filters {
-                padding: 0;
-            }
-
-            .filters > div {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 6px;
-            }
-
-            .btn {
-                padding: 12px 16px;
-                font-size: 13px;
-            }
-
-            table {
-                font-size: 13px;
+            .kpi-card {
+                padding: 24px 20px;
             }
 
             th, td {
                 padding: 10px 8px;
+                font-size: 12px;
+            }
+
+            .section-title {
+                font-size: 18px;
+            }
+
+            .guidance-copy h1 {
+                font-size: clamp(24px, 6vw, 30px);
             }
         }
 
         @media (max-width: 480px) {
-            .hero {
-                padding: 12px;
-            }
-
-            .card {
-                padding: 12px;
+            .guidance-banner {
+                padding: 16px;
             }
 
             .section-card {
-                padding: 12px;
+                padding: 16px;
             }
 
-            .metric {
-                font-size: 20px;
+            .kpi-card {
+                padding: 20px 16px;
             }
 
-            .filters {
+            .kpi-value {
+                font-size: 28px;
+            }
+
+            .quick-actions {
                 gap: 8px;
             }
 
-            input[type="date"], select {
+            .chip-row {
+                gap: 8px;
+            }
+
+            .chip {
                 padding: 8px 12px;
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .btn {
-                padding: 10px 14px;
-                font-size: 12px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+        }
+
+        /* 减少动画对性能的影响 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* 打印样式优化 */
+        @media print {
+            .guidance-banner,
+            .quick-actions,
+            .chip-row {
+                display: none !important;
             }
 
-            table {
-                font-size: 12px;
+            .section-card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc;
+                margin-bottom: 20px;
+                padding: 16px;
             }
 
-            th, td {
-                padding: 8px 6px;
+            .kpi-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            body {
+                background: white;
+            }
+
+            .stats-container {
+                max-width: none;
+                padding: 0;
             }
         }
 {% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <div>
-            <h1>统计看板</h1>
-            <p>日报与项目概览 · 数据约每 10 分钟刷新一次 / Reports & projects overview (cache ~10min)</p>
-            {% if sla_thresholds %}
-            <p style="margin:4px 0 0;color:#475569;font-size:13px;">SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h / SLA: Red {{ sla_thresholds.red }}h · Amber {{ sla_thresholds.amber }}h</p>
-            {% endif %}
-            {% if generated_at %}
-            <p style="margin:4px 0 0;color:#475569;font-size:13px;">上次刷新：{{ generated_at|date:"Y-m-d H:i" }}（本地时区） / Last refreshed (local): {{ generated_at|date:"Y-m-d H:i" }}</p>
-            {% endif %}
-            <a class="btn btn-ghost" href="" onclick="location.reload(); return false;" style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;">🔄 刷新数据 / Refresh</a>
-            <p style="margin:4px 0 0;color:#64748b;font-size:12px;">导出提示：若数据过大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
+<div class="stats-container performance-shell">
+    <!-- 智能头部区域 -->
+    <header class="guidance-banner">
+        <div class="guidance-copy">
+            <div class="eyebrow">
+                <span class="live-indicator">
+                    <span class="live-dot"></span>
+                    实时数据 / Live Data
+                </span>
+            </div>
+            <h1>智能统计看板 / Smart Analytics Dashboard</h1>
+            <p class="lede">全方位数据洞察，实时监控项目健康度、任务状态和团队效率。支持多维度数据钻取和自定义筛选。</p>
+            <div class="chip-row">
+                {% if sla_thresholds %}
+                    <span class="chip">SLA 阈值：红 {{ sla_thresholds.red }}h · 黄 {{ sla_thresholds.amber }}h</span>
+                {% endif %}
+                {% if generated_at %}
+                    <span class="chip muted">上次刷新：{{ generated_at|localtime|date:"Y-m-d H:i" }}</span>
+                {% endif %}
+                <span class="chip success">提醒窗口：{{ sla_remind }}h</span>
+                <span class="chip">活跃项目：{{ metrics.total_projects }}</span>
+                <span class="chip">活跃用户：{{ metrics.active_users }}</span>
+            </div>
         </div>
-        <form method="get" class="filters" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-            <div>
-                <label for="date">日期 / Date</label>
-                <input type="date" id="date" name="date" value="{{ today }}">
-            </div>
-            <div>
-                <label for="project">项目 / Project</label>
-                <select id="project" name="project">
-                    <option value="">全部 / All</option>
-                    {% for p in projects %}
-                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="role">角色 / Role</label>
-                <select id="role" name="role">
-                    <option value="">全部 / All</option>
-                    {% for val,label in report_roles %}
-                        <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-                <label>过滤 / Filter</label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    {% if sla_only %}
-                        <a class="btn btn-ghost" href="{% url 'reports:stats' %}?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}">显示全部 / Show all</a>
-                    {% else %}
-                        <a class="btn btn-ghost" href="?sla_only=1&date={{ today }}&project={{ project_filter }}&role={{ role_filter }}">仅看 SLA 预警 / SLA only</a>
-                    {% endif %}
+        <div class="quick-actions">
+            <button type="button" class="btn btn-ghost" onclick="location.reload();">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M1 20v-6h6"></path>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                刷新数据
+            </button>
+            {% if missing_projects %}
+                <a class="btn btn-primary" href="?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    一键催报
+                </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- 主内容布局 -->
+    <div class="stats-layout">
+        <!-- 侧边栏筛选器 -->
+        <aside class="filter-sidebar">
+            <form method="get">
+                <div class="filter-section">
+                    <h3 class="filter-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        快速筛选
+                    </h3>
+                    
+                    <!-- 时间范围选择 -->
+                    <div class="time-range-selector">
+                        <button type="button" class="time-range-btn">今日</button>
+                        <button type="button" class="time-range-btn">昨日</button>
+                        <button type="button" class="time-range-btn">本周</button>
+                        <button type="button" class="time-range-btn">本月</button>
+                    </div>
+                    
+                    <div class="field">
+                        <label for="date">自定义日期 / Date</label>
+                        <input type="date" id="date" name="date" value="{{ today }}">
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <h3 class="filter-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        项目维度
+                    </h3>
+                    <div class="field">
+                        <label for="project">选择项目 / Project</label>
+                        <select id="project" name="project">
+                            <option value="">全部项目 / All Projects</option>
+                            {% for p in projects %}
+                                <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <h3 class="filter-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        角色维度
+                    </h3>
+                    <div class="field">
+                        <label for="role">选择角色 / Role</label>
+                        <select id="role" name="role">
+                            <option value="">全部角色 / All Roles</option>
+                            {% for val,label in report_roles %}
+                                <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <h3 class="filter-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        高级选项
+                    </h3>
+                    <div class="field">
+                        <label class="toggle">
+                            <input type="checkbox" id="sla_only" name="sla_only" value="1" {% if sla_only %}checked{% endif %}>
+                            <span>仅显示 SLA 预警</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" type="submit" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    应用筛选
+                </button>
+            </form>
+
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-light);">
+                <h3 class="filter-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    数据导出
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <a class="drill-down" href="{% url 'reports:stats_export' %}?type=missing&date={{ today }}&role={{ role_filter }}">
+                        导出缺报数据 / Missing Reports
+                    </a>
+                    <a class="drill-down" href="{% url 'reports:stats_export' %}?type=project_sla">
+                        导出项目 SLA / Project SLA
+                    </a>
+                    <a class="drill-down" href="{% url 'reports:stats_export' %}?type=user_sla">
+                        导出用户 SLA / User SLA
+                    </a>
                 </div>
             </div>
-            <button class="btn btn-primary" type="submit">🔍 筛选 / Filter</button>
-            {% if missing_projects %}
-                <a class="btn btn-ghost" href="?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1">📧 一键催报 / Send Reminder</a>
-            {% endif %}
-        </form>
-    </div>
+        </aside>
 
-    {% if sla_only %}
-    <div class="card" style="margin-top:16px;">
-        <h3>SLA 预警任务 / SLA Alerts</h3>
-        <p style="margin:4px 0 10px;color:#475569;font-size:13px;">仅显示红/黄等级或逾期任务。SLA：红 {{ thresholds.red }}h / 黄 {{ thresholds.amber }}h。</p>
+        <!-- 主内容区域 -->
+        <main class="main-content">
+
+            <!-- 核心指标展示 -->
+            <section class="kpi-grid">
+                <div class="kpi-card accent-warning gpu-accelerated will-change-transform">
+                    <div class="kpi-header">
+                        <p class="kpi-label">今日缺报</p>
+                        <div class="kpi-icon">⚠️</div>
+                    </div>
+                    <p class="kpi-value">{{ metrics.missing_today }}</p>
+                    <p class="kpi-sub">催报窗口 {{ sla_remind }}h</p>
+                    {% if metrics.missing_today > 0 %}
+                    {% widthratio metrics.missing_today 1 10 as missing_width %}
+                    <div class="progress-bar-container">
+                        <div class="progress-bar warning" style="width: {{ missing_width|add:"20" }}%"></div>
+                    </div>
+                    {% endif %}
+                    <a href="#missing-reports" class="drill-down">查看详情 →</a>
+                </div>
+                
+                <div class="kpi-card accent-primary gpu-accelerated will-change-transform">
+                    <div class="kpi-header">
+                        <p class="kpi-label">日报总数</p>
+                        <div class="kpi-icon">📊</div>
+                    </div>
+                    <p class="kpi-value">{{ metrics.total_reports }}</p>
+                    <p class="kpi-sub">最新 {{ metrics.last_date|default:'—' }}</p>
+                    {% if metrics.total_reports > 0 %}
+                    {% widthratio metrics.total_reports 1 2 as total_reports_width %}
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: {{ total_reports_width|add:"10" }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="kpi-card accent-success gpu-accelerated will-change-transform">
+                    <div class="kpi-header">
+                        <p class="kpi-label">活跃项目</p>
+                        <div class="kpi-icon">🚀</div>
+                    </div>
+                    <p class="kpi-value">{{ metrics.total_projects }}</p>
+                    <p class="kpi-sub">未删除项目</p>
+                    {% if metrics.total_projects > 0 %}
+                    {% widthratio metrics.total_projects 1 8 as total_projects_width %}
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: {{ total_projects_width|add:"10" }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="kpi-card accent-primary gpu-accelerated will-change-transform">
+                    <div class="kpi-header">
+                        <p class="kpi-label">活跃用户</p>
+                        <div class="kpi-icon">👥</div>
+                    </div>
+                    <p class="kpi-value">{{ metrics.active_users }}</p>
+                    <p class="kpi-sub">最近提交日报</p>
+                    {% if metrics.active_users > 0 %}
+                    {% widthratio metrics.active_users 1 4 as active_users_width %}
+                    <div class="progress-bar-container">
+                        <div class="progress-bar success" style="width: {{ active_users_width|add:"10" }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- 数据可视化区域 -->
+            <div class="data-cards-grid">
+                <div class="chart-container">
+                    <div class="chart-placeholder">
+                        <div class="chart-icon">📈</div>
+                        <div>日报提交趋势图</div>
+                        <small>过去7天提交量变化</small>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-placeholder">
+                        <div class="chart-icon">🎯</div>
+                        <div>项目健康度分布</div>
+                        <small>各项目SLA达成率对比</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLA预警任务 -->
+            {% if sla_only or sla_urgent_tasks %}
+            <section class="section-card" id="sla-alerts">
+                <div class="section-head">
+                    <div>
+                        <p class="section-title">🚨 SLA 预警任务</p>
+                        <p class="section-sub">红/黄等级与已逾期任务实时监控</p>
+                    </div>
+                    <div class="live-indicator">
+                        <span class="live-dot"></span>
+                        实时监控
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>任务名称</th>
+                                <th>所属项目</th>
+                                <th>预警等级</th>
+                                <th>剩余时间</th>
+                                <th>负责人</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in sla_urgent_tasks %}
+                                <tr class="gpu-accelerated">
+                                    <td>
+                                        <strong>{{ t.title|truncatechars:40 }}</strong>
+                                        {% if t.due_at %}
+                                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                                            截止: {{ t.due_at|localtime|date:"m-d H:i" }}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ t.project.name }}</td>
+                                    <td>
+                                        {% if t.sla_info.level == 'red' %}
+                                            <span class="pill danger">🔴 紧急</span>
+                                        {% elif t.sla_info.level == 'amber' %}
+                                            <span class="pill warning">🟡 警告</span>
+                                        {% else %}
+                                            <span class="pill muted">⚫ 逾期</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ t.sla_info.remaining_hours|default:"--" }}h</strong>
+                                        {% if t.sla_info.remaining_hours %}
+                                        {% widthratio t.sla_info.remaining_hours 1 3 as remaining_width %}
+                                        <div class="progress-bar-container" style="margin-top: 4px;">
+                                            <div class="progress-bar {% if t.sla_info.level == 'red' %}danger{% elif t.sla_info.level == 'amber' %}warning{% else %}muted{% endif %}" 
+                                                 style="width: {{ remaining_width|add:"10" }}%"></div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                                    <td>
+                                        <a href="{% url 'reports:task_view' t.pk %}" class="drill-down" target="_blank">查看详情</a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="empty">暂无 SLA 预警任务 ✅</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+    {% if sla_only or sla_urgent_tasks %}
+    <div class="section-card">
+        <div class="section-head">
+            <div>
+                <p class="section-title">SLA 预警任务 / SLA Alerts</p>
+                <p class="section-sub">红/黄等级与已逾期任务的实时列表。</p>
+            </div>
+        </div>
         <div class="table-responsive">
-            <table class="table">
+            <table>
                 <thead>
                     <tr>
                         <th>任务 / Task</th>
@@ -614,15 +1684,39 @@
                 </thead>
                 <tbody>
                     {% for t in sla_urgent_tasks %}
-                    <tr>
-                        <td>{{ t.title }}</td>
-                        <td>{{ t.project.name }}</td>
-                        <td>{% if t.sla_info.level == 'red' %}Red{% elif t.sla_info.level == 'amber' %}Amber{% else %}Overdue{% endif %}</td>
-                        <td>{{ t.sla_info.remaining_hours|default:"--" }}</td>
-                        <td>{{ t.user.get_full_name|default:t.user.username }}</td>
-                    </tr>
+                        <tr class="gpu-accelerated">
+                            <td>
+                                <strong>{{ t.title|truncatechars:40 }}</strong>
+                                {% if t.due_at %}
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                                    截止: {{ t.due_at|localtime|date:"m-d H:i" }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>{{ t.project.name }}</td>
+                            <td>
+                                {% if t.sla_info.level == 'red' %}
+                                    <span class="pill danger">🔴 Red</span>
+                                {% elif t.sla_info.level == 'amber' %}
+                                    <span class="pill warning">🟡 Amber</span>
+                                {% else %}
+                                    <span class="pill muted">⚫ Overdue</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ t.sla_info.remaining_hours|default:"--" }}</strong>
+                                {% if t.sla_info.remaining_hours %}
+                                {% widthratio t.sla_info.remaining_hours 1 3 as remaining_width %}
+                                <div class="progress-bar-container" style="margin-top: 4px;">
+                                    <div class="progress-bar {% if t.sla_info.level == 'red' %}danger{% elif t.sla_info.level == 'amber' %}warning{% else %}muted{% endif %}" 
+                                         style="width: {{ remaining_width|add:"10" }}%"></div>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                        </tr>
                     {% empty %}
-                    <tr><td colspan="5" style="text-align:center;color:#94a3b8;">暂无 SLA 预警任务 / No SLA alerts</td></tr>
+                        <tr><td colspan="5" class="empty">暂无 SLA 预警任务 / No SLA alerts</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -630,151 +1724,529 @@
     </div>
     {% endif %}
 
-    <div class="grid">
-        <div class="card">
-            <p class="metric">{{ metrics.total_reports }}</p>
-            <p class="label">总日报数 / Total Reports</p>
-        </div>
-        <div class="card">
-            <p class="metric">{{ metrics.total_projects }}</p>
-            <p class="label">活跃项目数 / Active Projects</p>
-        </div>
-        <div class="card">
-            <p class="metric">{{ metrics.active_users }}</p>
-            <p class="label">提交过日报的用户数 / Active Users</p>
-        </div>
-        <div class="card">
-            <p class="metric">{{ metrics.last_date|default:'—' }}</p>
-            <p class="label">最近日期 / Latest Date</p>
-        </div>
-        <div class="card">
-            <p class="metric">{{ metrics.missing_today }}</p>
-            <p class="label">今日未提交 / Missing Today</p>
-        </div>
-        <div class="card">
-            <p class="metric">{{ sla_remind }}h</p>
-            <p class="label">SLA 提醒窗口 / SLA Reminder Window</p>
-        </div>
-    </div>
+            <!-- 今日缺报详情 -->
+            <section class="section-card" id="missing-reports">
+                <div class="section-head">
+                    <div>
+                        <p class="section-title">📋 今日缺报详情</p>
+                        <p class="section-sub">按项目列出未提交日报的成员，支持快速催报操作</p>
+                    </div>
+                    <div class="quick-actions">
+                        <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=missing&date={{ today }}&role={{ role_filter }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            导出CSV
+                        </a>
+                        {% if missing_projects %}
+                        <button class="btn btn-primary" onclick="handleBulkReminder()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            批量催报
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>项目名称</th>
+                                <th>缺报人数</th>
+                                <th>缺报成员</th>
+                                <th>最后提交</th>
+                                <th>催报操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in missing_projects %}
+                                <tr>
+                                    <td><strong>{{ row.project }}</strong></td>
+                                    <td>
+                                        <span class="data-label danger">{{ row.missing_count }}人</span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            {% for u in row.users %}
+                                                <div class="user-item">
+                                                    <span>{{ u.name }}</span>
+                                                    {% if u.email %}
+                                                    <a href="mailto:{{ u.email }}" class="drill-down" style="font-size: 12px;">发送邮件</a>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            {% for u in row.users %}
+                                                <div style="font-size: 12px; color: var(--text-secondary);">
+                                                    {{ u.last_date|default:"从未提交" }}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px;">
+                                            催报此项目
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5" class="empty">今日暂无缺报 ✅</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-    <div class="grid">
-        <div class="section-card">
-            <h3>按角色统计 / Role Statistics</h3>
-            <table>
-                <thead><tr><th>角色 / Role</th><th>数量 / Count</th></tr></thead>
-                <tbody>
-                {% for role, count in role_counts %}
-                    <tr><td data-label="角色 / Role">{{ role }}</td><td data-label="数量 / Count">{{ count }}</td></tr>
-                {% empty %}
-                    <tr><td colspan="2">无数据 / No Data</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="section-card">
-            <h3>项目日报 Top 5 / Top 5 Project Reports</h3>
-            <table>
-                <thead><tr><th>项目 / Project</th><th>日报数 / Reports</th></tr></thead>
-                <tbody>
-                {% for p in top_projects %}
-                    <tr><td data-label="项目 / Project">{{ p.name }}</td><td data-label="日报数 / Reports">{{ p.report_count }}</td></tr>
-                {% empty %}
-                    <tr><td colspan="2">无数据 / No Data</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="section-card">
-        <h3>今日缺报 / Missing Today ({{ today }})</h3>
-        <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
-            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=missing&date={{ today }}&role={{ role_filter }}">导出缺报 CSV</a>
-            <span style="font-size:12px;color:#64748b;margin-left:8px;">若数据量过大将提示缩小筛选范围 / Large data may require narrowing filters</span>
-        </div>
-        <table>
-            <thead><tr><th>项目 / Project</th><th>未提交人数 / Missing</th><th>名单 / Users</th><th>最后提交 / Last Submit</th></tr></thead>
-            <tbody>
-            {% for row in missing_projects %}
-                <tr>
-                    <td>{{ row.project }}</td>
-                    <td>{{ row.missing_count }}</td>
-                    <td>
-                        {% for u in row.users %}
-                            <div>{{ u.name }}</div>
+            <!-- 数据统计卡片 -->
+            <div class="data-cards-grid">
+                <div class="data-card">
+                    <div class="section-head" style="margin-bottom: 16px;">
+                        <p class="section-title" style="font-size: 18px;">👥 角色分布</p>
+                        <a href="#" class="drill-down">查看全部</a>
+                    </div>
+                    <div class="role-stats">
+                        {% for role, count in role_counts %}
+                            <div class="role-item">
+                                <span class="role-name">{{ role }}</span>
+                                <span class="role-count">{{ count }}</span>
+                            </div>
+                        {% empty %}
+                            <div class="empty" style="padding: 20px;">无数据</div>
                         {% endfor %}
-                    </td>
-                    <td>
-                        {% for u in row.users %}
-                            <div>{{ u.last_date|default:"未找到" }}</div>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div class="section-head" style="margin-bottom: 16px;">
+                        <p class="section-title" style="font-size: 18px;">🏆 项目排行 Top 5</p>
+                        <a href="#" class="drill-down">查看全部</a>
+                    </div>
+                    <div class="project-ranking">
+                        {% for p in top_projects %}
+                            <div class="ranking-item">
+                                <div class="ranking-number">{{ forloop.counter }}</div>
+                                <div class="ranking-info">
+                                    <div class="ranking-name">{{ p.name }}</div>
+                                    <div class="ranking-value">{{ p.report_count }} 份日报</div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="empty" style="padding: 20px;">无数据</div>
                         {% endfor %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="4">今日暂无缺报</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                    </div>
+                </div>
+            </div>
 
-    <div class="grid">
-        <div class="section-card">
-            <h3>数据质量提醒 / Data Quality Alerts</h3>
-            <table>
-                <thead><tr><th>项目 / Item</th><th>数量 / Count</th></tr></thead>
-                <tbody>
-                    <tr><td data-label="项目 / Item">未设置截止的任务 / Tasks Without Due Date</td><td data-label="数量 / Count">{{ metrics.tasks_missing_due }}</td></tr>
-                    <tr><td data-label="项目 / Item">今日缺报 / Missing Today</td><td data-label="数量 / Count">{{ metrics.missing_today }}</td></tr>
-                </tbody>
-            </table>
-        </div>
+            <!-- 数据质量监控 -->
+            <section class="section-card">
+                <div class="section-head">
+                    <div>
+                        <p class="section-title">🔍 数据质量监控</p>
+                        <p class="section-sub">系统数据完整性检查与异常提醒</p>
+                    </div>
+                    <div class="live-indicator">
+                        <span class="live-dot"></span>
+                        实时检测
+                    </div>
+                </div>
+                
+                <div class="data-cards-grid">
+                    <div class="data-card" style="{% if metrics.tasks_missing_due > 5 %}border-color: var(--warning);{% endif %}">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="font-weight: 600; color: var(--text-primary);">未设置截止的任务</span>
+                            <span class="data-label {% if metrics.tasks_missing_due > 5 %}warning{% else %}success{% endif %}">{{ metrics.tasks_missing_due }} 个</span>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">请补充任务截止时间以启用 SLA 监控</p>
+                        {% if metrics.tasks_missing_due > 0 %}
+                        <a href="{% url 'reports:admin_task_list' %}?missing_due=1" class="drill-down" style="margin-top: 12px;">立即处理 →</a>
+                        {% endif %}
+                    </div>
 
-        <div class="section-card">
-            <h3>超时任务榜单 / Overdue Tasks</h3>
-            <table>
-                <thead><tr><th>任务 / Task</th><th>项目 / Project</th><th>指派人 / Assignee</th><th>截止 / Due Date</th><th>操作 / Action</th></tr></thead>
-                <tbody>
-                    {% for t in overdue_top %}
-                        <tr>
-                            <td data-label="任务 / Task">{{ t.title }}</td>
-                            <td data-label="项目 / Project">{{ t.project.name }}</td>
-                            <td data-label="指派人 / Assignee">{{ t.user.get_full_name|default:t.user.username }}</td>
-                            <td data-label="截止 / Due Date">{% if t.due_at %}{{ t.due_at|localtime|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
-                            <td data-label="操作 / Action"><a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer" class="link">查看 / View</a></td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="5">暂无超时任务 / No Overdue Tasks</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                    <div class="data-card" style="{% if metrics.missing_today > 10 %}border-color: var(--danger);{% elif metrics.missing_today > 5 %}border-color: var(--warning);{% endif %}">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="font-weight: 600; color: var(--text-primary);">今日缺报情况</span>
+                            <span class="data-label {% if metrics.missing_today > 10 %}danger{% elif metrics.missing_today > 5 %}warning{% else %}success{% endif %}">{{ metrics.missing_today }} 人</span>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">需要及时催促相关人员提交日报</p>
+                        {% if metrics.missing_today > 0 %}
+                        <a href="#missing-reports" class="drill-down" style="margin-top: 12px;">查看详情 →</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
 
-    <div class="section-card">
-        <h3>项目 SLA 达成率 / Project SLA Achievement Rate</h3>
-        <div style="display:flex; justify-content:flex-end; margin-bottom:8px; gap:8px;">
-            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=project_sla">导出项目 SLA / Export Project SLA</a>
-            <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=user_sla">导出用户 SLA / Export User SLA</a>
-        </div>
-        <table>
-            <thead><tr><th>项目 / Project</th><th>完成 / Completed</th><th>逾期 / Overdue</th><th>SLA 内完成 / Within SLA</th><th>达成率 / Rate</th><th>操作 / Action</th></tr></thead>
-            <tbody>
-                {% for row in project_sla_stats %}
-                    <tr>
-                        <td data-label="项目 / Project">{{ row.project.name }}</td>
-                        <td data-label="完成 / Completed">{{ row.completed }}/{{ row.total }}</td>
-                        <td data-label="逾期 / Overdue">{{ row.overdue }}</td>
-                        <td data-label="SLA 内完成 / Within SLA">{{ row.within_sla }}</td>
-                        <td data-label="达成率 / Rate">{{ row.sla_rate|floatformat:1 }}%</td>
-                        <td data-label="操作 / Action">
-                            <a href="{% url 'reports:admin_task_list' %}?project={{ row.project.id }}&status=overdue" class="link">逾期任务 / Overdue</a>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="6">无数据 / No Data</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <!-- 超时任务榜单 -->
+            <section class="section-card">
+                <div class="section-head">
+                    <div>
+                        <p class="section-title">⏰ 超时任务榜单</p>
+                        <p class="section-sub">已超过截止时间的任务列表，请及时处理</p>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="{% url 'reports:admin_task_list' %}?status=overdue" class="btn btn-ghost">
+                            查看全部超时任务
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>任务名称</th>
+                                <th>所属项目</th>
+                                <th>负责人</th>
+                                <th>截止时间</th>
+                                <th>逾期天数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in overdue_top %}
+                                <tr>
+                                    <td><strong>{{ t.title|truncatechars:30 }}</strong></td>
+                                    <td>{{ t.project.name }}</td>
+                                    <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                                    <td>
+                                        {% if t.due_at %}
+                                        <span class="data-label danger">{{ t.due_at|localtime|date:"m-d H:i" }}</span>
+                                        {% else %}
+                                        <span class="data-label muted">未设置</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if t.due_at %}
+                                            <span class="data-label warning">
+                                                {% widthratio t.days_overdue 1 1 as days %}
+                                                {{ days }} 天
+                                            </span>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'reports:task_view' t.pk %}" class="drill-down" target="_blank">查看详情</a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="empty">暂无超时任务 ✅</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 项目 SLA 达成率 -->
+            <section class="section-card">
+                <div class="section-head">
+                    <div>
+                        <p class="section-title">📊 项目 SLA 达成率</p>
+                        <p class="section-sub">各项目任务完成时效性统计与分析</p>
+                    </div>
+                    <div class="quick-actions">
+                        <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=project_sla">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            导出项目SLA
+                        </a>
+                        <a class="btn btn-ghost" href="{% url 'reports:stats_export' %}?type=user_sla">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            导出用户SLA
+                        </a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>项目名称</th>
+                                <th>完成情况</th>
+                                <th>逾期数量</th>
+                                <th>SLA内完成</th>
+                                <th>达成率</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in project_sla_stats %}
+                                <tr>
+                                    <td><strong>{{ row.project.name }}</strong></td>
+                                    <td>
+                                        <span class="data-label primary">{{ row.completed }}/{{ row.total }}</span>
+                                    </td>
+                                    <td>
+                                        {% if row.overdue > 0 %}
+                                        <span class="data-label danger">{{ row.overdue }}</span>
+                                        {% else %}
+                                        <span class="data-label success">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="data-label success">{{ row.within_sla }}</span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 12px; min-width: 160px;">
+                                            {% widthratio row.sla_rate 1 1 as sla_rate_int %}
+                                            <div class="progress-bar-container" style="flex: 1; margin: 0;">
+                                                <div class="progress-bar {% if sla_rate_int >= 90 %}success{% elif sla_rate_int >= 70 %}warning{% else %}danger{% endif %}" 
+                                                     style="width: {{ row.sla_rate|floatformat:1 }}%; height: 12px;"></div>
+                                            </div>
+                                            <strong style="color: {% if sla_rate_int >= 90 %}var(--success){% elif sla_rate_int >= 70 %}var(--warning){% else %}var(--danger){% endif %};">
+                                                {{ row.sla_rate|floatformat:1 }}%
+                                            </strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'reports:admin_task_list' %}?project={{ row.project.id }}&status=overdue" class="drill-down">
+                                            查看逾期任务
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="empty">暂无 SLA 数据</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     </div>
+</div>
+
+<!-- 新增的样式定义 -->
+<style>
+/* KPI卡片头部优化 */
+.kpi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.kpi-icon {
+    font-size: 20px;
+    opacity: 0.8;
+}
+
+/* 角色统计样式 */
+.role-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.role-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+    border-radius: var(--border-radius-xs);
+    border: 1px solid var(--border-light);
+    transition: var(--transition);
+}
+
+.role-item:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(6, 182, 212, 0.05));
+    transform: translateX(4px);
+}
+
+.role-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.role-count {
+    padding: 4px 8px;
+    background: var(--primary);
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* 项目排行样式 */
+.project-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+    border-radius: var(--border-radius-xs);
+    border: 1px solid var(--border-light);
+    transition: var(--transition);
+}
+
+.ranking-item:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(6, 182, 212, 0.05));
+    transform: translateX(4px);
+}
+
+.ranking-number {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ranking-info {
+    flex: 1;
+}
+
+.ranking-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.ranking-value {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 用户项样式 */
+.user-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: rgba(248, 250, 252, 0.5);
+    border-radius: 8px;
+    margin-bottom: 4px;
+}
+
+/* 调整响应式布局 */
+@media (max-width: 1024px) {
+    .stats-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-sidebar {
+        position: relative;
+        top: 0;
+        max-height: none;
+    }
+    
+    .data-cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .section-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .quick-actions {
+        width: 100%;
+    }
+    
+    .quick-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// 批量催报功能
+function handleBulkReminder() {
+    if (confirm('确定要发送批量催报邮件吗？')) {
+        window.location.href = '?date={{ today }}&project={{ project_filter }}&role={{ role_filter }}&remind=1';
+    }
+}
+
+// 时间范围快速选择
+document.addEventListener('DOMContentLoaded', function() {
+    const timeButtons = document.querySelectorAll('.time-range-btn');
+    const dateInput = document.getElementById('date');
+    
+    timeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // 移除所有active类
+            timeButtons.forEach(btn => btn.classList.remove('active'));
+            // 添加active类到当前按钮
+            this.classList.add('active');
+            
+            // 设置日期
+            const today = new Date();
+            let targetDate = new Date();
+            
+            switch(this.textContent) {
+                case '今日':
+                    targetDate = today;
+                    break;
+                case '昨日':
+                    targetDate.setDate(today.getDate() - 1);
+                    break;
+                case '本周':
+                    const startOfWeek = new Date(today);
+                    startOfWeek.setDate(today.getDate() - today.getDay());
+                    targetDate = startOfWeek;
+                    break;
+                case '本月':
+                    targetDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    break;
+            }
+            
+            dateInput.value = targetDate.toISOString().split('T')[0];
+        });
+    });
+});
+
+// 实时数据刷新
+let refreshInterval;
+function startLiveRefresh() {
+    refreshInterval = setInterval(function() {
+        // 更新实时指示器时间
+        const indicators = document.querySelectorAll('.live-indicator');
+        indicators.forEach(indicator => {
+            indicator.style.opacity = '0.5';
+            setTimeout(() => {
+                indicator.style.opacity = '1';
+            }, 500);
+        });
+    }, 30000); // 每30秒更新一次
+}
+
+// 页面加载完成后启动
+document.addEventListener('DOMContentLoaded', startLiveRefresh);
+
+// 页面隐藏时停止刷新
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(refreshInterval);
+    } else {
+        startLiveRefresh();
+    }
+});
+</script>
 {% endblock %}

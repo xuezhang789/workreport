@@ -188,10 +188,10 @@
         }
         .filters { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-            gap: 16px; 
-            align-items: end;
-            margin-bottom: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            align-items: start;
+            margin-bottom: 20px;
         }
         
         label { 
@@ -241,66 +241,203 @@
             flex-wrap: wrap; 
             justify-content: flex-end;
             margin-top: 12px;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .export-hint {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .export-hint svg {
+            flex-shrink: 0;
+            color: var(--primary);
         }
         
         .grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
-            gap: var(--card-spacing); 
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); 
+            gap: 24px; 
             align-items: start; 
         }
+        
+        .project-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+        
         .card-header { 
             display: flex; 
             justify-content: space-between; 
             align-items: flex-start; 
             gap: 16px; 
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .card-title-section {
+            flex: 1;
+            min-width: 0;
         }
         
         .card-title { 
-            margin: 0; 
-            font-size: 18px; 
+            margin: 0 0 8px 0; 
+            font-size: 20px; 
             font-weight: 800; 
             color: var(--text-primary);
             line-height: 1.3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        .badge { 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
-            padding: 8px 14px; 
-            border-radius: 12px; 
-            font-size: 12px; 
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.12)); 
-            color: var(--primary); 
+        .card-title::before {
+            content: '📁';
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .card-code {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 12px;
             font-weight: 700;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.12));
+            color: var(--primary);
             border: 1px solid rgba(37, 99, 235, 0.2);
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
         }
         
-        .meta { 
+        .card-code::before {
+            content: '🏷️';
+            font-size: 11px;
+        }
+        
+        .card-dates {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+            background: rgba(248, 250, 252, 0.6);
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-light);
+        }
+        
+        .card-dates span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        
+        .card-dates span::before {
+            content: '📅';
+            font-size: 11px;
+        }
+        
+        .card-meta { 
             display: flex; 
-            gap: 12px; 
+            gap: 16px; 
             flex-wrap: wrap; 
             font-size: 13px; 
-            color: var(--text-muted);
-            margin-bottom: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+            border-radius: 12px;
+            border: 1px solid var(--border-light);
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+        
+        .meta-item.owner::before {
+            content: '👤';
+        }
+        
+        .meta-item.members::before {
+            content: '👥';
+        }
+        
+        .meta-item.reports::before {
+            content: '📊';
+        }
+        
+        .meta-item.managers::before {
+            content: '👔';
         }
         
         .description { 
-            margin: 0 0 16px 0; 
+            margin: 0 0 20px 0; 
             color: var(--text-secondary); 
             line-height: 1.6;
             font-size: 14px;
+            flex: 1;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .description.no-description {
+            font-style: italic;
+            opacity: 0.7;
         }
         
         .actions-row { 
             display: flex; 
-            gap: 10px; 
+            gap: 12px; 
             flex-wrap: wrap; 
-            justify-content: flex-start;
-            margin-top: 16px;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-light);
+        }
+        
+        .actions-left {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(34, 197, 94, 0.12));
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .status-indicator::before {
+            content: '✅';
         }
         .btn { 
             border-radius: 14px; 
@@ -447,6 +584,23 @@
             .grid {
                 grid-template-columns: 1fr;
             }
+            .card-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .card-dates {
+                text-align: left;
+            }
+            .card-dates span {
+                justify-content: flex-start;
+            }
+            .actions-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .actions-left {
+                justify-content: center;
+            }
         }
 {% endblock %}
 
@@ -466,32 +620,66 @@
         </div>
 
         <section class="card">
-            <form method="get" class="filters">
-                <div>
-                    <label for="q">搜索 / Search</label>
-                    <input type="text" id="q" name="q" value="{{ q }}" placeholder="按名称、代码、描述搜索">
-                </div>
-                <div>
-                    <label for="start_date">开始日期 / Start</label>
-                    <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
-                </div>
-                <div>
-                    <label for="end_date">结束日期 / End</label>
-                    <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
-                </div>
-                <div>
-                    <label for="owner">负责人 / Owner</label>
-                    <input type="text" id="owner" name="owner" value="{{ owner }}" placeholder="按负责人搜索">
+            <h2 style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                搜索与筛选 / Search & Filter
+            </h2>
+            <form method="get">
+                <div class="filters">
+                    <div>
+                        <label for="q">搜索 / Search</label>
+                        <input type="text" id="q" name="q" value="{{ q }}" placeholder="按名称、代码、描述搜索">
+                    </div>
+                    <div>
+                        <label for="start_date">开始日期 / Start</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                    </div>
+                    <div>
+                        <label for="end_date">结束日期 / End</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                    </div>
+                    <div>
+                        <label for="owner">负责人 / Owner</label>
+                        <input type="text" id="owner" name="owner" value="{{ owner }}" placeholder="按负责人搜索">
+                    </div>
                 </div>
                 <div class="filter-actions">
-                    <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">重置 / Reset</a>
-                    <button type="submit" class="btn btn-secondary">筛选 / Filter</button>
+                    <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                        </svg>
+                        重置 / Reset
+                    </a>
+                    <button type="submit" class="btn btn-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        筛选 / Filter
+                    </button>
                     {% if request.user.is_staff %}
-                        <a class="btn btn-primary" href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}">导出当前筛选</a>
+                        <a class="btn btn-primary" href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            导出当前筛选
+                        </a>
                     {% endif %}
                 </div>
                 {% if request.user.is_staff %}
-                <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
+                <div class="export-hint">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.
+                </div>
                 {% endif %}
             </form>
         </section>
@@ -499,33 +687,69 @@
         {% if projects %}
             <div class="grid">
                 {% for p in projects %}
-                    <article class="card">
+                    <article class="card project-card">
                         <div class="card-header">
-                            <div>
-                                <p class="card-title">{{ p.name }}</p>
-                                <div class="meta">
-                                    <span class="badge">{{ p.code }}</span>
-                                    {% if p.owner %}<span>负责人 / Owner：{{ p.owner.get_full_name|default:p.owner.username }}</span>{% endif %}
-                                    {% if p.managers.all %}<span>管理员数 / Managers：{{ p.managers.count }}</span>{% endif %}
-                                </div>
+                            <div class="card-title-section">
+                                <h3 class="card-title">{{ p.name }}</h3>
+                                <div class="card-code">{{ p.code }}</div>
                             </div>
-                            <div class="meta" style="text-align:right;">
+                            <div class="card-dates">
                                 {% if p.start_date %}<span>开始 / Start：{{ p.start_date }}</span>{% endif %}
                                 {% if p.end_date %}<span>结束 / End：{{ p.end_date }}</span>{% endif %}
                             </div>
                         </div>
-                        {% if p.description %}
-                            <p class="description">{{ p.description }}</p>
-                        {% else %}
-                            <p class="description" style="color: var(--muted);">暂无描述 / No description</p>
-                        {% endif %}
-                        <div class="meta">
-                            <span>成员数 / Members：{{ p.member_count }}</span>
-                            <span>日报数 / Reports：{{ p.report_count }}</span>
+                        
+                        <div class="card-meta">
+                            {% if p.owner %}
+                                <div class="meta-item owner">
+                                    负责人 / Owner：{{ p.owner.get_full_name|default:p.owner.username }}
+                                </div>
+                            {% endif %}
+                            {% if p.managers.all %}
+                                <div class="meta-item managers">
+                                    管理员 / Managers：{{ p.managers.count }}
+                                </div>
+                            {% endif %}
+                            <div class="meta-item members">
+                                成员数 / Members：{{ p.member_count }}
+                            </div>
+                            <div class="meta-item reports">
+                                日报数 / Reports：{{ p.report_count }}
+                            </div>
                         </div>
-                        <div class="actions-row" style="justify-content:flex-start;">
-                            <a class="btn btn-ghost" href="{% url 'reports:project_detail' p.pk %}">查看</a>
-                            {% if p.id in manageable_ids %}<a class="btn btn-primary" href="{% url 'reports:project_edit' p.pk %}">编辑</a>{% endif %}
+                        
+                        {% if p.description %}
+                            <div class="description">
+                                {{ p.description }}
+                            </div>
+                        {% else %}
+                            <div class="description no-description">
+                                暂无描述 / No description
+                            </div>
+                        {% endif %}
+                        
+                        <div class="actions-row">
+                            <div class="actions-left">
+                                <a class="btn btn-ghost" href="{% url 'reports:project_detail' p.pk %}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    查看
+                                </a>
+                                {% if p.id in manageable_ids %}
+                                    <a class="btn btn-primary" href="{% url 'reports:project_edit' p.pk %}">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        编辑
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="status-indicator">
+                                活跃 / Active
+                            </div>
                         </div>
                     </article>
                 {% endfor %}

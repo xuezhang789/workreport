@@ -42,7 +42,7 @@ class RegistrationForm(UserCreationForm):
         return user
 
     def clean_password1(self):
-        password = super().clean_password1()
+        password = self.cleaned_data.get("password1") or ""
         min_score = getattr(settings, 'PASSWORD_MIN_SCORE', 3)
         score, missing = password_score_and_missing(password)
         if score < min_score:
@@ -79,13 +79,17 @@ class PasswordUpdateForm(forms.Form):
 
     def clean_new_password1(self):
         password = self.cleaned_data.get('new_password1') or ''
-        # 动态复杂度评分：可通过 settings.PASSWORD_MIN_SCORE 调整，默认 3 分
-        min_score = getattr(settings, 'PASSWORD_MIN_SCORE', 3)
-        score, missing = password_score_and_missing(password)
-        if score < min_score:
-            raise forms.ValidationError(
-                f"密码强度不足（{score}/6）：缺少 {', '.join(missing)}，需满足至少 {min_score} 项"
-            )
+        missing = []
+        if len(password) < 8:
+            missing.append("至少 8 位")
+        if not re.search(r'[A-Z]', password):
+            missing.append("包含大写字母")
+        if not re.search(r'[a-z]', password):
+            missing.append("包含小写字母")
+        if not re.search(r'[0-9]', password):
+            missing.append("包含数字")
+        if missing:
+            raise forms.ValidationError(f"新密码需同时满足：{', '.join(missing)}")
         password_validation.validate_password(password, self.user)
         return password
 
@@ -105,6 +109,10 @@ class UsernameUpdateForm(forms.Form):
         label='用户名 / Username',
         widget=forms.TextInput(attrs={'placeholder': '新的用户名 / New username'})
     )
+    password = forms.CharField(
+        label='当前密码 / Current password',
+        widget=forms.PasswordInput(attrs={'placeholder': '请输入当前密码以确认 / Enter current password to confirm'})
+    )
 
     def __init__(self, user, *args, **kwargs):
         self.user = user
@@ -112,15 +120,17 @@ class UsernameUpdateForm(forms.Form):
 
     def clean_username(self):
         username = (self.cleaned_data.get('username') or '').strip()
-        if len(username) < 3:
-            raise forms.ValidationError("用户名至少需要3个字符")
-        if not re.match(r'^[\\w.@+-]+$', username):
-            raise forms.ValidationError("用户名只能包含字母、数字、下划线、点、加号或减号")
-        if username.lower() == self.user.username.lower():
-            raise forms.ValidationError("请输入一个不同于当前的用户名")
+        if not username:
+            raise forms.ValidationError("请输入新的用户名")
         if User.objects.filter(username__iexact=username).exclude(pk=self.user.pk).exists():
-            raise forms.ValidationError("该用户名已被占用")
+            raise forms.ValidationError("该用户名已被占用 / Username already exists")
         return username
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password') or ''
+        if not self.user.check_password(password):
+            raise forms.ValidationError("当前密码不正确 / Incorrect current password")
+        return password
 
 
 class EmailVerificationRequestForm(forms.Form):
@@ -145,8 +155,10 @@ class EmailVerificationConfirmForm(forms.Form):
     )
 
     def clean_code(self):
-        code = (self.cleaned_data.get('code') or '').strip()
-        if not re.match(r'^\\d{4,6}$', code):
+        raw = (self.cleaned_data.get('code') or '').strip()
+        # 允许粘贴时夹杂空格/非数字字符，自动提取数字后校验
+        code = re.sub(r'\D', '', raw)
+        if not re.match(r'^\d{4,6}$', code):
             raise forms.ValidationError("验证码格式不正确")
         return code
 
@@ -175,6 +187,8 @@ class ProjectForm(forms.ModelForm):
             'members': forms.SelectMultiple(attrs={'size': 8}),
             'managers': forms.SelectMultiple(attrs={'size': 6}),
             'sla_hours': forms.NumberInput(attrs={'min': 1, 'placeholder': '项目级 SLA 提醒（小时）'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'placeholder': '开始日期 / Start'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'placeholder': '结束日期 / End'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -182,8 +196,16 @@ class ProjectForm(forms.ModelForm):
         self.fields['owner'].queryset = User.objects.order_by('username')
         self.fields['members'].queryset = User.objects.order_by('username')
         self.fields['managers'].queryset = User.objects.order_by('username')
-        self.fields['members'].widget.attrs.update({'id': 'members-select'})
-        self.fields['managers'].widget.attrs.update({'id': 'managers-select'})
+        # 显式启用多选并设置易于识别的 id，避免前端样式或组件覆盖成单选
+        self.fields['members'].widget.attrs.update({'id': 'members-select', 'multiple': 'multiple'})
+        self.fields['managers'].widget.attrs.update({'id': 'managers-select', 'multiple': 'multiple'})
+        # 必填字段的双语必填提示
+        self.fields['name'].required = True
+        self.fields['code'].required = True
+        self.fields['name'].error_messages['required'] = "项目名称必填 / Project name required"
+        self.fields['code'].error_messages['required'] = "项目代码必填 / Project code required"
+        self.fields['name'].widget.attrs.update({'placeholder': '项目名称 / Project name'})
+        self.fields['code'].widget.attrs.update({'placeholder': '项目代码 / Project code'})
 
 
 class ReportTemplateForm(forms.ModelForm):
@@ -194,6 +216,13 @@ class ReportTemplateForm(forms.ModelForm):
             'content': forms.Textarea(attrs={'rows': 6, 'placeholder': '模板正文 / Template content'}),
             'placeholders': forms.Textarea(attrs={'rows': 3, 'placeholder': '{"today_work": "..."}'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['project'].queryset = Project.objects.filter(is_active=True).order_by('name')
+        self.fields['name'].widget.attrs.update({'placeholder': '如：开发日报 / e.g., Daily Dev Report'})
+        self.fields['content'].widget.attrs.update({'placeholder': '如：今日完成 / Today done ...\n明日计划 / Plan for tomorrow ...'})
+        self.fields['placeholders'].widget.attrs.update({'placeholder': '{"date": "2025-01-01", "today_work": "完成接口开发 / Finished API dev", "tomorrow_plan": "联调与测试 / Integration & testing"}'})
 
     def save(self, created_by=None, commit=True):
         instance: ReportTemplateVersion = super().save(commit=False)
@@ -218,6 +247,14 @@ class TaskTemplateForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'rows': 5, 'placeholder': '任务内容模板 / Task content template'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['project'].queryset = Project.objects.filter(is_active=True).order_by('name')
+        self.fields['name'].widget.attrs.update({'placeholder': '如：上线任务模板 / e.g., Release Task'})
+        self.fields['title'].widget.attrs.update({'placeholder': '如：发布 v1.2 版本 / e.g., Release v1.2'})
+        self.fields['content'].widget.attrs.update({'placeholder': '步骤/说明（中英）：\n- 检查部署包 / Check build\n- 预发验证 / Staging verify\n- 正式发布 / Production rollout'})
+        self.fields['url'].widget.attrs.update({'placeholder': '可选：任务链接 / Optional task link'})
 
     def save(self, created_by=None, commit=True):
         instance: TaskTemplateVersion = super().save(commit=False)

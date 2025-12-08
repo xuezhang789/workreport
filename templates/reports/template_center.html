@@ -554,6 +554,26 @@
                     <p class="muted">支持项目/角色共享并自动记录版本，保持双语填写指引 / Share by project & role with auto versioning and bilingual hints.</p>
                 </div>
             </div>
+            <div class="callout" style="margin-bottom:16px;">
+                <h4>📄 日报模板默认格式 / Default Report Template</h4>
+                <ul>
+                    <li><strong>日期 / Date：</strong>YYYY-MM-DD，示例 Example：2025-01-01</li>
+                    <li><strong>今日工作 / Today’s Work：</strong>完成项 + 结果（例：完成接口开发 / Finished API endpoints）</li>
+                    <li><strong>进度与问题 / Progress & Issues：</strong>风险、阻塞、依赖（例：上线窗口待确认 / Release window pending）</li>
+                    <li><strong>明日计划 / Plan for Tomorrow：</strong>下一步动作与预期结果（例：联调并完成回归 / Integration + regression）</li>
+                    <li><strong>（可选）测试/产品/设计/运维字段：</strong>按角色填写测试范围、反馈、监控等 / Role-specific fields (QA/Product/UI/Ops)</li>
+                </ul>
+                <p class="muted">示例数据 / Sample: Today: 完成接口开发；Issues: 需接口文档评审；Tomorrow: 联调 & 回归；Testing: 回归 12 个用例。</p>
+                <h4 style="margin-top:10px;">✅ 任务模板默认结构 / Default Task Template</h4>
+                <ul>
+                    <li><strong>名称 / Name：</strong>如“上线任务模板 / Release Task”</li>
+                    <li><strong>标题 / Title：</strong>如“发布 v1.2 版本 / Release v1.2”</li>
+                    <li><strong>内容 / Content：</strong>步骤列表 + 负责人（例：1) 检查部署包 / Check build 2) 预发验证 / Staging verify 3) 正式发布 / Prod rollout）</li>
+                    <li><strong>链接 / URL：</strong>可选，关联需求/工单 / Optional related link</li>
+                </ul>
+                <p class="muted">示例数据 / Sample: Title=发布 v1.2；Content=检查构建→预发验证→灰度→全量→验证监控；URL=https://example.com/tickets/123.</p>
+                <p class="muted">灰色占位符已为关键字段给出中英文提示，直接参考并覆盖即可 / Grey placeholders show CN/EN guidance—use or replace as needed.</p>
+            </div>
             <div class="template-grid">
                 <form method="post" action="" class="form-card">
                     {% csrf_token %}

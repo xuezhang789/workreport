@@ -42,6 +42,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'reports.context_processors.admin_flags',
             ],
         },
     },
@@ -87,16 +88,16 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 SLA_REMIND_HOURS = 24  # 任务 SLA 提前提醒时间（小时）
 
-# 邮件通知配置：默认走 console，线上通过环境变量切换到 SMTP
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')  # 示例：django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.example.com')  # SMTP 主机，例如 smtp.qq.com
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465))  # SSL 常用 465，TLS 常用 587
+# 邮件通知配置：默认控制台，生产环境通过环境变量开启 SMTP
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))  # TLS 587 / SSL 465
 
 # 解析布尔开关，防止同时开启 TLS/SSL
 env_use_ssl = os.environ.get('EMAIL_USE_SSL')
 env_use_tls = os.environ.get('EMAIL_USE_TLS')
 EMAIL_USE_SSL = (env_use_ssl or '').lower() == 'true'
-EMAIL_USE_TLS = (env_use_tls or '').lower() == 'true'
+EMAIL_USE_TLS = (env_use_tls or '').lower() == 'true' if env_use_tls is not None else True
 if EMAIL_USE_SSL and EMAIL_USE_TLS:
     raise ValueError("EMAIL_USE_SSL 与 EMAIL_USE_TLS 不能同时为 True，请仅保留一种安全传输方式")
 # 如果未明确配置，则根据端口智能选择
@@ -108,9 +109,16 @@ if not env_use_ssl and not env_use_tls:
         EMAIL_USE_SSL = True
         EMAIL_USE_TLS = False
 
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')  # 发信账号
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # 授权码/密码
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@example.com')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # 发信账号
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # 授权码/密码
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or '')
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
+EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[WorkReport] ')
+
+# 在生产 SMTP 场景下缺少凭证时给出显式警告
+if EMAIL_BACKEND.endswith('smtp.EmailBackend') and (not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD):
+    import warnings
+    warnings.warn("SMTP 邮件发送启用，但 EMAIL_HOST_USER / EMAIL_HOST_PASSWORD 未配置，将导致发送失败。")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

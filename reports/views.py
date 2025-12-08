@@ -1,13 +1,13 @@
-from django.contrib.auth import login, logout, get_user_model, update_session_auth_hash
+from django.contrib.auth import login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q, Count
 import os
 
-from django.http import HttpResponse, StreamingHttpResponse, JsonResponse, FileResponse
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -18,6 +18,7 @@ import time
 import json
 import re
 import random
+import statistics
 from io import StringIO
 from datetime import datetime, timedelta
 from django.db import models
@@ -41,6 +42,7 @@ MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
 
 MANAGER_ROLES = {'mgr', 'pm'}
 MAX_EXPORT_ROWS = 5000
+EXPORT_CHUNK_SIZE = 500
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
 
@@ -131,6 +133,11 @@ def _ensure_sla_timer(task: Task) -> TaskSlaTimer:
     return TaskSlaTimer.objects.create(task=task)
 
 
+def _get_sla_timer_readonly(task: Task) -> TaskSlaTimer | None:
+    """只读获取 timer，不创建新记录。"""
+    return getattr(task, 'sla_timer', None)
+
+
 def get_sla_thresholds():
     """返回 SLA 阈值配置，单位小时。"""
     default_amber = getattr(settings, 'SLA_TIGHT_HOURS_DEFAULT', 6)
@@ -147,21 +154,30 @@ def get_sla_thresholds():
     return {'amber': default_amber, 'red': default_red}
 
 
-def _calc_sla_info(task: Task):
+def _calc_sla_info(task: Task, as_of: datetime | None = None):
     """
     计算 SLA 截止、剩余小时与颜色状态。
     status: normal/tight/overdue, paused: bool
     """
-    timer = _ensure_sla_timer(task)
-    now = timezone.now()
-    paused_seconds = timer.total_paused_seconds
-    if task.status == 'on_hold' and timer.paused_at:
-        paused_seconds += int((now - timer.paused_at).total_seconds())
+    now = as_of or timezone.now()
+    timer = _get_sla_timer_readonly(task)
+    paused_seconds = 0
+    if timer:
+        paused_seconds = timer.total_paused_seconds
+        if task.status == 'on_hold' and timer.paused_at:
+            paused_seconds += int((now - timer.paused_at).total_seconds())
+    elif task.status in ('in_progress', 'on_hold'):
+        timer = _ensure_sla_timer(task)
+        paused_seconds = timer.total_paused_seconds
+        if task.status == 'on_hold' and timer.paused_at:
+            paused_seconds += int((now - timer.paused_at).total_seconds())
 
     sla_deadline = None
     remaining_hours = None
     sla_hours = get_sla_hours(task.project)
-    if sla_hours:
+    if task.due_at:
+        sla_deadline = task.due_at + timedelta(seconds=paused_seconds)
+    elif sla_hours:
         sla_deadline = task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
 
     status = 'normal'
@@ -196,7 +212,7 @@ def _calc_sla_info(task: Task):
         'deadline': sla_deadline,
         'remaining_hours': remaining_hours,
         'status': status,
-        'paused': bool(timer.paused_at),
+        'paused': bool(timer and timer.paused_at),
         'level': level,
         'sort': sort_value,
     }
@@ -237,56 +253,141 @@ def _streak_map():
     return streaks
 
 
-def _performance_stats():
-    """计算项目/角色维度的完成率、逾期率以及连签趋势。"""
-    cache_key = "performance_stats_v1"
+def _performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None):
+    """计算项目/角色/用户维度的完成率、逾期率、SLA 准时率与 Lead Time。支持项目/角色过滤。"""
+    cache_key = f"performance_stats_v1_{start_date}_{end_date}_{project_id}_{role_filter}"
     cached = cache.get(cache_key)
     if cached:
         return cached
 
     generated_at = timezone.now()
-    tasks = Task.objects.select_related('project', 'user', 'user__profile')
-    project_rows = tasks.values('project__id', 'project__name').annotate(
-        total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue')),
-    ).order_by('project__name')
-    project_stats = []
-    for row in project_rows:
-        total = row['total']
-        comp = row['completed']
-        ovd = row['overdue']
-        project_stats.append({
-            'project_id': row['project__id'],
-            'project': row['project__name'] or '未分配 / Unassigned',
-            'total': total,
-            'completed': comp,
-            'overdue': ovd,
-            'completion_rate': (comp / total * 100) if total else 0,
-            'overdue_rate': (ovd / total * 100) if total else 0,
-        })
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile')
+    if start_date:
+        tasks_qs = tasks_qs.filter(created_at__date__gte=start_date)
+    if end_date:
+        tasks_qs = tasks_qs.filter(created_at__date__lte=end_date)
+    if project_id and isinstance(project_id, int):
+        tasks_qs = tasks_qs.filter(project_id=project_id)
+    if role_filter and role_filter in dict(Profile.ROLE_CHOICES):
+        tasks_qs = tasks_qs.filter(user__profile__position=role_filter)
+    tasks = list(tasks_qs)
 
-    role_rows = tasks.values('user__profile__position').annotate(
-        total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue')),
-    )
-    role_stats = []
-    role_map = dict(Profile.ROLE_CHOICES)
-    for row in role_rows:
-        role_key = row['user__profile__position'] or 'unknown'
-        total = row['total']
-        comp = row['completed']
-        ovd = row['overdue']
-        role_stats.append({
-            'role': role_key,
-            'role_label': role_map.get(role_key, role_key),
-            'total': total,
-            'completed': comp,
-            'overdue': ovd,
-            'completion_rate': (comp / total * 100) if total else 0,
-            'overdue_rate': (ovd / total * 100) if total else 0,
+    def _deadline_with_pause(task: Task):
+        timer = getattr(task, 'sla_timer', None)
+        paused_seconds = 0
+        if timer:
+            paused_seconds = timer.total_paused_seconds
+            if timer.paused_at and task.status == 'on_hold':
+                paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
+        if task.due_at:
+            return task.due_at + timedelta(seconds=paused_seconds)
+        sla_hours = get_sla_hours(task.project)
+        if sla_hours:
+            return task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
+        return None
+
+    def _push(metric_dict, key, item):
+        bucket = metric_dict.setdefault(key, {
+            'total': 0,
+            'completed': 0,
+            'overdue': 0,
+            'lead_hours': [],
+            'on_time': 0,
+            'deadline_count': 0,
         })
+        bucket['total'] += 1
+        if item['status'] == 'completed':
+            bucket['completed'] += 1
+        if item['status'] == 'overdue':
+            bucket['overdue'] += 1
+        if item['lead_hours'] is not None:
+            bucket['lead_hours'].append(item['lead_hours'])
+        if item['deadline'] is not None and item['status'] == 'completed':
+            bucket['deadline_count'] += 1
+            if item['completed_at'] and item['completed_at'] <= item['deadline']:
+                bucket['on_time'] += 1
+
+    project_stats_map = {}
+    role_stats_map = {}
+    user_stats_map = {}
+
+    overall = {'total': 0, 'completed': 0, 'overdue': 0, 'on_time': 0, 'deadline_count': 0, 'lead': []}
+
+    for t in tasks:
+        deadline = _deadline_with_pause(t)
+        lead_hours = None
+        if t.completed_at:
+            lead_hours = round((t.completed_at - t.created_at).total_seconds() / 3600, 2)
+        item = {
+            'status': t.status,
+            'deadline': deadline,
+            'completed_at': t.completed_at,
+            'lead_hours': lead_hours,
+        }
+        overall['total'] += 1
+        if t.status == 'completed':
+            overall['completed'] += 1
+        if t.status == 'overdue':
+            overall['overdue'] += 1
+        if lead_hours is not None:
+            overall['lead'].append(lead_hours)
+        if deadline is not None and t.status == 'completed':
+            overall['deadline_count'] += 1
+            if t.completed_at and t.completed_at <= deadline:
+                overall['on_time'] += 1
+        proj_key = t.project_id or 0
+        role_key = getattr(t.user.profile, 'position', None) if hasattr(t.user, 'profile') else None
+        user_key = t.user_id
+        _push(project_stats_map, proj_key, item)
+        _push(role_stats_map, role_key or 'unknown', item)
+        _push(user_stats_map, user_key, item)
+
+    def _reduce(map_obj, label_builder):
+        rows = []
+        for key, data in map_obj.items():
+            total = data['total']
+            comp = data['completed']
+            ovd = data['overdue']
+            on_time = data['on_time']
+            deadline_count = data['deadline_count']
+            lead_list = data['lead_hours']
+            lead_avg = round(statistics.mean(lead_list), 2) if lead_list else None
+            lead_p50 = round(statistics.median(lead_list), 2) if lead_list else None
+            rows.append({
+                **label_builder(key),
+                'total': total,
+                'completed': comp,
+                'overdue': ovd,
+                'completion_rate': (comp / total * 100) if total else 0,
+                'overdue_rate': (ovd / total * 100) if total else 0,
+                'sla_on_time_rate': (on_time / deadline_count * 100) if deadline_count else 0,
+                'deadline_tasks': deadline_count,
+                'lead_time_avg': lead_avg,
+                'lead_time_p50': lead_p50,
+            })
+        return rows
+
+    project_ids = [pid for pid in project_stats_map.keys() if pid]
+    project_name_map = {p.id: p.name for p in Project.objects.filter(id__in=project_ids)}
+    project_stats = _reduce(project_stats_map, lambda pid: {
+        'project_id': pid,
+        'project': project_name_map.get(pid, '未分配 / Unassigned'),
+    })
+    project_stats.sort(key=lambda x: x['project'])
+
+    role_map = dict(Profile.ROLE_CHOICES)
+    role_stats = _reduce(role_stats_map, lambda r: {
+        'role': r,
+        'role_label': role_map.get(r, r or '未知 / Unknown'),
+    })
+
+    User = get_user_model()
+    user_ids = list(user_stats_map.keys())
+    user_map = {u.id: (u.get_full_name() or u.username) for u in User.objects.filter(id__in=user_ids)}
+    user_stats = _reduce(user_stats_map, lambda uid: {
+        'user_id': uid,
+        'user_label': user_map.get(uid, '未知 / Unknown'),
+    })
 
     streaks = _streak_map()
     User = get_user_model()
@@ -302,12 +403,19 @@ def _performance_stats():
             'max_streak': max(values) if values else 0,
         })
 
-    today = timezone.localdate()
     trend = []
-    for i in range(6, -1, -1):
-        day = today - timedelta(days=i)
-        count = DailyReport.objects.filter(date=day, status='submitted').count()
-        trend.append({'date': day, 'count': count})
+    end_for_trend = end_date or timezone.localdate()
+    default_span = timedelta(days=6)
+    max_span = timedelta(days=30)
+    if start_date:
+        span_start = max(start_date, end_for_trend - max_span)
+    else:
+        span_start = end_for_trend - default_span
+    curr = span_start
+    while curr <= end_for_trend:
+        count = DailyReport.objects.filter(date=curr, status='submitted').count()
+        trend.append({'date': curr, 'count': count})
+        curr += timedelta(days=1)
 
     result = {
         'project_stats': project_stats,
@@ -315,6 +423,13 @@ def _performance_stats():
         'role_streaks': role_streaks,
         'trend': trend,
         'generated_at': generated_at,
+        'user_stats': user_stats,
+        'overall_total': overall['total'],
+        'overall_completed': overall['completed'],
+        'overall_overdue': overall['overdue'],
+        'overall_sla_on_time_rate': (overall['on_time'] / overall['deadline_count'] * 100) if overall['deadline_count'] else 0,
+        'overall_lead_avg': round(statistics.mean(overall['lead']), 2) if overall['lead'] else None,
+        'overall_lead_p50': round(statistics.median(overall['lead']), 2) if overall['lead'] else None,
     }
     cache.set(cache_key, result, 600)
     return result
@@ -426,16 +541,28 @@ def _has_role_content(role: str, payload: dict) -> bool:
     return any((payload.get(f, '') or '').strip() for f in fields)
 
 
+CSV_DANGEROUS_PREFIXES = ('=', '+', '-', '@', '\t')
+
+
+def _sanitize_csv_cell(value):
+    if value is None:
+        return ''
+    text = str(value)
+    if text.startswith(CSV_DANGEROUS_PREFIXES):
+        return "'" + text
+    return text
+
+
 def _stream_csv(rows, header):
     def generate():
         buffer = StringIO()
         writer = csv.writer(buffer)
-        writer.writerow(header)
+        writer.writerow([_sanitize_csv_cell(h) for h in header])
         yield buffer.getvalue()
         buffer.seek(0)
         buffer.truncate(0)
         for row in rows:
-            writer.writerow(row)
+            writer.writerow([_sanitize_csv_cell(col) for col in row])
             yield buffer.getvalue()
             buffer.seek(0)
             buffer.truncate(0)
@@ -455,10 +582,10 @@ def _generate_export_file(job, header, rows_iterable):
     fd, path = tempfile.mkstemp(prefix=f'export_{job.export_type}_', suffix='.csv')
     with os.fdopen(fd, 'w', encoding='utf-8', newline='') as f:
         writer = pycsv.writer(f)
-        writer.writerow(header)
+        writer.writerow([_sanitize_csv_cell(h) for h in header])
         total = 0
         for total, row in enumerate(rows_iterable, start=1):
-            writer.writerow(row)
+            writer.writerow([_sanitize_csv_cell(col) for col in row])
             if total % 50 == 0:
                 job.progress = min(95, job.progress + 5)
                 job.save(update_fields=['progress', 'updated_at'])
@@ -514,7 +641,8 @@ def _filtered_projects(request):
     end_date = parse_date(request.GET.get('end_date') or '')
     owner = (request.GET.get('owner') or '').strip()
 
-    qs = Project.objects.select_related('owner').prefetch_related('members', 'reports', 'managers').filter(is_active=True).order_by('name')
+    # 按创建时间倒序展示，确保最近的项目排在前面
+    qs = Project.objects.select_related('owner').prefetch_related('members', 'reports', 'managers').filter(is_active=True).order_by('-created_at', '-id')
     if not has_manage_permission(request.user):
         qs = qs.filter(Q(owner=request.user) | Q(members=request.user) | Q(managers=request.user))
     if q:
@@ -598,10 +726,8 @@ def username_check_api(request):
     if _throttle(request, 'username_check_ts', min_interval=0.4):
         return JsonResponse({'error': '请求过于频繁'}, status=429)  # 简易节流防抖
     username = (request.GET.get('username') or '').strip()
-    if len(username) < 3:
-        return JsonResponse({'available': False, 'reason': '用户名至少需要3个字符'}, status=400)
-    if not re.match(r'^[\\w.@+-]+$', username):
-        return JsonResponse({'available': False, 'reason': '仅可包含字母、数字、下划线、点、加号或减号'}, status=400)
+    if not username:
+        return JsonResponse({'available': False, 'reason': '请输入要检测的用户名 / Please enter a username to check'}, status=400)
     UserModel = get_user_model()
     exists = UserModel.objects.filter(username__iexact=username).exclude(pk=request.user.pk).exists()
     return JsonResponse({'available': not exists})
@@ -1448,7 +1574,7 @@ def my_reports_export(request):
             (r.summary or '')[:200].replace('\n', ' '),
             timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"),
         ]
-        for r in qs.iterator()
+        for r in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
     header = ["日期", "角色", "状态", "项目", "摘要", "创建时间"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1503,10 +1629,10 @@ def account_settings(request):
                 new_username = username_form.cleaned_data['username']
                 user.username = new_username
                 user.save(update_fields=['username'])
-                messages.success(request, "用户名已更新，新的标识已生效")
+                messages.success(request, "用户名已更新，新的标识已生效 / Username updated successfully")
                 log_action(request, 'update', f"username {old_username} -> {new_username}")
                 return redirect('account_settings')
-            messages.error(request, "用户名更新失败，请检查提示")
+            messages.error(request, "用户名更新失败，请检查提示 / Username update failed, please check the errors")
 
         elif action == 'change_password':
             password_form = PasswordUpdateForm(user=user, data=request.POST)
@@ -1514,10 +1640,10 @@ def account_settings(request):
                 new_password = password_form.cleaned_data['new_password1']
                 user.set_password(new_password)
                 user.save()
-                update_session_auth_hash(request, user)  # 更新 session 避免修改密码后被登出
-                messages.success(request, "密码已更新，请使用新密码登录")
                 log_action(request, 'update', "password changed")
-                return redirect('account_settings')
+                logout(request)
+                messages.success(request, "密码已更新，请使用新密码重新登录")
+                return redirect('login')
             messages.error(request, "密码更新失败，请检查提示")
 
         elif action == 'send_email_code':
@@ -1541,6 +1667,25 @@ def account_settings(request):
                     messages.error(request, f"发送过于频繁，请 {remain} 秒后再试")
                     return redirect('account_settings')
                 code = f"{random.randint(100000, 999999)}"
+                # 先尝试发送邮件，成功后再写入 session，避免失败后仍提示成功
+                subject = "邮箱验证 / Email verification code"
+                body = (
+                    f"您的验证码：{code}\n"
+                    f"10 分钟内有效，请勿泄露。If you did not request this, please ignore."
+                )
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=body,
+                        from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
+                        recipient_list=[email],
+                        fail_silently=False,
+                    )
+                except Exception as exc:
+                    messages.error(request, f"验证码发送失败，请稍后再试：{exc}")
+                    log_action(request, 'error', f"send email code failed to {_mask_email(email)}", data={'error': str(exc)})
+                    return redirect('account_settings')
+
                 # 将验证码存入 session，演示环境直接展示验证码
                 request.session['email_verification'] = {
                     'email': email,
@@ -1715,8 +1860,9 @@ def task_list(request):
     hot = request.GET.get('hot') == '1'
 
     tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
-    _mark_overdue_tasks(tasks_qs)
     now = timezone.now()
+    # 仅对当前用户的任务标记逾期，避免全表写操作
+    _mark_overdue_tasks(tasks_qs)
     project_obj = None
     if project_id and project_id.isdigit():
         project_obj = Project.objects.filter(id=int(project_id)).first()
@@ -1733,26 +1879,34 @@ def task_list(request):
     if q:
         tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
-    tasks = list(tasks_qs)
+    base_qs = tasks_qs
     if hot:
-        tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
+        hot_ids = []
+        for t in base_qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+            info = _calc_sla_info(t)
+            if info['status'] in ('tight', 'overdue'):
+                hot_ids.append(t.id)
+        base_qs = base_qs.filter(id__in=hot_ids)
+
+    # 预计算 SLA 排序字段并分页，避免内存排序
+    annotate_qs = base_qs.annotate(
+        sla_sort=models.Case(
+            models.When(status='overdue', then=models.Value(0)),
+            default=models.Value(3),
+            output_field=models.IntegerField(),
+        ),
+        sla_remaining=models.Value(9999, output_field=models.FloatField()),
+    )
+    paginator = Paginator(annotate_qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
 
     far_future = now + timedelta(days=365)
     urgent_count = 0
-    for t in tasks:
+    for t in page_obj:
         t.is_due_soon = t.id in due_soon_ids
         t.sla_info = _calc_sla_info(t)
         if t.sla_info and t.sla_info.get('level') == 'red':
             urgent_count += 1
-    tasks.sort(key=lambda t: (
-        t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
-        t.sla_info.get('remaining_hours') if hasattr(t, 'sla_info') and t.sla_info.get('remaining_hours') is not None else 9999,
-        t.due_at or far_future,
-        -t.created_at.timestamp(),
-    ))
-
-    paginator = Paginator(tasks, 10)
-    page_obj = paginator.get_page(request.GET.get('page'))
     thresholds = get_sla_thresholds()
     return render(request, 'reports/task_list.html', {
         'tasks': page_obj,
@@ -1779,6 +1933,7 @@ def task_export(request):
     hot = request.GET.get('hot') == '1'
 
     tasks = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
+    # 仅标记当前用户的可见任务，避免对全库写操作
     _mark_overdue_tasks(tasks)
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
@@ -1787,7 +1942,13 @@ def task_export(request):
     if q:
         tasks = tasks.filter(Q(title__icontains=q) | Q(content__icontains=q))
     if hot:
-        tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
+        filtered = []
+        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+            info = _calc_sla_info(t)
+            if info['status'] in ('tight', 'overdue'):
+                t.sla_info = info
+                filtered.append(t)
+        tasks = filtered
     total_count = tasks.count() if hasattr(tasks, 'count') else len(tasks)
     if total_count > MAX_EXPORT_ROWS:
         if request.GET.get('queue') != '1':
@@ -1807,7 +1968,7 @@ def task_export(request):
                         t.completed_at.isoformat() if t.completed_at else '',
                         t.url or '',
                     ]
-                    for t in (tasks if isinstance(tasks, list) else tasks.iterator())
+                    for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
                 )
             )
             return JsonResponse({'queued': True, 'job_id': job.id})
@@ -1826,7 +1987,7 @@ def task_export(request):
             t.completed_at.isoformat() if t.completed_at else '',
             t.url or '',
         ]
-        for t in (tasks if isinstance(tasks, list) else tasks.iterator())
+        for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
     )
     header = ["标题", "项目", "状态", "截止", "完成时间", "URL"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1854,7 +2015,7 @@ def task_export_selected(request):
             t.completed_at.isoformat() if t.completed_at else '',
             t.url or '',
         ]
-        for t in tasks.iterator()
+        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
     header = ["标题", "项目", "状态", "截止", "完成时间", "URL"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1870,6 +2031,11 @@ def export_job_status(request, job_id: int):
         job.status = 'failed'
         job.message = '导出已过期 / Export expired'
         job.save(update_fields=['status', 'message', 'updated_at'])
+        if job.file_path and os.path.exists(job.file_path):
+            try:
+                os.remove(job.file_path)
+            except OSError:
+                pass
     data = {
         'job_id': job.id,
         'status': job.status,
@@ -1888,7 +2054,19 @@ def export_job_download(request, job_id: int):
     if not job.file_path or not os.path.exists(job.file_path):
         return _friendly_forbidden(request, "文件不存在 / File missing")
     filename = f"{job.export_type}.csv"
-    return FileResponse(open(job.file_path, 'rb'), filename=filename)
+    def file_iter(path):
+        try:
+            with open(path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    yield chunk
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    response = StreamingHttpResponse(file_iter(job.file_path), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
@@ -1897,11 +2075,21 @@ def task_complete(request, pk: int):
     if request.method != 'POST':
         return _friendly_forbidden(request, "仅允许 POST / POST only")
     # 完成任务
-    _add_history(task, request.user, 'status', task.status, 'completed')
-    task.status = 'completed'
-    task.completed_at = timezone.now()
-    task.save(update_fields=['status', 'completed_at'])
-    log_action(request, 'update', f"task_complete {task.id}")
+    try:
+        with transaction.atomic():
+            _add_history(task, request.user, 'status', task.status, 'completed')
+            task.status = 'completed'
+            task.completed_at = timezone.now()
+            timer = _get_sla_timer_readonly(task)
+            if timer and timer.paused_at:
+                timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
+                timer.paused_at = None
+                timer.save(update_fields=['total_paused_seconds', 'paused_at'])
+            task.save(update_fields=['status', 'completed_at'])
+        log_action(request, 'update', f"task_complete {task.id}")
+        messages.success(request, "任务已标记完成 / Task marked as completed.")
+    except Exception as exc:
+        messages.error(request, f"任务完成失败，请重试 / Failed to complete task: {exc}")
     return redirect('reports:task_list')
 
 
@@ -1913,17 +2101,70 @@ def task_bulk_action(request):
     action = request.POST.get('bulk_action')
     redirect_to = request.POST.get('redirect_to') or None
     tasks = Task.objects.filter(user=request.user, id__in=ids)
+    skipped_perm = max(0, len(ids) - tasks.count())
+    total_selected = tasks.count()
+    updated = 0
     if action == 'complete':
         now = timezone.now()
         for t in tasks:
             _add_history(t, request.user, 'status', t.status, 'completed')
         tasks.update(status='completed', completed_at=now)
+        updated = total_selected
         log_action(request, 'update', f"task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
         for t in tasks:
             _add_history(t, request.user, 'status', t.status, 'reopened')
         tasks.update(status='reopened', completed_at=None)
+        updated = total_selected
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
+    elif action == 'update':
+        status_value = (request.POST.get('status_value') or '').strip()
+        due_at_str = (request.POST.get('due_at') or '').strip()
+        parsed_due = None
+        if due_at_str:
+            try:
+                parsed = datetime.fromisoformat(due_at_str)
+                parsed_due = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
+            except ValueError:
+                messages.error(request, "截止时间格式不正确 / Invalid due date format")
+                return redirect(redirect_to or 'reports:task_list')
+        valid_status = status_value in dict(Task.STATUS_CHOICES)
+        updated = 0
+        now = timezone.now()
+        for t in tasks:
+            update_fields = []
+            if valid_status and status_value != t.status:
+                _add_history(t, request.user, 'status', t.status, status_value)
+                t.status = status_value
+                if status_value == 'completed':
+                    t.completed_at = now
+                    update_fields.append('completed_at')
+                else:
+                    if t.completed_at:
+                        t.completed_at = None
+                        update_fields.append('completed_at')
+                update_fields.append('status')
+            if parsed_due and (t.due_at != parsed_due):
+                _add_history(t, request.user, 'due_at', t.due_at.isoformat() if t.due_at else '', parsed_due.isoformat())
+                t.due_at = parsed_due
+                update_fields.append('due_at')
+            if update_fields:
+                t.save(update_fields=update_fields)
+                updated += 1
+        if updated:
+            log_action(request, 'update', f"task_bulk_update status={status_value or '-'} due_at={'yes' if parsed_due else 'no'} count={updated}")
+    if skipped_perm:
+        messages.warning(request, f"{skipped_perm} 条因无权限未处理")
+    if updated:
+        messages.success(request, f"批量操作完成：更新 {updated}/{total_selected} 条")
+    else:
+        messages.info(request, "未更新任何任务，请检查操作与选择")
+    log_action(
+        request,
+        'update',
+        f"task_bulk_action {action or '-'} updated={updated} total={total_selected} skipped_perm={skipped_perm}",
+        data={'action': action, 'updated': updated, 'total': total_selected, 'skipped_perm': skipped_perm},
+    )
     _invalidate_stats_cache()
     return redirect(redirect_to or 'reports:task_list')
 
@@ -1940,10 +2181,6 @@ def task_view(request, pk: int):
     if task.due_at and task.status in ('pending', 'reopened') and task.due_at < timezone.now():
         task.status = 'overdue'
         task.save(update_fields=['status'])
-
-    if task.url and not task.content:
-        log_action(request, 'access', f"task_view_redirect {task.id}")
-        return redirect(task.url)
 
     if request.method == 'POST' and 'action' in request.POST:
         if request.POST.get('action') == 'add_comment':
@@ -2000,7 +2237,8 @@ def task_view(request, pk: int):
                     log_action(request, 'update', f"task_attachment_reject_size {task.id}")
                 else:
                     allowed_types = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain']
-                    if attach_file.content_type not in allowed_types:
+                    allowed_ext = ('.pdf', '.png', '.jpg', '.jpeg', '.txt')
+                    if attach_file.content_type not in allowed_types or not attach_file.name.lower().endswith(allowed_ext):
                         messages.error(request, "附件类型仅支持 pdf/png/jpg/txt")
                         log_action(request, 'update', f"task_attachment_reject_type {task.id}")
                     else:
@@ -2014,28 +2252,39 @@ def task_view(request, pk: int):
         elif request.POST.get('action') == 'set_status':
             new_status = request.POST.get('status_value')
             if new_status in dict(Task.STATUS_CHOICES):
-                _add_history(task, request.user, 'status', task.status, new_status)
-                if new_status == 'completed':
-                    task.status = 'completed'
-                    task.completed_at = timezone.now()
-                else:
-                    task.status = new_status
-                    if task.completed_at:
-                        task.completed_at = None
-                task.save(update_fields=['status', 'completed_at'])
-                log_action(request, 'update', f"task_status {task.id} -> {new_status}")
+                try:
+                    with transaction.atomic():
+                        _add_history(task, request.user, 'status', task.status, new_status)
+                        if new_status == 'completed':
+                            task.status = 'completed'
+                            task.completed_at = timezone.now()
+                            timer = _get_sla_timer_readonly(task)
+                            if timer and timer.paused_at:
+                                timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
+                                timer.paused_at = None
+                                timer.save(update_fields=['total_paused_seconds', 'paused_at'])
+                        else:
+                            task.status = new_status
+                            if task.completed_at:
+                                task.completed_at = None
+                        task.save(update_fields=['status', 'completed_at'])
+                    log_action(request, 'update', f"task_status {task.id} -> {new_status}")
+                    messages.success(request, "状态已更新 / Status updated.")
+                except Exception as exc:
+                    messages.error(request, f"状态更新失败，请重试 / Failed to update status: {exc}")
         return redirect('reports:task_view', pk=pk)
 
     log_action(request, 'access', f"task_view {task.id}")
     comments = task.comments.select_related('user').all()
     attachments = task.attachments.select_related('user').all()
     histories = task.histories.select_related('user').all()
+    sla_ref_time = task.completed_at if task.completed_at else None
     return render(request, 'reports/task_detail.html', {
         'task': task,
         'comments': comments,
         'attachments': attachments,
         'histories': histories,
-        'sla': _calc_sla_info(task),
+        'sla': _calc_sla_info(task, as_of=sla_ref_time),
     })
 
 
@@ -2085,10 +2334,10 @@ def admin_task_list(request):
         t.is_due_soon = t.id in due_soon_ids
         t.sla_info = _calc_sla_info(t)
     tasks.sort(key=lambda t: (
+        -t.created_at.timestamp(),  # 最新任务优先
         t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
         t.sla_info.get('remaining_hours') if hasattr(t, 'sla_info') and t.sla_info.get('remaining_hours') is not None else 9999,
         t.due_at or far_future,
-        -t.created_at.timestamp(),
     ))
 
     paginator = Paginator(tasks, 15)
@@ -2133,25 +2382,97 @@ def admin_task_bulk_action(request):
     ids = request.POST.getlist('task_ids')
     action = request.POST.get('bulk_action')
     redirect_to = request.POST.get('redirect_to') or None
+    total_requested = len(ids)
     tasks = Task.objects.filter(id__in=ids)
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
+    skipped_perm = max(0, total_requested - tasks.count())
+    total_selected = tasks.count()
+    updated = 0
     if action == 'complete':
         now = timezone.now()
         for t in tasks:
             _add_history(t, request.user, 'status', t.status, 'completed')
         tasks.update(status='completed', completed_at=now)
+        updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
         for t in tasks:
             _add_history(t, request.user, 'status', t.status, 'reopened')
         tasks.update(status='reopened', completed_at=None)
+        updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
     elif action == 'overdue':
         for t in tasks:
             _add_history(t, request.user, 'status', t.status, 'overdue')
         tasks.update(status='overdue')
+        updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
+    elif action == 'update':
+        status_value = (request.POST.get('status_value') or '').strip()
+        due_at_str = (request.POST.get('due_at') or '').strip()
+        assign_to = request.POST.get('assign_to')
+        parsed_due = None
+        if due_at_str:
+            try:
+                parsed = datetime.fromisoformat(due_at_str)
+                parsed_due = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
+            except ValueError:
+                messages.error(request, "截止时间格式不正确 / Invalid due date format")
+                return redirect(redirect_to or 'reports:admin_task_list')
+        valid_status = status_value in dict(Task.STATUS_CHOICES)
+        assign_user = None
+        if assign_to and assign_to.isdigit():
+            assign_user = get_user_model().objects.filter(id=int(assign_to)).first()
+        updated = 0
+        now = timezone.now()
+        for t in tasks:
+            update_fields = []
+            if valid_status and status_value != t.status:
+                _add_history(t, request.user, 'status', t.status, status_value)
+                t.status = status_value
+                if status_value == 'completed':
+                    t.completed_at = now
+                    update_fields.append('completed_at')
+                else:
+                    if t.completed_at:
+                        t.completed_at = None
+                        update_fields.append('completed_at')
+                update_fields.append('status')
+            if parsed_due and (t.due_at != parsed_due):
+                _add_history(t, request.user, 'due_at', t.due_at.isoformat() if t.due_at else '', parsed_due.isoformat())
+                t.due_at = parsed_due
+                update_fields.append('due_at')
+            if assign_user and assign_user.id != t.user_id and (is_admin or t.project_id in manageable_project_ids):
+                _add_history(t, request.user, 'user', t.user.username if t.user else '', assign_user.username)
+                t.user = assign_user
+                update_fields.append('user')
+            if update_fields:
+                t.save(update_fields=update_fields)
+                updated += 1
+        if updated:
+            log_action(request, 'update', f"admin_task_bulk_update status={status_value or '-'} due_at={'yes' if parsed_due else 'no'} assign={'yes' if assign_user else 'no'} count={updated}")
+    if updated:
+        messages.success(request, f"批量操作完成：更新 {updated}/{total_selected} 条")
+        if skipped_perm:
+            messages.warning(request, f"{skipped_perm} 条因无权限未处理")
+        elif total_selected and updated < total_selected:
+            messages.warning(request, f"{total_selected - updated} 条未更新，可能因缺少字段或权限限制")
+    else:
+        messages.info(request, "未更新任何任务，请检查操作与选择")
+    log_action(
+        request,
+        'update',
+        f"admin_task_bulk_action {action or '-'} updated={updated} total={total_selected} skipped_perm={skipped_perm}",
+        data={
+            'action': action,
+            'updated': updated,
+            'total': total_selected,
+            'skipped_perm': skipped_perm,
+            'project_filter': project_id,
+            'user_filter': user_id,
+        },
+    )
     _invalidate_stats_cache()
     return redirect(redirect_to or 'reports:admin_task_list')
 
@@ -2186,7 +2507,13 @@ def admin_task_export(request):
     if q:
         tasks = tasks.filter(Q(title__icontains=q) | Q(content__icontains=q))
     if hot:
-        tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
+        filtered = []
+        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+            info = _calc_sla_info(t)
+            if info['status'] in ('tight', 'overdue'):
+                t.sla_info = info
+                filtered.append(t)
+        tasks = filtered
 
     total_count = tasks.count() if hasattr(tasks, 'count') else len(tasks)
     if total_count > MAX_EXPORT_ROWS:
@@ -2202,7 +2529,7 @@ def admin_task_export(request):
             t.completed_at.isoformat() if t.completed_at else '',
             t.url or '',
         ]
-        for t in (tasks if isinstance(tasks, list) else tasks.iterator())
+        for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
     )
     header = ["标题", "项目", "用户", "状态", "截止", "完成时间", "URL"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -2233,6 +2560,7 @@ def sla_settings(request):
             SystemSetting.objects.update_or_create(key='sla_hours', defaults={'value': str(hours)})
             SystemSetting.objects.update_or_create(key='sla_thresholds', defaults={'value': json.dumps({'amber': amber, 'red': red})})
             messages.success(request, "SLA 提醒窗口与阈值已保存")
+            log_action(request, 'update', f"sla_settings update hours={hours} amber={amber} red={red}")
             current = hours
             thresholds = {'amber': amber, 'red': red}
     return render(request, 'reports/sla_settings.html', {
@@ -2253,7 +2581,6 @@ def admin_task_stats(request):
     user_id = request.GET.get('user')
 
     tasks = Task.objects.select_related('project', 'user').order_by('project__name', 'user__username')
-    _mark_overdue_tasks(tasks)
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
     if project_id and project_id.isdigit():
@@ -2264,6 +2591,9 @@ def admin_task_stats(request):
             tasks = tasks.none()
     if user_id and user_id.isdigit():
         tasks = tasks.filter(user_id=int(user_id))
+
+    # 只对有权限范围内的任务做逾期标记，避免非管理员误改全局数据
+    _mark_overdue_tasks(tasks)
 
     total = tasks.count()
     completed = tasks.filter(status='completed').count()
@@ -2315,15 +2645,24 @@ def admin_task_stats(request):
 
     User = get_user_model()
     if is_admin:
-        user_choices = User.objects.all().order_by('username')
+        user_choices = User.objects.select_related('profile').all().order_by('username')
         project_choices = Project.objects.filter(is_active=True).order_by('name')
     else:
         project_choices = Project.objects.filter(id__in=manageable_project_ids).order_by('name')
-        user_choices = User.objects.filter(
+        user_choices = User.objects.select_related('profile').filter(
             Q(project_memberships__id__in=manageable_project_ids) |
             Q(managed_projects__id__in=manageable_project_ids) |
             Q(owned_projects__id__in=manageable_project_ids)
         ).distinct().order_by('username')
+    if project_id and project_id.isdigit():
+        pid = int(project_id)
+        project_choices = project_choices.filter(id=pid)
+        member_ids = set(
+            User.objects.filter(
+                Q(project_memberships__id=pid) | Q(managed_projects__id=pid) | Q(owned_projects__id=pid)
+            ).values_list('id', flat=True)
+        )
+        user_choices = user_choices.filter(id__in=member_ids) if member_ids else user_choices.none()
 
     return render(request, 'reports/admin_task_stats.html', {
         'total': total,
@@ -2350,7 +2689,6 @@ def admin_task_stats_export(request):
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
     tasks = Task.objects.select_related('project', 'user')
-    _mark_overdue_tasks(tasks)
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
     if project_id and project_id.isdigit():
@@ -2361,6 +2699,9 @@ def admin_task_stats_export(request):
             tasks = tasks.none()
     if user_id and user_id.isdigit():
         tasks = tasks.filter(user_id=int(user_id))
+
+    # 仅在可访问范围内标记逾期，避免非管理员更新全库任务
+    _mark_overdue_tasks(tasks)
 
     rows = []
     grouped = tasks.values('project__name', 'user__username', 'user__first_name', 'user__last_name').annotate(
@@ -2393,10 +2734,23 @@ def admin_task_stats_export(request):
 
 @login_required
 def admin_task_create(request):
-    if not has_manage_permission(request.user):
+    user = request.user
+    is_admin = has_manage_permission(user)
+    manageable_project_ids = set(
+        Project.objects.filter(
+            is_active=True,
+            managers=user,
+        ).values_list('id', flat=True)
+    ) | set(
+        Project.objects.filter(is_active=True, owner=user).values_list('id', flat=True)
+    )
+    if not is_admin and not manageable_project_ids:
         return _admin_forbidden(request)
 
-    projects = Project.objects.filter(is_active=True).annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
+    projects_qs = Project.objects.filter(is_active=True)
+    if not is_admin:
+        projects_qs = projects_qs.filter(id__in=manageable_project_ids)
+    projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
     user_objs = list(User.objects.all().order_by('username'))
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
@@ -2421,7 +2775,7 @@ def admin_task_create(request):
         target_user = None
         if project_id and project_id.isdigit():
             project = Project.objects.filter(id=int(project_id)).first()
-        if not project:
+        if not project or (not is_admin and project.id not in manageable_project_ids):
             errors.append("请选择项目")
         if user_id and user_id.isdigit():
             target_user = User.objects.filter(id=int(user_id)).first()
@@ -2513,7 +2867,7 @@ def admin_reports_export(request):
                         r.summary or "",
                         timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"),
                     ]
-                    for r in reports.iterator()
+                    for r in reports.iterator(chunk_size=EXPORT_CHUNK_SIZE)
                 )
             )
             return JsonResponse({'queued': True, 'job_id': job.id})
@@ -2533,7 +2887,7 @@ def admin_reports_export(request):
             r.summary or "",
             timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"),
         ]
-        for r in reports.iterator()
+        for r in reports.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
     header = ["日期", "角色", "项目", "作者", "状态", "摘要", "创建时间"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -2719,10 +3073,16 @@ def performance_board(request):
     if not has_manage_permission(request.user):
         messages.error(request, "需要管理员权限 / Admin access required")
         return render(request, '403.html', status=403)
+    start_date = parse_date(request.GET.get('start') or '') or None
+    end_date = parse_date(request.GET.get('end') or '') or None
+    project_param = request.GET.get('project')
+    role_param = (request.GET.get('role') or '').strip()
+    project_filter = int(project_param) if project_param and project_param.isdigit() else None
+    role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
 
-    stats = _performance_stats()
-    urgent_tasks = Task.objects.filter(status='overdue').count()
-    total_tasks = Task.objects.count()
+    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter)
+    urgent_tasks = stats.get('overall_overdue', Task.objects.filter(status='overdue').count())
+    total_tasks = stats.get('overall_total', Task.objects.count())
     thresholds = get_sla_thresholds()
     sla_only = request.GET.get('sla_only') == '1'
     sla_urgent_tasks = []
@@ -2755,17 +3115,30 @@ def performance_board(request):
         'sla_thresholds': thresholds,
         'sla_only': sla_only,
         'sla_urgent_tasks': sla_urgent_tasks,
+        'start': start_date,
+        'end': end_date,
+        'project_filter': project_filter,
+        'role_filter': role_filter,
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'report_roles': Profile.ROLE_CHOICES,
+        'user_stats_page': Paginator(stats.get('user_stats', []), 10).get_page(request.GET.get('upage')),
     })
 
 
 @login_required
 def performance_export(request):
-    """导出绩效看板数据，scope=project|role|streak。"""
+    """导出绩效看板数据，scope=project|role|user|streak。"""
     if not has_manage_permission(request.user):
         messages.error(request, "需要管理员权限 / Admin access required")
         return render(request, '403.html', status=403)
     scope = (request.GET.get('scope') or 'project').strip()
-    stats = _performance_stats()
+    start_date = parse_date(request.GET.get('start') or '') or None
+    end_date = parse_date(request.GET.get('end') or '') or None
+    project_param = request.GET.get('project')
+    role_param = (request.GET.get('role') or '').strip()
+    project_filter = int(project_param) if project_param and project_param.isdigit() else None
+    role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
+    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter)
 
     if scope == 'role':
         rows = [
@@ -2776,11 +3149,31 @@ def performance_export(request):
                 item['overdue'],
                 f"{item['completion_rate']:.1f}%",
                 f"{item['overdue_rate']:.1f}%",
+                f"{item['sla_on_time_rate']:.1f}%",
+                item['lead_time_p50'] if item['lead_time_p50'] is not None else '',
+                item['lead_time_avg'] if item['lead_time_avg'] is not None else '',
             ]
             for item in stats['role_stats']
         ]
-        header = ["角色 / Role", "任务总数", "完成", "逾期", "完成率", "逾期率"]
+        header = ["角色 / Role", "任务总数", "完成", "逾期", "完成率", "逾期率", "SLA 准时率", "Lead Time 中位(h)", "Lead Time 平均(h)"]
         filename = "performance_role.csv"
+    elif scope == 'user':
+        rows = [
+            [
+                item['user_label'],
+                item['total'],
+                item['completed'],
+                item['overdue'],
+                f"{item['completion_rate']:.1f}%",
+                f"{item['overdue_rate']:.1f}%",
+                f"{item['sla_on_time_rate']:.1f}%",
+                item['lead_time_p50'] if item['lead_time_p50'] is not None else '',
+                item['lead_time_avg'] if item['lead_time_avg'] is not None else '',
+            ]
+            for item in stats['user_stats']
+        ]
+        header = ["用户 / User", "任务总数", "完成", "逾期", "完成率", "逾期率", "SLA 准时率", "Lead Time 中位(h)", "Lead Time 平均(h)"]
+        filename = "performance_user.csv"
     elif scope == 'streak':
         rows = [
             [
@@ -2801,10 +3194,13 @@ def performance_export(request):
                 item['overdue'],
                 f"{item['completion_rate']:.1f}%",
                 f"{item['overdue_rate']:.1f}%",
+                f"{item['sla_on_time_rate']:.1f}%",
+                item['lead_time_p50'] if item['lead_time_p50'] is not None else '',
+                item['lead_time_avg'] if item['lead_time_avg'] is not None else '',
             ]
             for item in stats['project_stats']
         ]
-        header = ["项目 / Project", "任务总数", "完成", "逾期", "完成率", "逾期率"]
+        header = ["项目 / Project", "任务总数", "完成", "逾期", "完成率", "逾期率", "SLA 准时率", "Lead Time 中位(h)", "Lead Time 平均(h)"]
         filename = "performance_project.csv"
 
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -2984,7 +3380,7 @@ def audit_logs_export(request):
             log.ip or "",
             log.extra or "",
         ]
-        for log in qs.iterator()
+        for log in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
     header = ["时间", "用户", "动作", "方法", "路径", "IP", "备注"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -3095,7 +3491,7 @@ def project_export(request):
             timezone.localtime(p.created_at).strftime("%Y-%m-%d %H:%M"),
             "已停用" if not p.is_active else "启用",
         ]
-        for p in projects.iterator()
+        for p in projects.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
     header = ["名称", "代码", "负责人", "成员", "管理员", "开始日期", "结束日期", "创建时间", "状态"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")

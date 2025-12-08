@@ -1,40 +1,27 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
 {% block title %}我的任务 / My Tasks{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="智能任务管理，高效完成工作 / Smart task management for efficient work completion" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="浏览、查看详情，自适应移动端 / Browse & view tasks (mobile friendly)" %}{% endblock %}
 {% block extra_styles %}
         :root {
             --primary: #2563eb;
             --primary-2: #3b82f6;
-            --primary-3: #60a5fa;
             --accent: #06b6d4;
-            --success: #10b981;
-            --success-2: #059669;
-            --warning: #f59e0b;
-            --warning-2: #d97706;
-            --danger: #ef4444;
-            --danger-2: #dc2626;
-            --info: #8b5cf6;
-            --bg-card: rgba(255, 255, 255, 0.98);
-            --bg-section: rgba(248, 250, 252, 0.9);
-            --bg-glass: rgba(255, 255, 255, 0.7);
-            --border-light: rgba(226, 232, 240, 0.8);
-            --border-medium: rgba(203, 213, 225, 0.6);
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-section: rgba(248, 250, 252, 0.8);
+            --border-light: rgba(226, 232, 240, 0.6);
             --border-hover: rgba(59, 130, 246, 0.3);
             --text-primary: #1e293b;
-            --text-secondary: #475569;
-            --text-muted: #64748b;
-            --text-light: #94a3b8;
-            --border-radius: 20px;
-            --card-spacing: 20px;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border-radius: 16px;
+            --card-spacing: 16px;
             --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
             --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.15);
-            --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.2);
-            --priority-high: #dc2626;
-            --priority-medium: #f59e0b;
-            --priority-low: #10b981;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
         }
 
         * {
@@ -42,58 +29,32 @@
         }
 
         body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f0f9ff 50%, #fef3c7 75%, #f0fdf4 100%);
-            background-attachment: fixed;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--ink);
             line-height: 1.6;
-            position: relative;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 24px;
-            position: relative;
-            z-index: 1;
+            padding: 0 20px;
         }
 
-        /* Hero Section */
         .hero { 
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(24px);
+            backdrop-filter: blur(20px);
             border: 1px solid var(--border-light); 
             border-radius: var(--border-radius); 
-            padding: 40px 48px; 
-            box-shadow: var(--shadow-lg); 
+            padding: 32px 36px; 
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
             display: flex; 
             align-items: center; 
             justify-content: space-between;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
             position: relative;
             overflow: hidden;
-            animation: heroFloat 6s ease-in-out infinite;
-        }
-
-        @keyframes heroFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
         }
 
         .hero::before {
@@ -103,14 +64,8 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--success));
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
             opacity: 0.9;
-            animation: gradientShift 3s ease-in-out infinite;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
         }
         
         .hero::after {
@@ -118,22 +73,22 @@
             position: absolute;
             top: -50%;
             right: -10%;
-            width: 500px;
-            height: 500px;
+            width: 400px;
+            height: 400px;
             background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
             border-radius: 50%;
-            animation: rotate 20s linear infinite;
+            animation: float 6s ease-in-out infinite;
         }
-
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
         }
         
         .hero-content {
             display: flex;
             align-items: center;
-            gap: 48px;
+            gap: 40px;
             position: relative;
             z-index: 1;
             flex: 1;
@@ -143,32 +98,29 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
         }
         
-        .hero-eyebrow {
+        .hero .eyebrow {
             font-size: 13px;
             font-weight: 700;
             color: var(--primary);
             text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin: 0 0 16px 0;
+            letter-spacing: 1.2px;
+            margin: 0;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-
-        .hero-eyebrow::before {
-            content: '';
-            width: 24px;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            border-radius: 1px;
+        
+        .hero .eyebrow::before {
+            content: '✅';
+            font-size: 16px;
         }
         
-        .hero-title { 
-            font-size: clamp(28px, 4vw, 36px); 
-            margin: 0 0 16px 0; 
+        .hero h1 { 
+            font-size: 32px; 
+            margin: 0; 
             font-weight: 800;
             background: linear-gradient(135deg, var(--text-primary), #334155);
             -webkit-background-clip: text;
@@ -177,11 +129,11 @@
             line-height: 1.2;
         }
         
-        .hero-subtitle { 
-            font-size: 16px; 
+        .hero .lede { 
+            font-size: 15px; 
             margin: 0; 
             line-height: 1.6;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-weight: 500;
         }
         
@@ -193,94 +145,95 @@
             min-width: 200px;
         }
         
-        .meta-chip {
+        .chip {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 12px 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(59, 130, 246, 0.15);
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08));
+            padding: 10px 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
             font-size: 13px;
-            color: var(--primary);
             font-weight: 600;
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-
-        .meta-chip:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.25);
-        }
-
-        .meta-chip .icon {
-            font-size: 16px;
-        }
-
-        .meta-chip.warning {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.06));
-            border-color: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-        }
-        
-        .meta-chip.warning:hover {
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
-        }
-        
-        .filters-section { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 32px; 
-            margin-bottom: var(--card-spacing); 
-            box-shadow: var(--shadow-md);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
         }
         
-        .filters-section::before {
+        .chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            border-color: var(--border-hover);
+        }
+        
+        .chip.warning {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border-color: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+        
+        .chip.warning:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--card-spacing);
+        }
+
+        /* 筛选区域 */
+        .filters-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-section)); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid var(--border-light); 
+            border-radius: var(--border-radius); 
+            padding: 28px; 
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .filters-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
+            height: 2px;
             background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.8;
+            opacity: 0.6;
         }
         
-        .filters-section::after {
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -10%;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 10s ease-in-out infinite;
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            align-items: end;
         }
         
-        .filters { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-            gap: 20px; 
-            align-items: end; 
-        }
-        
-        .filter-group { 
-            display: flex; 
-            flex-direction: column; 
+        .filter-group {
+            display: flex;
+            flex-direction: column;
             gap: 8px;
         }
         
-        .filter-group label { 
-            font-size: 13px; 
-            font-weight: 700; 
-            color: var(--text-primary); 
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
             text-transform: uppercase;
             letter-spacing: 0.6px;
             display: flex;
@@ -288,42 +241,44 @@
             gap: 6px;
         }
         
-        input, select { 
-            width: 100%; 
-            border-radius: 12px; 
-            border: 1px solid var(--border-light); 
-            padding: 14px 18px; 
-            font-size: 14px; 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border-light);
+            padding: 12px 16px;
+            font-size: 14px;
+            background: var(--bg-section);
             color: var(--text-primary);
             outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             font-family: inherit;
-            backdrop-filter: blur(10px);
         }
         
-        input:hover, select:hover {
+        .filter-group input:hover,
+        .filter-group select:hover {
             border-color: var(--border-hover);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            background: rgba(255, 255, 255, 0.8);
         }
         
-        input:focus, select:focus {
+        .filter-group input:focus,
+        .filter-group select:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
             background: white;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
         
-        .filter-actions { 
-            display: flex; 
-            gap: 12px; 
-            align-items: end; 
-            flex-wrap: wrap; 
+        .filter-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
             margin-top: 8px;
         }
-        
+
+        /* 批量操作栏 */
         .bulk-bar { 
             display: flex; 
             gap: 12px; 
@@ -349,431 +304,505 @@
             background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
             opacity: 0.6;
         }
-        @media (max-width: 720px){
-            .bulk-bar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); }
-            .btn, .filter-actions .btn { padding: 8px 12px; font-size: 12px; }
+
+        /* 任务网格 */
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 24px;
+            align-items: stretch;
         }
         
-        .task-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
-            gap: 20px; 
-        }
-        
-        .task-card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
+        .report-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc); 
+            border: 1px solid rgba(226, 232, 240, 0.8); 
+            border-radius: 20px; 
             padding: 28px; 
-            box-shadow: var(--shadow-md); 
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-shadow: 
+                0 1px 3px rgba(0, 0, 0, 0.1),
+                0 10px 40px rgba(59, 130, 246, 0.08);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             position: relative;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             gap: 20px;
-            word-break: break-word;
-            overflow: hidden;
+            min-height: 280px;
         }
         
-        .task-card:hover { 
-            transform: translateY(-8px) scale(1.02); 
-            box-shadow: var(--shadow-lg); 
-            border-color: var(--border-hover);
+        .report-card:hover {
+            transform: translateY(-8px); 
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.15),
+                0 20px 60px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
         }
         
-        .task-card::before {
+        .report-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
         
-        .task-card:hover::before {
+        .report-card:hover::before {
             opacity: 1;
         }
         
-        .task-card::after {
+        .report-card::after {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 300px;
-            height: 300px;
+            top: -30%;
+            right: -15%;
+            width: 180px;
+            height: 180px;
             background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
             border-radius: 50%;
             opacity: 0;
             transition: opacity 0.4s ease;
-            animation: float 8s ease-in-out infinite;
         }
         
-        .task-card:hover::after {
+        .report-card:hover::after {
             opacity: 1;
         }
         
-        .task-header { 
-            display: flex; 
-            gap: 10px; 
-            align-items: flex-start; 
-            flex-wrap: wrap;
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
         }
         
-        .task-checkbox {
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-        
-        .task-content {
+        .card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
             flex: 1;
-            min-width: 0;
         }
         
-        .task-title { 
-            margin: 0 0 6px 0; 
-            font-size: 14px; 
-            font-weight: 600; 
-            line-height: 1.3; 
-            word-break: break-word;
-        }
-        
-        .task-title a {
-            color: #1f2937;
+        .card-title a {
+            color: inherit;
             text-decoration: none;
             transition: color 0.2s ease;
         }
         
-        .task-title a:hover {
-            color: var(--primary);
+        .card-title a:hover {
+            color: #3b82f6;
         }
         
-        .task-meta { 
-            display: flex; 
-            gap: 8px; 
-            flex-wrap: wrap; 
-            margin: 6px 0 8px;
-            align-items: center;
-        }
-        
-        .task-info-row {
+        .card-meta {
             display: flex;
+            flex-direction: column;
             gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-            font-size: 11px;
-            color: #6b7280;
+            align-items: flex-end;
+            text-align: right;
+            flex-shrink: 0;
         }
         
-        .badge { 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 4px; 
-            padding: 8px 14px; 
-            border-radius: 12px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            border: 1px solid;
+        .meta-info {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(226, 232, 240, 0.6);
             white-space: nowrap;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            margin-top: 4px;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
         }
         
         .badge:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
-        .badge::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
+        .badge-role {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
         }
         
-        .badge:hover::before {
-            left: 100%;
+        .badge-project {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            color: #0369a1;
+            border: 1px solid rgba(3, 105, 161, 0.2);
         }
         
-        .project-badge {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
-            color: var(--primary);
-            border-color: rgba(59, 130, 246, 0.25);
-        }
-        
-        .status-badge { 
-            display: inline-flex; 
-            align-items: center; 
-            padding: 8px 14px; 
-            border-radius: 12px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            border: 1px solid;
-            white-space: nowrap;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             position: relative;
             overflow: hidden;
         }
         
         .status-badge:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
-        .status-badge::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
+        .status-draft {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.2);
         }
         
-        .status-badge:hover::before {
-            left: 100%;
+        .status-submitted {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            color: #059669;
+            border: 1px solid rgba(5, 150, 105, 0.2);
         }
         
-        .status-pending { 
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)); 
-            color: var(--warning); 
-            border-color: rgba(245, 158, 11, 0.3); 
-        }
-        .status-in-progress { 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); 
-            color: var(--primary); 
-            border-color: rgba(59, 130, 246, 0.3); 
-        }
-        .status-on-hold { 
-            background: linear-gradient(135deg, rgba(107, 114, 128, 0.1), rgba(107, 114, 128, 0.05)); 
-            color: var(--text-secondary); 
-            border-color: rgba(107, 114, 128, 0.3); 
-        }
-        .status-completed { 
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); 
-            color: var(--success); 
-            border-color: rgba(16, 185, 129, 0.3); 
-        }
-        .status-overdue { 
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); 
-            color: var(--danger); 
-            border-color: rgba(239, 68, 68, 0.3); 
-        }
-        .status-reopened { 
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05)); 
-            color: #6366f1; 
-            border-color: rgba(99, 102, 241, 0.3); 
-        }
-        .status-sla { 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.04)); 
-            color: var(--primary); 
-            border-color: rgba(59, 130, 246, 0.2); 
-        }
-        .status-sla-green {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
-            color: #0f766e;
-            border-color: rgba(16, 185, 129, 0.25);
-        }
-        .status-sla-amber {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(251, 191, 36, 0.08));
-            color: #92400e;
-            border-color: rgba(245, 158, 11, 0.3);
-        }
-        .status-sla-red {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(248, 113, 113, 0.08));
-            color: #b91c1c;
-            border-color: rgba(239, 68, 68, 0.35);
+        .status-pending {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            color: #64748b;
+            border: 1px solid rgba(100, 116, 139, 0.2);
         }
         
-        .priority-high { border-left: 3px solid var(--priority-high); }
-        .priority-medium { border-left: 3px solid var(--priority-medium); }
-        .priority-low { border-left: 3px solid var(--priority-low); }
+        .status-in-progress {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
         
-        .task-description { 
-            margin: 8px 0 10px 0; 
-            color: #4b5563; 
-            font-size: 12px; 
-            line-height: 1.4; 
-            display: -webkit-box; 
-            -webkit-line-clamp: 2; 
-            -webkit-box-orient: vertical; 
+        .status-on-hold {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            color: #d97706;
+            border: 1px solid rgba(217, 119, 6, 0.2);
+        }
+        
+        .status-completed {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            color: #059669;
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+        
+        .status-reopened {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+        
+        .status-overdue {
+            background: linear-gradient(135deg, #fef2f2, #fecaca);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1; 
+                box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+            }
+            50% { 
+                opacity: 0.8; 
+                box-shadow: 0 4px 16px rgba(220, 38, 38, 0.2);
+            }
+        }
+        
+        .summary {
+            margin: 0;
+            color: #475569;
+            line-height: 1.6;
+            font-size: 13px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
             overflow: hidden;
+            flex-grow: 1;
+            position: relative;
+            z-index: 1;
+            padding: 16px;
+            background: linear-gradient(135deg, #fafbfc, #f8fafc);
+            border-radius: 12px;
+            border-left: 3px solid #3b82f6;
+            font-weight: 400;
+            transition: all 0.2s ease;
         }
         
-        .task-actions { 
-            display: flex; 
-            gap: 6px; 
-            justify-content: flex-start; 
+        .summary:hover {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-left-color: #2563eb;
+        }
+        
+        .summary.empty {
+            color: #94a3b8;
+            font-style: italic;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-left-color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 16px;
+            border-top: 1px solid rgba(226, 232, 240, 0.6);
+            position: relative;
+            z-index: 1;
             margin-top: auto;
-            flex-wrap: wrap;
         }
         
-        .btn { 
-            border-radius: 10px; 
-            border: none; 
-            padding: 10px 16px; 
-            font-size: 13px; 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             cursor: pointer;
+            border: none;
+            outline: none;
             position: relative;
             overflow: hidden;
-            font-family: inherit;
-            outline: none;
+            white-space: nowrap;
         }
         
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
-        }
-        
-        .btn:active {
-            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
         
         .btn::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
         }
         
-        .btn:hover::before {
-            left: 100%;
+        .btn:active::before {
+            width: 200px;
+            height: 200px;
         }
         
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: white; 
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.2);
         }
         
         .btn-primary:hover {
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
         }
         
-        .btn-ghost { 
-            background: rgba(59, 130, 246, 0.05);
-            color: var(--primary);
-            border: 1px solid var(--border-light);
+        .btn-ghost {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            color: #475569;
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
         
         .btn-ghost:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: var(--border-hover);
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
         }
         
-        .empty-state { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            border: 2px dashed rgba(148, 163, 184, 0.4); 
-            border-radius: var(--border-radius); 
-            padding: 48px 32px; 
+        .btn-secondary {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            color: #64748b;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+            border-color: rgba(148, 163, 184, 0.5);
+            color: #475569;
+        }
+        
+        .empty-state {
+            background: linear-gradient(145deg, #ffffff, #f8fafc); 
+            backdrop-filter: blur(16px); 
+            border: 2px dashed rgba(203, 213, 225, 0.6); 
+            border-radius: 20px; 
+            padding: 80px 40px; 
             text-align: center; 
-            color: var(--text-secondary); 
-            box-shadow: var(--shadow-sm);
+            color: #64748b;
+            box-shadow: 
+                0 1px 3px rgba(0, 0, 0, 0.1),
+                0 10px 40px rgba(59, 130, 246, 0.05);
             position: relative;
             overflow: hidden;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
         .empty-state::before {
-            content: '📋';
-            font-size: 48px;
-            display: block;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
-        
-        .empty-state::after {
-            content: '';
+            content: '✅';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.02) 0%, transparent 70%);
-            animation: float 15s ease-in-out infinite;
+            top: 30px;
+            right: 30px;
+            font-size: 60px;
+            opacity: 0.08;
         }
         
-        .pagination { 
-            display: flex; 
-            gap: 10px; 
-            justify-content: center; 
-            flex-wrap: wrap; 
-            font-size: 13px; 
-            margin-top: calc(var(--card-spacing) * 2); 
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(248, 250, 252, 0.4));
-            border-radius: var(--border-radius);
-            backdrop-filter: blur(10px);
+        .empty-state h3 {
+            margin: 0 0 16px 0;
+            font-size: 22px;
+            color: #475569;
+            font-weight: 700;
         }
         
-        .page-link, .page-current, .page-disabled { 
-            padding: 10px 18px; 
-            border-radius: 10px; 
-            border: 1px solid var(--border-light); 
-            text-decoration: none; 
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .empty-state p {
+            margin: 0 0 32px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            max-width: 400px;
+        }
+        
+        .pagination {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-top: 32px;
+            padding: 24px;
+            background: linear-gradient(145deg, #ffffff, #f8fafc); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(226, 232, 240, 0.6); 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.06);
+        }
+        
+        .page-link, .page-current, .page-disabled {
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             position: relative;
             overflow: hidden;
         }
         
+        .page-link {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            color: #475569;
+            border: 1px solid rgba(226, 232, 240, 0.6);
+        }
+        
         .page-link:hover {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
-            border-color: var(--primary);
+            border-color: transparent;
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
         }
         
-        .page-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .page-link:hover::before {
-            left: 100%;
-        }
-        
-        .page-current { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            border-color: transparent; 
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        .page-current {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: 1px solid transparent;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
             transform: scale(1.05);
         }
         
-        .page-disabled { 
-            color: var(--text-muted); 
-            background: rgba(15, 23, 42, 0.03); 
+        .page-disabled {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            color: #cbd5e1;
+            border: 1px solid rgba(203, 213, 225, 0.4);
             cursor: not-allowed;
             opacity: 0.6;
         }
         
+        .page-info {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(203, 213, 225, 0.3);
+        }
+
+        @media (max-width: 1024px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .hero-meta {
+                align-items: flex-start;
+            }
+            
+            .filters {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 12px;
+            }
+            
+            .reports-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 20px;
+            }
+            
+            .report-card {
+                padding: 24px;
+                min-height: 260px;
+            }
+        }
+
         @media (max-width: 860px) {
+            .container {
+                padding: 0 16px;
+            }
+            
             .hero {
                 padding: 24px 28px;
                 flex-direction: column;
@@ -799,61 +828,27 @@
                 gap: 12px;
             }
             
-            .filters { 
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                gap: 16px; 
+            .filters-card {
+                padding: 24px;
             }
             
-            .filter-actions { 
-                justify-content: flex-start; 
-            }
-            
-            .filter-actions .btn {
-                flex: 0 0 auto;
-                justify-content: flex-start;
-            }
-            
-            .task-grid { 
-                grid-template-columns: 1fr; 
+            .filters {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 16px;
             }
             
-            .task-card { 
-                padding: 20px; 
+            .reports-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
             }
             
-            .bulk-bar { 
-                flex-direction: column; 
-                align-items: stretch; 
-                gap: 12px;
-            }
-            
-            .task-actions { 
-                justify-content: flex-start; 
-            }
-            
-            .task-actions .btn {
-                flex: 0 0 auto;
-                justify-content: flex-start;
-            }
-            
-            .pagination {
-                padding: 16px;
-                gap: 8px;
-            }
-            
-            .page-link, .page-current, .page-disabled {
-                padding: 8px 14px;
-                font-size: 12px;
+            .report-card {
+                padding: 24px;
+                min-height: 240px;
             }
         }
         
         @media (max-width: 480px) {
-            :root {
-                --card-spacing: 12px;
-                --border-radius: 12px;
-            }
-            
             .hero {
                 padding: 20px 24px;
             }
@@ -874,251 +869,326 @@
             .filter-group input,
             .filter-group select {
                 padding: 12px 14px;
-                font-size: 13px;
+                font-size: 14px;
             }
             
             .filter-actions {
                 justify-content: stretch;
                 margin-top: 12px;
-                gap: 8px;
             }
             
             .filter-actions .btn {
                 flex: 1;
                 justify-content: center;
-                padding: 12px 16px;
+                padding: 14px 16px;
+            }
+            
+            .report-card {
+                padding: 20px;
+                min-height: 220px;
+            }
+            
+            .card-title {
+                font-size: 16px;
+            }
+            
+            .summary {
                 font-size: 12px;
+                padding: 12px;
+                -webkit-line-clamp: 2;
             }
             
-            .task-card { 
-                padding: 16px; 
-                gap: 16px;
-            }
-            
-            .filters-section { 
-                padding: 20px; 
-            }
-            
-            .bulk-bar { 
-                padding: 12px 16px; 
+            .card-actions {
+                flex-wrap: wrap;
                 gap: 8px;
             }
             
+            .card-actions .btn {
+                flex: 1;
+                justify-content: center;
+                padding: 12px 14px;
+                font-size: 10px;
+            }
+            
             .badge, .status-badge {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-            
-            .task-actions {
-                gap: 4px;
-            }
-            
-            .task-actions .btn {
-                padding: 8px 10px;
-                font-size: 11px;
+                padding: 4px 8px;
+                font-size: 9px;
             }
             
             .pagination {
-                padding: 12px;
-                gap: 6px;
+                padding: 16px;
+                justify-content: center;
             }
             
             .page-link, .page-current, .page-disabled {
-                padding: 6px 10px;
-                font-size: 11px;
+                padding: 10px 14px;
+                font-size: 12px;
             }
             
             .empty-state {
-                padding: 32px 20px;
+                padding: 60px 24px;
+                min-height: 250px;
             }
             
-            .empty-state::before {
-                font-size: 36px;
-                margin-bottom: 12px;
+            .empty-state h3 {
+                font-size: 18px;
             }
+            
+            .empty-state p {
+                font-size: 14px;
+            }
+        }
+
+        .task-info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .task-info-row span {
+            padding: 4px 8px;
+            background: rgba(148, 163, 184, 0.1);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .task-info-row span:hover {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--text-primary);
+            transform: translateY(-1px);
         }
 {% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <div>
-            <p class="hero-eyebrow">团队 · 任务 / Team · Tasks</p>
-            <h1 class="hero-title">我的任务列表 / My Tasks</h1>
-            <p class="lede">查看分配给你的任务，完成后点击“已完成”并同步时间 / Review assigned tasks and mark them done.</p>
+    <div class="container">
+        <div class="hero">
+            <div class="hero-content">
+                <div class="hero-main">
+                    <p class="eyebrow">团队 · 任务</p>
+                    <h1>你的任务总览 / Your Tasks</h1>
+                    <p class="lede">当前用户 / Current user：{{ request.user.get_full_name|default:request.user.username }}</p>
+                </div>
+                <div class="hero-meta">
+                    <div class="chip">
+                        <span>📊</span>
+                        <span>总数 / Total：{{ total_count }}</span>
+                    </div>
+                    {% if urgent_count %}
+                        <div class="chip warning">
+                            <span>⚠️</span>
+                            <span>紧急任务 / Urgent：{{ urgent_count }}</span>
+                        </div>
+                    {% endif %}
+                    {% if overdue_count %}
+                        <div class="chip warning">
+                            <span>🔥</span>
+                            <span>逾期任务 / Overdue：{{ overdue_count }}</span>
+                        </div>
+                    {% endif %}
+                    <div class="chip">
+                        <span>✅</span>
+                        <span>已完成：{{ completed_count }}</span>
+                    </div>
+                    {% if sla_thresholds %}
+                    <div class="chip">
+                        <span>⏱️</span>
+                        <span>SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-    </div>
 
-    {% if urgent_count %}
-    <div style="margin:16px 0;display:flex;gap:12px;flex-wrap:wrap;">
-        <div class="meta-chip warning">
-            <span class="icon">🚨</span>
-            紧急任务 {{ urgent_count }} 个需优先处理 / {{ urgent_count }} urgent tasks need attention
+        <div class="main-content">
+            <div class="main-content">
+            <div class="filters-card">
+            <form method="get" class="filters">
+                <div class="filter-group">
+                    <label for="q">
+                        <span>🔍</span>
+                        关键词搜索 / Search
+                    </label>
+                    <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
+                </div>
+                <div class="filter-group">
+                    <label for="project">
+                        <span>📁</span>
+                        项目 / Project
+                    </label>
+                    <select id="project" name="project">
+                        <option value="">全部项目 / All Projects</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="status">
+                        <span>📊</span>
+                        状态 / Status
+                    </label>
+                    <select id="status" name="status">
+                        <option value="">全部状态 / All Status</option>
+                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
+                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
+                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
+                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
+                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
+                        <option value="reopened" {% if status == 'reopened' %}selected{% endif %}>重新打开 / Reopened</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="align-self:flex-end;">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#4b5563;">
+                        <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %}>
+                        仅看紧张/逾期 / Hot & Overdue
+                    </label>
+                </div>
+                <div class="filter-actions" style="grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary">🔍 筛选 / Filter</button>
+                    <a class="btn btn-ghost" href="{% url 'reports:task_list' %}">🔄 重置 / Reset</a>
+                    <a class="btn btn-primary" href="{% url 'reports:task_export' %}?status={{ status }}&project={{ project_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">📥 导出 / Export</a>
+                </div>
+            </form>
         </div>
-        {% if sla_thresholds %}
-        <div class="meta-chip">
-            <span class="icon">⏱️</span>
-            SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
 
-    <section class="filters-section">
-        <form method="get" class="filters">
-            <div class="filter-group">
-                <label for="q">
-                    <span>🔍</span>
-                    关键词搜索 / Search
-                </label>
-                <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
-            </div>
-            <div class="filter-group">
-                <label for="project">
-                    <span>📁</span>
-                    项目 / Project
-                </label>
-                <select id="project" name="project">
-                    <option value="">全部项目 / All Projects</option>
-                    {% for p in projects %}
-                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="status">
-                    <span>📊</span>
-                    状态 / Status
-                </label>
-                <select id="status" name="status">
-                    <option value="">全部状态 / All Status</option>
-                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
-                    <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
-                    <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
-                    <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
-                    <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
-                    <option value="reopened" {% if status == 'reopened' %}selected{% endif %}>重新打开 / Reopened</option>
-                </select>
-            </div>
-            <div class="filter-group" style="align-self:flex-end;">
-                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#4b5563;">
-                    <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %}>
-                    仅看紧张/逾期 / Hot & Overdue
-                </label>
-            </div>
-            <div class="filter-actions">
-                <a class="btn btn-ghost" href="{% url 'reports:task_list' %}">🔄 重置 / Reset</a>
-                <button type="submit" class="btn btn-primary">🔍 筛选 / Filter</button>
-                <a class="btn btn-primary" href="{% url 'reports:task_export' %}?status={{ status }}&project={{ project_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">📥 导出 / Export</a>
-            </div>
-        </form>
-    </section>
-
-    {% if tasks %}
+            {% if tasks %}
         <form id="bulk-form" method="post" action="{% url 'reports:task_bulk_action' %}">
             {% csrf_token %}
             <div class="bulk-bar">
                 <label style="font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; font-weight: 500;">
-                    <input type="checkbox" id="select-all"> 全选
+                    <input type="checkbox" id="select-all"> 全选 / Select All
                 </label>
                 <select name="bulk_action" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;">
-                    <option value="">批量操作</option>
-                    <option value="complete">批量完成</option>
-                    <option value="reopen">批量重新打开</option>
+                    <option value="">批量操作 / Bulk Action</option>
+                    <option value="complete">批量完成 / Complete All</option>
+                    <option value="reopen">批量重新打开 / Reopen All</option>
+                    <option value="update">批量更新状态/截止 / Update fields</option>
                 </select>
+                <select name="status_value" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;">
+                    <option value="">状态（可选）/ Status (optional)</option>
+                    {% for val,label in task_status_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <input type="datetime-local" name="due_at" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;" placeholder="截止时间（可选）">
                 <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
-                <button type="submit" id="bulk-submit" class="btn btn-primary" disabled>执行</button>
-                <button type="submit" formaction="{% url 'reports:task_export_selected' %}" formmethod="post" class="btn btn-ghost" id="bulk-export" disabled>导出选中</button>
+                <button type="submit" id="bulk-submit" class="btn btn-primary" disabled>执行 / Execute</button>
+                <button type="submit" formaction="{% url 'reports:task_export_selected' %}" formmethod="post" class="btn btn-ghost" id="bulk-export" disabled>导出选中 / Export Selected</button>
             </div>
-            <p class="hint" style="margin-top:8px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤条件 / If export is large, narrow filters first.</p>
+                    <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
         </form>
-        <div class="task-grid">
-            {% for t in tasks %}
-            <article class="task-card {% if t.status == 'overdue' or t.is_due_soon %}priority-high{% elif t.status == 'in_progress' %}priority-medium{% else %}priority-low{% endif %}">
-                <div class="task-header">
-                    <input type="checkbox" name="task_ids" value="{{ t.id }}" form="bulk-form" class="task-checkbox">
-                    <div class="task-content">
-                        <h3 class="task-title">
-                            <a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">{{ t.title }}</a>
-                        </h3>
-                        
-                    <div class="task-meta" style="margin-top:6px;">
-                            <span class="badge project-badge">{{ t.project.name }}</span>
-                            {% if t.status == 'pending' %}
-                                <span class="status-badge status-pending">未开始</span>
-                            {% elif t.status == 'in_progress' %}
-                                <span class="status-badge status-in-progress">进行中</span>
-                            {% elif t.status == 'on_hold' %}
-                                <span class="status-badge status-on-hold">挂起</span>
-                            {% elif t.status == 'completed' %}
-                                <span class="status-badge status-completed">已完成</span>
-                            {% elif t.status == 'reopened' %}
-                                <span class="status-badge status-reopened">重新打开</span>
-                            {% else %}
-                                <span class="status-badge status-overdue">逾期</span>
-                            {% endif %}
-                            {% if t.sla_info %}
-                                {% if t.sla_info.level == 'red' %}
-                                    <span class="status-badge status-sla-red">SLA 紧急 / Critical (Red) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                {% elif t.sla_info.level == 'amber' %}
-                                    <span class="status-badge status-sla-amber">SLA 提醒 / Warning (Amber) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                {% elif t.sla_info.level == 'green' %}
-                                    <span class="status-badge status-sla-green">SLA 正常 / Normal (Green) · {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+            <div class="reports-grid">
+                {% for t in tasks %}
+                    <article class="report-card task-card">
+                        <div class="card-header">
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                                <input type="checkbox" name="task_ids" value="{{ t.id }}" form="bulk-form" class="task-checkbox" style="margin-top:4px;">
+                                <div>
+                                    <h3 class="card-title">
+                                        <a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">{{ t.title }}</a>
+                                    </h3>
+                                    <div class="card-tags" style="margin-top:6px;">
+                                        <span class="badge badge-project">{{ t.project.name }}</span>
+                                        {% if t.status == 'pending' %}
+                                            <span class="status-badge status-pending">未开始 / Pending</span>
+                                        {% elif t.status == 'in_progress' %}
+                                            <span class="status-badge status-in-progress">进行中 / In Progress</span>
+                                        {% elif t.status == 'on_hold' %}
+                                            <span class="status-badge status-on-hold">挂起 / On Hold</span>
+                                        {% elif t.status == 'completed' %}
+                                            <span class="status-badge status-completed">已完成 / Completed</span>
+                                        {% elif t.status == 'reopened' %}
+                                            <span class="status-badge status-reopened">重新打开 / Reopened</span>
+                                        {% else %}
+                                            <span class="status-badge status-overdue">逾期 / Overdue</span>
+                                        {% endif %}
+                                        {% if t.sla_info %}
+                                            {% if t.sla_info.level == 'red' %}
+                                                <span class="status-badge status-overdue">SLA 🔴 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                            {% elif t.sla_info.level == 'amber' %}
+                                                <span class="status-badge status-on-hold">SLA 🟡 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                            {% elif t.sla_info.level == 'green' %}
+                                                <span class="status-badge status-in-progress">SLA 🟢 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <span class="meta-info">创建 {{ t.created_at|localtime|date:"m-d H:i" }}</span>
+                                <span class="meta-info">
+                                    {% if t.due_at %}
+                                        截止 {{ t.due_at|localtime|date:"m-d H:i" }}
+                                    {% else %}
+                                        未设截止
+                                    {% endif %}
+                                </span>
+                                {% if t.completed_at %}
+                                    <span class="meta-info">完成 {{ t.completed_at|localtime|date:"m-d H:i" }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if t.content %}
+                            <p class="summary {% if not t.content %}empty{% endif %}">{{ t.content }}</p>
+                        {% else %}
+                            <p class="summary empty">暂无描述 / No description</p>
+                        {% endif %}
+
+                        <div class="task-info-row">
+                            {% if t.sla_info and t.sla_info.deadline %}
+                                <span>截止：{{ t.sla_info.deadline|localtime|date:"m-d H:i" }}</span>
+                                {% if t.status != 'completed' %}
+                                    <span>剩余：{{ t.sla_info.remaining_hours|default:"--" }}h</span>
                                 {% else %}
-                                    <span class="status-badge status-sla">SLA 未启用 / SLA off</span>
+                                    <span>完成时差：{{ t.sla_info.remaining_hours|default:"--" }}h</span>
                                 {% endif %}
                             {% endif %}
+                            {% if t.is_due_soon %}<span class="status-badge status-on-hold">24h 内到期</span>{% endif %}
+                            {% if not t.due_at %}<span class="status-badge status-on-hold">未设截止</span>{% endif %}
                         </div>
-                        
-                        <div class="task-info-row">
-                            {% if t.due_at %}
-                                <span class="status-badge status-sla">截止 {{ t.due_at|localtime|date:"m-d H:i" }}</span>
-                            {% else %}
-                                <span class="status-badge status-on-hold">未设截止</span>
+
+                        <div class="card-actions task-actions">
+                            <a class="btn btn-ghost" href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">查看 / View</a>
+                            {% if t.status != 'completed' %}
+                            <form method="post" action="{% url 'reports:task_complete' t.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">完成 / Complete</button>
+                            </form>
                             {% endif %}
-                            {% if t.completed_at %}
-                                <span class="status-badge status-completed">完成 {{ t.completed_at|localtime|date:"m-d H:i" }}</span>
-                            {% endif %}
-                            <span>创建 {{ t.created_at|localtime|date:"m-d H:i" }}</span>
                         </div>
-                        
-                        {% if t.content %}
-                        <p class="task-description">{{ t.content }}</p>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="task-actions">
-                    <a class="btn btn-ghost" href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">查看</a>
-                    {% if t.status != 'completed' %}
-                    <form method="post" action="{% url 'reports:task_complete' t.pk %}" style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary">完成</button>
-                    </form>
-                    {% endif %}
-                </div>
-            </article>
-            {% endfor %}
-        </div>
+                    </article>
+                {% endfor %}
+            </div>
         {% if page_obj.has_other_pages %}
             <div class="pagination">
                 {% if page_obj.has_previous %}
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}">上一页</a>
-                {% else %}<span class="page-disabled">上一页</span>{% endif %}
-                <span class="page-current">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if hot %}&hot=1{% endif %}">上一页</a>
+                {% else %}
+                    <span class="page-disabled">上一页</span>
+                {% endif %}
+                    <span class="page-info">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
                 {% if page_obj.has_next %}
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}">下一页</a>
-                {% else %}<span class="page-disabled">下一页</span>{% endif %}
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if hot %}&hot=1{% endif %}">下一页</a>
+                {% else %}
+                    <span class="page-disabled">下一页</span>
+                {% endif %}
             </div>
         {% endif %}
-    {% else %}
-        <div class="empty-state">
-            <p style="margin: 0; font-size: 14px; font-weight: 500;">暂无任务</p>
-            <p style="margin: 4px 0 0; font-size: 12px; color: #9ca3af;">请调整筛选条件或等待新任务分配</p>
+            {% else %}
+                <div class="empty-state">
+                    <h3>暂无任务记录 / No tasks yet</h3>
+                    <p>请调整筛选条件或等待新任务分配</p>
+                    <a class="btn btn-primary" href="{% url 'reports:my_reports' %}">返回日报 / Back to Reports</a>
+                </div>
+            {% endif %}
         </div>
-    {% endif %}
+    </div>
 <script>
     (function(){
-        // 同步导出按钮链接
         const form = document.querySelector('form.filters');
         const exportBtn = document.querySelector('.filter-actions .btn.btn-primary[href*="task_export"]');
         if (form && exportBtn) {
@@ -1135,11 +1205,11 @@
             syncExport();
         }
         
-        // 全选功能
         const selectAllCheckbox = document.getElementById('select-all');
         const taskCheckboxes = document.querySelectorAll('input[name="task_ids"]');
         const submitBtn = document.getElementById('bulk-submit');
         const bulkExportBtn = document.getElementById('bulk-export');
+        const bulkForm = document.getElementById('bulk-form');
 
         function updateBulkState() {
             const allChecked = Array.from(taskCheckboxes).every(cb => cb.checked);
@@ -1165,55 +1235,40 @@
             });
             updateBulkState();
         }
-        
-        // 批量操作验证
-        const bulkForm = document.getElementById('bulk-form');
+
         if (bulkForm) {
-            bulkForm.addEventListener('submit', function(e) {
-                const selectedTasks = document.querySelectorAll('input[name="task_ids"]:checked');
-                const actionSelect = this.querySelector('select[name="bulk_action"]');
-                
-                if (selectedTasks.length === 0) {
+            bulkForm.addEventListener('submit', (e) => {
+                const selected = Array.from(taskCheckboxes).filter(cb => cb.checked);
+                if (!selected.length) {
                     e.preventDefault();
-                    alert('请先选择要操作的任务');
+                    alert('请选择至少一个任务 / Select at least one task');
                     return;
                 }
-                
-                if (!actionSelect.value) {
-                    e.preventDefault();
-                    alert('请选择要执行的批量操作');
-                    return;
+                const action = bulkForm.querySelector('[name="bulk_action"]')?.value || '';
+                const statusVal = bulkForm.querySelector('[name="status_value"]')?.value || '';
+                const dueVal = bulkForm.querySelector('[name="due_at"]')?.value || '';
+                if (action === 'update') {
+                    const fields = [];
+                    if (statusVal) fields.push(`状态: ${statusVal}`);
+                    if (dueVal) fields.push(`截止: ${dueVal}`);
+                    if (!fields.length) {
+                        e.preventDefault();
+                        alert('批量更新需至少选择状态或截止时间 / Choose status or due date for bulk update');
+                        return;
+                    }
+                    if (!confirm(`即将更新 ${selected.length} 条任务：${fields.join('，')}，确认继续？`)) {
+                        e.preventDefault();
+                    }
+                } else {
+                    if (!action) {
+                        e.preventDefault();
+                        alert('请选择批量操作 / Select bulk action');
+                    } else if (!confirm(`确认对 ${selected.length} 条任务执行 ${action}？`)) {
+                        e.preventDefault();
+                    }
                 }
-                if (!confirm(`确定要对选中的 ${selectedTasks.length} 个任务执行"${actionSelect.options[actionSelect.selectedIndex].text}"操作吗？`)) {
-                    e.preventDefault();
-                    return;
-                }
-                if (submitBtn) submitBtn.disabled = true;
-                if (exportBtn) exportBtn.disabled = true;
             });
         }
-        
-        // 任务卡片点击效果
-        const taskCards = document.querySelectorAll('.task-card');
-        taskCards.forEach(card => {
-            const checkbox = card.querySelector('.task-checkbox');
-            const titleLink = card.querySelector('.task-title a');
-            
-            // 点击卡片空白区域（非链接和按钮）时切换选中状态
-            card.addEventListener('click', function(e) {
-                if (e.target === checkbox || 
-                    e.target.closest('a') || 
-                    e.target.closest('button') || 
-                    e.target.closest('form')) {
-                    return;
-                }
-                
-                if (checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.dispatchEvent(new Event('change'));
-                }
-            });
-        });
     })();
 </script>
 {% endblock %}
