@@ -1,106 +1,142 @@
-# TM 团队日报与任务平台 / Team Daily Report & Task Platform
+# WorkReport 使用与部署指南
 
-支持团队日报、任务、项目、模板、SLA、统计/绩效看板的综合协作平台。本文档涵盖功能模块、使用指南、部署流程与配置说明。
+本文档涵盖使用指南、部署方法、宝塔面板定时任务配置，以及邮件服务配置与测试方式。请按章节逐步操作。
 
-## 功能模块 / Modules
-- **认证与账户 / Auth & Account**
-  - 注册、登录、退出；用户名唯一性与密码强度校验。
-  - 个人中心：用户名/密码/邮箱绑定；验证码冷却与提示。
-- **日报 / Daily Reports**
-  - 填写、编辑、查看我的日报；角色/日期/项目/状态筛选与导出。
-  - 连签统计与缺报提醒（催报邮件）。
-- **任务 / Tasks**
-  - 我的任务与管理员任务列表：筛选（状态/项目/关键词）、逾期/紧急标记、批量操作与导出。
-  - SLA 计时：暂停/恢复、红/黄阈值配置与提醒，列表/看板显示当前阈值。
-- **项目 / Projects**
-  - 创建、编辑、删除项目；成员/管理员分配；项目级 SLA 小时。
-- **模板中心 / Template Center**
-  - 日报/任务模板的创建、版本记录、关键词/角色/项目筛选、分页与使用次数排序。
-  - 模板套用：项目→角色→全局优先级，智能推荐（按项目/角色与 usage_count），支持替换/追加。
-- **统计与绩效 / Stats & Performance**
-  - 统计看板：日报缺报、项目 SLA、角色/项目汇总；SLA 预警过滤。
-  - 绩效看板：项目/角色完成率、逾期率、连签；周报发送；SLA 预警过滤。
-  - 缓存约 10 分钟，可在性能/统计页刷新查看“上次刷新时间”。
-- **导出队列 / Export Queue**
-  - 超过阈值的导出可加 `queue=1` 入队，后台生成 CSV；状态/下载接口提供轮询。
-- **偏好设置 / Preferences**
-  - 工作台、绩效看板卡片显示偏好可同步到服务端（UserPreference），跨设备一致。
-- **审计 / Audit**
-  - 导出、删除、访问等操作记录列表与导出。
+## 1. 使用指南
 
-## 使用方法 / Usage Guide
-### 日报
-1. 进入 `我的工作台 / Workbench`，点击“填写日报 / New Report”。
-2. 可选择智能推荐模板或输入模板名，支持替换/追加；项目多选按优先级回退。
-3. 填写后提交，查看“我的日报 / My Reports”筛选或导出 CSV。
+### 1.1 登录与角色
+- 访问 `/accounts/login/` 登录；管理员或项目管理角色（mgr/pm）可进入管理入口。
+- 普通成员可访问：我的日报、我的任务、项目列表。
 
-### 任务
-1. “我的任务 / My Tasks”中按状态/项目/关键词筛选；开启“hot”查看 SLA 预警任务。
-2. 导出：小数据直接下载，大数据使用 `queue=1` 参数排队，返回 `job_id` 后调用  
-   `export/jobs/<id>/` 轮询状态，完成后用 `export/jobs/<id>/download/` 下载。
-3. 管理端在“任务管理 / Tasks Admin”创建/分配，支持批量操作与导出。
+### 1.2 日报与任务
+- 填写日报：`日报 -> 填写日报 / New Report`，提交后可在“我的日报”查看。
+- 我的任务：
+  1) 过滤：按状态/项目/关键词或“仅看紧张/逾期”筛选。
+  2) 批量操作：勾选任务 → 选择批量操作（完成/重新打开/批量更新状态或截止时间）→ 确认提示后提交。
+  3) 导出：列表右上角“导出”按钮。
+- 任务管理（管理员/项目管理员）：
+  1) 列表支持按项目/用户筛选，“批量更新”可同时修改状态/截止/负责人（可按角色过滤负责人）。
+  2) 发布新任务：`任务管理 / Tasks Admin -> 发布新任务`，选择项目、负责人、截止时间并提交。
 
-### 模板中心
-1. 访问“模板中心 / Template Center”，按关键词/角色/项目/排序（版本/更新时间/使用次数）筛选。
-2. 创建日报/任务模板后自动版本化，列表显示使用次数，智能推荐接口按项目/角色返回常用模板。
+### 1.3 项目管理
+- 新建/编辑项目：`项目列表 / Projects -> 新建`，填写名称/代码/SLA/负责人/成员/管理员。成员与管理员为多选。
+- 项目成员角色调整（建议改造点）：项目详情页可扩展角色切换/移除并记录审计。
 
-### 统计与绩效
-- “绩效看板 / Performance Board”：查看完成率、逾期率、连签，刷新缓存，发送周报，SLA 预警过滤。
-- “统计看板 / Stats”：查看缺报、项目 SLA、角色/项目汇总，支持 SLA 预警过滤与导出。
+### 1.4 统计与看板
+- 绩效看板、统计看板：仅管理员可见。
+- 任务统计：管理员或项目管理员可查看/导出；可按项目、用户过滤。
 
-## 部署流程 / Deployment
-1. **环境要求**：Python 3.10+，可选 Redis/Memcached（未来扩展缓存/限流）。
-2. **依赖安装**：
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-3. **数据库迁移**：
-   ```bash
-   python manage.py migrate
-   ```
-4. **创建管理员**：
-   ```bash
-   python manage.py createsuperuser
-   ```
-5. **启动开发服务器**：
-   ```bash
-   python manage.py runserver
-   ```
-6. **生产部署要点**：关闭 DEBUG，设置 SECRET_KEY/ALLOWED_HOSTS，使用 gunicorn/uwsgi + Nginx，执行 `collectstatic` 提供静态资源。
+## 2. 部署方法
 
-## 宝塔计划任务 / BT Panel Cron
-- 目的：在宝塔面板中定时运行 Django 管理命令（如 SLA 检查、催报邮件）。
-- 前置：确认项目路径与虚拟环境路径（示例 `/Users/arlo/Downloads/workreport`，虚拟环境 `.venv`），并设置 `DJANGO_SETTINGS_MODULE=settings`。
-- 在“计划任务”选择“Shell 脚本”，示例脚本：
-  - 每小时运行 SLA/逾期检查：
-    ```bash
-    cd /Users/arlo/Downloads/workreport
-    source .venv/bin/activate
-    export DJANGO_SETTINGS_MODULE=settings
-    python manage.py check_task_sla
-    ```
-  - 每天 20:00 催报/发送周报（根据需要启用）：
-    ```bash
-    cd /Users/arlo/Downloads/workreport
-    source .venv/bin/activate
-    export DJANGO_SETTINGS_MODULE=settings
-    python manage.py send_report_reminders
-    ```
-- 提示：使用绝对路径，勾选日志输出便于排查；如需其他命令，将 `manage.py your_command` 替换即可。
+### 2.1 环境要求
+- Python 3.10+（建议 3.11/3.12）
+- SQLite 默认即可；如需生产数据库，请配置 `DATABASES`。
+- 推荐使用虚拟环境（venv）。
 
-## 配置说明 / Configuration
-- `DEBUG`, `SECRET_KEY`, `ALLOWED_HOSTS`：安全基础配置。
-- 邮件：`EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_SSL/TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`，用于验证码/通知。
-- SLA：`SLA_REMIND_HOURS`（全局小时），`SystemSetting` 中的 `sla_thresholds`（红/黄阈值）可通过 SLA 配置页更新。
-- 导出阈值：`MAX_EXPORT_ROWS`（views.py 顶部），超限时可用 `queue=1` 入队。
-- 缓存：性能/统计看板缓存约 10 分钟；信号在任务/日报保存、删除、项目/模板变更时会清理。
-- 偏好：`UserPreference` 存储卡片显示等 JSON 数据，API `prefs/`、`prefs/save/`。
+### 2.2 安装依赖
+```bash
+# 克隆代码后
+cd /path/to/workreport
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-## 常见问题 / FAQ
-- **导出提示数据过大**：使用过滤条件或在 URL 加 `queue=1` 入队，然后轮询 `export/jobs/<id>/` 查看状态，完成后下载。
-- **SLA 提醒**：确保项目设置 SLA 小时，并在 SLA 配置页设置红/黄阈值；任务列表/看板会显示当前阈值和预警。
-- **模板未命中**：确认项目/角色筛选，模板套用按“项目→角色→全局”回退，并有 fallback 提示；可查看“使用次数”排序选择常用模板。
-- **缓存未更新**：性能/统计看板默认缓存约 10 分钟，可点击页面刷新；数据变更（任务/日报/项目/模板更新）会触发缓存失效。
-- **偏好未同步**：登录后卡片显示偏好会保存到服务端；如遇失败会回退到本地存储。
+### 2.3 初始化与运行
+```bash
+# 如需迁移数据库（默认 sqlite）
+python manage.py migrate
+
+# 创建管理员账号
+python manage.py createsuperuser
+
+# 本地运行
+python manage.py runserver 0.0.0.0:8000
+```
+
+### 2.4 配置项（settings.py 要点）
+- `DEBUG=False` 时请配置 `ALLOWED_HOSTS`。
+- 静态文件：`STATIC_URL=/static/`，生产环境请收集静态资源并由 Web 服务器托管。
+- 邮件配置：见第 4 节。
+
+## 3. 宝塔面板定时任务设置示例
+
+> 假设项目路径 `/www/wwwroot/workreport`，虚拟环境 `/www/wwwroot/workreport/.venv/`。
+
+### 3.1 任务：SLA/截止扫描与提醒
+- 类型：Shell 脚本
+- 脚本内容：
+```bash
+cd /www/wwwroot/workreport && /www/wwwroot/workreport/.venv/bin/python manage.py check_task_sla
+```
+- 触发：每 10 分钟执行一次（可按需调整）。
+- 注意：需保证 SMTP 已配置，避免提醒发送失败。
+
+### 3.2 任务：日报缺报提醒
+- 类型：Shell 脚本
+- 脚本内容：
+```bash
+cd /www/wwwroot/workreport && /www/wwwroot/workreport/.venv/bin/python manage.py send_report_reminders
+```
+- 触发：每天 20:10（或规则设置的截止时间后）执行，工作日建议生效。
+
+### 3.3 定时任务通用参数
+- 执行用户：建议 www 或项目所属用户。
+- 日志：开启“保存执行日志”，便于排查。
+- 环境：如有多 Python 版本，请确认命令中 Python 路径与 venv 一致。
+
+## 4. 邮箱服务配置说明
+
+### 4.1 SMTP 关键配置（settings.py）
+```python
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))  # TLS 587 / SSL 465
+EMAIL_USE_TLS = ...  # 与 EMAIL_USE_SSL 互斥，依据端口自动推断或显式指定
+EMAIL_USE_SSL = ...
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # 发信账号
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # 授权码/密码
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or '')
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
+EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[WorkReport] ')
+```
+- 注意事项：
+  - `EMAIL_USE_TLS` 与 `EMAIL_USE_SSL` 不能同时为 True。
+  - 生产环境务必使用环境变量提供账号/密码，避免硬编码。
+  - `DEBUG=True` 默认使用 console backend，防止误发。
+
+### 4.2 环境变量示例（.env 或部署面板）
+```bash
+export EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+export EMAIL_HOST=smtp.gmail.com
+export EMAIL_PORT=587
+export EMAIL_USE_TLS=true
+export EMAIL_USE_SSL=false
+export EMAIL_HOST_USER="your_account@gmail.com"
+export EMAIL_HOST_PASSWORD="your_app_password"  # 请使用授权码
+export DEFAULT_FROM_EMAIL="WorkReport <your_account@gmail.com>"
+```
+
+### 4.3 测试邮件发送
+使用内置管理命令：
+```bash
+cd /path/to/workreport
+python manage.py send_test_email --to you@example.com --subject "SMTP test" --message "hello" --timeout 10
+```
+- 如需切换发件人或 backend：
+```bash
+python manage.py send_test_email --to you@example.com --from no-reply@example.com --backend django.core.mail.backends.smtp.EmailBackend --timeout 10
+```
+- 常见问题：
+  - 认证失败：检查账号/授权码/发件人是否匹配。
+  - 超时：确认端口（TLS 587 / SSL 465）与防火墙放行。
+  - DNS 解析失败：检查 `EMAIL_HOST` 配置。
+
+## 5. 常见操作步骤速查
+- 创建管理员：`python manage.py createsuperuser`
+- 迁移数据库：`python manage.py migrate`
+- 收集静态资源（生产）：`python manage.py collectstatic`
+- 运行提醒扫描（手动）：`python manage.py check_task_sla`
+- 运行缺报提醒（手动）：`python manage.py send_report_reminders`
+
+> 以上步骤与配置请结合实际服务器路径和账户权限调整。若使用反向代理/容器，请同步修改对应的工作目录与启动命令。***
