@@ -1670,7 +1670,7 @@ def account_settings(request):
                 # 先尝试发送邮件，成功后再写入 session，避免失败后仍提示成功
                 subject = "邮箱验证 / Email verification code"
                 body = (
-                    f"您的验证码：{code}\n"
+                    f"您的验证码(your code)：{code}\n"
                     f"10 分钟内有效，请勿泄露。If you did not request this, please ignore."
                 )
                 try:
