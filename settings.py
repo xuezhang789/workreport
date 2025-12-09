@@ -89,7 +89,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 SLA_REMIND_HOURS = 24  # 任务 SLA 提前提醒时间（小时）
 
 # 邮件通知配置：默认控制台，生产环境通过环境变量开启 SMTP
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))  # TLS 587 / SSL 465
 
@@ -109,8 +109,8 @@ if not env_use_ssl and not env_use_tls:
         EMAIL_USE_SSL = True
         EMAIL_USE_TLS = False
 
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # 发信账号
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # 授权码/密码
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'xuezhang789@gmail.com')  # 发信账号（可用环境变量覆盖）
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'aztv daib ajno ozhw')  # 授权码/密码（可用环境变量覆盖）
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or '')
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
 EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[WorkReport] ')
