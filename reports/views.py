@@ -32,10 +32,13 @@ from .forms import (
     EmailVerificationConfirmForm,
     ReportTemplateForm,
     TaskTemplateForm,
+    ProjectPhaseConfigForm,
 )
-from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion, ExportJob
+from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion, ExportJob, ProjectPhaseConfig, ProjectPhaseChangeLog
 from .signals import _invalidate_stats_cache
 from django.conf import settings
+from .services.sla import calculate_sla_info, get_sla_thresholds, get_sla_hours
+from .services.stats import get_performance_stats as _performance_stats
 
 MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
 
@@ -112,112 +115,6 @@ def _add_history(task: Task, user, field: str, old: str, new: str):
     TaskHistory.objects.create(task=task, user=user if user and user.is_authenticated else None, field=field, old_value=str(old or ''), new_value=str(new or ''))
 
 
-def get_sla_hours(project: Project | None = None):
-    if project and project.sla_hours:
-        return project.sla_hours
-    cfg = SystemSetting.objects.filter(key='sla_hours').first()
-    if cfg:
-        try:
-            val = int(cfg.value)
-            if val > 0:
-                return val
-        except (TypeError, ValueError):
-            pass
-    return DEFAULT_SLA_REMIND
-
-
-def _ensure_sla_timer(task: Task) -> TaskSlaTimer:
-    timer = getattr(task, 'sla_timer', None)
-    if timer:
-        return timer
-    return TaskSlaTimer.objects.create(task=task)
-
-
-def _get_sla_timer_readonly(task: Task) -> TaskSlaTimer | None:
-    """只读获取 timer，不创建新记录。"""
-    return getattr(task, 'sla_timer', None)
-
-
-def get_sla_thresholds():
-    """返回 SLA 阈值配置，单位小时。"""
-    default_amber = getattr(settings, 'SLA_TIGHT_HOURS_DEFAULT', 6)
-    default_red = getattr(settings, 'SLA_CRITICAL_HOURS_DEFAULT', 2)
-    cfg = SystemSetting.objects.filter(key='sla_thresholds').first()
-    if cfg:
-        try:
-            data = json.loads(cfg.value)
-            amber = int(data.get('amber', default_amber))
-            red = int(data.get('red', default_red))
-            return {'amber': amber, 'red': red}
-        except Exception:
-            pass
-    return {'amber': default_amber, 'red': default_red}
-
-
-def _calc_sla_info(task: Task, as_of: datetime | None = None):
-    """
-    计算 SLA 截止、剩余小时与颜色状态。
-    status: normal/tight/overdue, paused: bool
-    """
-    now = as_of or timezone.now()
-    timer = _get_sla_timer_readonly(task)
-    paused_seconds = 0
-    if timer:
-        paused_seconds = timer.total_paused_seconds
-        if task.status == 'on_hold' and timer.paused_at:
-            paused_seconds += int((now - timer.paused_at).total_seconds())
-    elif task.status in ('in_progress', 'on_hold'):
-        timer = _ensure_sla_timer(task)
-        paused_seconds = timer.total_paused_seconds
-        if task.status == 'on_hold' and timer.paused_at:
-            paused_seconds += int((now - timer.paused_at).total_seconds())
-
-    sla_deadline = None
-    remaining_hours = None
-    sla_hours = get_sla_hours(task.project)
-    if task.due_at:
-        sla_deadline = task.due_at + timedelta(seconds=paused_seconds)
-    elif sla_hours:
-        sla_deadline = task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
-
-    status = 'normal'
-    level = 'green'
-    thresholds = get_sla_thresholds()
-    amber_limit = thresholds.get('amber', 6)
-    red_limit = thresholds.get('red', 2)
-    if sla_deadline:
-        delta = sla_deadline - now
-        remaining_hours = round(delta.total_seconds() / 3600, 1)
-        if remaining_hours <= 0:
-            status = 'overdue'
-            level = 'red'
-        elif remaining_hours <= red_limit:
-            status = 'tight'
-            level = 'red'
-        elif remaining_hours <= amber_limit:
-            status = 'tight'
-            level = 'amber'
-        else:
-            level = 'green'
-    else:
-        level = 'grey'
-
-    sort_value = {
-        'red': 0,
-        'amber': 1,
-        'green': 2,
-        'grey': 3,
-    }.get(level, 3)
-    return {
-        'deadline': sla_deadline,
-        'remaining_hours': remaining_hours,
-        'status': status,
-        'paused': bool(timer and timer.paused_at),
-        'level': level,
-        'sort': sort_value,
-    }
-
-
 def _mask_email(email: str) -> str:
     if '@' not in email:
         return email
@@ -231,6 +128,8 @@ def _mask_email(email: str) -> str:
 
 def has_project_manage_permission(user, project: Project):
     if has_manage_permission(user):
+        return True
+    if project.owner_id == user.id:
         return True
     return project.managers.filter(id=user.id).exists()
 
@@ -253,227 +152,6 @@ def _streak_map():
     return streaks
 
 
-def _performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None):
-    """计算项目/角色/用户维度的完成率、逾期率、SLA 准时率与 Lead Time。支持项目/角色过滤。"""
-    cache_key = f"performance_stats_v1_{start_date}_{end_date}_{project_id}_{role_filter}"
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
-
-    generated_at = timezone.now()
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile')
-    if start_date:
-        tasks_qs = tasks_qs.filter(created_at__date__gte=start_date)
-    if end_date:
-        tasks_qs = tasks_qs.filter(created_at__date__lte=end_date)
-    if project_id and isinstance(project_id, int):
-        tasks_qs = tasks_qs.filter(project_id=project_id)
-    if role_filter and role_filter in dict(Profile.ROLE_CHOICES):
-        tasks_qs = tasks_qs.filter(user__profile__position=role_filter)
-    tasks = list(tasks_qs)
-
-    def _deadline_with_pause(task: Task):
-        timer = getattr(task, 'sla_timer', None)
-        paused_seconds = 0
-        if timer:
-            paused_seconds = timer.total_paused_seconds
-            if timer.paused_at and task.status == 'on_hold':
-                paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
-        if task.due_at:
-            return task.due_at + timedelta(seconds=paused_seconds)
-        sla_hours = get_sla_hours(task.project)
-        if sla_hours:
-            return task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
-        return None
-
-    def _push(metric_dict, key, item):
-        bucket = metric_dict.setdefault(key, {
-            'total': 0,
-            'completed': 0,
-            'overdue': 0,
-            'lead_hours': [],
-            'on_time': 0,
-            'deadline_count': 0,
-        })
-        bucket['total'] += 1
-        if item['status'] == 'completed':
-            bucket['completed'] += 1
-        if item['status'] == 'overdue':
-            bucket['overdue'] += 1
-        if item['lead_hours'] is not None:
-            bucket['lead_hours'].append(item['lead_hours'])
-        if item['deadline'] is not None and item['status'] == 'completed':
-            bucket['deadline_count'] += 1
-            if item['completed_at'] and item['completed_at'] <= item['deadline']:
-                bucket['on_time'] += 1
-
-    project_stats_map = {}
-    role_stats_map = {}
-    user_stats_map = {}
-
-    overall = {'total': 0, 'completed': 0, 'overdue': 0, 'on_time': 0, 'deadline_count': 0, 'lead': []}
-
-    for t in tasks:
-        deadline = _deadline_with_pause(t)
-        lead_hours = None
-        if t.completed_at:
-            lead_hours = round((t.completed_at - t.created_at).total_seconds() / 3600, 2)
-        item = {
-            'status': t.status,
-            'deadline': deadline,
-            'completed_at': t.completed_at,
-            'lead_hours': lead_hours,
-        }
-        overall['total'] += 1
-        if t.status == 'completed':
-            overall['completed'] += 1
-        if t.status == 'overdue':
-            overall['overdue'] += 1
-        if lead_hours is not None:
-            overall['lead'].append(lead_hours)
-        if deadline is not None and t.status == 'completed':
-            overall['deadline_count'] += 1
-            if t.completed_at and t.completed_at <= deadline:
-                overall['on_time'] += 1
-        proj_key = t.project_id or 0
-        role_key = getattr(t.user.profile, 'position', None) if hasattr(t.user, 'profile') else None
-        user_key = t.user_id
-        _push(project_stats_map, proj_key, item)
-        _push(role_stats_map, role_key or 'unknown', item)
-        _push(user_stats_map, user_key, item)
-
-    def _reduce(map_obj, label_builder):
-        rows = []
-        for key, data in map_obj.items():
-            total = data['total']
-            comp = data['completed']
-            ovd = data['overdue']
-            on_time = data['on_time']
-            deadline_count = data['deadline_count']
-            lead_list = data['lead_hours']
-            lead_avg = round(statistics.mean(lead_list), 2) if lead_list else None
-            lead_p50 = round(statistics.median(lead_list), 2) if lead_list else None
-            rows.append({
-                **label_builder(key),
-                'total': total,
-                'completed': comp,
-                'overdue': ovd,
-                'completion_rate': (comp / total * 100) if total else 0,
-                'overdue_rate': (ovd / total * 100) if total else 0,
-                'sla_on_time_rate': (on_time / deadline_count * 100) if deadline_count else 0,
-                'deadline_tasks': deadline_count,
-                'lead_time_avg': lead_avg,
-                'lead_time_p50': lead_p50,
-            })
-        return rows
-
-    project_ids = [pid for pid in project_stats_map.keys() if pid]
-    project_name_map = {p.id: p.name for p in Project.objects.filter(id__in=project_ids)}
-    project_stats = _reduce(project_stats_map, lambda pid: {
-        'project_id': pid,
-        'project': project_name_map.get(pid, '未分配 / Unassigned'),
-    })
-    project_stats.sort(key=lambda x: x['project'])
-
-    role_map = dict(Profile.ROLE_CHOICES)
-    role_stats = _reduce(role_stats_map, lambda r: {
-        'role': r,
-        'role_label': role_map.get(r, r or '未知 / Unknown'),
-    })
-
-    User = get_user_model()
-    user_ids = list(user_stats_map.keys())
-    user_map = {u.id: (u.get_full_name() or u.username) for u in User.objects.filter(id__in=user_ids)}
-    user_stats = _reduce(user_stats_map, lambda uid: {
-        'user_id': uid,
-        'user_label': user_map.get(uid, '未知 / Unknown'),
-    })
-
-    streaks = _streak_map()
-    User = get_user_model()
-    role_streaks = []
-    for role_key, role_label in Profile.ROLE_CHOICES:
-        user_ids = list(User.objects.filter(profile__position=role_key).values_list('id', flat=True))
-        values = [streaks.get(uid, 0) for uid in user_ids] or [0]
-        avg_streak = sum(values) / len(values) if values else 0
-        role_streaks.append({
-            'role': role_key,
-            'role_label': role_label,
-            'avg_streak': round(avg_streak, 1),
-            'max_streak': max(values) if values else 0,
-        })
-
-    trend = []
-    end_for_trend = end_date or timezone.localdate()
-    default_span = timedelta(days=6)
-    max_span = timedelta(days=30)
-    if start_date:
-        span_start = max(start_date, end_for_trend - max_span)
-    else:
-        span_start = end_for_trend - default_span
-    curr = span_start
-    while curr <= end_for_trend:
-        count = DailyReport.objects.filter(date=curr, status='submitted').count()
-        trend.append({'date': curr, 'count': count})
-        curr += timedelta(days=1)
-
-    result = {
-        'project_stats': project_stats,
-        'role_stats': role_stats,
-        'role_streaks': role_streaks,
-        'trend': trend,
-        'generated_at': generated_at,
-        'user_stats': user_stats,
-        'overall_total': overall['total'],
-        'overall_completed': overall['completed'],
-        'overall_overdue': overall['overdue'],
-        'overall_sla_on_time_rate': (overall['on_time'] / overall['deadline_count'] * 100) if overall['deadline_count'] else 0,
-        'overall_lead_avg': round(statistics.mean(overall['lead']), 2) if overall['lead'] else None,
-        'overall_lead_p50': round(statistics.median(overall['lead']), 2) if overall['lead'] else None,
-    }
-    cache.set(cache_key, result, 600)
-    return result
-
-
-def _send_weekly_digest(recipient: str, stats: dict):
-    """发送周报邮件，汇总项目/角色完成率与连签情况。"""
-    if not recipient:
-        return False
-    top_projects = sorted(stats.get('project_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
-    top_roles = sorted(stats.get('role_stats', []), key=lambda x: (-x['completion_rate'], x['overdue_rate']))[:5]
-    streaks = stats.get('role_streaks', [])
-    overdue_top = Task.objects.filter(status='overdue').select_related('project', 'user').order_by('-due_at')[:5]
-
-    lines = [
-        "Weekly Performance Digest / 周度绩效简报",
-        "",
-        "Top Projects / 项目排名：",
-    ]
-    for p in top_projects:
-        lines.append(f"- {p['project']}: 完成 {p['completion_rate']:.1f}%, 逾期 {p['overdue_rate']:.1f}%")
-    lines.append("")
-    lines.append("Top Roles / 角色维度：")
-    for r in top_roles:
-        lines.append(f"- {r['role_label']}: 完成 {r['completion_rate']:.1f}%, 逾期 {r['overdue_rate']:.1f}%")
-    lines.append("")
-    lines.append("Streaks / 连签：")
-    for s in streaks:
-        lines.append(f"- {s['role_label']}: Avg 平均 {s['avg_streak']} 天, Max 最高 {s['max_streak']} 天")
-
-    if overdue_top:
-        lines.append("")
-        lines.append("Overdue Tasks / 逾期任务 Top5：")
-        for t in overdue_top:
-            lines.append(f"- {t.title} [{t.project.name if t.project else 'N/A'}] by {t.user.get_full_name() or t.user.username}")
-
-    send_mail(
-        subject="Weekly Performance Digest / 周度绩效简报",
-        message="\n".join(lines),
-        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
-        recipient_list=[recipient],
-        fail_silently=True,
-    )
-    return True
 
 
 def _filtered_reports(request):
@@ -594,16 +272,6 @@ def _generate_export_file(job, header, rows_iterable):
         job.file_path = path
         job.save(update_fields=['status', 'progress', 'file_path', 'updated_at'])
     return path
-
-
-def _mark_overdue_tasks(qs):
-    """将过期未完成的任务标记为逾期。"""
-    now = timezone.now()
-    qs.filter(
-        status__in=['pending', 'reopened', 'in_progress', 'on_hold'],
-        due_at__lt=now,
-        due_at__isnull=False
-    ).update(status='overdue')
 
 
 def _report_initial(report: DailyReport | None):
@@ -768,13 +436,19 @@ def workbench(request):
     has_today_report = today_report is not None and today_report.status == 'submitted'
 
     # project burndown with enhanced data
+    projects = Project.objects.filter(is_active=True, tasks__user=request.user).distinct().annotate(
+        total_p=Count('tasks', filter=Q(tasks__user=request.user)),
+        completed_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='completed')),
+        overdue_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='overdue')),
+        in_progress_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='in_progress'))
+    )
+    
     project_burndown = []
-    for proj in Project.objects.filter(is_active=True, tasks__user=request.user).distinct():
-        proj_tasks = tasks.filter(project=proj)
-        total_p = proj_tasks.count()
-        completed_p = proj_tasks.filter(status='completed').count()
-        overdue_p = proj_tasks.filter(status='overdue').count()
-        in_progress_p = proj_tasks.filter(status='in_progress').count()
+    for proj in projects:
+        total_p = proj.total_p
+        completed_p = proj.completed_p
+        overdue_p = proj.overdue_p
+        in_progress_p = proj.in_progress_p
         completion_rate_p = (completed_p / total_p * 100) if total_p else 0
         
         project_burndown.append({
@@ -1861,12 +1535,20 @@ def task_list(request):
 
     tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
     now = timezone.now()
-    # 仅对当前用户的任务标记逾期，避免全表写操作
-    _mark_overdue_tasks(tasks_qs)
+    
     project_obj = None
     if project_id and project_id.isdigit():
         project_obj = Project.objects.filter(id=int(project_id)).first()
-    sla_hours = get_sla_hours(project_obj)
+    
+    # Pre-fetch SLA settings once
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+    
+    sla_hours = get_sla_hours(project_obj, system_setting_value=sla_hours_val)
+    
     due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
@@ -1883,7 +1565,7 @@ def task_list(request):
     if hot:
         hot_ids = []
         for t in base_qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
-            info = _calc_sla_info(t)
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info['status'] in ('tight', 'overdue'):
                 hot_ids.append(t.id)
         base_qs = base_qs.filter(id__in=hot_ids)
@@ -1904,10 +1586,10 @@ def task_list(request):
     urgent_count = 0
     for t in page_obj:
         t.is_due_soon = t.id in due_soon_ids
-        t.sla_info = _calc_sla_info(t)
+        t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if t.sla_info and t.sla_info.get('level') == 'red':
             urgent_count += 1
-    thresholds = get_sla_thresholds()
+    thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     return render(request, 'reports/task_list.html', {
         'tasks': page_obj,
         'page_obj': page_obj,
@@ -1933,8 +1615,7 @@ def task_export(request):
     hot = request.GET.get('hot') == '1'
 
     tasks = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
-    # 仅标记当前用户的可见任务，避免对全库写操作
-    _mark_overdue_tasks(tasks)
+    
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
     if project_id and project_id.isdigit():
@@ -1943,8 +1624,14 @@ def task_export(request):
         tasks = tasks.filter(Q(title__icontains=q) | Q(content__icontains=q))
     if hot:
         filtered = []
+        # Pre-fetch SLA settings once
+        cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+        sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+        cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+        sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+
         for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
-            info = _calc_sla_info(t)
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info['status'] in ('tight', 'overdue'):
                 t.sla_info = info
                 filtered.append(t)
@@ -2302,14 +1989,24 @@ def admin_task_list(request):
     hot = request.GET.get('hot') == '1'
 
     tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').order_by('-created_at')
-    _mark_overdue_tasks(tasks_qs)
+    
+    # Pre-fetch SLA settings once
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+    
     now = timezone.now()
-    sla_hours = get_sla_hours()
+    # Default SLA hours for general query if no project specific
+    default_sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
+    
     due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
         due_at__gt=now,
-        due_at__lte=now + timedelta(hours=sla_hours)
+        due_at__lte=now + timedelta(hours=default_sla_hours)
     ).values_list('id', flat=True))
+    
     if not is_admin:
         tasks_qs = tasks_qs.filter(project_id__in=manageable_project_ids)
     if status in dict(Task.STATUS_CHOICES):
@@ -2327,12 +2024,12 @@ def admin_task_list(request):
 
     tasks = list(tasks_qs)
     if hot:
-        tasks = [t for t in tasks if _calc_sla_info(t)['status'] in ('tight', 'overdue')]
+        tasks = [t for t in tasks if calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)['status'] in ('tight', 'overdue')]
 
     far_future = now + timedelta(days=365)
     for t in tasks:
         t.is_due_soon = t.id in due_soon_ids
-        t.sla_info = _calc_sla_info(t)
+        t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
     tasks.sort(key=lambda t: (
         -t.created_at.timestamp(),  # 最新任务优先
         t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
@@ -2365,9 +2062,9 @@ def admin_task_list(request):
         'users': user_objs,
         'task_status_choices': Task.STATUS_CHOICES,
         'due_soon_ids': due_soon_ids,
-        'sla_config_hours': sla_hours,
+        'sla_config_hours': default_sla_hours,
         'redirect_to': request.get_full_path(),
-        'sla_thresholds': get_sla_thresholds(),
+        'sla_thresholds': get_sla_thresholds(system_setting_value=sla_thresholds_val),
     })
 
 
@@ -2491,7 +2188,14 @@ def admin_task_export(request):
     hot = request.GET.get('hot') == '1'
 
     tasks = Task.objects.select_related('project', 'user').order_by('-created_at')
-    _mark_overdue_tasks(tasks)
+    
+    # Pre-fetch SLA settings once
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+    
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
     if status in dict(Task.STATUS_CHOICES):
@@ -2509,7 +2213,7 @@ def admin_task_export(request):
     if hot:
         filtered = []
         for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
-            info = _calc_sla_info(t)
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info['status'] in ('tight', 'overdue'):
                 t.sla_info = info
                 filtered.append(t)
@@ -2591,9 +2295,6 @@ def admin_task_stats(request):
             tasks = tasks.none()
     if user_id and user_id.isdigit():
         tasks = tasks.filter(user_id=int(user_id))
-
-    # 只对有权限范围内的任务做逾期标记，避免非管理员误改全局数据
-    _mark_overdue_tasks(tasks)
 
     total = tasks.count()
     completed = tasks.filter(status='completed').count()
@@ -2699,9 +2400,6 @@ def admin_task_stats_export(request):
             tasks = tasks.none()
     if user_id and user_id.isdigit():
         tasks = tasks.filter(user_id=int(user_id))
-
-    # 仅在可访问范围内标记逾期，避免非管理员更新全库任务
-    _mark_overdue_tasks(tasks)
 
     rows = []
     grouped = tasks.values('project__name', 'user__username', 'user__first_name', 'user__last_name').annotate(
@@ -2817,7 +2515,9 @@ def admin_task_create(request):
         'users': user_objs,
         'task_status_choices': Task.STATUS_CHOICES,
         'existing_urls': existing_urls,
-        'form_values': {},
+        'form_values': {
+            'project_id': request.GET.get('project_id'),
+        },
     })
 
 
@@ -2899,10 +2599,19 @@ def admin_reports_export(request):
 @login_required
 def project_list(request):
     projects, q, start_date, end_date, owner = _filtered_projects(request)
+    
+    # Filter by phase
+    phase_id = request.GET.get('phase')
+    if phase_id and phase_id.isdigit():
+        projects = projects.filter(current_phase_id=int(phase_id))
+        
     projects = projects.annotate(member_count=Count('members', distinct=True), report_count=Count('reports', distinct=True))
     paginator = Paginator(projects, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     manageable_ids = {p.id for p in page_obj if has_project_manage_permission(request.user, p)}
+    
+    phases = ProjectPhaseConfig.objects.filter(is_active=True)
+    
     context = {
         'projects': page_obj,
         'page_obj': page_obj,
@@ -2912,6 +2621,8 @@ def project_list(request):
         'owner': owner,
         'total_count': projects.count(),
         'manageable_ids': manageable_ids,
+        'phases': phases,
+        'phase_id': int(phase_id) if phase_id and phase_id.isdigit() else '',
     }
     return render(request, 'reports/project_list.html', context)
 
@@ -3000,26 +2711,33 @@ def stats(request):
     if cached_stats:
         metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at = cached_stats
     else:
+        projects = Project.objects.filter(is_active=True).order_by('name').annotate(
+            total=Count('tasks'),
+            completed=Count('tasks', filter=Q(tasks__status='completed')),
+            overdue=Count('tasks', filter=Q(tasks__status='overdue')),
+            within_sla=Count('tasks', filter=Q(
+                tasks__status='completed',
+                tasks__due_at__isnull=False,
+                tasks__completed_at__isnull=False,
+                tasks__completed_at__lte=models.F('tasks__due_at')
+            ))
+        )
+        
         project_sla_stats = []
-        projects = Project.objects.filter(is_active=True).order_by('name')
         for p in projects:
-            total = tasks_qs.filter(project=p).count()
-            completed = tasks_qs.filter(project=p, status='completed').count()
-            overdue = tasks_qs.filter(project=p, status='overdue').count()
-            within_sla = tasks_qs.filter(
-                project=p,
-                status='completed',
-                due_at__isnull=False,
-                completed_at__isnull=False,
-                completed_at__lte=models.F('due_at')
-            ).count()
+            total = p.total
+            completed = p.completed
+            overdue = p.overdue
+            within_sla = p.within_sla
+            
+            sla_rate = (within_sla / completed * 100) if completed else 0
             project_sla_stats.append({
                 'project': p,
                 'total': total,
                 'completed': completed,
                 'overdue': overdue,
                 'within_sla': within_sla,
-                'sla_rate': (within_sla / completed * 100) if completed else 0,
+                'sla_rate': sla_rate,
             })
 
         overdue_top = tasks_qs.filter(status='overdue').select_related('project', 'user').order_by('-due_at')[:10]
@@ -3036,8 +2754,15 @@ def stats(request):
         top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
         cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
     sla_urgent_tasks = []
+    
+    # Pre-fetch SLA settings once
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+
     for t in Task.objects.select_related('project', 'user').exclude(status='completed'):
-        info = _calc_sla_info(t)
+        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info
             sla_urgent_tasks.append(t)
@@ -3053,7 +2778,7 @@ def stats(request):
         'top_projects': top_projects,
         'missing_projects': missing_projects,
         'today': target_date,
-        'sla_remind': get_sla_hours(),
+        'sla_remind': get_sla_hours(system_setting_value=sla_hours_val),
         'sla_thresholds': thresholds,
         'project_sla_stats': project_sla_stats,
         'overdue_top': overdue_top,
@@ -3083,11 +2808,18 @@ def performance_board(request):
     stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter)
     urgent_tasks = stats.get('overall_overdue', Task.objects.filter(status='overdue').count())
     total_tasks = stats.get('overall_total', Task.objects.count())
-    thresholds = get_sla_thresholds()
+    
+    # Pre-fetch SLA settings once
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+    
+    thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     sla_only = request.GET.get('sla_only') == '1'
     sla_urgent_tasks = []
     for t in Task.objects.select_related('project', 'user').exclude(status='completed'):
-        info = _calc_sla_info(t)
+        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info
             sla_urgent_tasks.append(t)
@@ -3391,7 +3123,7 @@ def audit_logs_export(request):
 
 @login_required
 def project_detail(request, pk: int):
-    project = get_object_or_404(Project.objects.select_related('owner').prefetch_related('members'), pk=pk)
+    project = get_object_or_404(Project.objects.select_related('owner', 'current_phase').prefetch_related('members'), pk=pk)
     recent_reports = project.reports.select_related('user').order_by('-date')[:5]
     tasks_qs = Task.objects.filter(project=project)
     total = tasks_qs.count()
@@ -3404,6 +3136,36 @@ def project_detail(request, pk: int):
         completed_at__lte=models.F('due_at')
     ).count()
     sla_rate = (within_sla / completed * 100) if completed else 0
+    
+    # Task List Logic
+    tasks_qs = Task.objects.filter(project=project).select_related('user', 'user__profile')
+    
+    task_status = request.GET.get('task_status')
+    if task_status in dict(Task.STATUS_CHOICES):
+        tasks_qs = tasks_qs.filter(status=task_status)
+    elif task_status == 'active':
+        tasks_qs = tasks_qs.exclude(status__in=['completed', 'reopened']) # Assuming reopened is active? Or maybe just exclude completed
+    
+    task_sort = request.GET.get('task_sort')
+    if task_sort == 'due_at':
+        tasks_qs = tasks_qs.order_by('due_at', '-created_at')
+    elif task_sort == '-due_at':
+        tasks_qs = tasks_qs.order_by('-due_at', '-created_at')
+    elif task_sort == 'priority':
+        tasks_qs = tasks_qs.order_by('due_at') # Simple proxy for priority
+    else:
+        tasks_qs = tasks_qs.order_by('-created_at')
+
+    paginator = Paginator(tasks_qs, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Calculate SLA info for displayed tasks
+    for t in page_obj:
+        t.sla_info = _calc_sla_info(t)
+
+    phases = ProjectPhaseConfig.objects.filter(is_active=True)
+    
     return render(request, 'reports/project_detail.html', {
         'project': project,
         'recent_reports': recent_reports,
@@ -3414,7 +3176,12 @@ def project_detail(request, pk: int):
             'overdue': overdue,
             'within_sla': within_sla,
             'sla_rate': sla_rate,
-        }
+        },
+        'phases': phases,
+        'tasks': page_obj,
+        'task_status': task_status,
+        'task_sort': task_sort,
+        'task_status_choices': Task.STATUS_CHOICES,
     })
 
 
@@ -3498,3 +3265,156 @@ def project_export(request):
     response["Content-Disposition"] = 'attachment; filename="projects.csv"'
     log_action(request, 'export', f"projects count={projects.count()} q={q} start={start_date} end={end_date} owner={owner}")
     return response
+
+def _send_phase_change_notification(project, old_phase, new_phase, changed_by):
+    """
+    发送项目阶段变更通知给负责人和管理员。
+    Send phase change notification to project owner and admins.
+    """
+    subject = f"[{project.code}] 项目阶段变更通知 / Project Phase Changed"
+    
+    old_phase_name = old_phase.phase_name if old_phase else "N/A"
+    new_phase_name = new_phase.phase_name if new_phase else "N/A"
+    
+    message = f"""
+    项目名称 / Project: {project.name}
+    变更时间 / Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}
+    操作人 / By: {changed_by.get_full_name() or changed_by.username}
+    
+    阶段变更 / Phase Change:
+    {old_phase_name} -> {new_phase_name}
+    
+    当前进度 / Current Progress: {project.overall_progress}%
+    """
+    
+    recipients = set()
+    if project.owner and project.owner.email:
+        recipients.add(project.owner.email)
+    
+    # Add admins (superusers or managers)
+    # Assuming 'managers' field on Project are also admins for this project
+    for manager in project.managers.all():
+        if manager.email:
+            recipients.add(manager.email)
+            
+    # Also system admins
+    for admin in get_user_model().objects.filter(is_superuser=True):
+        if admin.email:
+            recipients.add(admin.email)
+            
+    if recipients:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            list(recipients),
+            fail_silently=True,
+        )
+
+@login_required
+def project_phase_config_list(request):
+    if not has_manage_permission(request.user):
+        return _admin_forbidden(request)
+        
+    phases = ProjectPhaseConfig.objects.all()
+    form = ProjectPhaseConfigForm()
+    return render(request, 'reports/project_stage_config.html', {'phases': phases, 'form': form})
+
+@login_required
+def project_phase_config_create(request):
+    if not has_manage_permission(request.user):
+        return _admin_forbidden(request)
+        
+    if request.method == 'POST':
+        form = ProjectPhaseConfigForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "阶段创建成功 / Phase created successfully")
+            return redirect('reports:project_phase_config_list')
+    else:
+        form = ProjectPhaseConfigForm()
+        
+    return render(request, 'reports/project_stage_config.html', {'form': form, 'phases': ProjectPhaseConfig.objects.all()})
+
+@login_required
+def project_phase_config_update(request, pk):
+    if not has_manage_permission(request.user):
+        return _admin_forbidden(request)
+        
+    phase = get_object_or_404(ProjectPhaseConfig, pk=pk)
+    if request.method == 'POST':
+        form = ProjectPhaseConfigForm(request.POST, instance=phase)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "阶段更新成功 / Phase updated successfully")
+            return redirect('reports:project_phase_config_list')
+    else:
+        form = ProjectPhaseConfigForm(instance=phase)
+        
+    return render(request, 'reports/project_stage_config.html', {'form': form, 'phases': ProjectPhaseConfig.objects.all(), 'editing': True, 'phase_id': pk})
+
+@login_required
+def project_phase_config_delete(request, pk):
+    if not has_manage_permission(request.user):
+        return _admin_forbidden(request)
+        
+    phase = get_object_or_404(ProjectPhaseConfig, pk=pk)
+    if request.method == 'POST':
+        phase.delete()
+        messages.success(request, "阶段删除成功 / Phase deleted successfully")
+        return redirect('reports:project_phase_config_list')
+        
+    return _friendly_forbidden(request, "Invalid method")
+
+@login_required
+def project_update_phase(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    
+    # Check permission: Only Project Manager or higher (and Owner/Manager of the project)
+    can_manage = has_manage_permission(request.user) or request.user == project.owner or project.managers.filter(pk=request.user.pk).exists()
+    
+    if not can_manage:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+        
+    if request.method == 'POST':
+        phase_id = request.POST.get('phase_id')
+        try:
+            new_phase = ProjectPhaseConfig.objects.get(pk=phase_id)
+        except ProjectPhaseConfig.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Phase not found'}, status=404)
+            
+        old_phase = project.current_phase
+        
+        if old_phase != new_phase:
+            project.current_phase = new_phase
+            project.overall_progress = new_phase.progress_percentage
+            project.save()
+            
+            # Log change
+            ProjectPhaseChangeLog.objects.create(
+                project=project,
+                old_phase=old_phase,
+                new_phase=new_phase,
+                changed_by=request.user
+            )
+            
+            # Send notification
+            _send_phase_change_notification(project, old_phase, new_phase, request.user)
+            
+            # Log audit
+            log_action(request, 'update', f"Project {project.code} phase changed to {new_phase.phase_name}")
+            
+            return JsonResponse({
+                'status': 'success', 
+                'phase_name': new_phase.phase_name, 
+                'progress': new_phase.progress_percentage
+            })
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+@login_required
+def project_phase_history(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    logs = project.phase_logs.all().select_related('old_phase', 'new_phase', 'changed_by')
+    
+    return render(request, 'reports/project_stage_history.html', {'project': project, 'logs': logs})

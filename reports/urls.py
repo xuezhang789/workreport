@@ -50,4 +50,14 @@ urlpatterns = [
     path('export/jobs/<int:job_id>/download/', views.export_job_download, name='export_job_download'),
     path('prefs/', views_preferences.preference_get_api, name='preference_get_api'),
     path('prefs/save/', views_preferences.preference_save_api, name='preference_save_api'),
+
+    # Phase Management
+    path('admin/phases/', views.project_phase_config_list, name='project_phase_config_list'),
+    path('admin/phases/new/', views.project_phase_config_create, name='project_phase_config_create'),
+    path('admin/phases/<int:pk>/edit/', views.project_phase_config_update, name='project_phase_config_update'),
+    path('admin/phases/<int:pk>/delete/', views.project_phase_config_delete, name='project_phase_config_delete'),
+
+    # Project Phase Actions
+    path('projects/<int:project_id>/update-phase/', views.project_update_phase, name='project_update_phase'),
+    path('projects/<int:project_id>/phase-history/', views.project_phase_history, name='project_phase_history'),
 ]
