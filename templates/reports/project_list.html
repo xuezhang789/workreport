@@ -645,6 +645,15 @@
                         <label for="owner">负责人 / Owner</label>
                         <input type="text" id="owner" name="owner" value="{{ owner }}" placeholder="按负责人搜索">
                     </div>
+                    <div>
+                        <label for="phase">阶段 / Phase</label>
+                        <select id="phase" name="phase">
+                            <option value="">全部 / All</option>
+                            {% for p in phases %}
+                                <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="filter-actions">
                     <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">
@@ -718,6 +727,16 @@
                             </div>
                         </div>
                         
+                        <div style="margin-bottom: 16px; padding: 12px 16px; background: rgba(248, 250, 252, 0.6); border-radius: 12px; border: 1px solid var(--border-light);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 600;">
+                                <span>{{ p.current_phase.phase_name|default:"未设置 / N/A" }}</span>
+                                <span>{{ p.overall_progress }}%</span>
+                            </div>
+                            <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: {{ p.overall_progress }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.5s ease;"></div>
+                            </div>
+                        </div>
+
                         {% if p.description %}
                             <div class="description">
                                 {{ p.description }}

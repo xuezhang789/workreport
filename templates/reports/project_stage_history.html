@@ -1,0 +1,58 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+
+{% block title %}阶段变更历史 / Phase History{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <div>
+        <p class="eyebrow"><a href="{% url 'reports:project_detail' project.pk %}" style="color: inherit; text-decoration: none;">{{ project.name }}</a></p>
+        <h1>阶段变更历史 / Phase History</h1>
+        <p class="lede">查看项目的阶段变更记录 / View project phase change logs.</p>
+    </div>
+    <div style="text-align: right;">
+        <a class="btn btn-secondary" href="{% url 'reports:project_detail' project.pk %}">返回项目 / Back to Project</a>
+    </div>
+</div>
+
+<section class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>时间 / Time</th>
+                <th>原阶段 / Old Phase</th>
+                <th>新阶段 / New Phase</th>
+                <th>操作人 / Changed By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.changed_at|localtime|date:"Y-m-d H:i:s" }}</td>
+                <td>
+                    {% if log.old_phase %}
+                    {{ log.old_phase.phase_name }} ({{ log.old_phase.progress_percentage }}%)
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.new_phase %}
+                    <span style="color: var(--primary); font-weight: 600;">
+                        {{ log.new_phase.phase_name }} ({{ log.new_phase.progress_percentage }}%)
+                    </span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ log.changed_by.get_full_name|default:log.changed_by.username }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">暂无变更记录 / No change history</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

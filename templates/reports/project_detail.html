@@ -276,6 +276,53 @@
             font-size: 12px;
         }
 
+        .status-badge { 
+            display: inline-flex; 
+            align-items: center; 
+            padding: 4px 10px; 
+            border-radius: 20px; 
+            font-size: 11px; 
+            font-weight: 700;
+            border: 1px solid;
+            text-transform: uppercase;
+        }
+
+        .status-pending { 
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05)); 
+            color: #92400e; 
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .status-in-progress { 
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.05)); 
+            color: #1d4ed8; 
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .status-on-hold { 
+            background: linear-gradient(135deg, rgba(107, 114, 128, 0.1), rgba(156, 163, 175, 0.05)); 
+            color: #374151; 
+            border-color: rgba(107, 114, 128, 0.3);
+        }
+
+        .status-completed { 
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05)); 
+            color: #0f766e; 
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status-overdue { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05)); 
+            color: #b91c1c; 
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-reopened { 
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(129, 140, 248, 0.05)); 
+            color: #312e81; 
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
         @media (max-width: 860px) { 
             .hero { 
                 grid-template-columns: 1fr; 
@@ -303,6 +350,96 @@
                 <span class="chip">成员数：{{ project.members.count }}</span>
             </div>
         </div>
+
+        <!-- Phase Management Module -->
+        <section class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🚩</span> 阶段状态管理 / Phase Status
+                </h3>
+                <a href="{% url 'reports:project_phase_history' project.pk %}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 13px;">变更记录 / History</a>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                    <span id="current-phase-name">{{ project.current_phase.phase_name|default:"未设置 / N/A" }}</span>
+                    <span id="current-progress">{{ project.overall_progress }}%</span>
+                </div>
+                <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative;">
+                    <div id="progress-bar" style="width: {{ project.overall_progress }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 6px; transition: width 0.6s ease;"></div>
+                </div>
+            </div>
+
+            {% if can_manage %}
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(248, 250, 252, 0.6); padding: 16px; border-radius: 12px; border: 1px solid var(--border-light);">
+                <label for="phase-select" style="font-weight: 600; font-size: 14px; margin: 0;">变更阶段 / Change Phase:</label>
+                <select id="phase-select" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 14px; outline: none; min-width: 240px; background: white;">
+                    {% for phase in phases %}
+                        <option value="{{ phase.id }}" data-progress="{{ phase.progress_percentage }}" {% if project.current_phase_id == phase.id %}selected{% endif %}>
+                            {{ phase.phase_name }} ({{ phase.progress_percentage }}%)
+                        </option>
+                    {% endfor %}
+                </select>
+                <button id="update-phase-btn" class="btn btn-primary" style="padding: 10px 18px;">
+                    更新 / Update
+                </button>
+            </div>
+            <div id="update-msg" style="margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px;"></div>
+            
+            <script>
+                document.getElementById('update-phase-btn').addEventListener('click', function() {
+                    const select = document.getElementById('phase-select');
+                    const phaseId = select.value;
+                    const btn = this;
+                    const msg = document.getElementById('update-msg');
+                    
+                    if (!phaseId) return;
+                    
+                    if (!confirm('确认变更项目阶段？这会更新项目整体进度并通知相关人员。\nConfirm change phase? This will update overall progress and notify stakeholders.')) {
+                        return;
+                    }
+                    
+                    btn.disabled = true;
+                    btn.textContent = '更新中 / Updating...';
+                    msg.textContent = '';
+                    msg.style.color = 'inherit';
+                    
+                    fetch("{% url 'reports:project_update_phase' project.pk %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: 'phase_id=' + phaseId
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.textContent = '更新 / Update';
+                        
+                        if (data.status === 'success') {
+                            document.getElementById('current-phase-name').textContent = data.phase_name;
+                            document.getElementById('current-progress').textContent = data.progress + '%';
+                            document.getElementById('progress-bar').style.width = data.progress + '%';
+                            
+                            msg.textContent = '阶段已更新 / Phase updated';
+                            msg.style.color = 'var(--success)';
+                        } else {
+                            msg.textContent = '更新失败: ' + data.message;
+                            msg.style.color = 'var(--danger)';
+                        }
+                    })
+                    .catch(error => {
+                        btn.disabled = false;
+                        btn.textContent = '更新 / Update';
+                        msg.textContent = '网络错误 / Network error';
+                        msg.style.color = 'var(--danger)';
+                        console.error(error);
+                    });
+                });
+            </script>
+            {% endif %}
+        </section>
 
         <section class="card">
             <div class="meta-grid">
@@ -392,6 +529,132 @@
                 {% endif %}
                 <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">我的日报</a>
             </div>
+        </section>
+
+        <!-- Task List Module -->
+        <section class="card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                <div class="card-title"><span class="dot">📋</span>项目任务 / Project Tasks</div>
+                
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <!-- Filter & Sort -->
+                    <form method="get" id="task-filter-form" style="display: flex; gap: 8px; align-items: center; margin: 0;">
+                        <select name="task_status" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; background: white;">
+                            <option value="">状态: 全部 / All</option>
+                            <option value="active" {% if task_status == 'active' %}selected{% endif %}>进行中 / Active</option>
+                            {% for k, v in task_status_choices %}
+                                <option value="{{ k }}" {% if task_status == k %}selected{% endif %}>{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <select name="task_sort" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; background: white;">
+                            <option value="">排序: 默认 / Default</option>
+                            <option value="due_at" {% if task_sort == 'due_at' %}selected{% endif %}>截止时间 (早→晚)</option>
+                            <option value="-due_at" {% if task_sort == '-due_at' %}selected{% endif %}>截止时间 (晚→早)</option>
+                            <option value="priority" {% if task_sort == 'priority' %}selected{% endif %}>优先级 / Priority</option>
+                        </select>
+                    </form>
+                    
+                    {% if can_manage %}
+                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;">
+                        + 新建
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if tasks %}
+                <div style="overflow-x: auto;">
+                    <table class="table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #f1f5f9; text-align: left;">
+                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">标题 / Title</th>
+                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">负责人 / Owner</th>
+                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">截止 / Due</th>
+                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">状态 / Status</th>
+                                <th style="padding: 10px; color: var(--muted); font-weight: 600; text-align: right;">操作 / Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 12px 10px;">
+                                    <div style="font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                                        <a href="{% url 'reports:task_view' task.pk %}" style="color: inherit; text-decoration: none;">{{ task.title }}</a>
+                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="color: var(--primary); font-size: 12px;">🔗</a>{% endif %}
+                                    </div>
+                                    {% if task.sla_info.is_overdue %}
+                                        <span style="font-size: 11px; color: var(--danger); font-weight: 600;">⚠ 逾期 / Overdue</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 12px 10px;">
+                                    {% if task.user %}
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="width: 24px; height: 24px; background: #eff6ff; color: var(--primary); border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: bold;">
+                                                {{ task.user.username|slice:":2"|upper }}
+                                            </div>
+                                            <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username }}</span>
+                                        </div>
+                                    {% else %}
+                                        <span style="color: var(--muted);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 12px 10px;">
+                                    {% if task.due_at %}
+                                        <span style="font-variant-numeric: tabular-nums; {% if task.sla_info.is_overdue and task.status != 'completed' %}color: var(--danger); font-weight: bold;{% endif %}">
+                                            {{ task.due_at|date:"Y-m-d" }}
+                                        </span>
+                                    {% else %}
+                                        <span style="color: var(--muted);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 12px 10px;">
+                                    <span style="
+                                        display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
+                                        {% if task.status == 'completed' %}background: #dcfce7; color: #166534;
+                                        {% elif task.status == 'in_progress' %}background: #dbeafe; color: #1e40af;
+                                        {% elif task.status == 'overdue' %}background: #fee2e2; color: #991b1b;
+                                        {% elif task.status == 'reopened' %}background: #ffedd5; color: #9a3412;
+                                        {% else %}background: #f1f5f9; color: #475569;{% endif %}
+                                    ">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px 10px; text-align: right;">
+                                    <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: auto;">查看</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if tasks.has_other_pages %}
+                <div style="margin-top: 20px; display: flex; justify-content: center; gap: 8px;">
+                    {% if tasks.has_previous %}
+                        <a href="?page={{ tasks.previous_page_number }}&task_status={{ task_status|default:'' }}&task_sort={{ task_sort|default:'' }}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 13px;">&laquo; 上一页</a>
+                    {% endif %}
+                    <span style="display: flex; align-items: center; font-size: 13px; color: var(--muted); font-weight: 500;">
+                        {{ tasks.number }} / {{ tasks.paginator.num_pages }}
+                    </span>
+                    {% if tasks.has_next %}
+                        <a href="?page={{ tasks.next_page_number }}&task_status={{ task_status|default:'' }}&task_sort={{ task_sort|default:'' }}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 13px;">下一页 &raquo;</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+            {% else %}
+                <div style="text-align: center; padding: 40px 0; color: var(--muted);">
+                    <div style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;">📋</div>
+                    <p style="margin: 0;">暂无符合条件的任务</p>
+                    <p style="font-size: 13px; margin: 4px 0 16px;">No tasks match your criteria</p>
+                    {% if can_manage %}
+                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                        创建任务 / Create Task
+                    </a>
+                    {% endif %}
+                </div>
+            {% endif %}
         </section>
 
         <section class="card">

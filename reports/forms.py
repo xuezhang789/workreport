@@ -7,7 +7,19 @@ from django.db import models
 import re
 from typing import Tuple, List
 
-from .models import Profile, Project, ReportTemplateVersion, TaskTemplateVersion
+from .models import Profile, Project, ReportTemplateVersion, TaskTemplateVersion, ProjectPhaseConfig
+
+
+class ProjectPhaseConfigForm(forms.ModelForm):
+    class Meta:
+        model = ProjectPhaseConfig
+        fields = ['phase_name', 'progress_percentage', 'order_index', 'is_active']
+        widgets = {
+            'phase_name': forms.TextInput(attrs={'placeholder': '如：开发实施 / Implementation'}),
+            'progress_percentage': forms.NumberInput(attrs={'min': 0, 'max': 100, 'placeholder': '0-100'}),
+            'order_index': forms.NumberInput(attrs={'min': 0, 'placeholder': '排序 / Sort Order'}),
+        }
+
 
 
 class RegistrationForm(UserCreationForm):

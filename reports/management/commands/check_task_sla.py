@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.core.mail import send_mail
 
 from reports.models import Task, TaskSlaTimer, TaskHistory
-from reports.views import get_sla_thresholds
+from reports.services.sla import get_sla_thresholds
 
 
 class Command(BaseCommand):

@@ -21,6 +21,19 @@ class Profile(models.Model):
         return f"{self.user.username} - {self.get_position_display()}"
 
 
+class ProjectPhaseConfig(models.Model):
+    phase_name = models.CharField(max_length=50)
+    progress_percentage = models.PositiveIntegerField(help_text="0-100")
+    order_index = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['order_index']
+
+    def __str__(self):
+        return f"{self.phase_name} ({self.progress_percentage}%)"
+
+
 class Project(models.Model):
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=50, unique=True)
@@ -32,6 +45,11 @@ class Project(models.Model):
     managers = models.ManyToManyField(User, blank=True, related_name='managed_projects')
     is_active = models.BooleanField(default=True)
     sla_hours = models.PositiveIntegerField(null=True, blank=True, help_text="项目级 SLA 提醒窗口（小时）")
+    
+    # New fields for Phase Management
+    current_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
+    overall_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -39,6 +57,20 @@ class Project(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+class ProjectPhaseChangeLog(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='phase_logs')
+    old_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='log_as_old')
+    new_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='log_as_new')
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.project.name}: {self.old_phase} -> {self.new_phase}"
 
 
 class ReminderRule(models.Model):
@@ -165,7 +197,7 @@ class DailyReport(models.Model):
 
     @property
     def project_names(self):
-        return ", ".join(self.projects.values_list('name', flat=True)) if self.projects.exists() else ''
+        return ", ".join([p.name for p in self.projects.all()])
 
 
 class RoleTemplate(models.Model):
