@@ -3162,7 +3162,7 @@ def project_detail(request, pk: int):
     
     # Calculate SLA info for displayed tasks
     for t in page_obj:
-        t.sla_info = _calc_sla_info(t)
+        t.sla_info = calculate_sla_info(t)
 
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     

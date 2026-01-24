@@ -51,6 +51,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
             'overdue': item['overdue'],
             'completion_rate': (item['completed'] / total * 100),
             'overdue_rate': (item['overdue'] / total * 100),
+            'sla_on_time_rate': (item['on_time'] / item['completed'] * 100) if item['completed'] else 0,
+            'lead_time_p50': 0, # Placeholder
         })
 
     # Role Stats
