@@ -8,6 +8,7 @@ from django.core.cache import cache
 
 from reports.models import Project, DailyReport, Task, SystemSetting, ReportTemplateVersion
 from reports import views as report_views
+from reports.services.sla import calculate_sla_info, _ensure_sla_timer
 
 
 class CacheAndTemplateTests(TestCase):
@@ -171,7 +172,7 @@ class CacheAndTemplateTests(TestCase):
         # 设置未来 4 小时的截止时间，预期进入 Amber 区间（默认为 6/2 小时阈值）
         due_at = timezone.now() + timedelta(hours=4)
         task = Task.objects.create(title='t1', user=self.admin, project=self.project, due_at=due_at)
-        info = report_views._calc_sla_info(task)
+        info = calculate_sla_info(task)
         self.assertEqual(info['status'], 'tight')
         self.assertEqual(info['level'], 'amber')
 
@@ -179,10 +180,10 @@ class CacheAndTemplateTests(TestCase):
         # 截止 1 小时后，但暂停了 30 分钟，应延长剩余时间避免立即超时
         due_at = timezone.now() + timedelta(hours=1)
         task = Task.objects.create(title='t2', user=self.admin, project=self.project, due_at=due_at, status='on_hold')
-        timer = report_views._ensure_sla_timer(task)
+        timer = _ensure_sla_timer(task)
         timer.paused_at = timezone.now() - timedelta(minutes=30)
         timer.save(update_fields=['paused_at'])
-        info = report_views._calc_sla_info(task)
+        info = calculate_sla_info(task)
         self.assertGreater(info['remaining_hours'], 1.2)  # 延长后剩余时间应大于原始 1 小时
 
     def test_performance_stats_sla_and_leadtime(self):
