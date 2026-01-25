@@ -3773,3 +3773,43 @@ def daily_report_batch_create(request):
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
     
     return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+@login_required
+def advanced_reporting(request):
+    selected_project_id = request.GET.get('project_id')
+    projects = Project.objects.filter(is_active=True)
+    
+    # Permission check for non-staff
+    if not (request.user.is_staff or request.user.has_perm('reports.view_project')):
+         projects = projects.filter(
+             Q(members=request.user) | 
+             Q(owner=request.user) | 
+             Q(managers=request.user)
+         ).distinct()
+
+    project_id = None
+    project_name = "所有项目"
+    
+    if selected_project_id and selected_project_id.isdigit():
+        project_id = int(selected_project_id)
+        # Verify access
+        proj = projects.filter(id=project_id).first()
+        if proj:
+            project_name = proj.name
+        else:
+            project_id = None # Fallback if no access
+            
+    from .services.stats import get_advanced_report_data
+    data = get_advanced_report_data(project_id)
+    
+    if data.get('burndown'):
+        data['burndown']['project_name'] = project_name
+
+    context = {
+        'projects': projects,
+        'selected_project_id': int(selected_project_id) if selected_project_id and selected_project_id.isdigit() else '',
+        'gantt_data': data.get('gantt'),
+        'burn_down_data': data.get('burndown'),
+        'cfd_data': data.get('cfd'),
+    }
+    return render(request, 'reports/advanced_reporting.html', context)

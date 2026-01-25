@@ -1,4 +1,4 @@
-from django.db.models import Count, Q, F, Avg, Case, When, Value, IntegerField
+from django.db.models import Count, Q, F, Avg, Case, When, Value, IntegerField, Min
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.core.cache import cache
@@ -195,3 +195,86 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     
     cache.set(cache_key, result, 600)
     return result
+
+
+def get_advanced_report_data(project_id=None):
+    """
+    Generate data for Gantt, Burndown, and Cumulative Flow diagrams.
+    """
+    tasks_qs = Task.objects.select_related('user', 'project').all()
+    if project_id:
+        tasks_qs = tasks_qs.filter(project_id=project_id)
+    
+    # 1. Gantt Data
+    gantt_tasks = []
+    for t in tasks_qs:
+        start = t.created_at
+        end = t.due_at or t.completed_at or (t.created_at + timedelta(days=1))
+        if end < start:
+            end = start + timedelta(hours=1)
+            
+        gantt_tasks.append({
+            'title': t.title,
+            'assignee': t.user.get_full_name() or t.user.username if t.user else 'Unassigned',
+            'project': t.project.name if t.project else 'No Project',
+            'status': t.status,
+            'start_date': start.isoformat(),
+            'due_date': end.isoformat(),
+        })
+
+    # 2. Timeline setup for Burndown & CFD
+    if not tasks_qs.exists():
+        return {'gantt': {'tasks': []}, 'burndown': {'data': []}, 'cfd': {'data': [], 'categories': []}}
+
+    earliest = tasks_qs.aggregate(min_date=Min('created_at'))['min_date']
+    if earliest:
+        earliest = earliest.date()
+    else:
+        earliest = timezone.localdate()
+    
+    latest = timezone.localdate() # Up to today
+    
+    # Prepare timeline
+    timeline_dates = []
+    curr = earliest
+    while curr <= latest:
+        timeline_dates.append(curr)
+        curr += timedelta(days=1)
+        
+    # Pre-fetch needed fields to memory to avoid N+1 in loop (assuming reasonable dataset size)
+    # For very large datasets, this should be done with DB aggregation or window functions.
+    task_events = []
+    for t in tasks_qs:
+        created = t.created_at.date()
+        completed = t.completed_at.date() if t.status == 'completed' and t.completed_at else None
+        task_events.append({'created': created, 'completed': completed})
+
+    # 3. Burndown & CFD Calculation
+    burndown_data = []
+    cfd_data = {
+        'dates': [d.isoformat() for d in timeline_dates],
+        'total': [],
+        'completed': [],
+        'in_progress': [] # Derived: Total - Completed
+    }
+    
+    for d in timeline_dates:
+        # Count tasks existing on this date
+        total_scope = sum(1 for t in task_events if t['created'] <= d)
+        completed_count = sum(1 for t in task_events if t['completed'] and t['completed'] <= d)
+        remaining = total_scope - completed_count
+        
+        burndown_data.append({
+            'date': d.isoformat(),
+            'remaining_tasks': remaining
+        })
+        
+        cfd_data['total'].append(total_scope)
+        cfd_data['completed'].append(completed_count)
+        cfd_data['in_progress'].append(remaining)
+
+    return {
+        'gantt': {'tasks': gantt_tasks},
+        'burndown': {'data': burndown_data, 'project_name': ''}, # Project name handled in view
+        'cfd': cfd_data
+    }
