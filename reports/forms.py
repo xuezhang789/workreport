@@ -235,6 +235,16 @@ class ReportTemplateForm(forms.ModelForm):
         self.fields['name'].widget.attrs.update({'placeholder': '如：开发日报 / e.g., Daily Dev Report'})
         self.fields['content'].widget.attrs.update({'placeholder': '如：今日完成 / Today done ...\n明日计划 / Plan for tomorrow ...'})
         self.fields['placeholders'].widget.attrs.update({'placeholder': '{"date": "2025-01-01", "today_work": "完成接口开发 / Finished API dev", "tomorrow_plan": "联调与测试 / Integration & testing"}'})
+        
+        for name, field in self.fields.items():
+            if name == 'is_shared':
+                field.widget.attrs.update({'class': 'form-checkbox'})
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select'})
+            elif isinstance(field.widget, forms.Textarea):
+                field.widget.attrs.update({'class': 'form-input', 'style': 'font-family: monospace; font-size: 13px;'})
+            else:
+                field.widget.attrs.update({'class': 'form-input'})
 
     def save(self, created_by=None, commit=True):
         instance: ReportTemplateVersion = super().save(commit=False)
@@ -267,6 +277,16 @@ class TaskTemplateForm(forms.ModelForm):
         self.fields['title'].widget.attrs.update({'placeholder': '如：发布 v1.2 版本 / e.g., Release v1.2'})
         self.fields['content'].widget.attrs.update({'placeholder': '步骤/说明（中英）：\n- 检查部署包 / Check build\n- 预发验证 / Staging verify\n- 正式发布 / Production rollout'})
         self.fields['url'].widget.attrs.update({'placeholder': '可选：任务链接 / Optional task link'})
+
+        for name, field in self.fields.items():
+            if name == 'is_shared':
+                field.widget.attrs.update({'class': 'form-checkbox'})
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select'})
+            elif isinstance(field.widget, forms.Textarea):
+                field.widget.attrs.update({'class': 'form-input', 'style': 'font-family: monospace; font-size: 13px;'})
+            else:
+                field.widget.attrs.update({'class': 'form-input'})
 
     def save(self, created_by=None, commit=True):
         instance: TaskTemplateVersion = super().save(commit=False)

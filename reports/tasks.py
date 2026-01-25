@@ -24,8 +24,9 @@ def send_weekly_digest_task(recipient, stats):
     """
     Async wrapper for sending weekly digest email.
     """
-    from reports.services.notifications import send_weekly_digest
-    send_weekly_digest(recipient, stats)
+    # from reports.services.notifications import send_weekly_digest
+    # send_weekly_digest(recipient, stats)
+    pass
 
 @shared_task
 def generate_export_file_task(job_id, export_type, params):

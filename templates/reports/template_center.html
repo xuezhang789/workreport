@@ -81,7 +81,6 @@
         gap: 12px;
         justify-content: flex-end;
         margin-top: 16px;
-        border-top: 1px solid var(--border-color);
         padding-top: 16px;
     }
 
@@ -113,25 +112,30 @@
     /* --- Tabs --- */
     .tabs-nav {
         display: flex;
-        gap: 4px;
-        border-bottom: 1px solid var(--border-color);
-        margin-bottom: 20px;
+        gap: 8px;
+        margin-bottom: 24px;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+        border: none;
     }
 
     .tab-btn {
+        flex: 1;
         padding: 10px 20px;
         font-size: 14px;
         font-weight: 600;
         color: var(--text-secondary);
         border: none;
         background: transparent;
-        border-bottom: 2px solid transparent;
         cursor: pointer;
-        transition: var(--transition);
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        text-align: center;
     }
 
-    .tab-btn:hover { color: var(--primary); background: var(--primary-light); border-radius: 8px 8px 0 0; }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.5); }
+    .tab-btn.active { color: var(--primary); background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
     .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
     .tab-content.active { display: block; }
@@ -173,8 +177,9 @@
         color: white;
         font-size: 10px;
         font-weight: 700;
-        padding: 2px 8px;
+        padding: 4px 8px;
         border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
     }
 
     .card-body {
@@ -223,17 +228,18 @@
         font-size: 13px;
         color: var(--text-secondary);
         background: var(--bg-page);
-        padding: 12px;
+        padding: 16px;
         border-radius: 8px;
-        border: 1px dashed var(--border-color);
+        border: 1px solid var(--border-color);
         margin-top: auto;
-        line-height: 1.5;
-        max-height: 100px;
+        line-height: 1.6;
+        max-height: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 4;
         -webkit-box-orient: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
 
     .card-footer {
@@ -252,9 +258,10 @@
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
-        padding: 24px;
+        padding: 32px;
         margin-bottom: 32px;
         display: none; /* Hidden by default */
+        box-shadow: var(--shadow-md);
     }
     
     .create-section.active { display: block; animation: slideDown 0.3s ease-out; }
@@ -308,6 +315,13 @@
         align-items: center;
     }
 
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: var(--text-main);
+        font-weight: 700;
+    }
+
     .modal-body {
         padding: 20px;
         overflow-y: auto;
@@ -321,11 +335,12 @@
     }
 
     .modal-footer {
-        padding: 16px 20px;
-        border-top: 1px solid var(--border-color);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
     }
 
     .toast {
@@ -351,10 +366,27 @@
         opacity: 1;
     }
 
+    .create-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
     .help-text {
         font-size: 12px;
         color: var(--text-muted);
-        margin-top: 4px;
+        margin-top: 6px;
+        display: block;
+    }
+
+    .form-checkbox {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        accent-color: var(--primary);
     }
 
     /* --- Pagination --- */
@@ -362,7 +394,9 @@
         display: flex;
         justify-content: center;
         gap: 8px;
-        margin-top: 24px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
     }
 
     /* --- Empty State --- */
@@ -383,7 +417,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
@@ -416,13 +450,13 @@
         <div id="create-report" class="tab-content active">
             <form method="post">
                 {% csrf_token %}
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="create-form-grid">
                     <div class="form-group">
-                        <label class="form-label">模板名称 / Name</label>
+                        <label class="form-label">模板名称 / Name <span style="color:var(--danger)">*</span></label>
                         {{ report_form.name }}
                     </div>
                     <div class="form-group">
-                        <label class="form-label">角色 / Role</label>
+                        <label class="form-label">角色 / Role <span style="color:var(--danger)">*</span></label>
                         {{ report_form.role }}
                     </div>
                     <div class="form-group">
@@ -432,23 +466,31 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">共享 / Shared</label>
-                        <div style="display: flex; align-items: center; height: 42px;">
-                            {{ report_form.is_shared }} <span style="margin-left: 8px; font-size: 13px;">允许他人使用 / Allow others to use</span>
+                        <div style="display: flex; align-items: center; height: 42px; gap: 8px;">
+                            {{ report_form.is_shared }} 
+                            <span style="font-size: 13px; color: var(--text-main);">允许他人使用 / Allow others to use</span>
                         </div>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label class="form-label">模板内容 / Content</label>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">模板内容 / Content <span style="color:var(--danger)">*</span></label>
                     {{ report_form.content }}
-                    <span class="help-text">支持 Markdown 语法</span>
+                    <span class="help-text">支持 Markdown 语法 / Supports Markdown</span>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 24px;">
                     <label class="form-label">占位符配置 / Placeholders (JSON)</label>
                     {{ report_form.placeholders }}
-                    <span class="help-text">例如: {"today_work": "..."}</span>
+                    <span class="help-text">例如: {"today_work": "..."}，用于预填充数据</span>
                 </div>
-                <div style="text-align: right;">
-                    <button type="submit" class="btn btn-primary">保存日报模板 / Save Report Template</button>
+                <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        保存日报模板 / Save Report Template
+                    </button>
                 </div>
             </form>
         </div>
@@ -458,21 +500,21 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="task">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="create-form-grid">
                     <div class="form-group">
-                        <label class="form-label">模板名称 / Name</label>
+                        <label class="form-label">模板名称 / Name <span style="color:var(--danger)">*</span></label>
                         {{ task_form.name }}
                     </div>
                     <div class="form-group">
-                        <label class="form-label">任务标题 / Task Title</label>
+                        <label class="form-label">任务标题 / Task Title <span style="color:var(--danger)">*</span></label>
                         {{ task_form.title }}
                     </div>
                     <div class="form-group">
-                        <label class="form-label">角色 / Role</label>
+                        <label class="form-label">角色 / Role <span style="color:var(--danger)">*</span></label>
                         {{ task_form.role }}
                     </div>
                     <div class="form-group">
-                        <label class="form-label">项目 / Project</label>
+                        <label class="form-label">项目 / Project <span style="color:var(--danger)">*</span></label>
                         {{ task_form.project }}
                     </div>
                     <div class="form-group">
@@ -481,17 +523,25 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">共享 / Shared</label>
-                        <div style="display: flex; align-items: center; height: 42px;">
-                            {{ task_form.is_shared }} <span style="margin-left: 8px; font-size: 13px;">允许他人使用</span>
+                        <div style="display: flex; align-items: center; height: 42px; gap: 8px;">
+                            {{ task_form.is_shared }} 
+                            <span style="font-size: 13px; color: var(--text-main);">允许他人使用 / Allow others to use</span>
                         </div>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 24px;">
                     <label class="form-label">任务描述 / Description</label>
                     {{ task_form.content }}
                 </div>
-                <div style="text-align: right;">
-                    <button type="submit" class="btn btn-primary">保存任务模板 / Save Task Template</button>
+                <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        保存任务模板 / Save Task Template
+                    </button>
                 </div>
             </form>
         </div>

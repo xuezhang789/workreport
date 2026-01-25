@@ -21,7 +21,7 @@ def teams_list(request):
     
     qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
-    paginator = Paginator(qs, 20)
+    paginator = Paginator(qs, 30)
     page_obj = paginator.get_page(request.GET.get('page'))
 
     return render(request, 'reports/teams.html', {

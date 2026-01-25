@@ -117,10 +117,10 @@
 
     /* --- Bulk Actions Bar --- */
     .bulk-actions-bar {
-        background: var(--primary-light);
-        border: 1px solid rgba(37, 99, 235, 0.2);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
-        padding: 12px 20px;
+        padding: 16px 20px;
         margin-bottom: 24px;
         display: flex;
         flex-wrap: wrap;
@@ -132,7 +132,7 @@
     .bulk-label {
         font-weight: 600;
         font-size: 14px;
-        color: var(--primary);
+        color: var(--text-main);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -141,9 +141,25 @@
     .bulk-controls {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 12px;
         flex: 1;
         align-items: center;
+    }
+
+    .bulk-select {
+        min-width: 160px;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: #fff;
+        font-size: 14px;
+        color: var(--text-main);
+        transition: border-color 0.2s;
+    }
+    
+    .bulk-select:focus {
+        border-color: var(--primary);
+        outline: none;
     }
 
     /* --- Task Table/Card --- */
@@ -152,12 +168,13 @@
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-sm);
-        overflow: hidden;
+        overflow: hidden; /* Fix border overflow */
     }
 
     .table-responsive {
         overflow-x: auto;
         width: 100%;
+        border-radius: var(--radius-lg); /* Ensure rounded corners for table */
     }
 
     .table {
@@ -195,13 +212,13 @@
     }
 
     /* Column Widths */
-    .col-checkbox { width: 40px; text-align: center; }
+    .col-checkbox { width: 48px; text-align: center; }
     .col-title { min-width: 240px; white-space: normal; }
-    .col-project { min-width: 120px; }
-    .col-user { min-width: 120px; }
-    .col-status { min-width: 100px; }
-    .col-priority { min-width: 80px; }
-    .col-due { min-width: 140px; }
+    .col-project { min-width: 140px; }
+    .col-user { min-width: 140px; }
+    .col-status { min-width: 110px; }
+    .col-priority { min-width: 90px; }
+    .col-due { min-width: 160px; }
     .col-actions { width: 100px; text-align: right; }
 
     .task-title-link {
@@ -209,7 +226,8 @@
         color: var(--text-main);
         text-decoration: none;
         display: block;
-        line-height: 1.4;
+        line-height: 1.5;
+        font-size: 15px;
     }
 
     .task-title-link:hover {
@@ -220,11 +238,12 @@
     .badge {
         display: inline-flex;
         align-items: center;
-        padding: 4px 10px;
+        padding: 6px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
         line-height: 1;
+        letter-spacing: 0.02em;
     }
 
     .badge-status-pending { background: #f1f5f9; color: #64748b; }
@@ -371,7 +390,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
@@ -453,6 +472,9 @@
     {% if tasks %}
     <form method="post" action="{% url 'reports:admin_task_bulk_action' %}" id="bulkForm">
         {% csrf_token %}
+        <input type="hidden" name="project" value="{{ project_id }}">
+        <input type="hidden" name="user" value="{{ user_id }}">
+        <input type="hidden" name="redirect_to" value="{{ request.get_full_path }}">
         
         <!-- Bulk Actions Bar -->
         <div class="bulk-actions-bar">
@@ -461,30 +483,30 @@
                 <span id="selectLabel">全选</span>
             </div>
             <div class="bulk-controls">
-                <select name="bulk_action" class="form-select" style="width: auto; min-width: 160px;" required>
-                    <option value="">批量操作...</option>
-                    <option value="complete">标记为完成</option>
-                    <option value="reopen">重新打开</option>
-                    <option value="overdue">标记为逾期</option>
-                    <option value="update">更新属性...</option>
+                <select name="action" class="bulk-select" onchange="toggleBulkAction(this)">
+                    <option value="">批量操作 / Bulk Actions...</option>
+                    <option value="complete">✅ 标记完成 / Mark Complete</option>
+                    <option value="delete">🗑️ 删除任务 / Delete</option>
+                    <option value="assign">👤 分配给... / Assign to...</option>
+                    <option value="change_status">🔄 更改状态... / Change Status...</option>
                 </select>
-                
-                <!-- Conditional Fields for Update -->
-                <select name="status_value" class="form-select" style="width: auto;">
-                    <option value="">新状态 (可选)</option>
-                    {% for val,label in task_status_choices %}
-                    <option value="{{ val }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
-                
-                <select name="assign_to" class="form-select" style="width: auto;">
-                    <option value="">新负责人 (可选)</option>
+
+                <!-- Dynamic Sub-actions (Hidden by default) -->
+                <select name="target_user" id="bulk-assign-user" class="bulk-select" style="display:none;">
+                    <option value="">选择用户 / Select User...</option>
                     {% for u in users %}
-                    <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+                    <option value="{{ u.id }}">{{ u.username }}</option>
                     {% endfor %}
                 </select>
 
-                <button type="submit" class="btn btn-primary btn-sm">执行操作</button>
+                <select name="target_status" id="bulk-status-select" class="bulk-select" style="display:none;">
+                    <option value="">选择状态 / Select Status...</option>
+                    {% for k, v in task_status_choices %}
+                    <option value="{{ k }}">{{ v }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-primary">应用 / Apply</button>
             </div>
         </div>
 
@@ -619,6 +641,30 @@
 </div>
 
 <script>
+    function toggleBulkAction(select) {
+        const val = select.value;
+        const userSelect = document.getElementById('bulk-assign-user');
+        const statusSelect = document.getElementById('bulk-status-select');
+        
+        // Reset
+        if(userSelect) {
+            userSelect.style.display = 'none';
+            userSelect.removeAttribute('required');
+        }
+        if(statusSelect) {
+            statusSelect.style.display = 'none';
+            statusSelect.removeAttribute('required');
+        }
+
+        if (val === 'assign' && userSelect) {
+            userSelect.style.display = 'inline-block';
+            userSelect.setAttribute('required', 'required');
+        } else if (val === 'change_status' && statusSelect) {
+            statusSelect.style.display = 'inline-block';
+            statusSelect.setAttribute('required', 'required');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const selectAll = document.getElementById('selectAll');
         const checkboxes = document.querySelectorAll('.task-check');
@@ -662,10 +708,10 @@
                     return;
                 }
                 
-                const actionSelect = document.querySelector('select[name="bulk_action"]');
-                if (!actionSelect.value) {
+                const actionSelect = document.querySelector('select[name="action"]');
+                if (!actionSelect || !actionSelect.value) {
                     e.preventDefault();
-                    alert('请选择要执行的操作。');
+                    alert('请选择要执行的操作 / Please select an action');
                     return;
                 }
 

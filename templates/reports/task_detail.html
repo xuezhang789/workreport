@@ -16,7 +16,7 @@
     }
 
     .page-container {
-        max-width: 1200px;
+        max-width: 1600px;
         margin: 0 auto;
         padding: 24px;
     }
@@ -280,7 +280,7 @@
             </div>
             <div style="display: flex; gap: 8px;">
                 <a href="{% url 'reports:task_list' %}" class="btn btn-ghost">返回列表</a>
-                {% if can_edit or request.user.is_staff or request.user == task.user or request.user in task.collaborators.all %}
+                {% if can_edit %}
                     <a href="{% url 'reports:admin_task_edit' task.pk %}" class="btn btn-secondary">编辑 / Edit</a>
                 {% endif %}
                 

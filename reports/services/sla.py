@@ -1,139 +1,134 @@
 from django.utils import timezone
-from datetime import timedelta
-import json
 from django.conf import settings
-from django.core.cache import cache
-from reports.models import Task, TaskSlaTimer, Project, SystemSetting
+from ..models import TaskSlaTimer, SystemSetting, Task
+import json
+from datetime import timedelta
 
-DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
+DEFAULT_SLA_HOURS = 48
+DEFAULT_THRESHOLDS = {'amber': 4, 'red': 0}
 
-def get_sla_hours(project: Project | None = None, system_setting_value=None):
-    if project and project.sla_hours:
-        return project.sla_hours
-    
+def get_sla_hours(system_setting_value=None):
+    """
+    Get configured SLA hours, checking cache or DB if not provided.
+    """
     if system_setting_value is not None:
-        val = system_setting_value
-    else:
-        # 添加缓存以避免频繁查询数据库
-        cache_key = f"sla_hours_setting"
-        cached_value = cache.get(cache_key)
-        if cached_value is not None:
-            return cached_value
-            
-        cfg = SystemSetting.objects.filter(key='sla_hours').first()
-        val = int(cfg.value) if cfg else None
-
-    if val is not None:
-        try:
-            if val > 0:
-                result = val
-                cache.set(cache_key, result, 300)  # 缓存5分钟
-                return result
-        except (TypeError, ValueError):
-            pass
-    return DEFAULT_SLA_REMIND
-
-
-def _ensure_sla_timer(task: Task) -> TaskSlaTimer:
-    timer = getattr(task, 'sla_timer', None)
-    if timer:
-        return timer
-    return TaskSlaTimer.objects.create(task=task)
-
-
-def _get_sla_timer_readonly(task: Task) -> TaskSlaTimer | None:
-    """只读获取 timer，不创建新记录。"""
-    return getattr(task, 'sla_timer', None)
-
+        return system_setting_value
+    
+    # Simple fetch without cache for now, or rely on caller to pass value
+    # In production, cache this
+    try:
+        setting = SystemSetting.objects.get(key='sla_hours')
+        return int(setting.value)
+    except (SystemSetting.DoesNotExist, ValueError):
+        return DEFAULT_SLA_HOURS
 
 def get_sla_thresholds(system_setting_value=None):
-    """返回 SLA 阈值配置，单位小时。添加缓存优化"""
-    cache_key = f"sla_thresholds_setting"
-    cached_value = cache.get(cache_key)
-    if cached_value is not None:
-        return cached_value
-    
-    default_amber = getattr(settings, 'SLA_TIGHT_HOURS_DEFAULT', 6)
-    default_red = getattr(settings, 'SLA_CRITICAL_HOURS_DEFAULT', 2)
-    
+    """
+    Get configured SLA thresholds (orange/red hours).
+    """
     if system_setting_value:
-        cfg_value = system_setting_value
-    else:
-        cfg = SystemSetting.objects.filter(key='sla_thresholds').first()
-        cfg_value = cfg.value if cfg else None
-
-    if cfg_value:
         try:
-            data = json.loads(cfg_value)
-            amber = int(data.get('amber', default_amber))
-            red = int(data.get('red', default_red))
-            result = {'amber': amber, 'red': red}
-            cache.set(cache_key, result, 300)  # 缓存5分钟
-            return result
-        except Exception:
+            return json.loads(system_setting_value)
+        except json.JSONDecodeError:
             pass
-    result = {'amber': default_amber, 'red': default_red}
-    cache.set(cache_key, result, 300)  # 缓存5分钟
-    return result
+            
+    try:
+        setting = SystemSetting.objects.get(key='sla_thresholds')
+        return json.loads(setting.value)
+    except (SystemSetting.DoesNotExist, json.JSONDecodeError):
+        return DEFAULT_THRESHOLDS
 
+def _ensure_sla_timer(task):
+    """
+    Ensure a TaskSlaTimer exists for the task.
+    """
+    timer, created = TaskSlaTimer.objects.get_or_create(task=task)
+    return timer
 
-def calculate_sla_info(task: Task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
+def _get_sla_timer_readonly(task):
     """
-    计算 SLA 截止、剩余小时与颜色状态。
-    status: normal/tight/overdue, paused: bool
+    Get timer without creating one (for lists).
     """
-    now = as_of or timezone.now()
+    if hasattr(task, 'slatimer'):
+        return task.slatimer
+    return TaskSlaTimer.objects.filter(task=task).first()
+
+def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
+    """
+    Calculate detailed SLA status for a task.
+    """
+    if as_of is None:
+        as_of = timezone.now()
+        
+    sla_hours = get_sla_hours(sla_hours_setting)
+    thresholds = sla_thresholds_setting or get_sla_thresholds()
+    
+    # Basic Due Date Logic
+    if not task.due_at:
+        # If no due date, maybe calculate from created_at + SLA?
+        # Assuming due_at is the source of truth for now.
+        # If due_at is None, we can treat it as no SLA or use default window
+        effective_due = task.created_at + timedelta(hours=sla_hours)
+    else:
+        effective_due = task.due_at
+
+    # Timer logic (pauses)
     timer = _get_sla_timer_readonly(task)
     paused_seconds = 0
+    is_paused = False
+    
     if timer:
         paused_seconds = timer.total_paused_seconds
-        if task.status == 'on_hold' and timer.paused_at:
-            paused_seconds += int((now - timer.paused_at).total_seconds())
-
-    sla_deadline = None
-    remaining_hours = None
-    sla_hours = get_sla_hours(task.project, system_setting_value=sla_hours_setting)
+        if timer.paused_at:
+            is_paused = True
+            # Add current pause duration if still paused
+            current_pause = (as_of - timer.paused_at).total_seconds()
+            paused_seconds += int(current_pause)
+            
+    # Adjust effective due date by adding paused time
+    # If I paused for 1 hour, my due date is pushed back by 1 hour
+    adjusted_due = effective_due + timedelta(seconds=paused_seconds)
     
-    if task.due_at:
-        sla_deadline = task.due_at + timedelta(seconds=paused_seconds)
-    elif sla_hours:
-        sla_deadline = task.created_at + timedelta(hours=sla_hours, seconds=paused_seconds)
-
+    # Remaining time
+    remaining_delta = adjusted_due - as_of
+    remaining_hours = remaining_delta.total_seconds() / 3600
+    
     status = 'normal'
     level = 'green'
-    thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_setting)
-    amber_limit = thresholds.get('amber', 6)
-    red_limit = thresholds.get('red', 2)
+    sort_order = 3
     
-    if sla_deadline:
-        delta = sla_deadline - now
-        remaining_hours = round(delta.total_seconds() / 3600, 1)
-        if remaining_hours <= 0:
-            status = 'overdue'
-            level = 'red'
-        elif remaining_hours <= red_limit:
-            status = 'tight'
-            level = 'red'
-        elif remaining_hours <= amber_limit:
-            status = 'tight'
-            level = 'amber'
+    if task.status == 'completed':
+        # If completed, check if it was done on time
+        # We compare completed_at with adjusted_due
+        done_at = task.completed_at or as_of # fallback
+        if done_at <= adjusted_due:
+             status = 'on_time'
+             level = 'success' # or blue
         else:
-            level = 'green'
-    else:
+             status = 'overdue'
+             level = 'red'
+        remaining_hours = 0 # Meaningless for completed
+        sort_order = 4
+        
+    elif is_paused:
+        status = 'paused'
         level = 'grey'
-
-    sort_value = {
-        'red': 0,
-        'amber': 1,
-        'green': 2,
-        'grey': 3,
-    }.get(level, 3)
-    
+        sort_order = 2
+        
+    elif remaining_hours < thresholds.get('red', 0):
+        status = 'overdue'
+        level = 'red'
+        sort_order = 0
+    elif remaining_hours < thresholds.get('amber', 4):
+        status = 'tight'
+        level = 'amber'
+        sort_order = 1
+        
     return {
-        'deadline': sla_deadline,
-        'remaining_hours': remaining_hours,
         'status': status,
-        'paused': bool(timer and timer.paused_at),
         'level': level,
-        'sort': sort_value,
+        'remaining_hours': round(remaining_hours, 1),
+        'adjusted_due': adjusted_due,
+        'is_paused': is_paused,
+        'sort': sort_order
     }
