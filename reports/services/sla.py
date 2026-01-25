@@ -2,6 +2,7 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 from django.conf import settings
+from django.core.cache import cache
 from reports.models import Task, TaskSlaTimer, Project, SystemSetting
 
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
@@ -13,13 +14,21 @@ def get_sla_hours(project: Project | None = None, system_setting_value=None):
     if system_setting_value is not None:
         val = system_setting_value
     else:
+        # 添加缓存以避免频繁查询数据库
+        cache_key = f"sla_hours_setting"
+        cached_value = cache.get(cache_key)
+        if cached_value is not None:
+            return cached_value
+            
         cfg = SystemSetting.objects.filter(key='sla_hours').first()
         val = int(cfg.value) if cfg else None
 
     if val is not None:
         try:
             if val > 0:
-                return val
+                result = val
+                cache.set(cache_key, result, 300)  # 缓存5分钟
+                return result
         except (TypeError, ValueError):
             pass
     return DEFAULT_SLA_REMIND
@@ -38,7 +47,12 @@ def _get_sla_timer_readonly(task: Task) -> TaskSlaTimer | None:
 
 
 def get_sla_thresholds(system_setting_value=None):
-    """返回 SLA 阈值配置，单位小时。"""
+    """返回 SLA 阈值配置，单位小时。添加缓存优化"""
+    cache_key = f"sla_thresholds_setting"
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+    
     default_amber = getattr(settings, 'SLA_TIGHT_HOURS_DEFAULT', 6)
     default_red = getattr(settings, 'SLA_CRITICAL_HOURS_DEFAULT', 2)
     
@@ -53,10 +67,14 @@ def get_sla_thresholds(system_setting_value=None):
             data = json.loads(cfg_value)
             amber = int(data.get('amber', default_amber))
             red = int(data.get('red', default_red))
-            return {'amber': amber, 'red': red}
+            result = {'amber': amber, 'red': red}
+            cache.set(cache_key, result, 300)  # 缓存5分钟
+            return result
         except Exception:
             pass
-    return {'amber': default_amber, 'red': default_red}
+    result = {'amber': default_amber, 'red': default_red}
+    cache.set(cache_key, result, 300)  # 缓存5分钟
+    return result
 
 
 def calculate_sla_info(task: Task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
@@ -71,20 +89,11 @@ def calculate_sla_info(task: Task, as_of=None, sla_hours_setting=None, sla_thres
         paused_seconds = timer.total_paused_seconds
         if task.status == 'on_hold' and timer.paused_at:
             paused_seconds += int((now - timer.paused_at).total_seconds())
-    elif task.status in ('in_progress', 'on_hold'):
-        # For calculation only, we don't strictly need to create it if it doesn't exist,
-        # but the original logic did. To avoid side effects in a calculation function,
-        # we should prefer readonly, but if logic depends on creation, we keep it.
-        # Ideally, calculation shouldn't create DB records. 
-        # However, let's keep consistent with original behavior but note the side effect.
-        timer = _ensure_sla_timer(task)
-        paused_seconds = timer.total_paused_seconds
-        if task.status == 'on_hold' and timer.paused_at:
-            paused_seconds += int((now - timer.paused_at).total_seconds())
 
     sla_deadline = None
     remaining_hours = None
     sla_hours = get_sla_hours(task.project, system_setting_value=sla_hours_setting)
+    
     if task.due_at:
         sla_deadline = task.due_at + timedelta(seconds=paused_seconds)
     elif sla_hours:
@@ -95,6 +104,7 @@ def calculate_sla_info(task: Task, as_of=None, sla_hours_setting=None, sla_thres
     thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_setting)
     amber_limit = thresholds.get('amber', 6)
     red_limit = thresholds.get('red', 2)
+    
     if sla_deadline:
         delta = sla_deadline - now
         remaining_hours = round(delta.total_seconds() / 3600, 1)
@@ -118,6 +128,7 @@ def calculate_sla_info(task: Task, as_of=None, sla_hours_setting=None, sla_thres
         'green': 2,
         'grey': 3,
     }.get(level, 3)
+    
     return {
         'deadline': sla_deadline,
         'remaining_hours': remaining_hours,
