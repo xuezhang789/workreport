@@ -12,6 +12,16 @@ from .models import (
     ReportMiss,
     TaskSlaTimer,
     TaskHistory,
+    ProjectPhaseConfig,
+    ProjectPhaseChangeLog,
+    Notification,
+    PermissionMatrix,
+    ProjectMemberPermission,
+    SystemSetting,
+    ExportJob,
+    UserPreference,
+    ReportTemplateVersion,
+    TaskTemplateVersion,
 )
 
 @admin.register(Profile)
@@ -91,3 +101,61 @@ class TaskHistoryAdmin(admin.ModelAdmin):
     list_display = ('task', 'field', 'old_value', 'new_value', 'user', 'created_at')
     list_filter = ('field',)
     search_fields = ('task__title', 'user__username', 'old_value', 'new_value')
+
+@admin.register(ProjectPhaseConfig)
+class ProjectPhaseConfigAdmin(admin.ModelAdmin):
+    list_display = ('phase_name', 'progress_percentage', 'order_index', 'is_active')
+    list_editable = ('order_index', 'is_active')
+    ordering = ('order_index',)
+
+@admin.register(ProjectPhaseChangeLog)
+class ProjectPhaseChangeLogAdmin(admin.ModelAdmin):
+    list_display = ('project', 'old_phase', 'new_phase', 'changed_by', 'changed_at')
+    list_filter = ('project', 'changed_at')
+    readonly_fields = ('project', 'old_phase', 'new_phase', 'changed_by', 'changed_at')
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'notification_type', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read', 'created_at')
+    search_fields = ('title', 'message', 'user__username')
+
+@admin.register(PermissionMatrix)
+class PermissionMatrixAdmin(admin.ModelAdmin):
+    list_display = ('role', 'permission', 'is_active', 'description')
+    list_filter = ('role', 'is_active')
+    search_fields = ('description',)
+
+@admin.register(ProjectMemberPermission)
+class ProjectMemberPermissionAdmin(admin.ModelAdmin):
+    list_display = ('project', 'user', 'granted_by', 'granted_at')
+    search_fields = ('project__name', 'user__username')
+    list_filter = ('project',)
+
+@admin.register(SystemSetting)
+class SystemSettingAdmin(admin.ModelAdmin):
+    list_display = ('key', 'value', 'updated_at')
+    search_fields = ('key', 'value')
+
+@admin.register(ExportJob)
+class ExportJobAdmin(admin.ModelAdmin):
+    list_display = ('user', 'export_type', 'status', 'progress', 'created_at')
+    list_filter = ('status', 'export_type', 'created_at')
+    search_fields = ('user__username',)
+
+@admin.register(UserPreference)
+class UserPreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'updated_at')
+    search_fields = ('user__username',)
+
+@admin.register(ReportTemplateVersion)
+class ReportTemplateVersionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'version', 'role', 'project', 'is_shared', 'created_by', 'created_at')
+    list_filter = ('is_shared', 'role', 'project')
+    search_fields = ('name', 'content')
+
+@admin.register(TaskTemplateVersion)
+class TaskTemplateVersionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'version', 'role', 'project', 'is_shared', 'created_by', 'created_at')
+    list_filter = ('is_shared', 'role', 'project')
+    search_fields = ('name', 'title', 'content')
