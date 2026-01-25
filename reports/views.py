@@ -1626,8 +1626,10 @@ def task_list(request):
     tasks_qs = Task.objects.select_related(
         'project', 'user', 'user__profile', 'sla_timer'
     ).prefetch_related(
-        'comments', 'attachments'
-    ).filter(user=request.user).order_by('-created_at')
+        'comments', 'attachments', 'collaborators'
+    ).filter(
+        Q(user=request.user) | Q(collaborators=request.user)
+    ).distinct().order_by('-created_at')
     
     now = timezone.now()
     
@@ -1694,7 +1696,9 @@ def task_export(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').filter(user=request.user).order_by('-created_at')
+    tasks = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').prefetch_related('collaborators').filter(
+        Q(user=request.user) | Q(collaborators=request.user)
+    ).distinct().order_by('-created_at')
     
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
@@ -1838,7 +1842,10 @@ def export_job_download(request, job_id: int):
 
 @login_required
 def task_complete(request, pk: int):
-    task = get_object_or_404(Task, pk=pk, user=request.user)
+    task = get_object_or_404(Task, pk=pk)
+    if not (task.user == request.user or task.collaborators.filter(pk=request.user.pk).exists() or has_manage_permission(request.user)):
+        return _friendly_forbidden(request, "无权限完成该任务 / No permission to complete this task")
+
     if request.method != 'POST':
         return _friendly_forbidden(request, "仅允许 POST / POST only")
     # 完成任务
@@ -1867,7 +1874,9 @@ def task_bulk_action(request):
     ids = request.POST.getlist('task_ids')
     action = request.POST.get('bulk_action')
     redirect_to = request.POST.get('redirect_to') or None
-    tasks = Task.objects.filter(user=request.user, id__in=ids)
+    tasks = Task.objects.filter(
+        Q(user=request.user) | Q(collaborators=request.user)
+    ).filter(id__in=ids).distinct()
     skipped_perm = max(0, len(ids) - tasks.count())
     total_selected = tasks.count()
     updated = 0
@@ -2068,7 +2077,7 @@ def admin_task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').order_by('-created_at')
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').prefetch_related('collaborators').order_by('-created_at')
     
     # Pre-fetch SLA settings once
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -2780,6 +2789,11 @@ def admin_task_create(request):
         if not target_user:
             errors.append("请选择目标用户")
 
+        collaborator_ids = request.POST.getlist('collaborators')
+        collaborators = []
+        if collaborator_ids:
+            collaborators = User.objects.filter(id__in=collaborator_ids)
+
         due_at = None
         if due_at_str:
             try:
@@ -2795,7 +2809,7 @@ def admin_task_create(request):
                 'users': user_objs,
                 'task_status_choices': Task.STATUS_CHOICES,
                 'existing_urls': existing_urls,
-                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str},
+                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
             })
 
         task = Task.objects.create(
@@ -2807,6 +2821,9 @@ def admin_task_create(request):
             status=status,
             due_at=due_at,
         )
+        
+        if collaborators:
+            task.collaborators.set(collaborators)
 
         # Handle attachments
         for f in request.FILES.getlist('attachments'):
@@ -2826,6 +2843,130 @@ def admin_task_create(request):
         'existing_urls': existing_urls,
         'form_values': {
             'project_id': request.GET.get('project_id'),
+        },
+    })
+
+
+@login_required
+def admin_task_edit(request, pk):
+    task = get_object_or_404(Task, pk=pk)
+    user = request.user
+    
+    # Check permission (Admin, Project Owner/Manager, Task Owner, or Collaborator)
+    # Collaborators can edit tasks too based on requirements (implied by "collaborators")
+    can_manage = has_manage_permission(user) or \
+                 task.project.owner == user or \
+                 task.project.managers.filter(pk=user.pk).exists() or \
+                 task.user == user or \
+                 task.collaborators.filter(pk=user.pk).exists()
+                 
+    if not can_manage:
+        return _admin_forbidden(request)
+
+    projects_qs = Project.objects.filter(is_active=True)
+    if not has_manage_permission(user):
+        # Limit project choices for non-admins if we want, but for editing an existing task,
+        # usually we just keep the current project or allow changing to manageable ones.
+        # For simplicity, we keep all active projects but maybe we should limit?
+        # Let's keep it simple: populate with all active projects.
+        pass
+        
+    projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
+    User = get_user_model()
+    user_objs = list(User.objects.all().order_by('username'))
+    existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
+
+    if request.method == 'POST':
+        title = (request.POST.get('title') or '').strip()
+        url = (request.POST.get('url') or '').strip()
+        content = (request.POST.get('content') or '').strip()
+        project_id = request.POST.get('project')
+        user_id = request.POST.get('user')
+        status = request.POST.get('status') or 'pending'
+        due_at_str = request.POST.get('due_at')
+
+        errors = []
+        if not title:
+            errors.append("请输入任务标题")
+        if not url and not content:
+            errors.append("任务内容需填写：请选择 URL 或填写文本内容")
+        if status not in dict(Task.STATUS_CHOICES):
+            errors.append("请选择有效的状态")
+            
+        project = None
+        target_user = None
+        if project_id and project_id.isdigit():
+            project = Project.objects.filter(id=int(project_id)).first()
+        if not project:
+            errors.append("请选择项目")
+            
+        if user_id and user_id.isdigit():
+            target_user = User.objects.filter(id=int(user_id)).first()
+        if not target_user:
+            errors.append("请选择目标用户")
+
+        collaborator_ids = request.POST.getlist('collaborators')
+        collaborators = []
+        if collaborator_ids:
+            collaborators = User.objects.filter(id__in=collaborator_ids)
+
+        due_at = None
+        if due_at_str:
+            try:
+                parsed = datetime.fromisoformat(due_at_str)
+                due_at = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
+            except ValueError:
+                errors.append("完成时间格式不正确，请使用日期时间选择器")
+
+        if errors:
+            return render(request, 'reports/admin_task_form.html', {
+                'task': task,
+                'errors': errors,
+                'projects': projects,
+                'users': user_objs,
+                'task_status_choices': Task.STATUS_CHOICES,
+                'existing_urls': existing_urls,
+                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
+            })
+
+        # Update task
+        task.title = title
+        task.url = url
+        task.content = content
+        task.project = project
+        task.user = target_user
+        task.status = status
+        task.due_at = due_at
+        task.save()
+        
+        task.collaborators.set(collaborators)
+
+        # Handle attachments
+        for f in request.FILES.getlist('attachments'):
+            TaskAttachment.objects.create(
+                task=task,
+                user=request.user,
+                file=f
+            )
+
+        log_action(request, 'update', f"task {task.id}")
+        return redirect('reports:task_view', pk=task.id)
+
+    return render(request, 'reports/admin_task_form.html', {
+        'task': task,
+        'projects': projects,
+        'users': user_objs,
+        'task_status_choices': Task.STATUS_CHOICES,
+        'existing_urls': existing_urls,
+        'form_values': {
+            'title': task.title,
+            'url': task.url,
+            'content': task.content,
+            'project_id': task.project_id,
+            'user_id': task.user_id,
+            'status': task.status,
+            'due_at': task.due_at.isoformat() if task.due_at else '',
+            'collaborator_ids': list(task.collaborators.values_list('id', flat=True))
         },
     })
 
