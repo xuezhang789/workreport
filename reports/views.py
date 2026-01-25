@@ -132,6 +132,9 @@ def has_project_manage_permission(user, project: Project):
         return True
     if project.owner_id == user.id:
         return True
+    # Optimization: Use prefetch cache if available to avoid N+1 queries
+    if hasattr(project, '_prefetched_objects_cache') and 'managers' in project._prefetched_objects_cache:
+        return any(m.id == user.id for m in project.managers.all())
     return project.managers.filter(id=user.id).exists()
 
 
@@ -327,7 +330,7 @@ def _filtered_projects(request):
     owner = (request.GET.get('owner') or '').strip()
 
     # 按创建时间倒序展示，确保最近的项目排在前面
-    qs = Project.objects.select_related('owner').prefetch_related('members', 'reports', 'managers').filter(is_active=True).order_by('-created_at', '-id')
+    qs = Project.objects.select_related('owner', 'current_phase').prefetch_related('members', 'reports', 'managers').filter(is_active=True).order_by('-created_at', '-id')
     if not has_manage_permission(request.user):
         qs = qs.filter(Q(owner=request.user) | Q(members=request.user) | Q(managers=request.user))
     if q:
@@ -420,13 +423,25 @@ def username_check_api(request):
 
 @login_required
 def workbench(request):
-    # 获取用户任务统计
+    # 获取用户任务统计 (优化：使用聚合查询代替多次 count)
+    from django.db.models import Count, Q
+    
     tasks = Task.objects.filter(user=request.user)
-    total = tasks.count()
-    completed = tasks.filter(status='completed').count()
-    overdue = tasks.filter(status='overdue').count()
-    in_progress = tasks.filter(status='in_progress').count()
-    pending = tasks.filter(status='pending').count()
+    
+    stats = tasks.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        overdue=Count('id', filter=Q(status='overdue')),
+        in_progress=Count('id', filter=Q(status='in_progress')),
+        pending=Count('id', filter=Q(status='pending'))
+    )
+    
+    total = stats['total']
+    completed = stats['completed']
+    overdue = stats['overdue']
+    in_progress = stats['in_progress']
+    pending = stats['pending']
+    
     completion_rate = (completed / total * 100) if total else 0
     overdue_rate = (overdue / total * 100) if total else 0
 
@@ -719,8 +734,8 @@ def template_center(request):
                 latest.append(item)
         return latest
 
-    report_qs = ReportTemplateVersion.objects.all()
-    task_qs = TaskTemplateVersion.objects.all()
+    report_qs = ReportTemplateVersion.objects.select_related('project', 'created_by').all()
+    task_qs = TaskTemplateVersion.objects.select_related('project', 'created_by').all()
     if role_filter:
         report_qs = report_qs.filter(role=role_filter)
         task_qs = task_qs.filter(role=role_filter)
@@ -2087,23 +2102,30 @@ def admin_task_list(request):
     if q:
         tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
-    tasks = list(tasks_qs)
     if hot:
+        tasks = list(tasks_qs)
         tasks = [t for t in tasks if calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)['status'] in ('tight', 'overdue')]
+        
+        far_future = now + timedelta(days=365)
+        for t in tasks:
+            t.is_due_soon = t.id in due_soon_ids
+            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+        tasks.sort(key=lambda t: (
+            -t.created_at.timestamp(),
+            t.sla_info.get('sort', 3),
+            t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
+            t.due_at or far_future,
+        ))
+        paginator = Paginator(tasks, 15)
+        page_obj = paginator.get_page(request.GET.get('page'))
+    else:
+        # DB Pagination for standard view (Performance Optimization)
+        paginator = Paginator(tasks_qs, 15)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        for t in page_obj:
+            t.is_due_soon = t.id in due_soon_ids
+            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
 
-    far_future = now + timedelta(days=365)
-    for t in tasks:
-        t.is_due_soon = t.id in due_soon_ids
-        t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-    tasks.sort(key=lambda t: (
-        -t.created_at.timestamp(),  # 最新任务优先
-        t.sla_info.get('sort', 3) if hasattr(t, 'sla_info') else 3,
-        t.sla_info.get('remaining_hours') if hasattr(t, 'sla_info') and t.sla_info.get('remaining_hours') is not None else 9999,
-        t.due_at or far_future,
-    ))
-
-    paginator = Paginator(tasks, 15)
-    page_obj = paginator.get_page(request.GET.get('page'))
     User = get_user_model()
     if is_admin:
         user_objs = User.objects.all().order_by('username')

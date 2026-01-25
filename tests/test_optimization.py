@@ -26,9 +26,9 @@ class OptimizationTest(TestCase):
     def test_workbench_queries(self):
         self.client.force_login(self.user)
         # Check that workbench loads without error and logic is correct
-        # 16 queries is acceptable as long as it doesn't grow with project count (N+1)
+        # Reduced from 16 to 12 after optimization
         # The project burndown query (Query 10 in logs) is now aggregated.
-        with self.assertNumQueries(16): 
+        with self.assertNumQueries(12): 
              response = self.client.get('/reports/workbench/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Test Project')

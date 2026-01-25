@@ -284,7 +284,7 @@
                     {% for proj in user.project_memberships.all %}
                     <div class="project-item-modal">
                         <span style="font-weight: 500;">{{ proj.name }} <span style="color: var(--text-muted); font-weight: normal;">({{ proj.code }})</span></span>
-                        <form action="{% url 'reports:team_member_remove_project' user.id proj.id %}" method="post" style="margin:0;" onsubmit="return confirm('确定要移除该项目吗？');">
+                        <form action="{% url 'reports:team_member_remove_project' user.id proj.id %}" method="post" style="margin:0;" onsubmit="return handleProjectRemove(this);">
                             {% csrf_token %}
                             <button type="submit" class="btn-remove" title="移除项目">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -300,7 +300,7 @@
             <!-- 3. Add Project -->
             <div class="modal-section">
                 <div class="modal-section-title">添加项目 / Add Project</div>
-                <form action="{% url 'reports:team_member_add_project' user.id %}" method="post" style="display: flex; gap: 8px;">
+                <form action="{% url 'reports:team_member_add_project' user.id %}" method="post" style="display: flex; gap: 8px;" onsubmit="showAdding(this)">
                     {% csrf_token %}
                     <select name="project_id" class="form-select" style="flex:1;" required>
                         <option value="">选择项目...</option>
@@ -330,5 +330,25 @@
             openModals.forEach(modal => modal.classList.remove('open'));
         }
     });
+
+    function handleProjectRemove(form) {
+        if(!confirm('确定要移除该项目吗？')) return false;
+        
+        const btn = form.querySelector('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
+        btn.disabled = true;
+        btn.style.cursor = 'not-allowed';
+        return true;
+    }
+
+    function showAdding(form) {
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = '添加中...';
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        return true;
+    }
 </script>
 {% endblock %}
