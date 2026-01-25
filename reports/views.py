@@ -19,7 +19,6 @@ import time
 import json
 import re
 import random
-import statistics
 from io import StringIO
 from datetime import datetime, timedelta
 from django.db import models
