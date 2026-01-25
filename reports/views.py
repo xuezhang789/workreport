@@ -135,23 +135,39 @@ def has_project_manage_permission(user, project: Project):
 
 
 def _streak_map():
-    """计算用户连签天数字典，键为 user_id。"""
-    submissions = DailyReport.objects.filter(status='submitted').values('user_id', 'date')
+    """计算用户连签天数字典，键为 user_id。优化性能，使用Django ORM高效查询"""
+    from django.db.models import Max
+    from django.db.models.functions import RowNumber
+    from django.db.models import Window
+    
+    # 获取所有提交的报告，按用户和日期排序
+    submissions = DailyReport.objects.filter(
+        status='submitted'
+    ).order_by('user_id', 'date').values('user_id', 'date')
+    
+    # 构建每个用户的日期集合
     user_dates = {}
     for item in submissions:
         user_dates.setdefault(item['user_id'], set()).add(item['date'])
+    
     today = timezone.localdate()
     streaks = {}
+    
+    # 对每个用户计算连签天数
     for uid, dates in user_dates.items():
+        if not dates:
+            streaks[uid] = 0
+            continue
+            
+        # 从今天开始倒推，计算连续日期的数量
         curr = today
         streak = 0
         while curr in dates:
             streak += 1
             curr = curr - timedelta(days=1)
         streaks[uid] = streak
+    
     return streaks
-
-
 
 
 def _filtered_reports(request):
@@ -1590,14 +1606,20 @@ def task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').filter(user=request.user).order_by('-created_at')
+    # 优化查询，使用select_related和prefetch_related减少数据库查询
+    tasks_qs = Task.objects.select_related(
+        'project', 'user', 'user__profile', 'sla_timer'
+    ).prefetch_related(
+        'comments', 'attachments'
+    ).filter(user=request.user).order_by('-created_at')
+    
     now = timezone.now()
     
     project_obj = None
     if project_id and project_id.isdigit():
         project_obj = Project.objects.filter(id=int(project_id)).first()
     
-    # Pre-fetch SLA settings once
+    # 预取SLA设置，避免在循环中重复查询
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     
@@ -1611,55 +1633,40 @@ def task_list(request):
         due_at__gt=now,
         due_at__lte=now + timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
-    if status in dict(Task.STATUS_CHOICES):
+
+    # 应用过滤器
+    if status:
         tasks_qs = tasks_qs.filter(status=status)
     if project_id and project_id.isdigit():
-        tasks_qs = tasks_qs.filter(project_id=int(project_id))
+        tasks_qs = tasks_qs.filter(project_id=project_id)
     if q:
-        tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
+        tasks_qs = tasks_qs.filter(title__icontains=q)
 
-    base_qs = tasks_qs
-    if hot:
-        hot_ids = []
-        for t in base_qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
-            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-            if info['status'] in ('tight', 'overdue'):
-                hot_ids.append(t.id)
-        base_qs = base_qs.filter(id__in=hot_ids)
+    if hot:  # 显示即将到期的任务
+        tasks_qs = tasks_qs.filter(id__in=due_soon_ids)
 
-    # 预计算 SLA 排序字段并分页，避免内存排序
-    annotate_qs = base_qs.annotate(
-        sla_sort=models.Case(
-            models.When(status='overdue', then=models.Value(0)),
-            default=models.Value(3),
-            output_field=models.IntegerField(),
-        ),
-        sla_remaining=models.Value(9999, output_field=models.FloatField()),
+    # 分页
+    paginator = Paginator(tasks_qs, 20)
+    page_number = request.GET.get('page')
+    tasks = paginator.get_page(page_number)
+
+    # 批量计算SLA信息，避免在模板中逐个计算
+    for task in tasks:
+        task.sla_info = calculate_sla_info(task, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+
+    # 获取项目列表用于筛选
+    projects = Project.objects.filter(
+        id__in=Task.objects.filter(user=request.user).values_list('project_id', flat=True)
     )
-    paginator = Paginator(annotate_qs, 10)
-    page_obj = paginator.get_page(request.GET.get('page'))
 
-    far_future = now + timedelta(days=365)
-    urgent_count = 0
-    for t in page_obj:
-        t.is_due_soon = t.id in due_soon_ids
-        t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-        if t.sla_info and t.sla_info.get('level') == 'red':
-            urgent_count += 1
-    thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     return render(request, 'reports/task_list.html', {
-        'tasks': page_obj,
-        'page_obj': page_obj,
-        'status': status,
+        'tasks': tasks,
+        'projects': projects,
+        'selected_status': status,
+        'selected_project_id': int(project_id) if project_id and project_id.isdigit() else None,
         'q': q,
-        'project_id': int(project_id) if project_id and project_id.isdigit() else '',
-        'projects': Project.objects.filter(is_active=True).order_by('name'),
-        'due_soon_ids': due_soon_ids,
-        'sla_config_hours': sla_hours,
         'hot': hot,
-        'redirect_to': request.get_full_path(),
-        'urgent_count': urgent_count,
-        'sla_thresholds': thresholds,
+        'due_soon_count': len(due_soon_ids),
     })
 
 

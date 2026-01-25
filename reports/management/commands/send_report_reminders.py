@@ -16,6 +16,12 @@ class Command(BaseCommand):
         today = date.today()
         weekday = now.weekday()  # Monday = 0
 
+        # Optimization: Fetch all users who submitted today
+        submitted_user_ids = set(
+            DailyReport.objects.filter(date=today, status='submitted')
+            .values_list('user_id', flat=True)
+        )
+
         rules = ReminderRule.objects.select_related('project').filter(enabled=True)
         total_checked = 0
         total_notified = 0
@@ -32,14 +38,14 @@ class Command(BaseCommand):
             for user in users:
                 total_checked += 1
                 # 已提交则跳过
-                if DailyReport.objects.filter(user=user, date=today, status='submitted').exists():
+                if user.id in submitted_user_ids:
                     continue
 
                 # 生成缺报记录
                 user_role = None
                 try:
                     user_role = user.profile.position
-                except Exception:
+                except (Profile.DoesNotExist, AttributeError):
                     user_role = rule.role
 
                 miss, created = ReportMiss.objects.get_or_create(

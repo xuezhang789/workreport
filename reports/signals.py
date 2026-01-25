@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.core.cache import cache
 from django.utils import timezone
 
-from .models import Task, DailyReport
+from .models import Task, DailyReport, SystemSetting
 
 
 def _invalidate_stats_cache():
@@ -22,6 +22,12 @@ def _invalidate_stats_cache():
             cache.delete(f"stats_metrics_v1_{today}_{project_filter}_{role_filter}")
 
 
+def _invalidate_sla_cache():
+    # 清除SLA相关缓存
+    cache.delete("sla_hours_setting")
+    cache.delete("sla_thresholds_setting")
+
+
 @receiver(post_save, sender=Task)
 def clear_cache_on_task_change(sender, **kwargs):
     _invalidate_stats_cache()
@@ -32,6 +38,13 @@ def clear_cache_on_report_change(sender, **kwargs):
     _invalidate_stats_cache()
 
 
+@receiver(post_save, sender=SystemSetting)
+def clear_cache_on_system_setting_change(sender, **kwargs):
+    instance = kwargs.get('instance')
+    if instance and instance.key in ['sla_hours', 'sla_thresholds']:
+        _invalidate_sla_cache()
+
+
 @receiver(post_delete, sender=Task)
 def clear_cache_on_task_delete(sender, **kwargs):
     _invalidate_stats_cache()
@@ -40,6 +53,11 @@ def clear_cache_on_task_delete(sender, **kwargs):
 @receiver(post_delete, sender=DailyReport)
 def clear_cache_on_report_delete(sender, **kwargs):
     _invalidate_stats_cache()
+
+
+@receiver(post_delete, sender=SystemSetting)
+def clear_cache_on_system_setting_delete(sender, **kwargs):
+    _invalidate_sla_cache()
 
 
 @receiver(m2m_changed, sender=DailyReport.projects.through)

@@ -120,7 +120,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         trend.append({'date': curr, 'count': trend_dict.get(curr, 0)})
         curr += timedelta(days=1)
 
-    # Streak Calculation
+    # Streak Calculation - 优化连签计算，避免N+1查询
     submissions = DailyReport.objects.filter(status='submitted').values('user_id', 'date')
     user_dates = {}
     for item in submissions:
@@ -137,8 +137,18 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         streaks_map[uid] = streak
 
     role_streaks = []
+    
+    # Optimization: Fetch all users' roles in one query
+    user_roles = list(User.objects.filter(profile__position__isnull=False).values('id', 'profile__position'))
+    
+    # Group user IDs by role
+    role_users_map = {}
+    for item in user_roles:
+        r = item['profile__position']
+        role_users_map.setdefault(r, []).append(item['id'])
+
     for role_key, role_label in Profile.ROLE_CHOICES:
-        uids = list(User.objects.filter(profile__position=role_key).values_list('id', flat=True))
+        uids = role_users_map.get(role_key, [])
         values = [streaks_map.get(uid, 0) for uid in uids] or [0]
         avg_streak = sum(values) / len(values) if values else 0
         role_streaks.append({
