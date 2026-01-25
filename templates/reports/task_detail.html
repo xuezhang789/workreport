@@ -419,15 +419,17 @@
             <div class="card" style="margin-bottom: 0;">
                 <div class="card-header">
                     <div class="card-title"><span>📎</span> 任务附件 / Files</div>
+                    <button id="add-attachment-btn" class="btn btn-primary btn-sm">+ 添加附件</button>
+                    <input type="file" id="attachment-upload-input" multiple style="display: none;">
                 </div>
                 
-                {% if attachments %}
-                    <div style="margin-bottom: 16px;">
+                <div id="attachment-list">
+                    {% if attachments %}
                         {% for a in attachments %}
-                            <div class="list-item" style="padding: 12px 0;">
+                            <div class="list-item" id="attachment-{{ a.id }}" style="padding: 12px 0;">
                                 <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1;">
                                     <div style="flex-shrink: 0; width: 32px; height: 32px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                     </div>
                                     <div style="overflow: hidden; min-width: 0;">
                                         <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px;">
@@ -444,7 +446,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div style="flex-shrink: 0; margin-left: 12px;">
+                                <div style="flex-shrink: 0; margin-left: 12px; display: flex; gap: 8px;">
                                     {% if a.file %}
                                         <a href="{{ a.file.url }}" download target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -456,13 +458,16 @@
                                             打开
                                         </a>
                                     {% endif %}
+                                    {% if request.user == a.user or request.user.is_staff %}
+                                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #ef4444; border-color: #fca5a5;" onclick="deleteAttachment({{ a.id }}, '{% url 'reports:task_delete_attachment' a.id %}')">删除</button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endfor %}
-                    </div>
-                {% else %}
-                    <div style="text-align: center; color: var(--text-secondary); padding: 16px; font-style: italic;">无附件</div>
-                {% endif %}
+                    {% else %}
+                        <div style="text-align: center; color: var(--text-secondary); padding: 16px; font-style: italic;">无附件</div>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- History -->
@@ -494,4 +499,79 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // --- Attachment Logic (Synced with Project Detail) ---
+    const addAttachmentBtn = document.getElementById('add-attachment-btn');
+    const attachmentInput = document.getElementById('attachment-upload-input');
+    
+    if (addAttachmentBtn && attachmentInput) {
+        addAttachmentBtn.addEventListener('click', () => attachmentInput.click());
+        
+        attachmentInput.addEventListener('change', function(e) {
+            if (this.files.length === 0) return;
+            
+            const formData = new FormData();
+            Array.from(this.files).forEach(file => {
+                formData.append('files', file);
+            });
+            
+            // Show uploading state
+            const originalText = addAttachmentBtn.textContent;
+            addAttachmentBtn.disabled = true;
+            addAttachmentBtn.textContent = 'Uploading...';
+            
+            fetch("{% url 'reports:task_upload_attachment' task.pk %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Reload to show new files
+                    window.location.reload();
+                } else {
+                    alert('Upload failed: ' + (data.message || 'Unknown error'));
+                    addAttachmentBtn.disabled = false;
+                    addAttachmentBtn.textContent = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Upload failed: Network error');
+                addAttachmentBtn.disabled = false;
+                addAttachmentBtn.textContent = originalText;
+            });
+        });
+    }
+
+    window.deleteAttachment = function(id, url) {
+        if (!confirm('确定删除该附件吗？')) return;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const el = document.getElementById(`attachment-${id}`);
+                if (el) el.remove();
+            } else {
+                alert('Delete failed: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Delete failed');
+        });
+    };
+</script>
 {% endblock %}

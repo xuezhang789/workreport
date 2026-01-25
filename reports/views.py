@@ -34,7 +34,7 @@ from .forms import (
     TaskTemplateForm,
     ProjectPhaseConfigForm,
 )
-from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion, ExportJob, ProjectPhaseConfig, ProjectPhaseChangeLog
+from .models import AuditLog, DailyReport, Profile, Project, Task, TaskComment, TaskAttachment, RoleTemplate, SystemSetting, TaskHistory, TaskSlaTimer, ReportTemplateVersion, TaskTemplateVersion, ExportJob, ProjectPhaseConfig, ProjectPhaseChangeLog, ProjectAttachment
 from .signals import _invalidate_stats_cache
 from django.conf import settings
 from .services.sla import calculate_sla_info, get_sla_thresholds, get_sla_hours
@@ -3434,7 +3434,7 @@ def audit_logs_export(request):
 
 @login_required
 def project_detail(request, pk: int):
-    project = get_object_or_404(Project.objects.select_related('owner', 'current_phase').prefetch_related('members'), pk=pk)
+    project = get_object_or_404(Project.objects.select_related('owner', 'current_phase').prefetch_related('members__profile', 'managers__profile'), pk=pk)
     recent_reports = project.reports.select_related('user').order_by('-date')[:5]
     tasks_qs = Task.objects.filter(project=project)
     total = tasks_qs.count()
@@ -3834,3 +3834,99 @@ def advanced_reporting(request):
         'cfd_data': data.get('cfd'),
     }
     return render(request, 'reports/advanced_reporting.html', context)
+
+@login_required
+def task_upload_attachment(request, task_id):
+    task = get_object_or_404(Task, pk=task_id)
+    
+    # Check permission
+    can_manage = has_manage_permission(request.user) or task.user == request.user or task.project.owner == request.user
+    
+    if not can_manage:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+    
+    if request.method == 'POST' and request.FILES.getlist('files'):
+        uploaded_files = []
+        for file in request.FILES.getlist('files'):
+            attachment = TaskAttachment.objects.create(
+                task=task,
+                user=request.user,
+                file=file
+            )
+            uploaded_files.append({
+                'id': attachment.id,
+                'name': file.name,
+                'size': file.size,
+                'url': attachment.file.url,
+                'uploaded_by': attachment.user.get_full_name() or attachment.user.username,
+                'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+            
+        return JsonResponse({'status': 'success', 'files': uploaded_files})
+        
+    return JsonResponse({'status': 'error', 'message': 'No files provided'}, status=400)
+
+@login_required
+def task_delete_attachment(request, attachment_id):
+    attachment = get_object_or_404(TaskAttachment, pk=attachment_id)
+    task = attachment.task
+    
+    # Check permission
+    can_manage = has_manage_permission(request.user) or attachment.user == request.user or task.project.owner == request.user
+    
+    if not can_manage:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+        
+    if request.method == 'POST':
+        attachment.delete()
+        return JsonResponse({'status': 'success'})
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+@login_required
+def project_upload_attachment(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    can_manage = has_manage_permission(request.user) or request.user == project.owner or project.managers.filter(pk=request.user.pk).exists() or project.members.filter(pk=request.user.pk).exists()
+    
+    if not can_manage:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+    
+    if request.method == 'POST' and request.FILES.getlist('files'):
+        uploaded_files = []
+        for file in request.FILES.getlist('files'):
+            attachment = ProjectAttachment.objects.create(
+                project=project,
+                uploaded_by=request.user,
+                file=file,
+                original_filename=file.name,
+                file_size=file.size
+            )
+            uploaded_files.append({
+                'id': attachment.id,
+                'name': attachment.original_filename,
+                'size': attachment.file_size,
+                'url': attachment.file.url,
+                'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
+                'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+            
+        return JsonResponse({'status': 'success', 'files': uploaded_files})
+        
+    return JsonResponse({'status': 'error', 'message': 'No files provided'}, status=400)
+
+@login_required
+def project_delete_attachment(request, attachment_id):
+    attachment = get_object_or_404(ProjectAttachment, pk=attachment_id)
+    project = attachment.project
+    
+    # Check permission (owner, manager, or the uploader)
+    can_manage = has_manage_permission(request.user) or request.user == project.owner or project.managers.filter(pk=request.user.pk).exists() or attachment.uploaded_by == request.user
+    
+    if not can_manage:
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+        
+    if request.method == 'POST':
+        attachment.delete()
+        return JsonResponse({'status': 'success'})
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)

@@ -319,6 +319,86 @@
     .remove-btn:hover {
         background: rgba(37, 99, 235, 0.2);
     }
+
+    /* File Upload Styles */
+    .file-upload-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 16px;
+    }
+
+    .file-upload-container:hover, .file-upload-container.drag-over {
+        border-color: var(--primary);
+        background: #eff6ff;
+    }
+
+    .upload-icon {
+        color: var(--primary);
+        margin-bottom: 12px;
+    }
+
+    .upload-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+
+    .upload-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--text-main);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .file-status {
+        font-size: 12px;
+        margin-left: 12px;
+    }
+
+    .status-uploading { color: var(--primary); }
+    .status-success { color: #166534; }
+    .status-error { color: #991b1b; }
 </style>
 {% endblock %}
 
@@ -338,7 +418,7 @@
             </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
             <div class="form-grid">
@@ -399,6 +479,24 @@
                         <label class="form-label" for="{{ form.description.id_for_label }}">描述 / Description</label>
                         {{ form.description }}
                     </div>
+                    
+                    {% if mode == 'create' %}
+                    <!-- File Upload Section for Create Mode -->
+                    <div class="form-group">
+                        <label class="form-label">附件上传 / Attachments</label>
+                        <div class="file-upload-container" id="file-upload-zone">
+                            <input type="file" id="file-input" name="files" multiple style="display: none;">
+                            <div class="upload-placeholder">
+                                <div class="upload-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </div>
+                                <div class="upload-text">点击或拖拽文件到此处上传</div>
+                                <div class="upload-hint">支持文档、图片、压缩包等格式 (Max 50MB)</div>
+                            </div>
+                        </div>
+                        <div class="file-list" id="file-list"></div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -491,6 +589,117 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // File Upload Logic
+        const uploadZone = document.getElementById('file-upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+
+        if (uploadZone && fileInput) {
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-over');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-over');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-over');
+                handleFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+
+            function handleFiles(files) {
+                const dt = new DataTransfer();
+                // Merge existing files if input allows multiple (standard input replaces files)
+                // For simplicity here, we append new files to UI and try to sync with input if possible
+                // Note: Standard file input syncing is tricky. We'll rely on form submission 
+                // but we can at least show what's selected.
+                // A better approach for "Create" is just to use the input normally but show UI.
+                
+                // Clear existing UI for this simple implementation or append?
+                // Standard behavior: selecting new files replaces old selection in input.
+                fileList.innerHTML = ''; 
+                
+                // Add new files to DataTransfer to possibly set input.files (if appending was desired)
+                // For now, let's just show what's currently in the input (standard behavior)
+                // If we want drag & drop to APPEND, we need to manage a DataTransfer object manually.
+                
+                // Let's implement APPEND logic using DataTransfer
+                const currentFiles = fileInput.files;
+                for (let i = 0; i < currentFiles.length; i++) {
+                     // If we are handling drop, fileInput.files might not be updated yet
+                }
+
+                // Actually, let's stick to the simplest reliable method:
+                // If dropped, set input.files. If selected, it's already set.
+                // To support "adding" files, we need a global DataTransfer object.
+            }
+        }
+        
+        // Robust File Handling with DataTransfer to allow multiple adds
+        let globalDataTransfer = new DataTransfer();
+        
+        if (uploadZone && fileInput) {
+             function updateFileList() {
+                fileList.innerHTML = '';
+                Array.from(globalDataTransfer.files).forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <div class="file-info">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                            <div>
+                                <div class="file-name" title="${file.name}">${file.name}</div>
+                                <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+                            </div>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="removeFile(${index})">×</button>
+                    `;
+                    fileList.appendChild(item);
+                });
+                
+                // Sync to input
+                fileInput.files = globalDataTransfer.files;
+            }
+
+            window.removeFile = function(index) {
+                const newDataTransfer = new DataTransfer();
+                Array.from(globalDataTransfer.files).forEach((file, i) => {
+                    if (i !== index) newDataTransfer.items.add(file);
+                });
+                globalDataTransfer = newDataTransfer;
+                updateFileList();
+            };
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-over');
+                Array.from(e.dataTransfer.files).forEach(file => globalDataTransfer.items.add(file));
+                updateFileList();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                // When clicking input, it replaces files. We want to ADD.
+                // But the browser UI for file input usually implies replacement.
+                // To support "Add", we should prevent default if possible or just merge.
+                // However, fileInput is hidden.
+                Array.from(e.target.files).forEach(file => globalDataTransfer.items.add(file));
+                updateFileList();
+            });
+            
+            // Prevent replacing: Since input is hidden and triggered by JS, 
+            // the 'change' event contains only newly selected files.
+            // We add them to globalDataTransfer.
+        }
+
         // Add classes to Django rendered fields
         const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
         inputs.forEach(input => {

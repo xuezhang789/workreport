@@ -191,9 +191,139 @@
         outline: none;
     }
     
-    .filter-select:focus {
-        border-color: var(--primary);
+    /* Attachments */
+    .attachment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
     }
+
+    .attachment-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .attachment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attachment-icon {
+        color: var(--primary);
+    }
+
+    .attachment-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .attachment-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .btn-xs {
+        padding: 4px 8px;
+        font-size: 11px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-download {
+        background: #eff6ff;
+        color: var(--primary);
+    }
+
+    .btn-delete {
+        background: #fef2f2;
+        color: #991b1b;
+        border: none;
+    }
+
+    /* Members */
+    .member-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .member-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .member-avatar {
+        width: 40px;
+        height: 40px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+    
+    .member-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+    }
+    
+    .member-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+    }
+    
+    .member-role {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .badge-role {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+        font-weight: 600;
+    }
+    
+    .role-owner { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .role-mgr { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
 </style>
 {% endblock %}
 
@@ -264,6 +394,47 @@
         {% endif %}
     </div>
 
+    <!-- Attachments Module -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>📎</span> 附件 / Attachments
+            </div>
+            {% if can_manage %}
+                <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件</button>
+                <input type="file" id="attachment-upload-input" multiple style="display: none;">
+            {% endif %}
+        </div>
+
+        <div class="attachment-grid" id="attachment-list">
+            {% for attachment in project.attachments.all %}
+                <div class="attachment-card" id="attachment-{{ attachment.id }}">
+                    <div class="attachment-header">
+                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        <span class="attachment-name" title="{{ attachment.original_filename }}">{{ attachment.original_filename }}</span>
+                    </div>
+                    <div class="attachment-meta">
+                        <span>{{ attachment.file_size|filesizeformat }}</span>
+                        <span>{{ attachment.created_at|date:"Y-m-d" }}</span>
+                    </div>
+                    <div class="attachment-meta">
+                        <span>Up: {{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
+                    </div>
+                    <div class="attachment-actions">
+                        <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载</a>
+                        {% if can_manage or user == attachment.uploaded_by %}
+                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'reports:project_delete_attachment' attachment.id %}')">删除</button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
+                    暂无附件
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Phase Management -->
     <div class="card">
         <div class="card-header">
@@ -297,6 +468,43 @@
                 <span id="update-msg" style="font-size: 12px; margin-left: 8px;"></span>
             </div>
         {% endif %}
+    </div>
+
+    <!-- Team Members -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>👥</span> 项目成员 / Team Members
+            </div>
+            <span style="font-size: 13px; color: var(--text-secondary);">Total: {{ project.members.count }}</span>
+        </div>
+        
+        <div class="member-grid">
+            {% for member in project.members.all %}
+                <div class="member-card">
+                    <div class="member-avatar">
+                        {{ member.username|slice:":1"|upper }}
+                    </div>
+                    <div class="member-info">
+                        <div class="member-name">
+                            {{ member.get_full_name|default:member.username }}
+                            {% if member == project.owner %}
+                                <span class="badge-role role-owner">Owner</span>
+                            {% elif member in project.managers.all %}
+                                <span class="badge-role role-mgr">Mgr</span>
+                            {% endif %}
+                        </div>
+                        <div class="member-role">
+                            {{ member.profile.get_position_display|default:"成员" }}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
+                    暂无成员
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <!-- Tasks Module -->
@@ -436,6 +644,77 @@
 </div>
 
 <script>
+    // Attachment Logic
+    const addAttachmentBtn = document.getElementById('add-attachment-btn');
+    const attachmentInput = document.getElementById('attachment-upload-input');
+    
+    if (addAttachmentBtn && attachmentInput) {
+        addAttachmentBtn.addEventListener('click', () => attachmentInput.click());
+        
+        attachmentInput.addEventListener('change', function(e) {
+            if (this.files.length === 0) return;
+            
+            const formData = new FormData();
+            Array.from(this.files).forEach(file => {
+                formData.append('files', file);
+            });
+            
+            // Show uploading state
+            const originalText = addAttachmentBtn.textContent;
+            addAttachmentBtn.disabled = true;
+            addAttachmentBtn.textContent = 'Uploading...';
+            
+            fetch("{% url 'reports:project_upload_attachment' project.pk %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Reload to show new files or append to DOM
+                    window.location.reload();
+                } else {
+                    alert('Upload failed: ' + (data.message || 'Unknown error'));
+                    addAttachmentBtn.disabled = false;
+                    addAttachmentBtn.textContent = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Upload failed: Network error');
+                addAttachmentBtn.disabled = false;
+                addAttachmentBtn.textContent = originalText;
+            });
+        });
+    }
+
+    window.deleteAttachment = function(id, url) {
+        if (!confirm('确定删除该附件吗？')) return;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const el = document.getElementById(`attachment-${id}`);
+                if (el) el.remove();
+            } else {
+                alert('Delete failed: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Delete failed');
+        });
+    };
+
     // Phase Update Logic
     const updateBtn = document.getElementById('update-phase-btn');
     if (updateBtn) {
