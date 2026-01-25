@@ -32,6 +32,7 @@
                         {% if can_view_admin_project %}
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'advanced_reporting' %}active{% endif %}" href="{% url 'reports:advanced_reporting' %}">高级报表 / Advanced Reports</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
                         {% endif %}

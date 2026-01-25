@@ -33,13 +33,9 @@
                     <div class="col-md-6 text-end">
                         <label class="form-label">&nbsp;</label>
                         <div class="btn-group" role="group">
-                            <a href="{% url 'reports:export_report' %}?format=pdf&project_id={{ selected_project_id }}" 
-                               class="btn btn-outline-primary">
-                                <i class="bi bi-file-pdf"></i> 导出PDF
-                            </a>
-                            <a href="{% url 'reports:export_report' %}?format=excel&project_id={{ selected_project_id }}" 
+                            <a href="{% url 'reports:admin_task_export' %}?project={{ selected_project_id }}" 
                                class="btn btn-outline-success">
-                                <i class="bi bi-file-excel"></i> 导出Excel
+                                <i class="bi bi-file-excel"></i> 导出任务 (CSV)
                             </a>
                         </div>
                     </div>
@@ -69,8 +65,19 @@
         </div>
     </div>
     {% endif %}
+
+    {% if cfd_data.total %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">累积流图 (Cumulative Flow Diagram)</h5>
+        </div>
+        <div class="card-body">
+            <div id="cfdChart" style="height: 400px;"></div>
+        </div>
+    </div>
+    {% endif %}
     
-    {% if not gantt_data.tasks and not burn_down_data %}
+    {% if not gantt_data.tasks and not burn_down_data and not cfd_data.total %}
     <div class="alert alert-info">
         <h6 class="alert-heading">暂无数据</h6>
         <p>请先选择一个项目或确保所选项目中有任务数据。</p>
@@ -177,6 +184,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var burnDownChart = new ApexCharts(document.querySelector("#burnDownChart"), burnDownOptions);
     burnDownChart.render();
+    {% endif %}
+
+    // 初始化 CFD
+    {% if cfd_data.total %}
+    var cfdOptions = {
+        series: [
+            {
+                name: '剩余工作 (WIP + 待办)',
+                data: {{ cfd_data.in_progress|safe }}
+            },
+            {
+                name: '已完成',
+                data: {{ cfd_data.completed|safe }}
+            }
+        ],
+        chart: {
+            type: 'area',
+            height: 400,
+            stacked: true,
+        },
+        colors: ['#42a5f5', '#66bb6a'],
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 2
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                opacityFrom: 0.6,
+                opacityTo: 0.8,
+            }
+        },
+        xaxis: {
+            categories: {{ cfd_data.dates|safe }},
+            type: 'datetime'
+        },
+        title: {
+            text: '累积流图 - {{ burn_down_data.project_name }}',
+            align: 'left'
+        }
+    };
+    var cfdChart = new ApexCharts(document.querySelector("#cfdChart"), cfdOptions);
+    cfdChart.render();
     {% endif %}
 });
 

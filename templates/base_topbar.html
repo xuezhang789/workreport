@@ -345,5 +345,7 @@
         {% block content %}{% endblock %}
     </main>
 </div>
+    {% block extra_scripts %}{% endblock %}
+    <script src="{% static 'js/command_palette.js' %}"></script>
 </body>
 </html>

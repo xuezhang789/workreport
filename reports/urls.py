@@ -33,6 +33,7 @@ urlpatterns = [
     path('performance/export/', views.performance_export, name='performance_export'),
     path('admin/reports/', views.admin_reports, name='admin_reports'),
     path('admin/reports/export/', views.admin_reports_export, name='admin_reports_export'),
+    path('advanced/', views.advanced_reporting, name='advanced_reporting'),
     path('my/<int:pk>/edit/', views.report_edit, name='report_edit'),
     path('projects/', views.project_list, name='project_list'),
     path('projects/export/', views.project_export, name='project_export'),
