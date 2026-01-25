@@ -5,7 +5,7 @@ from ..models import Task, DailyReport, Profile, Project
 import statistics
 from collections import defaultdict
 
-def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None, q=None):
+def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None, q=None, accessible_projects=None):
     """
     Calculate performance statistics for the performance board.
     """
@@ -14,6 +14,10 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     # Base QuerySets
     tasks = Task.objects.select_related('project', 'user', 'user__profile')
     reports = DailyReport.objects.select_related('user', 'user__profile')
+    
+    if accessible_projects is not None:
+        tasks = tasks.filter(project__in=accessible_projects)
+        reports = reports.filter(projects__in=accessible_projects).distinct()
 
     # Apply filters
     if start_date:
