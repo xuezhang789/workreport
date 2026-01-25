@@ -10,7 +10,9 @@ from reports.views import has_manage_permission, _admin_forbidden, log_action
 
 @login_required
 def teams_list(request):
-    if not has_manage_permission(request.user):
+    # Global Team Management is restricted to Superuser.
+    # Project Managers should manage teams via Project Detail page.
+    if not request.user.is_superuser:
         return _admin_forbidden(request)
 
     q = (request.GET.get('q') or '').strip()
@@ -38,7 +40,7 @@ def teams_list(request):
 @login_required
 @require_POST
 def team_member_update_role(request, user_id):
-    if not has_manage_permission(request.user):
+    if not request.user.is_superuser:
         return JsonResponse({'error': 'Permission denied'}, status=403)
         
     new_role = request.POST.get('role')
