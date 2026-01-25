@@ -19,6 +19,8 @@ import time
 import json
 import re
 import random
+import statistics
+from collections import defaultdict
 from io import StringIO
 from datetime import datetime, timedelta
 from django.db import models
@@ -1644,7 +1646,7 @@ def task_list(request):
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
     
-    sla_hours = get_sla_hours(project_obj, system_setting_value=sla_hours_val)
+    sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
     due_soon_ids = set(tasks_qs.filter(
         status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
@@ -1948,10 +1950,18 @@ def task_bulk_action(request):
 @login_required
 def task_view(request, pk: int):
     """View task content or redirect to URL."""
-    if has_manage_permission(request.user):
-        task = get_object_or_404(Task.objects.select_related('project', 'user'), pk=pk)
-    else:
-        task = get_object_or_404(Task.objects.select_related('project', 'user'), pk=pk, user=request.user)
+    # Use prefetch_related for collaborators to avoid N+1 queries if we access them
+    task = get_object_or_404(Task.objects.select_related('project', 'user').prefetch_related('collaborators'), pk=pk)
+    
+    # Permission Check
+    is_manager = has_manage_permission(request.user)
+    is_owner = task.user == request.user
+    is_collab = task.collaborators.filter(pk=request.user.pk).exists()
+    
+    if not (is_manager or is_owner or is_collab):
+         return _friendly_forbidden(request, "无权限查看此任务 / No permission to view this task")
+         
+    can_edit = is_manager or is_owner or is_collab
 
     # 到期未完成自动标记逾期
     if task.due_at and task.status in ('pending', 'reopened') and task.due_at < timezone.now():
@@ -2061,6 +2071,7 @@ def task_view(request, pk: int):
         'attachments': attachments,
         'histories': histories,
         'sla': calculate_sla_info(task, as_of=sla_ref_time),
+        'can_edit': can_edit,
     })
 
 
@@ -2173,8 +2184,13 @@ def admin_task_bulk_action(request):
     if request.method != 'POST':
         return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
-    action = request.POST.get('bulk_action')
+    action = request.POST.get('action')  # Fixed param name
     redirect_to = request.POST.get('redirect_to') or None
+    
+    # Filter context for logging
+    project_id = request.POST.get('project')
+    user_id = request.POST.get('user')
+
     total_requested = len(ids)
     tasks = Task.objects.filter(id__in=ids)
     if not is_admin:
@@ -2201,10 +2217,28 @@ def admin_task_bulk_action(request):
         tasks.update(status='overdue')
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
-    elif action == 'update':
-        status_value = (request.POST.get('status_value') or '').strip()
+    elif action == 'update' or action in ('assign', 'change_status'): # Support separate actions or merged update
+        # Map frontend params to backend logic
+        status_value = (request.POST.get('target_status') or request.POST.get('status_value') or '').strip()
+        assign_to = request.POST.get('target_user') or request.POST.get('assign_to')
         due_at_str = (request.POST.get('due_at') or '').strip()
-        assign_to = request.POST.get('assign_to')
+        
+        # If action implies specific update, ensure we respect it
+        if action == 'assign' and not assign_to:
+             messages.warning(request, "未选择目标用户 / No user selected")
+             return redirect(redirect_to or 'reports:admin_task_list')
+        if action == 'change_status' and not status_value:
+              messages.warning(request, "未选择目标状态 / No status selected")
+              return redirect(redirect_to or 'reports:admin_task_list')
+        
+        # Enforce action scope to avoid accidental updates
+        if action == 'assign':
+            status_value = ''
+            due_at_str = ''
+        elif action == 'change_status':
+            assign_to = None
+            due_at_str = ''
+ 
         parsed_due = None
         if due_at_str:
             try:
@@ -2589,19 +2623,53 @@ def admin_task_stats(request):
         overdue=models.Count('id', filter=models.Q(status='overdue'))
     ).order_by('user__username')
 
+    # --- 1.1 Task Status Distribution ---
+    task_status_raw = list(tasks_qs.values('status').annotate(c=models.Count('id')).order_by('-c'))
+    status_map = dict(Task.STATUS_CHOICES)
+    task_status_counts = [{'status': s, 'label': status_map.get(s, s), 'count': c} for s, c in task_status_raw]
+
+    # --- 3.1 Task Trend (Last 14 days) ---
+    task_trend_labels = []
+    task_trend_data = []
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        task_trend_labels.append(d.strftime('%m-%d'))
+        c = tasks_qs.filter(completed_at__date=d, status='completed').count()
+        task_trend_data.append(c)
+    task_trend = {'labels': task_trend_labels, 'data': task_trend_data}
+    
+    # --- Pre-calculate Lead Times ---
+    completed_tasks_data = tasks_qs.filter(status='completed', completed_at__isnull=False).values('project_id', 'user_id', 'created_at', 'completed_at')
+    project_durations = defaultdict(list)
+    user_durations = defaultdict(list)
+    for t in completed_tasks_data:
+        if t['completed_at'] and t['created_at']:
+            duration = (t['completed_at'] - t['created_at']).total_seconds() / 3600
+            project_durations[t['project_id']].append(duration)
+            user_durations[t['user_id']].append(duration)
+
     project_stats = []
     for row in project_stats_qs:
         total_p = row['total']
         comp_p = row['completed']
         ovd_p = row['overdue']
+        
+        # Lead Time
+        durations = project_durations.get(row['project__id'], [])
+        lead_time_avg = statistics.mean(durations) if durations else None
+        lead_time_p50 = statistics.median(durations) if durations else None
+
         project_stats.append({
             'project': row['project__name'] or '—',
+            'project_id': row['project__id'],
             'total': total_p,
             'completed': comp_p,
             'overdue': ovd_p,
             'completion_rate': (comp_p / total_p * 100) if total_p else 0,
             'overdue_rate': (ovd_p / total_p * 100) if total_p else 0,
             'sla_rate': 0, # Placeholder, calculation is expensive without pre-aggregation
+            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
         })
 
     user_stats = []
@@ -2610,14 +2678,23 @@ def admin_task_stats(request):
         comp_u = row['completed']
         ovd_u = row['overdue']
         full_name = ((row['user__first_name'] or '') + ' ' + (row['user__last_name'] or '')).strip()
+        
+        # Lead Time
+        durations = user_durations.get(row['user__id'], [])
+        lead_time_avg = statistics.mean(durations) if durations else None
+        lead_time_p50 = statistics.median(durations) if durations else None
+
         user_stats.append({
             'username': row['user__username'],
+            'user_id': row['user__id'],
             'full_name': full_name,
             'total': total_u,
             'completed': comp_u,
             'overdue': ovd_u,
             'completion_rate': (comp_u / total_u * 100) if total_u else 0,
             'overdue_rate': (ovd_u / total_u * 100) if total_u else 0,
+            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
         })
 
     # Choices for filters
@@ -2652,6 +2729,8 @@ def admin_task_stats(request):
         'user_stats': user_stats,
         'metrics': metrics,
         'report_trend': report_trend,
+        'task_trend': task_trend,
+        'task_status_counts': task_status_counts,
         'role_counts': role_counts,
         'missing_projects': missing_projects,
         'sla_urgent_tasks': sla_urgent_tasks,
@@ -3056,7 +3135,7 @@ def project_list(request):
         projects = projects.filter(current_phase_id=int(phase_id))
         
     projects = projects.annotate(member_count=Count('members', distinct=True), report_count=Count('reports', distinct=True))
-    paginator = Paginator(projects, 10)
+    paginator = Paginator(projects, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
     manageable_ids = {p.id for p in page_obj if has_project_manage_permission(request.user, p)}
     

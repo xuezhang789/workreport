@@ -11,7 +11,8 @@ def _linkify(text: str) -> str:
     pattern = re.compile(r'\[([^\]]+)\]\((https?://[^)]+)\)')
     def repl(m):
         label, url = m.group(1), m.group(2)
-        return f'<a href="{url}" target="_blank" rel="noopener noreferrer">{escape(label)}</a>'
+        # label is already escaped by escape(text) below, so no need to escape again
+        return f'<a href="{url}" target="_blank" rel="noopener noreferrer">{label}</a>'
     return pattern.sub(repl, escape(text))
 
 

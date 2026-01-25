@@ -1,280 +1,331 @@
-from django.db.models import Count, Q, F, Avg, Case, When, Value, IntegerField, Min
-from django.db.models.functions import TruncDate
+from django.db.models import Count, Avg, F, Q, DurationField, ExpressionWrapper
 from django.utils import timezone
-from django.core.cache import cache
-from reports.models import Task, DailyReport, Project, Profile
 from django.contrib.auth import get_user_model
+from ..models import Task, DailyReport, Profile, Project
 import statistics
-from datetime import timedelta
+from collections import defaultdict
 
 def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None, q=None):
     """
-    Optimized performance stats calculation using DB aggregation.
+    Calculate performance statistics for the performance board.
     """
-    cache_key = f"performance_stats_v2_{start_date}_{end_date}_{project_id}_{role_filter}_{q}"
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
-
-    generated_at = timezone.now()
-    
-    # Base QuerySet
-    tasks_qs = Task.objects.all()
-    if start_date:
-        tasks_qs = tasks_qs.filter(created_at__date__gte=start_date)
-    if end_date:
-        tasks_qs = tasks_qs.filter(created_at__date__lte=end_date)
-    if project_id and isinstance(project_id, int):
-        tasks_qs = tasks_qs.filter(project_id=project_id)
-    if role_filter and role_filter in dict(Profile.ROLE_CHOICES):
-        tasks_qs = tasks_qs.filter(user__profile__position=role_filter)
-    if q:
-        tasks_qs = tasks_qs.filter(
-            Q(user__username__icontains=q) | 
-            Q(user__first_name__icontains=q) | 
-            Q(user__last_name__icontains=q)
-        )
-
-    # Aggregation Helpers
-    def get_stats_aggregate(queryset, group_by_field):
-        return queryset.values(group_by_field).annotate(
-            total=Count('id'),
-            completed=Count('id', filter=Q(status='completed')),
-            overdue=Count('id', filter=Q(status='overdue')),
-            on_time=Count('id', filter=Q(status='completed', completed_at__lte=F('due_at'))), # Simplified on_time check
-        ).order_by('-total')
-
-    # Project Stats
-    project_stats_raw = get_stats_aggregate(tasks_qs, 'project__name')
-    project_stats = []
-    for item in project_stats_raw:
-        total = item['total']
-        if not total: continue
-        project_stats.append({
-            'project': item['project__name'] or '未分配 / Unassigned',
-            'total': total,
-            'completed': item['completed'],
-            'overdue': item['overdue'],
-            'completion_rate': (item['completed'] / total * 100),
-            'overdue_rate': (item['overdue'] / total * 100),
-            'sla_on_time_rate': (item['on_time'] / item['completed'] * 100) if item['completed'] else 0,
-            'lead_time_p50': 0, # Placeholder
-        })
-
-    # Role Stats
-    role_stats_raw = tasks_qs.values('user__profile__position').annotate(
-        total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue')),
-    )
-    role_map = dict(Profile.ROLE_CHOICES)
-    role_stats = []
-    for item in role_stats_raw:
-        role_code = item['user__profile__position']
-        total = item['total']
-        if not total: continue
-        role_stats.append({
-            'role': role_code,
-            'role_label': role_map.get(role_code, role_code or '未知 / Unknown'),
-            'total': total,
-            'completed': item['completed'],
-            'overdue': item['overdue'],
-            'completion_rate': (item['completed'] / total * 100),
-            'overdue_rate': (item['overdue'] / total * 100),
-        })
-
-    # User Stats
     User = get_user_model()
-    user_stats_raw = get_stats_aggregate(tasks_qs, 'user__id')
-    user_ids = [item['user__id'] for item in user_stats_raw if item['user__id']]
-    user_map = {u.id: (u.get_full_name() or u.username) for u in User.objects.filter(id__in=user_ids)}
     
-    user_stats = []
-    for item in user_stats_raw:
-        uid = item['user__id']
-        if not uid: continue
-        total = item['total']
-        user_stats.append({
-            'user_id': uid,
-            'user_label': user_map.get(uid, '未知 / Unknown'),
-            'total': total,
-            'completed': item['completed'],
-            'overdue': item['overdue'],
-            'completion_rate': (item['completed'] / total * 100) if total else 0,
-            'overdue_rate': (item['overdue'] / total * 100) if total else 0,
-        })
+    # Base QuerySets
+    tasks = Task.objects.select_related('project', 'user', 'user__profile')
+    reports = DailyReport.objects.select_related('user', 'user__profile')
 
-    # Trend (Optimized)
-    trend = []
-    end_for_trend = end_date or timezone.localdate()
-    default_span = timedelta(days=6)
-    max_span = timedelta(days=30)
+    # Apply filters
     if start_date:
-        span_start = max(start_date, end_for_trend - max_span)
-    else:
-        span_start = end_for_trend - default_span
-    
-    trend_qs = DailyReport.objects.filter(
-        date__gte=span_start, 
-        date__lte=end_for_trend, 
-        status='submitted'
-    ).values('date').annotate(count=Count('id')).order_by('date')
-    
-    trend_dict = {item['date']: item['count'] for item in trend_qs}
-    curr = span_start
-    while curr <= end_for_trend:
-        trend.append({'date': curr, 'count': trend_dict.get(curr, 0)})
-        curr += timedelta(days=1)
+        tasks = tasks.filter(created_at__date__gte=start_date)
+        reports = reports.filter(date__gte=start_date)
+    if end_date:
+        tasks = tasks.filter(created_at__date__lte=end_date)
+        reports = reports.filter(date__lte=end_date)
+        
+    if project_id:
+        tasks = tasks.filter(project_id=project_id)
+        # Reports don't have direct project link in simple mode, filtering by user project membership or similar logic if needed
+        # For now, we'll keep reports unfiltered by project unless we cross-reference users
+        
+    if role_filter:
+        tasks = tasks.filter(user__profile__position=role_filter)
+        reports = reports.filter(user__profile__position=role_filter)
 
-    # Streak Calculation - 优化连签计算，避免N+1查询
-    submissions = DailyReport.objects.filter(status='submitted').values('user_id', 'date')
-    user_dates = {}
-    for item in submissions:
-        user_dates.setdefault(item['user_id'], set()).add(item['date'])
-    
-    today = timezone.localdate()
-    streaks_map = {}
-    for uid, dates in user_dates.items():
-        curr = today
-        streak = 0
-        while curr in dates:
-            streak += 1
-            curr = curr - timedelta(days=1)
-        streaks_map[uid] = streak
+    if q:
+        tasks = tasks.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
+        reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
-    role_streaks = []
+    # --- Pre-calculate Lead Times (Optimization) ---
+    completed_tasks_iter = tasks.filter(status='completed', completed_at__isnull=False).select_related('project', 'user__profile')
     
-    # Optimization: Fetch all users' roles in one query
-    user_roles = list(User.objects.filter(profile__position__isnull=False).values('id', 'profile__position'))
+    project_durations = defaultdict(list)
+    role_durations = defaultdict(list)
+    user_durations = defaultdict(list)
     
-    # Group user IDs by role
-    role_users_map = {}
-    for item in user_roles:
-        r = item['profile__position']
-        role_users_map.setdefault(r, []).append(item['id'])
+    for t in completed_tasks_iter:
+        if t.completed_at and t.created_at:
+            duration = (t.completed_at - t.created_at).total_seconds() / 3600
+            if t.project and t.project.name:
+                project_durations[t.project.name].append(duration)
+            if hasattr(t.user, 'profile') and t.user.profile.position:
+                role_durations[t.user.profile.position].append(duration)
+            if t.user.username:
+                user_durations[t.user.username].append(duration)
 
-    for role_key, role_label in Profile.ROLE_CHOICES:
-        uids = role_users_map.get(role_key, [])
-        values = [streaks_map.get(uid, 0) for uid in uids] or [0]
-        avg_streak = sum(values) / len(values) if values else 0
-        role_streaks.append({
-            'role': role_key,
-            'role_label': role_label,
-            'avg_streak': round(avg_streak, 1),
-            'max_streak': max(values) if values else 0,
-        })
-
-    # Overall Stats
-    overall_agg = tasks_qs.aggregate(
+    # --- 1. Project Stats ---
+    project_stats = []
+    project_metrics = tasks.values('project__name').annotate(
         total=Count('id'),
         completed=Count('id', filter=Q(status='completed')),
         overdue=Count('id', filter=Q(status='overdue')),
-        on_time=Count('id', filter=Q(status='completed', completed_at__lte=F('due_at'))),
-    )
+        # lead_time=Avg(F('completed_at') - F('created_at'), filter=Q(status='completed')) # SQLite limitation for Avg Duration
+    ).order_by('-total')
+
+    # Calculate lead times in python to support all DBs safely or use complex DB functions
+    # For simplicity and compatibility, we'll do aggregation here or improve later
+    # Let's do a separate query for lead times to avoid complex grouping issues
     
-    # Calculate simple lead time avg (ignoring extreme outliers if we wanted, but keeping simple for now)
-    # Note: DB-level duration avg is tricky across backends. 
-    # If tasks_qs is not huge, we could calculate lead time for completed tasks here.
-    # But for "Optimized", we skip it or accept it might be heavy if we load all completed tasks.
-    # We'll skip lead time calculation for now to ensure performance.
+    for p in project_metrics:
+        total = p['total']
+        completed = p['completed']
+        overdue = p['overdue']
+        
+        # Calculate Lead Time (approximate for display)
+        # Use pre-calculated durations
+        durations = project_durations.get(p['project__name'], [])
+        
+        lead_time_avg = statistics.mean(durations) if durations else None
+        lead_time_p50 = statistics.median(durations) if durations else None
+
+        project_stats.append({
+            'project': p['project__name'],
+            'total': total,
+            'completed': completed,
+            'overdue': overdue,
+            'completion_rate': (completed / total * 100) if total else 0,
+            'overdue_rate': (overdue / total * 100) if total else 0,
+            'sla_on_time_rate': 0, # Placeholder
+            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
+        })
+
+    # --- 2. Role Stats ---
+    role_stats = []
+    role_metrics = tasks.values('user__profile__position').annotate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        overdue=Count('id', filter=Q(status='overdue'))
+    ).order_by('-total')
     
-    result = {
+    role_map = dict(Profile.ROLE_CHOICES)
+    
+    for r in role_metrics:
+        role_code = r['user__profile__position']
+        if not role_code: continue
+        
+        total = r['total']
+        completed = r['completed']
+        overdue = r['overdue']
+        
+        # Lead time per role
+        durations = role_durations.get(role_code, [])
+
+        lead_time_avg = statistics.mean(durations) if durations else None
+        lead_time_p50 = statistics.median(durations) if durations else None
+
+        role_stats.append({
+            'role_label': role_map.get(role_code, role_code),
+            'total': total,
+            'completed': completed,
+            'overdue': overdue,
+            'completion_rate': (completed / total * 100) if total else 0,
+            'overdue_rate': (overdue / total * 100) if total else 0,
+            'sla_on_time_rate': 0, # Placeholder
+            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
+        })
+
+    # --- 3. User Stats ---
+    user_stats = []
+    user_metrics = tasks.values('user__username', 'user__first_name', 'user__last_name').annotate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        overdue=Count('id', filter=Q(status='overdue'))
+    ).order_by('-total')[:50] # Top 50 users
+
+    for u in user_metrics:
+        total = u['total']
+        completed = u['completed']
+        overdue = u['overdue']
+        
+        full_name = f"{u['user__first_name']} {u['user__last_name']}".strip() or u['user__username']
+        
+        # Lead time per user (can be expensive, limit scope if needed)
+        durations = user_durations.get(u['user__username'], [])
+
+        lead_time_avg = statistics.mean(durations) if durations else None
+        lead_time_p50 = statistics.median(durations) if durations else None
+
+        user_stats.append({
+            'user_label': full_name,
+            'total': total,
+            'completed': completed,
+            'overdue': overdue,
+            'completion_rate': (completed / total * 100) if total else 0,
+            'overdue_rate': (overdue / total * 100) if total else 0,
+            'sla_on_time_rate': 0, # Placeholder
+            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
+        })
+        
+    # --- 4. Streak Stats (Placeholder logic) ---
+    role_streaks = []
+    # Implementation of streaks requires complex daily analysis, keeping it simple or empty for now
+
+    # --- 5. Overall Stats ---
+    overall_total = tasks.count()
+    overall_overdue = tasks.filter(status='overdue').count()
+    
+    completed_qs = tasks.filter(status='completed')
+    completed_count = completed_qs.count()
+    
+    if completed_count > 0:
+        # On time: completed_at <= due_at OR due_at is NULL
+        # Note: In some DBs F() with NULL might need care, but Django handles it usually.
+        # If due_at is None, we assume on time (or irrelevant to SLA).
+        on_time_count = completed_qs.filter(
+            Q(due_at__isnull=True) | Q(completed_at__lte=F('due_at'))
+        ).count()
+        overall_sla_on_time_rate = (on_time_count / completed_count) * 100
+    else:
+        overall_sla_on_time_rate = 0
+
+    # Calculate Overall Lead Time
+    completed_tasks_durations = []
+    # Reuse completed_qs but we need the times.
+    # We can fetch just the timestamps to minimize memory usage
+    completed_times = completed_qs.filter(completed_at__isnull=False, created_at__isnull=False).values_list('created_at', 'completed_at')
+    
+    for start, end in completed_times:
+        if start and end:
+            completed_tasks_durations.append((end - start).total_seconds() / 3600)
+            
+    overall_lead_avg = statistics.mean(completed_tasks_durations) if completed_tasks_durations else None
+    overall_lead_p50 = statistics.median(completed_tasks_durations) if completed_tasks_durations else None
+
+    return {
         'project_stats': project_stats,
         'role_stats': role_stats,
-        'trend': trend,
-        'generated_at': generated_at,
         'user_stats': user_stats,
         'role_streaks': role_streaks,
-        'overall_total': overall_agg['total'],
-        'overall_completed': overall_agg['completed'],
-        'overall_overdue': overall_agg['overdue'],
-        'overall_sla_on_time_rate': (overall_agg['on_time'] / overall_agg['completed'] * 100) if overall_agg['completed'] else 0,
-        'overall_lead_avg': 0, # Placeholder
-        'overall_lead_p50': 0, # Placeholder
+        'overall_total': overall_total,
+        'overall_overdue': overall_overdue,
+        'overall_sla_on_time_rate': round(overall_sla_on_time_rate, 1),
+        'overall_lead_avg': round(overall_lead_avg, 1) if overall_lead_avg is not None else None,
+        'overall_lead_p50': round(overall_lead_p50, 1) if overall_lead_p50 is not None else None,
     }
-    
-    cache.set(cache_key, result, 600)
-    return result
-
 
 def get_advanced_report_data(project_id=None):
     """
-    Generate data for Gantt, Burndown, and Cumulative Flow diagrams.
+    Get data for advanced reporting charts (Gantt, Burndown, CFD).
     """
-    tasks_qs = Task.objects.select_related('user', 'project').all()
+    User = get_user_model()
+    
+    tasks = Task.objects.all()
     if project_id:
-        tasks_qs = tasks_qs.filter(project_id=project_id)
+        tasks = tasks.filter(project_id=project_id)
+        
+    # --- 1. Gantt Data ---
+    # Prepare tasks for Gantt chart
+    gantt_data = []
+    gantt_tasks = tasks.select_related('user').order_by('created_at')[:100] # Limit for performance
     
-    # 1. Gantt Data
-    gantt_tasks = []
-    for t in tasks_qs:
+    for t in gantt_tasks:
         start = t.created_at
-        end = t.due_at or t.completed_at or (t.created_at + timedelta(days=1))
+        end = t.completed_at or t.due_at or (start + timezone.timedelta(days=2)) # Fallback end
+        
+        # Ensure end is after start
         if end < start:
-            end = start + timedelta(hours=1)
+            end = start + timezone.timedelta(hours=1)
             
-        gantt_tasks.append({
-            'title': t.title,
-            'assignee': t.user.get_full_name() or t.user.username if t.user else 'Unassigned',
-            'project': t.project.name if t.project else 'No Project',
-            'status': t.status,
-            'start_date': start.isoformat(),
-            'due_date': end.isoformat(),
+        progress = 100 if t.status == 'completed' else (50 if t.status == 'in_progress' else 0)
+        
+        gantt_data.append({
+            'id': str(t.id),
+            'name': t.title,
+            'start': start.strftime('%Y-%m-%d'),
+            'end': end.strftime('%Y-%m-%d'),
+            'progress': progress,
+            'dependencies': None, # Add dependency logic if model supports it
+            'custom_class': f'gantt-bar-{t.status}' 
         })
 
-    # 2. Timeline setup for Burndown & CFD
-    if not tasks_qs.exists():
-        return {'gantt': {'tasks': []}, 'burndown': {'data': []}, 'cfd': {'data': [], 'categories': []}}
+    # --- 2. Burndown Data ---
+    # Ideal line vs Actual remaining
+    # Simple approach: Count total tasks, subtract completed over time
+    
+    burndown_data = {'labels': [], 'ideal': [], 'actual': []}
+    
+    if tasks.exists():
+        earliest_task = tasks.order_by('created_at').first()
+        earliest = earliest_task.created_at.date() if earliest_task else timezone.now().date()
+        latest = timezone.now().date()
+        
+        # Create date range
+        date_range = []
+        curr = earliest
+        while curr <= latest:
+            date_range.append(curr)
+            curr += timezone.timedelta(days=1)
+            
+        # Limit points to avoid chart clutter (e.g. max 30 points)
+        if len(date_range) > 30:
+            step = len(date_range) // 30
+            date_range = date_range[::step]
+            
+        total_tasks_count = tasks.count()
+        
+        # Calculate Ideal: linear drop from Total to 0
+        days_span = (latest - earliest).days or 1
+        
+        for i, d in enumerate(date_range):
+            burndown_data['labels'].append(d.strftime('%Y-%m-%d'))
+            
+            # Ideal
+            ideal_val = max(0, total_tasks_count - (i * (total_tasks_count / len(date_range))))
+            burndown_data['ideal'].append(round(ideal_val, 1))
+            
+            # Actual: Total - Completed by date d
+            completed_count = tasks.filter(status='completed', completed_at__date__lte=d).count()
+            actual_remaining = total_tasks_count - completed_count
+            burndown_data['actual'].append(actual_remaining)
 
-    earliest = tasks_qs.aggregate(min_date=Min('created_at'))['min_date']
-    if earliest:
-        earliest = earliest.date()
-    else:
-        earliest = timezone.localdate()
+    # --- 3. CFD Data ---
+    # Cumulative Flow Diagram
     
-    latest = timezone.localdate() # Up to today
-    
-    # Prepare timeline
-    timeline_dates = []
-    curr = earliest
-    while curr <= latest:
-        timeline_dates.append(curr)
-        curr += timedelta(days=1)
+    cfd_data = {'labels': [], 'datasets': []}
+    if tasks.exists() and burndown_data['labels']:
+        cfd_data['labels'] = burndown_data['labels']
         
-    # Pre-fetch needed fields to memory to avoid N+1 in loop (assuming reasonable dataset size)
-    # For very large datasets, this should be done with DB aggregation or window functions.
-    task_events = []
-    for t in tasks_qs:
-        created = t.created_at.date()
-        completed = t.completed_at.date() if t.status == 'completed' and t.completed_at else None
-        task_events.append({'created': created, 'completed': completed})
-
-    # 3. Burndown & CFD Calculation
-    burndown_data = []
-    cfd_data = {
-        'dates': [d.isoformat() for d in timeline_dates],
-        'total': [],
-        'completed': [],
-        'in_progress': [] # Derived: Total - Completed
-    }
-    
-    for d in timeline_dates:
-        # Count tasks existing on this date
-        total_scope = sum(1 for t in task_events if t['created'] <= d)
-        completed_count = sum(1 for t in task_events if t['completed'] and t['completed'] <= d)
-        remaining = total_scope - completed_count
+        # Reuse date_range logic roughly or re-parse from labels
+        # Just reuse the logic:
+        earliest_task = tasks.order_by('created_at').first()
+        earliest = earliest_task.created_at.date() if earliest_task else timezone.now().date()
+        latest = timezone.now().date()
         
-        burndown_data.append({
-            'date': d.isoformat(),
-            'remaining_tasks': remaining
-        })
+        date_range = []
+        curr = earliest
+        while curr <= latest:
+            date_range.append(curr)
+            curr += timezone.timedelta(days=1)
+            
+        if len(date_range) > 30:
+            step = len(date_range) // 30
+            date_range = date_range[::step]
         
-        cfd_data['total'].append(total_scope)
-        cfd_data['completed'].append(completed_count)
-        cfd_data['in_progress'].append(remaining)
+        pending_data = []
+        completed_data = []
+        
+        for d in date_range:
+            # Snapshot at end of day d
+            # Completed
+            comp = tasks.filter(status='completed', completed_at__date__lte=d).count()
+            completed_data.append(comp)
+            
+            # Todo: Created by d - Completed
+            created_by_d = tasks.filter(created_at__date__lte=d).count()
+            todo = created_by_d - comp
+            
+            pending_data.append(todo)
+            
+        cfd_data['datasets'] = [
+            {'name': '待处理 / To Do', 'data': pending_data},
+            {'name': '已完成 / Done', 'data': completed_data},
+        ]
 
     return {
-        'gantt': {'tasks': gantt_tasks},
-        'burndown': {'data': burndown_data, 'project_name': ''}, # Project name handled in view
+        'gantt': gantt_data,
+        'burndown': burndown_data,
         'cfd': cfd_data
     }

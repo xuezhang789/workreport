@@ -400,7 +400,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
@@ -581,6 +581,7 @@
                             <th style="text-align: center;">完成</th>
                             <th>完成率</th>
                             <th style="text-align: center;">逾期</th>
+                            <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -600,6 +601,9 @@
                                 </div>
                             </td>
                             <td style="text-align: center;" class="{% if row.overdue > 0 %}text-danger{% endif %}">{{ row.overdue }}</td>
+                            <td style="text-align: center;">
+                                <span title="Median: {{ row.lead_time_p50|default:'-' }}h">Avg: {{ row.lead_time_avg|default:'-' }}</span>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -625,6 +629,7 @@
                             <th style="text-align: center;">完成</th>
                             <th>完成率</th>
                             <th style="text-align: center;">逾期</th>
+                            <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -642,6 +647,9 @@
                                 </div>
                             </td>
                             <td style="text-align: center;" class="{% if row.overdue > 0 %}text-danger{% endif %}">{{ row.overdue }}</td>
+                            <td style="text-align: center;">
+                                <span title="Median: {{ row.lead_time_p50|default:'-' }}h">Avg: {{ row.lead_time_avg|default:'-' }}</span>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -669,6 +677,7 @@
                         <th>完成率</th>
                         <th style="text-align: center;">逾期</th>
                         <th style="text-align: center;">逾期率</th>
+                        <th style="text-align: center;">Lead Time (h)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -694,6 +703,9 @@
                         </td>
                         <td style="text-align: center;" class="{% if row.overdue > 0 %}text-danger{% endif %}">{{ row.overdue }}</td>
                         <td style="text-align: center;">{{ row.overdue_rate|floatformat:1 }}%</td>
+                        <td style="text-align: center;">
+                            <span title="Median: {{ row.lead_time_p50|default:'-' }}h">Avg: {{ row.lead_time_avg|default:'-' }}</span>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

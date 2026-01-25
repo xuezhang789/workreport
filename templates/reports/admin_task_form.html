@@ -5,7 +5,7 @@
 <style>
     /* --- Design System (Consistent with Admin Pages) --- */
     .page-container {
-        max-width: 1200px;
+        max-width: 1600px;
         margin: 0 auto;
         padding: 24px;
     }
@@ -48,32 +48,35 @@
 
     .form-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 24px;
         margin-bottom: 24px;
     }
 
     .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         margin-bottom: 20px;
     }
 
     .form-label {
-        display: block;
-        font-size: 14px;
         font-weight: 600;
+        font-size: 14px;
         color: var(--text-main);
-        margin-bottom: 8px;
+        display: block;
+        margin-bottom: 0;
     }
 
     .form-input, .form-select, .form-textarea {
         width: 100%;
-        padding: 12px 16px;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
         font-size: 14px;
-        transition: all 0.2s ease-in-out;
-        background-color: #f8fafc;
         color: var(--text-main);
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background-color: #fff;
     }
 
     .form-input:hover, .form-select:hover, .form-textarea:hover {
@@ -82,50 +85,51 @@
     }
 
     .form-input:focus, .form-select:focus, .form-textarea:focus {
-        background-color: #fff;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        background-color: #fff;
     }
 
     .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        padding: 12px 24px;
+        padding: 10px 20px;
         border-radius: 8px;
-        font-size: 14px;
         font-weight: 600;
+        font-size: 14px;
         cursor: pointer;
-        text-decoration: none;
-        transition: all 0.3s ease-in-out;
+        transition: all 0.2s;
         border: 1px solid transparent;
-        line-height: 1.5;
+        line-height: 1;
+        gap: 8px;
+        text-decoration: none;
     }
 
     .btn-primary {
-        background: var(--primary);
+        background-color: var(--primary);
         color: white;
     }
 
     .btn-primary:hover {
-        background-color: #1e40af; /* Darker blue for better contrast */
-        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
-        transform: translateY(-2px);
-    }
-    
-    .btn-secondary {
-        background: white;
-        color: var(--text-main);
-        border: 1px solid var(--border-color);
-    }
-    
-    .btn-secondary:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background-color: var(--primary-hover);
         transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-secondary {
+        background-color: #fff;
+        border-color: var(--border-color);
+        color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover {
+        background-color: #f8fafc;
+        border-color: #cbd5e1;
+        color: var(--text-main);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .btn-ghost {
@@ -183,9 +187,9 @@
 
     /* File Upload Styles (Synced with Project Form) */
     .file-upload-container {
-        border: 2px dashed #e2e8f0;
+        border: 2px dashed var(--border-color);
         border-radius: 12px;
-        padding: 24px;
+        padding: 32px;
         text-align: center;
         background: #f8fafc;
         cursor: pointer;
@@ -195,7 +199,7 @@
 
     .file-upload-container:hover, .file-upload-container.drag-over {
         border-color: var(--primary);
-        background: #eff6ff;
+        background: rgba(37, 99, 235, 0.05);
     }
 
     .upload-icon {

@@ -13,8 +13,8 @@
         
         <!-- 核心功能 - 日常工作 -->
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'daily_report_create' %}active{% endif %}" href="{% url 'reports:daily_report_create' %}">填写日报 / New Report</a>
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'my_reports' %}active{% endif %}" href="{% url 'reports:my_reports' %}">我的日报 / My Reports</a>
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}" href="{% url 'reports:task_list' %}">我的任务 / My Tasks</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'my_reports' %}active{% endif %}" href="{% url 'reports:my_reports' %}">我的日报 / My Reports</a>
         
         <!-- 项目管理 -->
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'project_list' %}active{% endif %}" href="{% url 'reports:project_list' %}">项目列表 / Projects</a>
@@ -30,11 +30,11 @@
                     </button>
                     <div class="admin-menu" id="admin-menu">
                         {% if can_view_admin_project %}
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'advanced_reporting' %}active{% endif %}" href="{% url 'reports:advanced_reporting' %}">高级报表 / Advanced Reports</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">日报管理 / Reports Admin</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'advanced_reporting' %}active{% endif %}" href="{% url 'reports:advanced_reporting' %}">高级报表 / Advanced Reports</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
                         {% endif %}
                         {% if can_view_admin_global %}
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>

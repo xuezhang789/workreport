@@ -99,13 +99,13 @@
 
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<div class="page-container">
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
     <!-- Header -->
-    <div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
-            <h1 class="page-title">任务统计 / Task Stats</h1>
-            <p class="page-subtitle">任务完成情况、日报提交趋势与 SLA 监控</p>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">任务统计 / Task Stats</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">任务完成情况、日报提交趋势与 SLA 监控</p>
         </div>
         <div class="page-actions">
             <button class="btn btn-secondary" onclick="location.reload()">
@@ -116,31 +116,31 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="filter-section">
+    <div class="filter-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm);">
         <form method="get" id="filterForm">
-            <div class="filter-grid">
+            <div class="filter-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end;">
                 <!-- Name Search -->
-                <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label" for="search">
+                <div class="form-group" style="flex: 2; min-width: 240px; display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="search" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         姓名搜索 / Name Search
                     </label>
-                    <div class="search-wrapper">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <div class="search-wrapper" style="position: relative;">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted); pointer-events: none;">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="search" name="q" class="search-input" placeholder="输入姓名..." value="{{ request.GET.q }}">
+                        <input type="text" id="search" name="q" class="form-input" placeholder="输入姓名..." value="{{ request.GET.q }}" style="padding-left: 36px; width: 100%;">
                     </div>
                 </div>
 
                 <!-- Department / Role -->
-                <div class="form-group">
-                    <label class="form-label" for="role">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="role" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         部门 / Department
                     </label>
-                    <select id="role" name="role" class="form-select">
+                    <select id="role" name="role" class="form-select" style="width: 100%;">
                         <option value="">所有部门</option>
                         <option value="dev" {% if request.GET.role == 'dev' %}selected{% endif %}>开发 / Developer</option>
                         <option value="qa" {% if request.GET.role == 'qa' %}selected{% endif %}>测试 / QA</option>
@@ -152,28 +152,28 @@
                 </div>
 
                 <!-- Date Range -->
-                <div class="form-group">
-                    <label class="form-label" for="start">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="start" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         开始日期 / Start
                     </label>
-                    <input type="date" id="start" name="start" class="form-input" value="{{ start|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
+                    <input type="date" id="start" name="start" class="form-input" value="{{ start|date:'Y-m-d'|default:today|date:'Y-m-d' }}" style="width: 100%;">
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="end">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="end" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         结束日期 / End
                     </label>
-                    <input type="date" id="end" name="end" class="form-input" value="{{ end|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
+                    <input type="date" id="end" name="end" class="form-input" value="{{ end|date:'Y-m-d'|default:today|date:'Y-m-d' }}" style="width: 100%;">
                 </div>
 
                 <!-- KPI Filter (Placeholder) -->
-                <div class="form-group">
-                    <label class="form-label" for="kpi">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="kpi" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                         关键指标 / KPI
                     </label>
-                    <select id="kpi" name="kpi" class="form-select">
+                    <select id="kpi" name="kpi" class="form-select" style="width: 100%;">
                         <option value="">默认排序</option>
                         <option value="completion_desc" {% if request.GET.kpi == 'completion_desc' %}selected{% endif %}>完成率: 高 -> 低</option>
                         <option value="completion_asc" {% if request.GET.kpi == 'completion_asc' %}selected{% endif %}>完成率: 低 -> 高</option>
@@ -181,12 +181,12 @@
                 </div>
                 
                 <!-- Project Filter -->
-                <div class="form-group">
-                    <label class="form-label" for="project">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="form-label" for="project" style="font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         项目 / Project
                     </label>
-                    <select id="project" name="project" class="form-select">
+                    <select id="project" name="project" class="form-select" style="width: 100%;">
                         <option value="">所有项目</option>
                         {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
@@ -195,7 +195,7 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="filter-actions">
+                <div class="filter-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; grid-column: 1 / -1;">
                     <a href="{% url 'reports:admin_task_stats' %}" class="btn btn-ghost">重置</a>
                     <button type="submit" class="btn btn-primary" onclick="showLoading()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -369,31 +369,13 @@
 
     <!-- 3. Charts -->
     <div class="dashboard-grid">
-        <div class="col-span-8 card">
+        <div class="col-span-12 card">
             <div class="card-header">
-                <h3 class="card-title">日报提交趋势 (近14天)</h3>
+                <h3 class="card-title">趋势分析：日报提交 vs 任务完成 (近14天)</h3>
             </div>
             <div class="card-body">
-                <div class="chart-container">
+                <div class="chart-container" style="height: 300px;">
                     <canvas id="trendChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-span-4 card">
-            <div class="card-header">
-                <h3 class="card-title">角色分布</h3>
-            </div>
-            <div class="card-body">
-                <div style="height: 220px; position: relative;">
-                    <canvas id="roleChart"></canvas>
-                </div>
-                <div class="chart-legend">
-                    {% for role, count in role_counts|slice:":4" %}
-                    <div class="legend-item">
-                        <span class="legend-dot" style="background-color: var(--chart-color-{{ forloop.counter }});"></span>
-                        {{ role }} ({{ count }})
-                    </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -461,6 +443,7 @@
                             <th onclick="sortTable('projectTable', 2)" style="text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
                             <th style="width: 200px;">进度</th>
                             <th onclick="sortTable('projectTable', 4)" style="text-align: center;">完成率 <span class="sort-icon">⇅</span></th>
+                            <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -481,6 +464,9 @@
                             </td>
                             <td style="text-align: center;">
                                 <span style="font-weight: 600; color: var(--text-main);">{{ row.completion_rate|floatformat:0 }}%</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span title="Median: {{ row.lead_time_p50|default:'-' }}h" style="font-family: monospace;">{{ row.lead_time_avg|default:'-' }}</span>
                             </td>
                         </tr>
                         {% endfor %}
@@ -504,6 +490,7 @@
                             <th onclick="sortTable('userTable', 2)" style="text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
                             <th style="width: 200px;">完成质量</th>
                             <th onclick="sortTable('userTable', 4)" style="text-align: center;">逾期数 <span class="sort-icon">⇅</span></th>
+                            <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -537,6 +524,9 @@
                                     <span style="color: var(--text-muted);">-</span>
                                 {% endif %}
                             </td>
+                            <td style="text-align: center;">
+                                <span title="Median: {{ row.lead_time_p50|default:'-' }}h" style="font-family: monospace;">{{ row.lead_time_avg|default:'-' }}</span>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -550,7 +540,12 @@
 
 </div>
 
-<script>
+    <!-- Data for Charts -->
+    {{ report_trend.labels|json_script:"trend-labels" }}
+    {{ report_trend.data|json_script:"report-trend-data" }}
+    {{ task_trend.data|json_script:"task-trend-data" }}
+
+    <script>
     // --- Tabs Logic ---
     function switchTab(tabName) {
         // Update Buttons
@@ -612,89 +607,98 @@
     }
 
     // --- Chart Colors ---
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-    document.documentElement.style.setProperty('--chart-color-1', colors[0]);
-    document.documentElement.style.setProperty('--chart-color-2', colors[1]);
-    document.documentElement.style.setProperty('--chart-color-3', colors[2]);
-    document.documentElement.style.setProperty('--chart-color-4', colors[3]);
+    // const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    // colors.forEach((color, index) => {
+    //    document.documentElement.style.setProperty(`--chart-color-${index + 1}`, color);
+    // });
 
     document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js not loaded');
+            return;
+        }
+
+        // Helper to safely get context
+        const getCtx = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.getContext('2d') : null;
+        };
+
         // Trend Chart
-        const ctxTrend = document.getElementById('trendChart').getContext('2d');
-        let gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+        const ctxTrend = getCtx('trendChart');
+        if (ctxTrend) {
+            const trendLabels = JSON.parse(document.getElementById('trend-labels').textContent);
+            const reportTrendData = JSON.parse(document.getElementById('report-trend-data').textContent);
+            const taskTrendData = JSON.parse(document.getElementById('task-trend-data').textContent);
 
-        new Chart(ctxTrend, {
-            type: 'line',
-            data: {
-                labels: {{ report_trend.labels|safe }},
-                datasets: [{
-                    label: '日报提交',
-                    data: {{ report_trend.data|safe }},
-                    borderColor: '#3b82f6',
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#3b82f6',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#1e293b',
-                        bodyColor: '#475569',
-                        borderColor: '#e2e8f0',
-                        borderWidth: 1,
-                        padding: 10
-                    }
+            new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [
+                        {
+                            label: '日报提交',
+                            data: reportTrendData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#3b82f6',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: '任务完成',
+                            data: taskTrendData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#10b981',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
                 },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { borderDash: [4, 4], color: '#f1f5f9' },
-                        ticks: { font: { size: 11 } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 10, usePointStyle: true }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            titleColor: '#1e293b',
+                            bodyColor: '#475569',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 10
+                        }
                     },
-                    x: { 
-                        grid: { display: false },
-                        ticks: { font: { size: 11 } }
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { borderDash: [4, 4], color: '#f1f5f9' },
+                            ticks: { font: { size: 11 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
+                        }
                     }
                 }
-            }
-        });
-
-        // Role Chart
-        const ctxRole = document.getElementById('roleChart').getContext('2d');
-        new Chart(ctxRole, {
-            type: 'doughnut',
-            data: {
-                labels: [{% for role, c in role_counts %}"{{ role }}",{% endfor %}],
-                datasets: [{
-                    data: [{% for role, c in role_counts %}{{ c }},{% endfor %}],
-                    backgroundColor: colors,
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    cutout: '75%'
-                }
-            }
-        });
+            });
+        }
 
         // Restore active tab
         const savedTab = localStorage.getItem('admin_stats_tab');
