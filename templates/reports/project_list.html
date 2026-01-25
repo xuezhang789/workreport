@@ -456,8 +456,8 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">项目总览</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 个项目</p>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">项目总览 / Projects</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 个项目 / Total {{ total_count }} projects</p>
         </div>
         {% if request.user.is_staff %}
             <a href="{% url 'reports:project_create' %}" class="btn btn-primary">
@@ -465,7 +465,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                新建项目
+                新建项目 / New Project
             </a>
         {% endif %}
     </div>
@@ -475,9 +475,9 @@
         <form method="get" id="filterForm">
             <div class="filter-grid">
                 <div class="form-group" style="flex: 2; min-width: 240px;">
-                    <label class="form-label" for="q">搜索</label>
+                    <label class="form-label" for="q">搜索 / Search</label>
                     <div style="position: relative;">
-                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="项目名称、代码或描述..." value="{{ q }}">
+                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="项目名称、代码或描述... / Name, code or description..." value="{{ q }}">
                         <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -486,9 +486,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="phase">当前阶段</label>
+                    <label class="form-label" for="phase">当前阶段 / Phase</label>
                     <select id="phase" name="phase" class="form-select">
-                        <option value="">全部阶段</option>
+                        <option value="">全部阶段 / All Phases</option>
                         {% for p in phases %}
                             <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
                         {% endfor %}
@@ -496,24 +496,24 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="owner">负责人</label>
-                    <input type="text" id="owner" name="owner" class="form-input" placeholder="输入姓名..." value="{{ owner }}">
+                    <label class="form-label" for="owner">负责人 / Owner</label>
+                    <input type="text" id="owner" name="owner" class="form-input" placeholder="输入姓名... / Enter name..." value="{{ owner }}">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="sort">排序方式</label>
+                    <label class="form-label" for="sort">排序方式 / Sort By</label>
                     <select id="sort" name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
-                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
-                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>项目名称 (A-Z)</option>
-                        <option value="status" {% if sort_by == 'status' %}selected{% endif %}>状态 (活跃优先)</option>
-                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧) / Created (Newest)</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新) / Created (Oldest)</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>项目名称 (A-Z) / Name (A-Z)</option>
+                        <option value="status" {% if sort_by == 'status' %}selected{% endif %}>状态 (活跃优先) / Status (Active First)</option>
+                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低) / Progress (High-Low)</option>
                     </select>
                 </div>
             </div>
 
             <div class="filter-actions">
-                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">重置 / Reset</a>
                 {% if request.user.is_staff %}
                     <a href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -521,18 +521,39 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        导出
+                        导出 / Export
                     </a>
                 {% endif %}
-                <button type="submit" class="btn btn-secondary">
+                <button type="submit" class="btn btn-secondary" id="filterBtn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
-                    筛选
+                    <span>筛选 / Filter</span>
                 </button>
             </div>
         </form>
     </div>
+
+    <script>
+        document.getElementById('filterForm').addEventListener('submit', function() {
+            const btn = document.getElementById('filterBtn');
+            const span = btn.querySelector('span');
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            span.textContent = '加载中...';
+            
+            // Add spinner
+            const svg = btn.querySelector('svg');
+            if(svg) {
+                svg.innerHTML = '<path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="2" stroke-linecap="round"/>';
+                svg.classList.add('animate-spin');
+            }
+        });
+    </script>
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+    </style>
 
     <!-- Project Grid -->
     {% if projects %}
@@ -554,7 +575,7 @@
 
                         <div class="progress-section">
                             <div class="progress-labels">
-                                <span>总体进度</span>
+                                <span>总体进度 / Overall Progress</span>
                                 <span>{{ p.overall_progress }}%</span>
                             </div>
                             <div class="progress-track">
@@ -563,37 +584,37 @@
                         </div>
 
                         <div class="card-meta-grid">
-                            <div class="meta-item" title="负责人">
+                            <div class="meta-item" title="负责人 / Owner">
                                 <div class="avatar-circle">
                                     {{ p.owner.username|slice:":1"|upper|default:"?" }}
                                 </div>
                                 <span style="font-weight: 500;">{{ p.owner.get_full_name|default:p.owner.username|default:"未分配" }}</span>
                             </div>
-                            <div class="meta-item" title="团队成员">
+                            <div class="meta-item" title="团队成员 / Team Members">
                                 <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                <span>{{ p.member_count }} 成员</span>
+                                <span>{{ p.member_count }} 成员 / Members</span>
                             </div>
-                            <div class="meta-item" title="日报数">
+                            <div class="meta-item" title="日报数 / Reports">
                                 <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                <span>{{ p.report_count }} 日报</span>
+                                <span>{{ p.report_count }} 日报 / Reports</span>
                             </div>
-                            <div class="meta-item" title="最后更新">
+                            <div class="meta-item" title="最后更新 / Last Updated">
                                 <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <span>最近活跃</span>
+                                <span>最近活跃 / Recently Active</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="card-footer" onclick="event.stopPropagation()">
                         <div class="footer-dates">
-                            <span>开始: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
-                            <span>结束: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
+                            <span>开始 / Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
+                            <span>结束 / End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
                         </div>
                         <div class="card-actions">
                             {% if p.id in manageable_ids %}
-                                <a href="{% url 'reports:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑</a>
+                                <a href="{% url 'reports:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑 / Edit</a>
                             {% endif %}
-                            <a href="{% url 'reports:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入</a>
+                            <a href="{% url 'reports:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入 / Enter</a>
                         </div>
                     </div>
                 </article>
@@ -603,13 +624,13 @@
         <!-- Pagination -->
         <div class="pagination-container">
             <div class="pagination-info">
-                <span>共 {{ total_count }} 个项目</span>
-                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+                <span>共 {{ total_count }} 个项目 / Total {{ total_count }} projects</span>
+                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条 / Showing {{ page_obj.start_index }}-{{ page_obj.end_index }}</span>
                 <span>
                     <select class="per-page-select" onchange="const url = new URL(window.location); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location = url;">
-                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页</option>
-                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页</option>
-                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页</option>
+                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页 / 12 per page</option>
+                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页 / 24 per page</option>
+                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页 / 48 per page</option>
                     </select>
                 </span>
             </div>
@@ -617,7 +638,7 @@
             {% if page_obj.has_other_pages %}
                 <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="上一页">
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="上一页 / Previous">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
@@ -639,7 +660,7 @@
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="下一页">
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="下一页 / Next">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
@@ -654,10 +675,10 @@
                 </div>
                 
                 <div class="jump-to-page">
-                    前往
+                    前往 / Go to
                     <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
                         onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
-                    页
+                    页 / Page
                 </div>
             {% endif %}
         </div>
@@ -668,12 +689,12 @@
             <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
             </svg>
-            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目</h3>
-            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。</p>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目 / No projects found</h3>
+            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。<br>Try adjusting filters or create a new project.</p>
             {% if request.user.is_staff %}
-                <a href="{% url 'reports:project_create' %}" class="btn btn-primary">新建项目</a>
+                <a href="{% url 'reports:project_create' %}" class="btn btn-primary">新建项目 / New Project</a>
             {% else %}
-                <a href="{% url 'reports:project_list' %}" class="btn btn-secondary">清除筛选</a>
+                <a href="{% url 'reports:project_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
             {% endif %}
         </div>
     {% endif %}

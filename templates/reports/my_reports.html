@@ -385,15 +385,15 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">我的日报</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 份日报</p>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">我的日报 / My Reports</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 份日报 / Total {{ total_count }} reports</p>
         </div>
         <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            新建日报
+            新建日报 / New Report
         </a>
     </div>
 
@@ -402,9 +402,9 @@
         <form method="get" id="filterForm">
             <div class="filter-grid">
                 <div class="form-group" style="flex: 2;">
-                    <label class="form-label" for="q">搜索</label>
+                    <label class="form-label" for="q">搜索 / Search</label>
                     <div style="position: relative;">
-                        <input type="text" id="q" name="q" class="form-input" style="padding-left: 36px;" placeholder="搜索日报内容..." value="{{ q }}">
+                        <input type="text" id="q" name="q" class="form-input" style="padding-left: 36px;" placeholder="搜索日报内容... / Search content..." value="{{ q }}">
                         <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -413,7 +413,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="date_range">日期范围</label>
+                    <label class="form-label" for="date_range">日期范围 / Date Range</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date|date:'Y-m-d' }}">
                         <span style="align-self: center; color: var(--text-muted);">-</span>
@@ -422,9 +422,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="project">项目</label>
+                    <label class="form-label" for="project">项目 / Project</label>
                     <select id="project" name="project" class="form-select">
-                        <option value="">所有项目</option>
+                        <option value="">所有项目 / All Projects</option>
                         {% for p in projects %}
                             <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
                         {% endfor %}
@@ -432,30 +432,30 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="status">状态</label>
+                    <label class="form-label" for="status">状态 / Status</label>
                     <select id="status" name="status" class="form-select">
-                        <option value="">全部状态</option>
-                        <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>已提交</option>
-                        <option value="draft" {% if status == 'draft' %}selected{% endif %}>草稿</option>
+                        <option value="">全部状态 / All Status</option>
+                        <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>已提交 / Submitted</option>
+                        <option value="draft" {% if status == 'draft' %}selected{% endif %}>草稿 / Draft</option>
                     </select>
                 </div>
             </div>
 
             <div class="filter-actions">
-                <a href="{% url 'reports:my_reports' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:my_reports' %}" class="btn btn-ghost">重置 / Reset</a>
                 <a href="{% url 'reports:my_reports_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&project={{ project_id }}&role={{ role }}&status={{ status }}&q={{ q }}" class="btn btn-ghost" id="exportBtn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    导出
+                    导出 / Export
                 </a>
                 <button type="submit" class="btn btn-secondary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
-                    筛选
+                    筛选 / Filter
                 </button>
             </div>
         </form>
@@ -469,7 +469,7 @@
                     <div class="card-header">
                         <div>
                             <h3 class="report-date">{{ r.date|date:"Y年m月d日" }}</h3>
-                            <div class="report-meta">{{ r.date|date:"l" }} · {{ r.created_at|date:"H:i" }} 创建</div>
+                            <div class="report-meta">{{ r.date|date:"l" }} · {{ r.created_at|date:"H:i" }} 创建 / Created</div>
                         </div>
                         <span class="status-badge {% if r.status == 'draft' %}draft{% else %}submitted{% endif %}">
                             {{ r.get_status_display }}
@@ -487,13 +487,13 @@
                         {% if r.summary %}
                             <p class="summary-text">{{ r.summary }}</p>
                         {% else %}
-                            <p class="summary-text empty">（暂无摘要内容）</p>
+                            <p class="summary-text empty">（暂无摘要内容 / No summary content）</p>
                         {% endif %}
                     </div>
 
                     <div class="card-footer" onclick="event.stopPropagation()">
-                        <a href="{% url 'reports:report_edit' r.pk %}" class="btn btn-secondary btn-sm">编辑</a>
-                        <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-primary btn-sm">查看详情</a>
+                        <a href="{% url 'reports:report_edit' r.pk %}" class="btn btn-secondary btn-sm">编辑 / Edit</a>
+                        <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-primary btn-sm">查看详情 / Details</a>
                     </div>
                 </article>
             {% endfor %}
@@ -502,13 +502,13 @@
         <!-- Pagination -->
         <div class="pagination-container">
             <div class="pagination-info">
-                <span>共 {{ total_count }} 份日报</span>
-                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+                <span>共 {{ total_count }} 份日报 / Total {{ total_count }} reports</span>
+                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条 / Showing {{ page_obj.start_index }}-{{ page_obj.end_index }}</span>
                 <span>
                     <select class="per-page-select" onchange="const url = new URL(window.location); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location = url;">
-                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页</option>
-                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页</option>
-                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页</option>
+                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页 / 12 per page</option>
+                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页 / 24 per page</option>
+                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页 / 48 per page</option>
                     </select>
                 </span>
             </div>
@@ -516,7 +516,7 @@
             {% if page_obj.has_other_pages %}
                 <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="上一页">
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="上一页 / Previous">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
@@ -538,7 +538,7 @@
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="下一页">
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="下一页 / Next">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
@@ -553,10 +553,10 @@
                 </div>
                 
                 <div class="jump-to-page">
-                    前往
+                    前往 / Go to
                     <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
                         onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
-                    页
+                    页 / Page
                 </div>
             {% endif %}
         </div>
@@ -567,9 +567,9 @@
             <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无日报记录</h3>
-            <p style="margin-bottom: 24px;">还没有找到符合条件的日报，您可以尝试调整筛选条件或新建日报。</p>
-            <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary">新建日报</a>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无日报记录 / No reports found</h3>
+            <p style="margin-bottom: 24px;">还没有找到符合条件的日报，您可以尝试调整筛选条件或新建日报。<br>Try adjusting filters or create a new report.</p>
+            <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary">新建日报 / New Report</a>
         </div>
     {% endif %}
 
