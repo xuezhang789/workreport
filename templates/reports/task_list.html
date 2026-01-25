@@ -486,9 +486,9 @@
         <form method="get" id="filterForm">
             <div class="filter-grid">
                 <div class="form-group" style="flex: 2; min-width: 240px;">
-                    <label class="form-label" for="q">搜索</label>
+                    <label class="form-label" for="q">搜索 / Search</label>
                     <div style="position: relative;">
-                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="任务标题或内容..." value="{{ q }}">
+                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="任务标题或内容... / Task title or content..." value="{{ q }}">
                         <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -497,9 +497,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="project">项目</label>
+                    <label class="form-label" for="project">项目 / Project</label>
                     <select id="project" name="project" class="form-select">
-                        <option value="">所有项目</option>
+                        <option value="">所有项目 / All Projects</option>
                         {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
                         {% endfor %}
@@ -507,21 +507,21 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="status">状态</label>
+                    <label class="form-label" for="status">状态 / Status</label>
                     <select id="status" name="status" class="form-select">
-                        <option value="">所有状态</option>
-                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始</option>
-                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中</option>
-                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成</option>
-                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起</option>
-                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期</option>
+                        <option value="">所有状态 / All Status</option>
+                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
+                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
+                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
+                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
+                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="priority">优先级</label>
+                    <label class="form-label" for="priority">优先级 / Priority</label>
                     <select id="priority" name="priority" class="form-select">
-                        <option value="">所有优先级</option>
+                        <option value="">所有优先级 / All Priorities</option>
                         {% for p_val, p_label in priorities %}
                         <option value="{{ p_val }}" {% if priority == p_val %}selected{% endif %}>{{ p_label }}</option>
                         {% endfor %}
@@ -532,19 +532,19 @@
                      <label class="form-label">&nbsp;</label>
                      <label style="display: flex; align-items: center; gap: 8px; height: 42px; cursor: pointer;">
                         <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %} onchange="this.form.submit()">
-                        <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">仅显示紧急</span>
+                        <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">仅显示紧急 / Urgent Only</span>
                      </label>
                 </div>
 
                 <div class="form-group" style="flex: 0 0 auto; margin-left: auto;">
-                    <label class="form-label">SLA 阈值说明</label>
+                    <label class="form-label">SLA 阈值说明 / SLA Thresholds</label>
                     <div style="font-size: 11px; color: var(--text-secondary); display: flex; flex-direction: column; justify-content: center; height: 42px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span class="sla-badge sla-red" style="font-size: 10px; padding: 1px 6px;">紧急</span>
+                            <span class="sla-badge sla-red" style="font-size: 10px; padding: 1px 6px;">紧急 / Urgent</span>
                             <span>&lt; {{ sla_thresholds.red }}h</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-                            <span class="sla-badge sla-orange" style="font-size: 10px; padding: 1px 6px;">关注</span>
+                            <span class="sla-badge sla-orange" style="font-size: 10px; padding: 1px 6px;">关注 / Warning</span>
                             <span>&lt; {{ sla_thresholds.amber }}h</span>
                         </div>
                     </div>
@@ -552,20 +552,20 @@
             </div>
 
             <div class="filter-actions">
-                <a href="{% url 'reports:task_list' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:task_list' %}" class="btn btn-ghost">重置 / Reset</a>
                 <a href="{% url 'reports:task_export' %}?{{ request.GET.urlencode }}" class="btn btn-ghost">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    导出
+                    导出 / Export
                 </a>
                 <button type="submit" class="btn btn-secondary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
-                    筛选
+                    筛选 / Filter
                 </button>
             </div>
         </form>
@@ -652,9 +652,9 @@
             <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
-            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到任务</h3>
-            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者到项目中创建新任务。</p>
-            <a href="{% url 'reports:task_list' %}" class="btn btn-secondary">清除筛选</a>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到任务 / No tasks found</h3>
+            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者到项目中创建新任务。<br>Try adjusting filters or create a new task.</p>
+            <a href="{% url 'reports:task_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
         </div>
         {% endif %}
     </form>
@@ -663,8 +663,8 @@
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="pagination-container">
         <div class="pagination-info">
-            <span>共 {{ page_obj.paginator.count }} 个任务</span>
-            <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+            <span>共 {{ page_obj.paginator.count }} 个任务 / Total tasks</span>
+            <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条 / Showing {{ page_obj.start_index }}-{{ page_obj.end_index }}</span>
         </div>
 
         <div class="pagination-controls">
@@ -706,10 +706,10 @@
         </div>
         
         <div class="jump-to-page">
-            前往
+            前往 / Go to
             <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
                 onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
-            页
+            页 / Page
         </div>
     </div>
     {% endif %}
@@ -721,16 +721,16 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
-            已选择 <span id="selectedCount">0</span> 项
+            已选择 <span id="selectedCount">0</span> 项 / Selected <span id="selectedCount">0</span> items
         </div>
         <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.2);"></div>
         <button type="button" class="bulk-btn" onclick="submitBulkAction('complete')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            标记完成
+            标记完成 / Mark Complete
         </button>
         <button type="button" class="bulk-btn" onclick="submitBulkAction('reopen')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
-            重新打开
+            重新打开 / Reopen
         </button>
     </div>
 

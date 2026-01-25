@@ -398,9 +398,9 @@
             </div>
             <div class="stat-label">今日日报 / Today</div>
             {% if missing_today %}
-                <a href="{% url 'reports:daily_report_create' %}" class="stat-trend trend-down" style="text-decoration:none; margin-top: auto;">立即提交 &rarr;</a>
+                <a href="{% url 'reports:daily_report_create' %}" class="stat-trend trend-down" style="text-decoration:none; margin-top: auto;">立即提交 / Submit Now &rarr;</a>
             {% else %}
-                <div class="stat-trend trend-up" style="margin-top: auto;">保持优秀</div>
+                <div class="stat-trend trend-up" style="margin-top: auto;">保持优秀 / Keep it up</div>
             {% endif %}
         </div>
 
@@ -414,7 +414,7 @@
         <div class="stat-card" data-card="in_progress">
             <div class="stat-icon" style="color: var(--info);">🚀</div>
             <div class="stat-value">{{ task_stats.in_progress }}</div>
-            <div class="stat-label">进行中 / In Progress</div>
+            <div class="stat-label">进行中 / WIP</div>
         </div>
 
         <div class="stat-card" data-card="overdue">
@@ -508,11 +508,11 @@
                         <thead>
                             <tr>
                                 <th>项目 / Project</th>
-                                <th>总任务</th>
-                                <th>已完成</th>
-                                <th>进行中</th>
-                                <th>剩余</th>
-                                <th>进度</th>
+                                <th>总任务 / Total</th>
+                                <th>已完成 / Done</th>
+                                <th>进行中 / WIP</th>
+                                <th>剩余 / Left</th>
+                                <th>进度 / Progress</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -572,9 +572,9 @@
                                 </td>
                                 <td>
                                     {% if r.status == 'submitted' %}
-                                        <span class="status-badge badge-success">已提交</span>
+                                        <span class="status-badge badge-success">已提交 / Submitted</span>
                                     {% elif r.status == 'draft' %}
-                                        <span class="status-badge badge-warning">草稿</span>
+                                        <span class="status-badge badge-warning">草稿 / Draft</span>
                                     {% else %}
                                         <span class="status-badge badge-neutral">{{ r.get_status_display }}</span>
                                     {% endif %}
