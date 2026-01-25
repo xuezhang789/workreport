@@ -6,481 +6,108 @@
 {% block nav_header %}{% include "partials/nav.html" with nav_title="任务统计 / Task Stats" nav_subtitle="按项目与用户查看完成率与逾期率 / Completion & overdue by project/user" %}{% endblock %}
 
 {% block extra_styles %}
-    /* --- Shared Design System (Matched with Project List) --- */
-    :root {
-        --primary: #2563eb;
-        --primary-light: #eff6ff;
-            --primary-hover: #1d4ed8;
-            --text-main: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --bg-page: #f8fafc;
-            --bg-card: #ffffff;
-            --border-color: #e2e8f0;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
-            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    /* --- Page Specific Styles --- */
+    /* Derived from Performance Board */
+    
+    /* Summary Cards */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    .summary-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: #cbd5e1;
+    }
+    .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+    .summary-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .summary-icon {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+    }
+    .summary-value {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--text-main);
+        line-height: 1;
+        margin-bottom: 12px;
+    }
+    .summary-footer {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+        background: #f8fafc;
+        padding: 6px 10px;
+        border-radius: 6px;
+        width: fit-content;
+    }
+    
+    /* Icon Colors */
+    .icon-blue { background: #eff6ff; color: #2563eb; }
+    .icon-green { background: #dcfce7; color: #16a34a; }
+    .icon-orange { background: #ffedd5; color: #f97316; }
+    .icon-red { background: #fee2e2; color: #ef4444; }
+    .icon-cyan { background: #cffafe; color: #0891b2; }
 
-        body {
-            background-color: var(--bg-page);
-            color: var(--text-main);
-        }
+    /* Filter Bar Alignment - Moved to workreport.css */
+    /* Table Sticky Header & Fixed Height */
+    .table-container {
+        overflow-x: auto;
+        height: 500px; /* Fixed height for scroll */
+        overflow-y: auto;
+        background: #fff;
+    }
 
-        /* --- Filter Section --- */
-        .filter-section {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .filter-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .form-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .form-input, .form-select {
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 14px;
-            transition: var(--transition);
-            background-color: #fff;
-            width: 100%;
-        }
-
-        .form-input:focus, .form-select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-light);
-            outline: none;
-        }
-
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 16px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 16px;
-        }
-
-        /* --- Buttons --- */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: var(--transition);
-            border: 1px solid transparent;
-            line-height: 1.4;
-        }
-
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
-        .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
-
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
-
-        .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
-        .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
-
-        .btn-ghost { background: transparent; color: var(--text-secondary); }
-        .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
-        
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-danger:hover { background: #dc2626; }
-
-        /* --- Cards --- */
-        .content-card, .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            transition: var(--transition);
-        }
-        
-        .content-card:hover, .card:hover {
-            box-shadow: var(--shadow-md);
-            border-color: #cbd5e1;
-        }
-
-        .card-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(248, 250, 252, 0.5);
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-body {
-            padding: 20px;
-            flex: 1;
-        }
-        
-        .card-body.no-padding { padding: 0; }
-
-        /* --- Grid Layouts --- */
-        .dashboard-grid, .data-grid {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        .col-span-12 { grid-column: span 12; }
-        .col-span-8 { grid-column: span 8; }
-        .col-span-6 { grid-column: span 6; }
-        .col-span-4 { grid-column: span 4; }
-        .col-span-3 { grid-column: span 3; }
-
-        @media (max-width: 1024px) {
-            .col-span-3 { grid-column: span 6; }
-            .col-span-8 { grid-column: span 12; }
-            .col-span-4 { grid-column: span 12; }
-            .data-grid { display: flex; flex-direction: column; }
-        }
-        @media (max-width: 640px) {
-            .col-span-6, .col-span-3 { grid-column: span 12; }
-        }
-
-        /* --- KPI Cards (Standardized) --- */
-        .kpi-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .kpi-content { display: flex; flex-direction: column; }
-        
-        .kpi-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-        }
-
-        .kpi-value {
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1.1;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-        
-        .summary-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-        }
-
-        .summary-value {
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1.1;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-
-        .kpi-trend, .summary-trend {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: #f8fafc;
-            padding: 4px 8px;
-            border-radius: 6px;
-            width: fit-content;
-        }
-
-        .kpi-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: 24px;
-        }
-
-        .bg-blue-subtle { background: #eff6ff; color: #2563eb; }
-        .bg-green-subtle { background: #dcfce7; color: #16a34a; }
-        .bg-orange-subtle { background: #ffedd5; color: #f97316; }
-        .bg-red-subtle { background: #fee2e2; color: #ef4444; }
-        .bg-cyan-subtle { background: #cffafe; color: #0891b2; }
-
-        /* --- Search & Filter --- */
-        .search-bar {
-            position: relative;
-            max-width: 400px;
-            width: 100%;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 10px 12px 10px 36px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 14px;
-            transition: var(--transition);
-            background-color: #fff;
-        }
-
-        .search-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-light);
-            outline: none;
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-            pointer-events: none;
-        }
-        
-        /* --- Tables --- */
-        .table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
-        .table th {
-            text-align: left;
-            padding: 12px 20px;
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-size: 12px;
-            border-bottom: 1px solid var(--border-color);
-            background: #f8fafc;
-            text-transform: uppercase;
-        }
-        .table td {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-main);
-            vertical-align: middle;
-        }
-        .table tr:last-child td { border-bottom: none; }
-        .table-hover tbody tr:hover { background-color: #f8fafc; }
-        
-        .table-container { 
-            overflow-x: auto;
-            max-height: 400px; /* Fixed height for scroll */
-            overflow-y: auto;
-            border-radius: 8px; /* Slightly rounded corners */
-            border: 1px solid var(--border-color); /* Add border to container */
-        }
-        
-        .table thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: #f1f5f9; /* Slightly darker header background */
-            box-shadow: 0 1px 0 var(--border-color); /* Maintain border look */
-        }
-
-        /* --- Badges --- */
-        .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            line-height: 1;
-        }
-        .badge-primary { background: var(--primary-light); color: var(--primary); }
-        .badge-danger { background: #fee2e2; color: #991b1b; }
-        .badge-warning { background: #ffedd5; color: #9a3412; }
-        .badge-success { background: #dcfce7; color: #166534; }
-        .badge-neutral { background: #f1f5f9; color: #475569; }
-
-        /* --- Progress Bars --- */
-        .progress-track {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 999px;
-            overflow: hidden;
-            width: 100%;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            border-radius: 999px;
-            transition: width 0.5s ease;
-        }
-
-        .bg-success { background-color: var(--success); }
-        .bg-danger { background-color: var(--danger); }
-        
-        /* --- Text Colors --- */
-        .text-success { color: #16a34a; }
-        .text-danger { color: #dc2626; }
-        .text-muted { color: #64748b; }
-
-        /* --- Sort Icons --- */
-        .sort-icon {
-            font-size: 10px;
-            color: #94a3b8;
-            margin-left: 4px;
-        }
-        
-        th[onclick]:hover .sort-icon {
-            color: var(--primary);
-        }
-        
-        /* --- Chart Container --- */
-        .chart-container { position: relative; height: 300px; width: 100%; }
-        
-        .chart-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-        /* --- Tabs --- */
-        .tabs-nav {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 0;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--bg-card);
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            padding: 12px 20px 0;
-        }
-
-        .tab-btn {
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            border: none;
-            background: transparent;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .tab-btn:hover {
-            color: var(--primary);
-            background: rgba(37, 99, 235, 0.05);
-            border-radius: 8px 8px 0 0;
-        }
-
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        
-        .tab-content {
-            display: none;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-top: none;
-            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* --- Empty State --- */
-        .empty-state {
-            text-align: center;
-            padding: 64px 20px;
-            color: var(--text-secondary);
-        }
+    .table th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8fafc; /* Ensure opacity */
+        box-shadow: 0 1px 0 var(--border-color);
+    }
 {% endblock %}
 
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+<div class="page-container">
 
     <!-- Header -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+    <div class="page-header">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">任务统计 / Task Stats</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">任务完成情况、日报提交趋势与 SLA 监控</p>
+            <h1 class="page-title">任务统计 / Task Stats</h1>
+            <p class="page-subtitle">任务完成情况、日报提交趋势与 SLA 监控</p>
         </div>
-        <div style="display: flex; gap: 12px;">
+        <div class="page-actions">
             <button class="btn btn-secondary" onclick="location.reload()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                 刷新
@@ -492,102 +119,174 @@
     <div class="filter-section">
         <form method="get" id="filterForm">
             <div class="filter-grid">
+                <!-- Name Search -->
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label" for="search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        姓名搜索 / Name Search
+                    </label>
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="search" name="q" class="search-input" placeholder="输入姓名..." value="{{ request.GET.q }}">
+                    </div>
+                </div>
+
+                <!-- Department / Role -->
                 <div class="form-group">
-                    <label class="form-label">日期 / Date</label>
-                    <input type="date" name="date" class="form-input" value="{{ today }}">
+                    <label class="form-label" for="role">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        部门 / Department
+                    </label>
+                    <select id="role" name="role" class="form-select">
+                        <option value="">所有部门</option>
+                        <option value="dev" {% if request.GET.role == 'dev' %}selected{% endif %}>开发 / Developer</option>
+                        <option value="qa" {% if request.GET.role == 'qa' %}selected{% endif %}>测试 / QA</option>
+                        <option value="pm" {% if request.GET.role == 'pm' %}selected{% endif %}>产品 / Product Manager</option>
+                        <option value="ui" {% if request.GET.role == 'ui' %}selected{% endif %}>设计 / UI / UX</option>
+                        <option value="ops" {% if request.GET.role == 'ops' %}selected{% endif %}>运维 / Ops</option>
+                        <option value="mgr" {% if request.GET.role == 'mgr' %}selected{% endif %}>项目管理 / PM / PMO</option>
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="form-group">
+                    <label class="form-label" for="start">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        开始日期 / Start
+                    </label>
+                    <input type="date" id="start" name="start" class="form-input" value="{{ start|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">项目 / Project</label>
-                    <select name="project" class="form-select">
+                    <label class="form-label" for="end">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        结束日期 / End
+                    </label>
+                    <input type="date" id="end" name="end" class="form-input" value="{{ end|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
+                </div>
+
+                <!-- KPI Filter (Placeholder) -->
+                <div class="form-group">
+                    <label class="form-label" for="kpi">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        关键指标 / KPI
+                    </label>
+                    <select id="kpi" name="kpi" class="form-select">
+                        <option value="">默认排序</option>
+                        <option value="completion_desc" {% if request.GET.kpi == 'completion_desc' %}selected{% endif %}>完成率: 高 -> 低</option>
+                        <option value="completion_asc" {% if request.GET.kpi == 'completion_asc' %}selected{% endif %}>完成率: 低 -> 高</option>
+                    </select>
+                </div>
+                
+                <!-- Project Filter -->
+                <div class="form-group">
+                    <label class="form-label" for="project">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        项目 / Project
+                    </label>
+                    <select id="project" name="project" class="form-select">
                         <option value="">所有项目</option>
                         {% for p in projects %}
-                            <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">用户 / User</label>
-                    <select name="user" class="form-select">
-                        <option value="">所有用户</option>
-                        {% for u in users %}
-                            <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
+
+                <!-- Actions -->
+                <div class="filter-actions">
+                    <a href="{% url 'reports:admin_task_stats' %}" class="btn btn-ghost">重置</a>
+                    <button type="submit" class="btn btn-primary" onclick="showLoading()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        筛选 / Filter
+                    </button>
+                    <a href="{% url 'reports:admin_task_stats_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        导出
+                    </a>
                 </div>
-            </div>
-            
-            <div class="filter-actions">
-                <a href="{% url 'reports:admin_task_stats' %}" class="btn btn-ghost">重置</a>
-                <a href="{% url 'reports:admin_task_stats_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    导出报表
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    筛选
-                </button>
             </div>
         </form>
     </div>
 
-    <!-- 1. Global KPI Cards -->
-    <div class="dashboard-grid">
-        <div class="col-span-3 kpi-card" style="{% if metrics.missing_today > 0 %}border-color: #fee2e2; background: #fffbfc;{% endif %}">
-            <div class="kpi-content">
-                <span class="kpi-label">今日缺报</span>
-                <span class="kpi-value" style="{% if metrics.missing_today > 0 %}color: var(--danger);{% endif %}">{{ metrics.missing_today }}</span>
-                <div class="kpi-trend">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span>窗口: {{ sla_remind }}h</span>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="text-align: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; color: var(--primary);">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <div style="margin-top: 12px; font-weight: 600; color: var(--text-main);">正在加载...</div>
+        </div>
+    </div>
+    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    <script>function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }</script>
+
+    <!-- 1. Global KPI Cards (Summary Grid) -->
+    <div class="summary-grid">
+        <!-- Card 1: Missing Today -->
+        <div class="summary-card" style="{% if metrics.missing_today > 0 %}border-color: #fee2e2; background: #fffbfc;{% endif %}">
+            <div class="summary-header">
+                <span class="summary-label">今日缺报</span>
+                <div class="summary-icon icon-red">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
             </div>
-            <div class="kpi-icon bg-red-subtle">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div class="summary-value" style="{% if metrics.missing_today > 0 %}color: var(--danger);{% endif %}">{{ metrics.missing_today }}</div>
+            <div class="summary-footer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>窗口: {{ sla_remind }}h</span>
             </div>
         </div>
-        <div class="col-span-3 kpi-card">
-            <div class="kpi-content">
-                <span class="kpi-label">日报总数</span>
-                <span class="kpi-value">{{ metrics.total_reports }}</span>
-                <div class="kpi-trend">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                    <span>最新: {{ metrics.last_date|default:'-' }}</span>
+
+        <!-- Card 2: Total Reports -->
+        <div class="summary-card">
+            <div class="summary-header">
+                <span class="summary-label">日报总数</span>
+                <div class="summary-icon icon-blue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 </div>
             </div>
-            <div class="kpi-icon bg-blue-subtle">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <div class="summary-value">{{ metrics.total_reports }}</div>
+            <div class="summary-footer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <span>最新: {{ metrics.last_date|default:'-' }}</span>
             </div>
         </div>
-        <div class="col-span-3 kpi-card">
-            <div class="kpi-content">
-                <span class="kpi-label">活跃项目</span>
-                <span class="kpi-value">{{ metrics.total_projects }}</span>
-                <div class="kpi-trend">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                    <span>进行中</span>
+
+        <!-- Card 3: Active Projects -->
+        <div class="summary-card">
+            <div class="summary-header">
+                <span class="summary-label">活跃项目</span>
+                <div class="summary-icon icon-green">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                 </div>
             </div>
-            <div class="kpi-icon bg-green-subtle">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <div class="summary-value">{{ metrics.total_projects }}</div>
+            <div class="summary-footer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>进行中</span>
             </div>
         </div>
-        <div class="col-span-3 kpi-card">
-            <div class="kpi-content">
-                <span class="kpi-label">总任务数</span>
-                <span class="kpi-value">{{ total }}</span>
-                <div class="kpi-trend">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                    <span>所有项目</span>
+
+        <!-- Card 4: Total Tasks -->
+        <div class="summary-card">
+            <div class="summary-header">
+                <span class="summary-label">总任务数</span>
+                <div class="summary-icon icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                 </div>
             </div>
-            <div class="kpi-icon bg-cyan-subtle">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+            <div class="summary-value">{{ total }}</div>
+            <div class="summary-footer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                <span>所有项目</span>
             </div>
         </div>
     </div>
@@ -602,18 +301,18 @@
             <div class="card-body">
                 <div style="display: flex; gap: 24px;">
                     <div style="flex: 1;">
-                        <div class="summary-label">已完成</div>
-                        <div class="summary-value text-success">{{ completed }}</div>
-                        <div class="summary-trend text-success">
+                        <div class="kpi-label">已完成</div>
+                        <div class="kpi-value text-success">{{ completed }}</div>
+                        <div class="kpi-trend text-success">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             {{ completion_rate|floatformat:1 }}% 完成率
                         </div>
                     </div>
                     <div style="width: 1px; background: var(--border-color);"></div>
                     <div style="flex: 1;">
-                        <div class="summary-label">逾期任务</div>
-                        <div class="summary-value text-danger">{{ overdue }}</div>
-                        <div class="summary-trend text-danger">
+                        <div class="kpi-label">逾期任务</div>
+                        <div class="kpi-value text-danger">{{ overdue }}</div>
+                        <div class="kpi-trend text-danger">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                             {{ overdue_rate|floatformat:1 }}% 逾期率
                         </div>
@@ -660,7 +359,7 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="empty-state">
+                <div class="empty-state" style="padding: 24px;">
                     今日全员已提交
                 </div>
                 {% endif %}
@@ -757,11 +456,11 @@
                 <table class="table table-hover" id="projectTable">
                     <thead>
                         <tr>
-                            <th onclick="sortTable('projectTable', 0)" style="cursor: pointer;">项目 <span class="sort-icon">⇅</span></th>
-                            <th onclick="sortTable('projectTable', 1)" style="cursor: pointer; text-align: center;">总数 <span class="sort-icon">⇅</span></th>
-                            <th onclick="sortTable('projectTable', 2)" style="cursor: pointer; text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 0)">项目 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 1)" style="text-align: center;">总数 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 2)" style="text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
                             <th style="width: 200px;">进度</th>
-                            <th onclick="sortTable('projectTable', 4)" style="cursor: pointer; text-align: center;">完成率 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 4)" style="text-align: center;">完成率 <span class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -800,11 +499,11 @@
                 <table class="table table-hover" id="userTable">
                     <thead>
                         <tr>
-                            <th onclick="sortTable('userTable', 0)" style="cursor: pointer;">用户 <span class="sort-icon">⇅</span></th>
-                            <th onclick="sortTable('userTable', 1)" style="cursor: pointer; text-align: center;">总任务 <span class="sort-icon">⇅</span></th>
-                            <th onclick="sortTable('userTable', 2)" style="cursor: pointer; text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 0)">用户 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 1)" style="text-align: center;">总任务 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 2)" style="text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
                             <th style="width: 200px;">完成质量</th>
-                            <th onclick="sortTable('userTable', 4)" style="cursor: pointer; text-align: center;">逾期数 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 4)" style="text-align: center;">逾期数 <span class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody>

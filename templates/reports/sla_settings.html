@@ -1,262 +1,229 @@
 {% extends "base_topbar.html" %}
-{% block title %}SLA 配置{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="SLA 配置中心 / SLA Settings" nav_subtitle="设置任务提醒窗口 / Configure SLA reminder windows" %}{% endblock %}
+{% block title %}SLA 配置 / SLA Settings{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="SLA 配置中心 / SLA Settings" nav_subtitle="设置任务提醒窗口与阈值 / Configure SLA thresholds" %}{% endblock %}
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-        }
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+        margin-bottom: 24px;
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-        .hero {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px 28px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .section-desc {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-top: 8px;
+        line-height: 1.5;
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
 
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(22px, 3vw, 28px);
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+    .form-group {
+        margin-bottom: 20px;
+    }
 
-        .hero p {
-            margin: 8px 0 0;
-            color: var(--muted);
-            font-size: 14px;
-        }
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
 
-        .eyebrow {
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            font-size: 11px;
-            color: var(--muted);
-            margin: 0 0 8px;
-            font-weight: 600;
-        }
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+        background-color: #f8fafc;
+        color: var(--text-main);
+    }
 
-        .card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px 24px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .form-input:hover {
+        background-color: #fff;
+        border-color: #cbd5e1;
+    }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    .form-input:focus {
+        background-color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
 
-        .card:hover::before {
-            opacity: 0.6;
-        }
+    .help-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+    }
+    
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
 
-        .card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
 
-        .card h2 {
-            margin: 0 0 16px;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--ink);
-        }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
 
-        .card p {
-            margin: 0 0 16px;
-            color: var(--ink);
-            font-size: 14px;
-        }
+    .btn-primary:hover {
+        background-color: #1e40af;
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
 
-        label { 
-            font-size: 13px; 
-            font-weight: 600; 
-            color: var(--ink); 
-            display: block; 
-            margin-bottom: 8px; 
-        }
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
 
-        input { 
-            width: 100%; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border); 
-            padding: 12px 14px; 
-            font-size: 14px; 
-            background: rgba(255, 255, 255, 0.8); 
-            color: var(--ink);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+    
+    /* Visual Representation of SLA Levels */
+    .sla-visual {
+        display: flex;
+        align-items: center;
+        height: 24px;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        background: #f1f5f9;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+        text-align: center;
+    }
+    
+    .sla-visual-green { background: #10b981; flex: 1; display: flex; align-items: center; justify-content: center; }
+    .sla-visual-amber { background: #f59e0b; width: 25%; display: flex; align-items: center; justify-content: center; }
+    .sla-visual-red { background: #ef4444; width: 10%; display: flex; align-items: center; justify-content: center; }
 
-        input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            background: #fff;
-            transform: translateY(-1px);
-        }
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .actions { 
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end; 
-            margin-top: 16px; 
-        }
-
-        .btn { 
-            border-radius: var(--radius-md); 
-            border: none; 
-            padding: 12px 18px; 
-            font-size: 14px; 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:active { 
-            transform: translateY(1px) scale(0.98); 
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost { 
-            background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink); 
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 860px) {
-            .hero {
-                padding: 20px;
-            }
-
-            .card {
-                padding: 16px;
-            }
-        }
+    .alert-info {
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #dbeafe;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <div>
-            <p class="eyebrow">IM 团队 · 配置</p>
-            <h1>SLA 配置中心</h1>
-            <p class="lede">设置任务 SLA 提醒窗口与多级阈值（绿/黄/红），列表将显示即将到期提示。</p>
+<div class="page-container">
+    <div class="form-card">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">SLA 全局配置 / Global Configuration</h2>
+                <p class="section-desc">配置任务到期前的提醒窗口与阈值：绿色（正常）、黄色（提醒）、红色（紧急）。</p>
+            </div>
         </div>
-    </div>
 
-    <section class="card">
-        <h2>SLA 提醒设置</h2>
-        <p>配置任务到期前的提醒窗口与阈值：绿色（正常）、黄色（提醒）、红色（紧急）。</p>
+        <div class="alert alert-info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <div>此配置将应用于所有未单独设置 SLA 的项目。</div>
+        </div>
+        
+        <!-- Visual Guide -->
+        <div style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">时间轴示意图 / Timeline Visualization</div>
+        <div class="sla-visual">
+            <div class="sla-visual-green">正常 / Normal</div>
+            <div class="sla-visual-amber">黄色阈值 / Amber</div>
+            <div class="sla-visual-red">红色阈值 / Red</div>
+        </div>
+
         <form method="post">
             {% csrf_token %}
-            <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-                <div>
-                    <label for="sla_hours">提醒窗口（小时） / Reminder window</label>
-                    <input type="number" min="1" name="sla_hours" id="sla_hours" value="{{ sla_hours }}" placeholder="例如：24" required>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="sla_hours">默认提醒窗口 (小时) / Default Window</label>
+                    <input type="number" min="1" name="sla_hours" id="sla_hours" class="form-input" value="{{ sla_hours }}" placeholder="例如：24" required>
+                    <p class="help-text">任务截止前的总监控时长 (Total monitoring window before due date)</p>
                 </div>
-                <div>
-                    <label for="sla_amber">黄色阈值（小时） / Amber threshold</label>
-                    <input type="number" min="1" name="sla_amber" id="sla_amber" value="{{ sla_amber|default:6 }}" placeholder="例如：6" required>
+                <div class="form-group">
+                    <label class="form-label" for="sla_amber">黄色阈值 (小时) / Amber Threshold</label>
+                    <input type="number" min="1" name="sla_amber" id="sla_amber" class="form-input" value="{{ sla_amber|default:6 }}" placeholder="例如：6" required>
+                    <p class="help-text">当剩余时间少于此值时，状态变为“关注” (Warning level)</p>
                 </div>
-                <div>
-                    <label for="sla_red">红色阈值（小时） / Red threshold</label>
-                    <input type="number" min="1" name="sla_red" id="sla_red" value="{{ sla_red|default:2 }}" placeholder="例如：2" required>
+                <div class="form-group">
+                    <label class="form-label" for="sla_red">红色阈值 (小时) / Red Threshold</label>
+                    <input type="number" min="1" name="sla_red" id="sla_red" class="form-input" value="{{ sla_red|default:2 }}" placeholder="例如：2" required>
+                    <p class="help-text">当剩余时间少于此值时，状态变为“紧急” (Critical level)</p>
                 </div>
             </div>
-            <div class="actions">
-                <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">返回</a>
-                <button type="submit" class="btn btn-primary">保存配置 / Save</button>
+            
+            <div class="btn-toolbar">
+                <a href="{% url 'reports:admin_task_list' %}" class="btn btn-ghost">返回列表 / Cancel</a>
+                <button type="submit" class="btn btn-primary">保存配置 / Save Changes</button>
             </div>
         </form>
-    </section>
+    </div>
+</div>
 {% endblock %}

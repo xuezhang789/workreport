@@ -1,0 +1,129 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+
+{% block title %}项目权限管理 - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>项目权限管理 - {{ project.name }}</h2>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">成员权限设置</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>用户名</th>
+                        <th>角色</th>
+                        <th>当前权限</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in members_with_perms %}
+                    <tr>
+                        <td>{{ item.user.get_full_name|default:item.user.username }}</td>
+                        <td>{{ item.user.profile.get_position_display }}</td>
+                        <td>
+                            {% for perm in item.permissions %}
+                                <span class="badge bg-info">{{ perm }}</span>
+                            {% empty %}
+                                <span class="text-muted">无特殊权限</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-permissions-btn" 
+                                    data-user-id="{{ item.user.id }}"
+                                    data-current-perms="{{ item.permissions|join:',' }}">
+                                编辑权限
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 权限编辑模态框 -->
+<div class="modal fade" id="permissionsModal" tabindex="-1" aria-labelledby="permissionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="permissionsModalLabel">编辑用户权限</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="permissionsForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="userIdInput" name="user_id" value="">
+                    <div class="row">
+                        {% for perm_code, perm_desc in all_permissions %}
+                        <div class="col-md-6 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input permission-checkbox" type="checkbox" 
+                                       value="{{ perm_code }}" id="perm_{{ perm_code }}" name="permissions">
+                                <label class="form-check-label" for="perm_{{ perm_code }}">
+                                    {{ perm_desc }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存权限</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 编辑权限按钮点击事件
+    document.querySelectorAll('.edit-permissions-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const currentPerms = this.dataset.currentPerms ? this.dataset.currentPerms.split(',') : [];
+            
+            // 设置用户ID
+            document.getElementById('userIdInput').value = userId;
+            
+            // 设置当前选中的权限
+            document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+                checkbox.checked = currentPerms.includes(checkbox.value);
+            });
+            
+            // 显示模态框
+            const modal = new bootstrap.Modal(document.getElementById('permissionsModal'));
+            modal.show();
+        });
+    });
+    
+    // 表单提交处理
+    document.getElementById('permissionsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // 将选中的权限收集为JSON数组
+        const selectedPerms = Array.from(document.querySelectorAll('.permission-checkbox:checked'))
+            .map(cb => cb.value);
+        
+        // 创建隐藏输入框来传递权限数组
+        const permsInput = document.createElement('input');
+        permsInput.type = 'hidden';
+        permsInput.name = 'permissions';
+        permsInput.value = JSON.stringify(selectedPerms);
+        
+        this.appendChild(permsInput);
+        
+        // 提交表单
+        this.submit();
+    });
+});
+</script>
+{% endblock %}

@@ -6,6 +6,7 @@ from django.core.mail import send_mail
 from django.db import models, transaction
 from django.db.models import Q, Count
 import os
+import logging
 
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
@@ -41,6 +42,7 @@ from .services.sla import calculate_sla_info, get_sla_thresholds, get_sla_hours
 from .services.stats import get_performance_stats as _performance_stats
 
 MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
+logger = logging.getLogger(__name__)
 
 
 MANAGER_ROLES = {'mgr', 'pm'}
@@ -2348,8 +2350,20 @@ def admin_task_stats(request):
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
     date_str = request.GET.get('date')
+    
+    # New filters
+    start_str = request.GET.get('start')
+    end_str = request.GET.get('end')
+    q = request.GET.get('q')
+    role = request.GET.get('role')
+
     today = timezone.localdate()
+    # Priority: Date Range > Single Date > Today
+    # But logic uses 'query_date' for "Missing Reports" specifically.
     query_date = parse_date(date_str) if date_str else today
+    
+    start_date = parse_date(start_str) if start_str else None
+    end_date = parse_date(end_str) if end_str else None
 
     # Base QuerySets
     tasks_qs = Task.objects.select_related('project', 'user')
@@ -2374,6 +2388,30 @@ def admin_task_stats(request):
         uid = int(user_id)
         tasks_qs = tasks_qs.filter(user_id=uid)
         reports_qs = reports_qs.filter(user_id=uid)
+
+    # Name Search (User or Task Title?) - Usually User for stats
+    if q:
+        user_q = Q(user__username__icontains=q) | Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q)
+        tasks_qs = tasks_qs.filter(user_q)
+        reports_qs = reports_qs.filter(user_q)
+        
+    # Role Filter
+    if role and role in dict(Profile.ROLE_CHOICES):
+        tasks_qs = tasks_qs.filter(user__profile__position=role)
+        reports_qs = reports_qs.filter(role=role)
+
+    # Date Range Filter (For Stats)
+    # If start/end provided, filter tasks by created_at (or due_at? created_at is safer for general stats)
+    if start_date and end_date:
+        tasks_qs = tasks_qs.filter(created_at__date__range=[start_date, end_date])
+        # For reports, filter by date field
+        reports_qs = reports_qs.filter(date__range=[start_date, end_date])
+    elif start_date:
+        tasks_qs = tasks_qs.filter(created_at__date__gte=start_date)
+        reports_qs = reports_qs.filter(date__gte=start_date)
+    elif end_date:
+        tasks_qs = tasks_qs.filter(created_at__date__lte=end_date)
+        reports_qs = reports_qs.filter(date__lte=end_date)
 
     # --- 1. Task Metrics ---
     total = tasks_qs.count()
@@ -2414,26 +2452,26 @@ def admin_task_stats(request):
     missing_count = missing_users.count()
 
     if request.GET.get('remind') == '1':
-        # Simple email reminder logic
-        sent_count = 0
+        # Optimized email reminder logic using send_mass_mail
+        from django.core.mail import send_mass_mail
+        
+        messages_to_send = []
         subject = f"[提醒] 请提交今日日报 ({today})"
         from_email = settings.DEFAULT_FROM_EMAIL
+        
         for u in missing_users:
             if u.email:
-                try:
-                    # In a real app, use a template and maybe async task
-                    send_mail(
-                        subject,
-                        f"Hi {u.get_full_name() or u.username},\n\n请记得提交今天的日报。\nPlease submit your daily report for today.",
-                        from_email,
-                        [u.email],
-                        fail_silently=True
-                    )
-                    sent_count += 1
-                except Exception as e:
-                    # Log the error instead of swallowing it
-                    print(f"Failed to send reminder email to {u.email}: {e}")
-                    pass
+                message = f"Hi {u.get_full_name() or u.username},\n\n请记得提交今天的日报。\nPlease submit your daily report for today."
+                messages_to_send.append((subject, message, from_email, [u.email]))
+        
+        sent_count = 0
+        if messages_to_send:
+            try:
+                # send_mass_mail opens a single connection for all messages
+                sent_count = send_mass_mail(tuple(messages_to_send), fail_silently=True)
+            except Exception as e:
+                logger.error(f"Failed to send mass reminder emails: {e}")
+        
         messages.success(request, f"已向 {sent_count} 位用户发送催报邮件 / Sent reminders to {sent_count} users")
         return redirect(request.path)
 
@@ -2593,6 +2631,10 @@ def admin_task_stats(request):
         'users': user_choices,
         'today': today.isoformat(),
         'sla_remind': DEFAULT_SLA_REMIND,
+        'start': start_date,
+        'end': end_date,
+        'role_filter': role,
+        'report_roles': Profile.ROLE_CHOICES,
     })
 
 
@@ -2605,6 +2647,15 @@ def admin_task_stats_export(request):
 
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
+    
+    start_str = request.GET.get('start')
+    end_str = request.GET.get('end')
+    q = request.GET.get('q')
+    role = request.GET.get('role')
+
+    start_date = parse_date(start_str) if start_str else None
+    end_date = parse_date(end_str) if end_str else None
+
     tasks = Task.objects.select_related('project', 'user')
     if not is_admin:
         tasks = tasks.filter(project_id__in=manageable_project_ids)
@@ -2616,6 +2667,18 @@ def admin_task_stats_export(request):
             tasks = tasks.none()
     if user_id and user_id.isdigit():
         tasks = tasks.filter(user_id=int(user_id))
+
+    if q:
+        tasks = tasks.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q))
+    if role and role in dict(Profile.ROLE_CHOICES):
+        tasks = tasks.filter(user__profile__position=role)
+    
+    if start_date and end_date:
+        tasks = tasks.filter(created_at__date__range=[start_date, end_date])
+    elif start_date:
+        tasks = tasks.filter(created_at__date__gte=start_date)
+    elif end_date:
+        tasks = tasks.filter(created_at__date__lte=end_date)
 
     rows = []
     grouped = tasks.values('project__name', 'user__username', 'user__first_name', 'user__last_name').annotate(
@@ -2723,6 +2786,15 @@ def admin_task_create(request):
             status=status,
             due_at=due_at,
         )
+
+        # Handle attachments
+        for f in request.FILES.getlist('attachments'):
+            TaskAttachment.objects.create(
+                task=task,
+                user=request.user,
+                file=f
+            )
+
         log_action(request, 'create', f"task {task.id}")
         return redirect('reports:admin_task_list')
 
@@ -3018,10 +3090,11 @@ def performance_board(request):
     end_date = parse_date(request.GET.get('end') or '') or None
     project_param = request.GET.get('project')
     role_param = (request.GET.get('role') or '').strip()
+    q = request.GET.get('q')
     project_filter = int(project_param) if project_param and project_param.isdigit() else None
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
 
-    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter)
+    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter, q=q)
     urgent_tasks = stats.get('overall_overdue', Task.objects.filter(status='overdue').count())
     total_tasks = stats.get('overall_total', Task.objects.count())
     
@@ -3084,9 +3157,10 @@ def performance_export(request):
     end_date = parse_date(request.GET.get('end') or '') or None
     project_param = request.GET.get('project')
     role_param = (request.GET.get('role') or '').strip()
+    q = request.GET.get('q')
     project_filter = int(project_param) if project_param and project_param.isdigit() else None
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
-    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter)
+    stats = _performance_stats(start_date=start_date, end_date=end_date, project_id=project_filter, role_filter=role_filter, q=q)
 
     if scope == 'role':
         rows = [

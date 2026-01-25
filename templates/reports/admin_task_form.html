@@ -222,7 +222,7 @@
             </div>
         </div>
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
             <div class="form-grid">
@@ -247,15 +247,12 @@
 
                     <div class="form-group">
                         <label class="form-label">指派给 / Assign To <span style="color:red">*</span></label>
-                        <input type="text" id="user-typeahead" list="user-options" class="form-input" placeholder="输入姓名或用户名搜索..." style="margin-bottom: 8px;">
-                        <datalist id="user-options"></datalist>
-                        <select name="user" id="user-select" class="form-select" required>
-                            <option value="">请选择用户 / Select User</option>
-                            {% for u in users %}
-                                <option value="{{ u.id }}" {% if form_values.user_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                            {% endfor %}
+                        <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" style="margin-bottom: 8px;">
+                        <select name="user" id="user-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto;">
                         </select>
-                        <p class="help-text">先输入搜索，再从下拉框确认选择</p>
+                        <input type="hidden" name="user" id="user-hidden-input" required>
+                        <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); display: none;"></div>
+                        <p class="help-text">输入关键词自动搜索，点击列表选择用户</p>
                     </div>
                 </div>
 
@@ -269,6 +266,15 @@
                                 <option value="{{ u }}">{{ u }}</option>
                             {% endfor %}
                         </datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">附件 / Attachments</label>
+                        <div class="file-upload-wrapper" style="position: relative;">
+                            <input type="file" name="attachments" id="file-input" class="form-input" multiple style="padding-bottom: 30px;">
+                            <div id="file-list" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);"></div>
+                        </div>
+                        <p class="help-text">支持多文件上传，单个文件不超过 50MB</p>
                     </div>
 
                     <div class="form-group">
@@ -352,59 +358,115 @@
             projectTypeahead.addEventListener('change', applySelectedProject);
         }
 
-        // --- User Search ---
+        // --- User Search (Real-time & Debounced) ---
         const userTypeahead = document.getElementById('user-typeahead');
-        const userOptions = document.getElementById('user-options');
-        const userSelect = document.getElementById('user-select');
+        const userSelect = document.getElementById('user-select'); // Used as dropdown container
+        const userHiddenInput = document.getElementById('user-hidden-input');
+        const selectedUserDisplay = document.getElementById('selected-user-display');
         const userApi = "{% url 'reports:user_search_api' %}";
+        let debounceTimer;
+
+        // Position the dropdown relatively
+        if (userTypeahead && userSelect) {
+            userTypeahead.parentElement.style.position = 'relative';
+            userSelect.style.top = '100%';
+            userSelect.style.left = '0';
+        }
 
         async function fetchUsers(q) {
-            if (!userOptions) return;
-            userOptions.innerHTML = '';
+            if (!userSelect) return;
+            
+            // Show loading state if needed, or just clear
+            userSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
+            userSelect.style.display = 'block';
+
             try {
                 const res = await fetch(`${userApi}?q=${encodeURIComponent(q)}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                (data.results || []).forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = `${item.name} (${item.username})`;
-                    opt.dataset.id = item.id;
-                    userOptions.appendChild(opt);
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        function applySelectedUser() {
-            const text = userTypeahead.value;
-            const match = Array.from(userOptions.options).find(o => o.value === text);
-            if (!match) return;
-            
-            const uid = match.dataset.id;
-            let opt = Array.from(userSelect.options).find(o => o.value === uid);
-            if (!opt) {
-                opt = document.createElement('option');
-                opt.value = uid;
-                opt.textContent = text;
-                userSelect.appendChild(opt);
+                
+                userSelect.innerHTML = ''; // Clear loading
+                
+                if (!data.results || data.results.length === 0) {
+                     const opt = document.createElement('option');
+                     opt.disabled = true;
+                     opt.textContent = '未找到相关用户 / No users found';
+                     userSelect.appendChild(opt);
+                } else {
+                    data.results.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.textContent = `${item.name} (${item.username})`;
+                        opt.dataset.name = item.name;
+                        userSelect.appendChild(opt);
+                    });
+                }
+            } catch (e) { 
+                console.error(e);
+                userSelect.style.display = 'none';
             }
-            userSelect.value = uid;
         }
 
         if (userTypeahead) {
+            // Debounced Input
             userTypeahead.addEventListener('input', (e) => {
-                const q = e.target.value;
-                if (q && q.length >= 1) fetchUsers(q);
+                const q = e.target.value.trim();
+                clearTimeout(debounceTimer);
+                
+                if (q.length < 1) {
+                    userSelect.style.display = 'none';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetchUsers(q);
+                }, 300); // 300ms debounce
             });
-            userTypeahead.addEventListener('change', applySelectedUser);
+
+            // Focus: Show popular/recent or just hint
+            userTypeahead.addEventListener('focus', () => {
+                if (userTypeahead.value.trim().length >= 1) {
+                    userSelect.style.display = 'block';
+                }
+            });
+            
+            // Selection Handler
+            userSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption && !selectedOption.disabled) {
+                    const uid = selectedOption.value;
+                    const label = selectedOption.textContent;
+                    
+                    userHiddenInput.value = uid;
+                    userTypeahead.value = ''; // Clear input for next search
+                    selectedUserDisplay.textContent = `已选择: ${label}`;
+                    selectedUserDisplay.style.display = 'block';
+                    userSelect.style.display = 'none';
+                }
+            });
+
+            // Click outside to close
+            document.addEventListener('click', function(e) {
+                if (!userTypeahead.contains(e.target) && !userSelect.contains(e.target)) {
+                    userSelect.style.display = 'none';
+                }
+            });
         }
 
-        // --- Form Validation ---
+        // Prevent Enter Key Submission globally for the form
         const form = document.querySelector('form');
         if (form) {
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
             form.addEventListener('submit', function(e) {
                 const title = form.querySelector('input[name="title"]').value;
                 const projectVal = projectSelect ? projectSelect.value : '';
-                const userVal = userSelect ? userSelect.value : '';
+                const userVal = userHiddenInput ? userHiddenInput.value : ''; // Use hidden input
                 const url = form.querySelector('input[name="url"]').value;
                 const content = form.querySelector('textarea[name="content"]').value;
 
@@ -511,6 +573,24 @@
 
         if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
         if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
+
+        // --- File Upload Preview ---
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        if (fileInput && fileList) {
+            fileInput.addEventListener('change', function() {
+                const files = Array.from(this.files);
+                if (files.length === 0) {
+                    fileList.innerHTML = '';
+                    return;
+                }
+                const items = files.map(f => {
+                    const size = (f.size / 1024 / 1024).toFixed(2);
+                    return `<div>📄 ${f.name} (${size} MB)</div>`;
+                }).join('');
+                fileList.innerHTML = items;
+            });
+        }
 
     })();
 </script>

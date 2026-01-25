@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_team_members(q=None, role=None, page=1, per_page=20):
+def get_team_members(q=None, role=None, project_id=None, page=1, per_page=20):
     """
     Get paginated team members with filtering.
     """
@@ -23,6 +23,9 @@ def get_team_members(q=None, role=None, page=1, per_page=20):
     
     if role and role in dict(Profile.ROLE_CHOICES):
         qs = qs.filter(profile__position=role)
+        
+    if project_id:
+        qs = qs.filter(project_memberships__id=project_id)
         
     return qs
 
