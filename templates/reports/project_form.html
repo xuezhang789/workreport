@@ -403,14 +403,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
-    <div class="form-card">
-        <div class="section-header">
-            <h2 class="section-title">{% if mode == 'edit' %}编辑项目 / Edit Project{% else %}新建项目 / Create Project{% endif %}</h2>
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+    <div class="form-card" style="padding: 32px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: #ffffff; box-shadow: var(--shadow-sm);">
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+            <h2 class="section-title" style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0;">{% if mode == 'edit' %}编辑项目 / Edit Project{% else %}新建项目 / Create Project{% endif %}</h2>
         </div>
 
         {% if form.non_field_errors %}
-            <div class="alert alert-error">
+            <div class="alert alert-error" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 <div>
                     {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
@@ -421,38 +421,38 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <div class="form-grid">
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
                 <!-- Left Column -->
                 <div>
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.name.id_for_label }}">项目名称 / Name <span style="color:red">*</span></label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.name.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">项目名称 / Name <span style="color:red">*</span></label>
                         {{ form.name }}
                         {% if form.name.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.name.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.code.id_for_label }}">项目代码 / Code <span style="color:red">*</span></label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.code.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">项目代码 / Code <span style="color:red">*</span></label>
                         {{ form.code }}
-                        <p class="help-text">唯一标识符，建议使用大写字母 (e.g. PRJ-001)</p>
+                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">唯一标识符，建议使用大写字母 (e.g. PRJ-001)</p>
                         {% if form.code.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.code.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.owner.id_for_label }}">负责人 / Owner</label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.owner.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">负责人 / Owner</label>
                         <div class="owner-select-container" style="position: relative;">
-                            <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人..." style="margin-bottom: 8px;">
+                            <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人..." style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
                             {{ form.owner }}
                         </div>
                         {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="form-group">
-                            <label class="form-label" for="{{ form.start_date.id_for_label }}">开始日期 / Start</label>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label class="form-label" for="{{ form.start_date.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">开始日期 / Start</label>
                             {{ form.start_date }}
                         </div>
-                        <div class="form-group">
-                            <label class="form-label" for="{{ form.end_date.id_for_label }}">结束日期 / End</label>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label class="form-label" for="{{ form.end_date.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">结束日期 / End</label>
                             {{ form.end_date }}
                         </div>
                     </div>
@@ -460,74 +460,75 @@
 
                 <!-- Right Column -->
                 <div>
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.sla_hours.id_for_label }}">SLA 提醒 (小时) / SLA Hours</label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.sla_hours.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">SLA 提醒 (小时) / SLA Hours</label>
                         {{ form.sla_hours }}
-                        <p class="help-text">留空则使用系统默认全局配置</p>
+                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">留空则使用系统默认全局配置</p>
                         {% if form.sla_hours.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.sla_hours.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.is_active.id_for_label }}">状态 / Status</label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.is_active.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">状态 / Status</label>
                         <div style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc;">
                             {{ form.is_active }}
                             <span style="font-size: 14px; font-weight: 500;">启用项目 / Active</span>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="{{ form.description.id_for_label }}">描述 / Description</label>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="{{ form.description.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">描述 / Description</label>
                         {{ form.description }}
                     </div>
                     
                     {% if mode == 'create' %}
                     <!-- File Upload Section for Create Mode -->
-                    <div class="form-group">
-                        <label class="form-label">附件上传 / Attachments</label>
-                        <div class="file-upload-container" id="file-upload-zone">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">附件上传 / Attachments</label>
+                        <div class="file-upload-container" id="file-upload-zone" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;">
                             <input type="file" id="file-input" name="files" multiple style="display: none;">
                             <div class="upload-placeholder">
-                                <div class="upload-icon">
+                                <div class="upload-icon" style="color: var(--primary); margin-bottom: 12px;">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                                 </div>
-                                <div class="upload-text">点击或拖拽文件到此处上传</div>
-                                <div class="upload-hint">支持文档、图片、压缩包等格式 (Max 50MB)</div>
+                                <div class="upload-text" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽文件到此处上传</div>
+                                <div class="upload-hint" style="font-size: 12px; color: var(--text-secondary);">支持文档、图片、压缩包等格式 (Max 50MB)</div>
                             </div>
                         </div>
-                        <div class="file-list" id="file-list"></div>
+                        <div class="file-list" id="file-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Full Width Sections for Members -->
-            <div class="form-group">
-                <label class="form-label">成员管理 / Members</label>
-                <div class="multi-select-container" id="members-container">
-                    <div class="search-header">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">成员管理 / Members</label>
+                <div class="multi-select-container" id="members-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
+                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="member-filter" placeholder="搜索成员..." class="search-input">
-                        <span class="selected-count"><span id="member-count">0</span> 已选</span>
+                        <input type="text" id="member-filter" placeholder="搜索成员..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
+                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选</span>
                     </div>
                     
-                    <div class="multi-select-dropdown">
-                        <div class="select-all-container">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="select-all-members">
+                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
+                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
+                                <input type="checkbox" id="select-all-members" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
                                 <span>全选 / Select All</span>
                             </label>
                         </div>
                         <div class="options-container">
                             {% for user in form.members.field.queryset %}
-                                <label class="option-item">
-                                    <div class="checkbox-label">
+                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
+                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
                                         <input type="checkbox" name="members" value="{{ user.pk }}" 
                                                {% if form.members.value %}{% if user.pk|stringformat:"s" in form.members.value|stringformat:"s" %}checked{% endif %}{% endif %}
                                                class="member-checkbox"
-                                               data-name="{{ user.get_full_name|default:user.username }}">
-                                        <div class="user-info">
-                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                            <span class="user-username">@{{ user.username }}</span>
+                                               data-name="{{ user.get_full_name|default:user.username }}"
+                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
+                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
+                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
+                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -535,38 +536,39 @@
                         </div>
                     </div>
                     
-                    <div class="selected-tags" id="selected-members-tags"></div>
+                    <div class="selected-tags" id="selected-members-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
                     <!-- Hidden select for form submission if needed, though checkboxes handle name="members" -->
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">管理员 / Managers</label>
-                <div class="multi-select-container" id="managers-container">
-                    <div class="search-header">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">管理员 / Managers</label>
+                <div class="multi-select-container" id="managers-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
+                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="manager-filter" placeholder="搜索管理员..." class="search-input">
-                        <span class="selected-count"><span id="manager-count">0</span> 已选</span>
+                        <input type="text" id="manager-filter" placeholder="搜索管理员..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
+                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="manager-count">0</span> 已选</span>
                     </div>
                     
-                    <div class="multi-select-dropdown">
-                        <div class="select-all-container">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="select-all-managers">
+                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
+                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
+                                <input type="checkbox" id="select-all-managers" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
                                 <span>全选 / Select All</span>
                             </label>
                         </div>
                         <div class="options-container">
                             {% for user in form.managers.field.queryset %}
-                                <label class="option-item">
-                                    <div class="checkbox-label">
+                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
+                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
                                         <input type="checkbox" name="managers" value="{{ user.pk }}" 
                                                {% if form.managers.value %}{% if user.pk|stringformat:"s" in form.managers.value|stringformat:"s" %}checked{% endif %}{% endif %}
                                                class="manager-checkbox"
-                                               data-name="{{ user.get_full_name|default:user.username }}">
-                                        <div class="user-info">
-                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                            <span class="user-username">@{{ user.username }}</span>
+                                               data-name="{{ user.get_full_name|default:user.username }}"
+                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
+                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
+                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
+                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -574,14 +576,14 @@
                         </div>
                     </div>
                     
-                    <div class="selected-tags" id="selected-managers-tags"></div>
+                    <div class="selected-tags" id="selected-managers-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
                 </div>
-                <p class="help-text">项目管理员拥有管理该项目任务和成员的权限</p>
+                <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">项目管理员拥有管理该项目任务和成员的权限</p>
             </div>
 
-            <div class="btn-toolbar">
-                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">取消 / Cancel</a>
-                <button type="submit" class="btn btn-primary">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
+            <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
             </div>
         </form>
     </div>
