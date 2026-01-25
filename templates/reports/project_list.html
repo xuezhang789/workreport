@@ -1,802 +1,682 @@
 {% extends "base_topbar.html" %}
 {% block title %}项目列表 / Projects{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表 / Projects" nav_subtitle="浏览、筛选项目 / Browse & filter projects" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表 / Projects" nav_subtitle="浏览、筛选与管理项目 / Browse, filter & manage projects" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.8);
-            --border-light: rgba(226, 232, 240, 0.6);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --border-radius: 16px;
-            --card-spacing: 16px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-        }
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 32px 36px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: flex; 
-            align-items: center; 
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .filter-title {
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-input, .form-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+    }
+
+    .form-input:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    /* --- Project Grid --- */
+    .project-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    /* --- Project Card --- */
+    .project-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+
+    .project-card.selected {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+    .card-status-bar {
+        height: 4px;
+        background: var(--border-color);
+        width: 100%;
+    }
+
+    .card-status-bar.active { background: var(--success); }
+    .card-status-bar.inactive { background: var(--text-muted); }
+
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .project-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+        color: var(--text-main);
+    }
+
+    .project-code {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--bg-page);
+        padding: 2px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        display: inline-block;
+    }
+
+    .phase-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    .phase-badge.phase-default { background: #f1f5f9; color: #475569; }
+    .phase-badge.phase-dev { background: #e0f2fe; color: #0284c7; }
+    .phase-badge.phase-qa { background: #fef9c3; color: #ca8a04; }
+    .phase-badge.phase-release { background: #dcfce7; color: #16a34a; }
+
+    .progress-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .progress-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    .progress-track {
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), #3b82f6);
+        border-radius: 3px;
+        transition: width 0.6s ease-out;
+    }
+
+    .card-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .meta-icon {
+        color: var(--text-muted);
+        width: 16px;
+        height: 16px;
+    }
+
+    .avatar-circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        font-size: 10px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(37,99,235,0.1);
+    }
+
+    .card-footer {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-dates {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-secondary {
+        background: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* --- Pagination --- */
+    .pagination-container {
+        margin-top: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pagination-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .page-btn:hover:not(.disabled):not(.active) {
+        background: var(--bg-page);
+        border-color: var(--border-color);
+    }
+
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-btn.disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .page-dots {
+        color: var(--text-muted);
+        padding: 0 4px;
+        font-weight: 700;
+        letter-spacing: 2px;
+    }
+
+    .per-page-select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: white;
+        cursor: pointer;
+    }
+
+    .jump-to-page {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .jump-input {
+        width: 48px;
+        padding: 6px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    @media (min-width: 768px) {
+        .pagination-container {
+            flex-direction: row;
             justify-content: space-between;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
         }
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.9;
-        }
-        
-        .hero::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        .hero-content {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            position: relative;
-            z-index: 1;
-            flex: 1;
-        }
-        
-        .hero-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .hero .eyebrow {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin: 0;
-        }
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 64px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 2px dashed var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
 
-        .hero-content h1 {
-            margin: 0;
-            font-size: clamp(26px, 3.5vw, 32px);
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--text-primary), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-
-        .hero-content .lede {
-            margin: 0;
-            color: var(--text-muted);
-            font-size: 15px;
-            line-height: 1.6;
-            font-weight: 500;
-        }
-        .hero-meta { 
-            display: flex; 
-            gap: 12px; 
-            justify-content: flex-end; 
-            align-items: center; 
-            flex-wrap: wrap;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .chip {
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 16px; 
-            border-radius: 16px; 
-            border: 1px solid rgba(59, 130, 246, 0.15); 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08)); 
-            font-size: 13px; 
-            color: var(--primary);
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .chip:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.25);
-        }
-        
-        .card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            backdrop-filter: blur(16px); 
-            border-radius: var(--border-radius); 
-            border: 1px solid var(--border-light); 
-            box-shadow: var(--shadow-sm); 
-            padding: 24px 26px; 
-            margin-bottom: var(--card-spacing); 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .card:hover::before {
-            opacity: 0.8;
-        }
-        
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--border-hover);
-        }
-        .filters { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 20px; 
-            align-items: start;
-            margin-bottom: 20px;
-        }
-        
-        label { 
-            font-size: 13px; 
-            font-weight: 700; 
-            color: var(--text-primary); 
-            display: block; 
-            margin-bottom: 8px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        input[type="date"], input[type="text"] { 
-            width: 100%; 
-            border-radius: 14px; 
-            border: 1px solid var(--border-light); 
-            padding: 14px 16px; 
-            font-size: 14px; 
-            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6)); 
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-        }
-        
-        input::placeholder {
-            color: var(--text-muted);
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
-        
-        input:focus::placeholder {
-            opacity: 0.4;
-        }
-        
-        input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 4px 16px rgba(59, 130, 246, 0.15);
-            background: rgba(255, 255, 255, 0.98);
-            transform: translateY(-2px) scale(1.01);
-        }
-        
-        .filter-actions { 
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end;
-            margin-top: 12px;
-            align-items: center;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-light);
-        }
-
-        .export-hint {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 12px;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
-            border: 1px solid rgba(59, 130, 246, 0.1);
-            border-radius: 12px;
-            color: var(--text-secondary);
-            font-size: 12px;
-            line-height: 1.4;
-        }
-
-        .export-hint svg {
-            flex-shrink: 0;
-            color: var(--primary);
-        }
-        
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); 
-            gap: 24px; 
-            align-items: start; 
-        }
-        
-        .project-card {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            position: relative;
-        }
-        
-        .card-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start; 
-            gap: 16px; 
-            margin-bottom: 20px;
-            position: relative;
-        }
-        
-        .card-title-section {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .card-title { 
-            margin: 0 0 8px 0; 
-            font-size: 20px; 
-            font-weight: 800; 
-            color: var(--text-primary);
-            line-height: 1.3;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .card-title::before {
-            content: '📁';
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        
-        .card-code {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.12));
-            color: var(--primary);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
-        }
-        
-        .card-code::before {
-            content: '🏷️';
-            font-size: 11px;
-        }
-        
-        .card-dates {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-align: right;
-            background: rgba(248, 250, 252, 0.6);
-            padding: 8px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border-light);
-        }
-        
-        .card-dates span {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            justify-content: flex-end;
-        }
-        
-        .card-dates span::before {
-            content: '📅';
-            font-size: 11px;
-        }
-        
-        .card-meta { 
-            display: flex; 
-            gap: 16px; 
-            flex-wrap: wrap; 
-            font-size: 13px; 
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
-            border-radius: 12px;
-            border: 1px solid var(--border-light);
-        }
-        
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 600;
-        }
-        
-        .meta-item.owner::before {
-            content: '👤';
-        }
-        
-        .meta-item.members::before {
-            content: '👥';
-        }
-        
-        .meta-item.reports::before {
-            content: '📊';
-        }
-        
-        .meta-item.managers::before {
-            content: '👔';
-        }
-        
-        .description { 
-            margin: 0 0 20px 0; 
-            color: var(--text-secondary); 
-            line-height: 1.6;
-            font-size: 14px;
-            flex: 1;
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 12px;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .description.no-description {
-            font-style: italic;
-            opacity: 0.7;
-        }
-        
-        .actions-row { 
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: space-between;
-            margin-top: auto;
-            padding-top: 16px;
-            border-top: 1px solid var(--border-light);
-        }
-        
-        .actions-left {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(34, 197, 94, 0.12));
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-        
-        .status-indicator::before {
-            content: '✅';
-        }
-        .btn { 
-            border-radius: 14px; 
-            border: none; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 12px 18px; 
-            font-weight: 700; 
-            font-size: 13px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .btn:hover::before {
-            left: 100%;
-        }
-        
-        .btn:active {
-            transform: translateY(0px) scale(0.98);
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px) scale(1.02);
-        }
-        
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #ffffff; 
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-        
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
-        }
-        
-        .btn-ghost { 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08)); 
-            color: var(--primary);
-            border: 1px solid rgba(59, 130, 246, 0.15);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        }
-        
-        .btn-ghost:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.15));
-            border-color: rgba(59, 130, 246, 0.25);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15);
-        }
-        
-        .btn-secondary { 
-            background: linear-gradient(135deg, #e5e7eb, #d1d5db); 
-            color: #374151;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-        
-        .btn-secondary:hover {
-            background: linear-gradient(135deg, #d1d5db, #9ca3af);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-        }
-        .pagination { 
-            display: flex; 
-            gap: 8px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end; 
-            margin-top: 20px; 
-            align-items: center; 
-            font-size: 13px; 
-            color: var(--text-muted);
-        }
-        
-        .page-link, .page-current, .page-disabled { 
-            padding: 10px 16px; 
-            border-radius: 12px; 
-            border: 1px solid var(--border-light); 
-            text-decoration: none; 
-            font-weight: 700;
-            transition: all 0.3s ease;
-        }
-        
-        .page-link:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-1px);
-        }
-        
-        .page-current { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #ffffff; 
-            border-color: transparent;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        .page-disabled { 
-            color: var(--text-muted); 
-            background: rgba(15, 23, 42, 0.03);
-            cursor: not-allowed;
-        }
-        
-        .empty-state { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-            border: 2px dashed var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 48px 32px; 
-            text-align: center; 
-            color: var(--text-muted); 
-            box-shadow: var(--shadow-md); 
-            margin-top: 32px;
-        }
-        
-        .empty-state p {
-            margin: 0 0 20px 0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        @media (max-width: 860px) { 
-            .hero { 
-                flex-direction: column; 
-                gap: 24px;
-                text-align: center;
-            } 
-            .hero-content {
-                flex-direction: column;
-                gap: 16px;
-            }
-            .hero-meta { 
-                justify-content: center;
-                width: 100%;
-            }
-            .grid {
-                grid-template-columns: 1fr;
-            }
-            .card-header {
-                flex-direction: column;
-                gap: 12px;
-            }
-            .card-dates {
-                text-align: left;
-            }
-            .card-dates span {
-                justify-content: flex-start;
-            }
-            .actions-row {
-                flex-direction: column;
-                gap: 12px;
-            }
-            .actions-left {
-                justify-content: center;
-            }
-        }
+    @media (max-width: 640px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        .project-grid { grid-template-columns: 1fr; }
+    }
 {% endblock %}
 
 {% block content %}
-        <div class="hero">
-            <div>
-                <p class="eyebrow">团队 · 项目</p>
-                <h1>项目总览 / Project Overview</h1>
-                <p class="lede">包含名称、代码、负责人、时间范围与成员 / Overview of name, code, owner, dates & members.</p>
-            </div>
-            <div class="hero-meta">
-                <span class="chip">项目总数 / Total：{{ total_count }}</span>
-                {% if request.user.is_staff %}
-                    <a class="btn btn-primary" href="{% url 'reports:project_create' %}" style="text-decoration:none;">新建项目 / New Project</a>
-                {% endif %}
-            </div>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">项目总览</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 个项目</p>
         </div>
-
-        <section class="card">
-            <h2 style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+        {% if request.user.is_staff %}
+            <a href="{% url 'reports:project_create' %}" class="btn btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                搜索与筛选 / Search & Filter
-            </h2>
-            <form method="get">
-                <div class="filters">
-                    <div>
-                        <label for="q">搜索 / Search</label>
-                        <input type="text" id="q" name="q" value="{{ q }}" placeholder="按名称、代码、描述搜索">
-                    </div>
-                    <div>
-                        <label for="start_date">开始日期 / Start</label>
-                        <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
-                    </div>
-                    <div>
-                        <label for="end_date">结束日期 / End</label>
-                        <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
-                    </div>
-                    <div>
-                        <label for="owner">负责人 / Owner</label>
-                        <input type="text" id="owner" name="owner" value="{{ owner }}" placeholder="按负责人搜索">
-                    </div>
-                    <div>
-                        <label for="phase">阶段 / Phase</label>
-                        <select id="phase" name="phase">
-                            <option value="">全部 / All</option>
-                            {% for p in phases %}
-                                <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="filter-actions">
-                    <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                        </svg>
-                        重置 / Reset
-                    </a>
-                    <button type="submit" class="btn btn-secondary">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                        </svg>
-                        筛选 / Filter
-                    </button>
-                    {% if request.user.is_staff %}
-                        <a class="btn btn-primary" href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            导出当前筛选
-                        </a>
-                    {% endif %}
-                </div>
-                {% if request.user.is_staff %}
-                <div class="export-hint">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                    导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.
-                </div>
-                {% endif %}
-            </form>
-        </section>
+                新建项目
+            </a>
+        {% endif %}
+    </div>
 
-        {% if projects %}
-            <div class="grid">
-                {% for p in projects %}
-                    <article class="card project-card">
-                        <div class="card-header">
-                            <div class="card-title-section">
-                                <h3 class="card-title">{{ p.name }}</h3>
-                                <div class="card-code">{{ p.code }}</div>
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group" style="flex: 2; min-width: 240px;">
+                    <label class="form-label" for="q">搜索</label>
+                    <div style="position: relative;">
+                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="项目名称、代码或描述..." value="{{ q }}">
+                        <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="phase">当前阶段</label>
+                    <select id="phase" name="phase" class="form-select">
+                        <option value="">全部阶段</option>
+                        {% for p in phases %}
+                            <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="owner">负责人</label>
+                    <input type="text" id="owner" name="owner" class="form-input" placeholder="输入姓名..." value="{{ owner }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="sort">排序方式</label>
+                    <select id="sort" name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>项目名称 (A-Z)</option>
+                        <option value="status" {% if sort_by == 'status' %}selected{% endif %}>状态 (活跃优先)</option>
+                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">重置</a>
+                {% if request.user.is_staff %}
+                    <a href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        导出
+                    </a>
+                {% endif %}
+                <button type="submit" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Project Grid -->
+    {% if projects %}
+        <div class="project-grid">
+            {% for p in projects %}
+                <article class="project-card" onclick="location.href='{% url 'reports:project_detail' p.pk %}'" style="cursor: pointer;">
+                    <div class="card-status-bar {% if p.is_active %}active{% else %}inactive{% endif %}"></div>
+                    
+                    <div class="card-body">
+                        <div class="card-header-row">
+                            <div style="flex: 1;">
+                                <h3 class="project-title">{{ p.name }}</h3>
+                                <span class="project-code">{{ p.code }}</span>
                             </div>
-                            <div class="card-dates">
-                                {% if p.start_date %}<span>开始 / Start：{{ p.start_date }}</span>{% endif %}
-                                {% if p.end_date %}<span>结束 / End：{{ p.end_date }}</span>{% endif %}
-                            </div>
+                            <span class="phase-badge {% if '开发' in p.current_phase.phase_name %}phase-dev{% elif '测试' in p.current_phase.phase_name %}phase-qa{% elif '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
+                                {{ p.current_phase.phase_name|default:"未开始" }}
+                            </span>
                         </div>
-                        
-                        <div class="card-meta">
-                            {% if p.owner %}
-                                <div class="meta-item owner">
-                                    负责人 / Owner：{{ p.owner.get_full_name|default:p.owner.username }}
-                                </div>
-                            {% endif %}
-                            {% if p.managers.all %}
-                                <div class="meta-item managers">
-                                    管理员 / Managers：{{ p.managers.count }}
-                                </div>
-                            {% endif %}
-                            <div class="meta-item members">
-                                成员数 / Members：{{ p.member_count }}
-                            </div>
-                            <div class="meta-item reports">
-                                日报数 / Reports：{{ p.report_count }}
-                            </div>
-                        </div>
-                        
-                        <div style="margin-bottom: 16px; padding: 12px 16px; background: rgba(248, 250, 252, 0.6); border-radius: 12px; border: 1px solid var(--border-light);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 600;">
-                                <span>{{ p.current_phase.phase_name|default:"未设置 / N/A" }}</span>
+
+                        <div class="progress-section">
+                            <div class="progress-labels">
+                                <span>总体进度</span>
                                 <span>{{ p.overall_progress }}%</span>
                             </div>
-                            <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                <div style="width: {{ p.overall_progress }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.5s ease;"></div>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: {{ p.overall_progress }}%;"></div>
                             </div>
                         </div>
 
-                        {% if p.description %}
-                            <div class="description">
-                                {{ p.description }}
+                        <div class="card-meta-grid">
+                            <div class="meta-item" title="负责人">
+                                <div class="avatar-circle">
+                                    {{ p.owner.username|slice:":1"|upper|default:"?" }}
+                                </div>
+                                <span style="font-weight: 500;">{{ p.owner.get_full_name|default:p.owner.username|default:"未分配" }}</span>
                             </div>
-                        {% else %}
-                            <div class="description no-description">
-                                暂无描述 / No description
+                            <div class="meta-item" title="团队成员">
+                                <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                <span>{{ p.member_count }} 成员</span>
                             </div>
-                        {% endif %}
-                        
-                        <div class="actions-row">
-                            <div class="actions-left">
-                                <a class="btn btn-ghost" href="{% url 'reports:project_detail' p.pk %}">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                    查看
-                                </a>
-                                {% if p.id in manageable_ids %}
-                                    <a class="btn btn-primary" href="{% url 'reports:project_edit' p.pk %}">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                        编辑
-                                    </a>
-                                {% endif %}
+                            <div class="meta-item" title="日报数">
+                                <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>{{ p.report_count }} 日报</span>
                             </div>
-                            <div class="status-indicator">
-                                活跃 / Active
+                            <div class="meta-item" title="最后更新">
+                                <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>最近活跃</span>
                             </div>
                         </div>
-                    </article>
-                {% endfor %}
+                    </div>
+
+                    <div class="card-footer" onclick="event.stopPropagation()">
+                        <div class="footer-dates">
+                            <span>开始: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
+                            <span>结束: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
+                        </div>
+                        <div class="card-actions">
+                            {% if p.id in manageable_ids %}
+                                <a href="{% url 'reports:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑</a>
+                            {% endif %}
+                            <a href="{% url 'reports:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入</a>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span>共 {{ total_count }} 个项目</span>
+                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+                <span>
+                    <select class="per-page-select" onchange="const url = new URL(window.location); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location = url;">
+                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页</option>
+                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页</option>
+                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页</option>
+                    </select>
+                </span>
             </div>
 
             {% if page_obj.has_other_pages %}
-                <div class="pagination">
+                <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if owner %}&owner={{ owner }}{% endif %}">上一页</a>
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="上一页">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </a>
                     {% else %}
-                        <span class="page-disabled">上一页</span>
+                        <span class="page-btn disabled">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </span>
                     {% endif %}
 
-                    <span class="page-current">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <span class="page-btn active">{{ i }}</span>
+                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                            <a href="?page={{ i }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn">{{ i }}</a>
+                        {% endif %}
+                    {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if owner %}&owner={{ owner }}{% endif %}">下一页</a>
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="下一页">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
                     {% else %}
-                        <span class="page-disabled">下一页</span>
+                        <span class="page-btn disabled">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </span>
                     {% endif %}
                 </div>
+                
+                <div class="jump-to-page">
+                    前往
+                    <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
+                        onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
+                    页
+                </div>
             {% endif %}
-        {% else %}
-            <div class="empty-state">
-                <p style="margin: 0 0 6px;">暂无项目 / No projects found.</p>
-                {% if request.user.is_staff %}
-                    <a class="btn btn-primary" href="{% url 'reports:project_create' %}">新建项目</a>
-                {% endif %}
-            </div>
-        {% endif %}
+        </div>
+
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目</h3>
+            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。</p>
+            {% if request.user.is_staff %}
+                <a href="{% url 'reports:project_create' %}" class="btn btn-primary">新建项目</a>
+            {% else %}
+                <a href="{% url 'reports:project_list' %}" class="btn btn-secondary">清除筛选</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+</div>
 {% endblock %}

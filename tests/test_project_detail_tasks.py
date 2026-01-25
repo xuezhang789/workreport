@@ -39,7 +39,7 @@ class ProjectDetailTaskTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(f'/reports/projects/{self.project.id}/')
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '项目任务 / Project Tasks')
+        self.assertContains(response, '关联任务 / Tasks')
         self.assertContains(response, 'Task 1')
         self.assertContains(response, 'Task 2')
         

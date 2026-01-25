@@ -1,813 +1,493 @@
 {% extends "base_topbar.html" %}
+{% load static %}
 {% load tz %}
+
 {% block title %}审计日志 / Audit Logs{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="审计日志 / Audit Logs" nav_subtitle="导出、删除、访问等操作记录 / Export, delete, access records" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="审计日志 / Audit Logs" nav_subtitle="查看与导出系统的操作审计记录 / View & export system audit logs" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.8);
-            --border-light: rgba(226, 232, 240, 0.6);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --border-radius: 16px;
-            --card-spacing: 16px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-        }
+    /* --- Shared Design System --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 32px 36px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: flex; 
-            align-items: center; 
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-input, .form-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+        color: var(--text-main);
+    }
+
+    .form-input:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        line-height: 1.4;
+    }
+
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+
+    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
+    
+    /* --- Cards --- */
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 24px;
+    }
+
+    .card-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(248, 250, 252, 0.5);
+    }
+
+    .card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    /* --- Tables --- */
+    .table-container { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+    .table th {
+        text-align: left;
+        padding: 12px 20px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-page);
+        text-transform: uppercase;
+    }
+    .table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-main);
+        vertical-align: middle;
+    }
+    .table tr:last-child td { border-bottom: none; }
+    .table-hover tbody tr:hover { background-color: #f8fafc; }
+
+    /* --- Badges --- */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+    }
+    .badge-blue { background: #eff6ff; color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.1); }
+    .badge-green { background: #f0fdf4; color: #16a34a; border: 1px solid rgba(16, 185, 129, 0.1); }
+    .badge-orange { background: #fff7ed; color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.1); }
+    .badge-red { background: #fef2f2; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.1); }
+    .badge-gray { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* --- Pagination --- */
+    .pagination-container {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        border-top: 1px solid var(--border-color);
+        background: #f8fafc;
+    }
+
+    .pagination-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .page-btn:hover:not(.disabled):not(.active) {
+        background: var(--bg-page);
+        border-color: var(--border-color);
+    }
+
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-btn.disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .code-snippet {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    @media (min-width: 768px) {
+        .pagination-container {
+            flex-direction: row;
             justify-content: space-between;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
         }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.9;
-        }
-        
-        .hero::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        .hero-content {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            position: relative;
-            z-index: 1;
-            flex: 1;
-        }
-        
-        .hero-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .hero .eyebrow {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .hero .eyebrow::before {
-            content: '🔍';
-            font-size: 16px;
-        }
-        
-        .hero h1 { 
-            font-size: 32px; 
-            margin: 0; 
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--text-primary), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-        
-        .hero .lede { 
-            font-size: 15px; 
-            margin: 0; 
-            line-height: 1.6;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        
-        .hero-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: flex-end;
-            min-width: 200px;
-        }
-        
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .chip:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-            border-color: var(--border-hover);
-        }
-        
-        .chip.warning {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-            border-color: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-        
-        .chip.warning:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-        }
-
-        .card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            box-shadow: var(--shadow-md); 
-            padding: 32px; 
-            margin-bottom: var(--card-spacing); 
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .card:hover::before {
-            opacity: 0.8;
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-lg);
-            transform: translateY(-4px);
-        }
-        
-        .card::after {
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -10%;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            animation: float 10s ease-in-out infinite;
-        }
-        
-        .card:hover::after {
-            opacity: 1;
-        }
-
-        .filters { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-            gap: 20px; 
-            align-items: end; 
-        }
-        
-        .filter-group { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px;
-        }
-
-        .filter-group label { 
-            font-size: 13px; 
-            font-weight: 700; 
-            color: var(--text-primary); 
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        input, select { 
-            width: 100%; 
-            border-radius: 12px; 
-            border: 1px solid var(--border-light); 
-            padding: 14px 18px; 
-            font-size: 14px; 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: inherit;
-            backdrop-filter: blur(10px);
-        }
-
-        input:hover, select:hover {
-            border-color: var(--border-hover);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-        }
-
-        input:focus, select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-            background: white;
-            transform: translateY(-2px);
-        }
-
-        .filter-actions { 
-            display: flex; 
-            gap: 12px; 
-            align-items: end; 
-            flex-wrap: wrap; 
-            margin-top: 8px;
-        }
-
-        .btn { 
-            border-radius: 10px; 
-            border: none; 
-            padding: 10px 16px; 
-            font-size: 13px; 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            font-family: inherit;
-            outline: none;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.15);
-        }
-        
-        .btn:active {
-            transform: translateY(-1px);
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn-secondary { 
-            background: rgba(59, 130, 246, 0.05);
-            color: var(--text-primary);
-            border: 1px solid var(--border-light);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: var(--border-hover);
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: white; 
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-        }
-
-        .ghost-link {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 10px 16px;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .ghost-link:hover {
-            color: var(--primary);
-            background: rgba(59, 130, 246, 0.1);
-            transform: translateY(-1px);
-        }
-
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 14px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            background: white;
-            box-shadow: var(--shadow-sm);
-        }
-
-        th, td { 
-            padding: 16px 14px; 
-            border-bottom: 1px solid var(--border-light); 
-            text-align: left; 
-            vertical-align: top;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        th { 
-            font-size: 12px; 
-            color: var(--text-secondary); 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.06));
-            border-bottom: 2px solid var(--border-light);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        tbody tr {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-        }
-
-        tbody tr:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(6, 182, 212, 0.02));
-            transform: scale(1.005);
-            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-        }
-
-        tbody tr:hover td {
-            color: var(--text-primary);
-        }
-        
-        tbody tr::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        tbody tr:hover::before {
-            opacity: 1;
-        }
-
-        .pagination { 
-            display: flex; 
-            gap: 10px; 
-            justify-content: center; 
-            flex-wrap: wrap; 
-            font-size: 13px; 
-            margin-top: calc(var(--card-spacing) * 2); 
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(248, 250, 252, 0.4));
-            border-radius: var(--border-radius);
-            backdrop-filter: blur(10px);
-        }
-
-        .page-link, .page-current, .page-disabled { 
-            padding: 10px 18px; 
-            border-radius: 10px; 
-            border: 1px solid var(--border-light); 
-            text-decoration: none; 
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-link:hover {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            color: white;
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .page-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .page-link:hover::before {
-            left: 100%;
-        }
-
-        .page-current { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            border-color: transparent; 
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-            transform: scale(1.05);
-        }
-
-        .page-disabled { 
-            color: var(--text-muted); 
-            background: rgba(15, 23, 42, 0.03); 
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        @media (max-width: 860px) {
-            .hero {
-                padding: 24px 28px;
-                flex-direction: column;
-                gap: 24px;
-                align-items: flex-start;
-            }
-            
-            .hero-content {
-                flex-direction: column;
-                gap: 20px;
-                align-items: flex-start;
-            }
-            
-            .hero h1 {
-                font-size: 26px;
-            }
-            
-            .hero-meta {
-                align-items: flex-start;
-                width: 100%;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            
-            .card {
-                padding: 24px;
-            }
-
-            .filters {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 16px;
-            }
-
-            .filter-actions {
-                justify-content: flex-start;
-            }
-
-            .filter-actions .btn {
-                flex: 0 0 auto;
-                justify-content: flex-start;
-            }
-
-            table, thead, tbody, th, td, tr { 
-                display: block; 
-                width: 100%; 
-            } 
-
-            thead { 
-                display: none; 
-            } 
-
-            tr { 
-                margin-bottom: 16px; 
-                border: 1px solid var(--border-light); 
-                border-radius: var(--border-radius); 
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); 
-                padding: 20px;
-                box-shadow: var(--shadow-md);
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }
-            
-            tr:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
-            }
-            
-            tr::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 3px;
-                background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            }
-            
-            tr:hover::before {
-                opacity: 1;
-            }
-
-            td { 
-                border: none; 
-                padding: 12px 0; 
-                position: relative;
-            } 
-
-            td::before { 
-                content: attr(data-label); 
-                display: block; 
-                font-size: 12px; 
-                color: var(--text-secondary); 
-                margin-bottom: 6px; 
-                text-transform: uppercase; 
-                letter-spacing: 0.04em;
-                font-weight: 700;
-            }
-            
-            .pagination {
-                padding: 16px;
-                gap: 8px;
-            }
-            
-            .page-link, .page-current, .page-disabled {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            :root {
-                --card-spacing: 12px;
-                --border-radius: 12px;
-            }
-            
-            .hero {
-                padding: 20px 24px;
-            }
-            
-            .hero h1 {
-                font-size: 22px;
-            }
-            
-            .hero .lede {
-                font-size: 14px;
-            }
-            
-            .card {
-                padding: 20px;
-            }
-            
-            .filters {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .filter-group input,
-            .filter-group select {
-                padding: 12px 14px;
-                font-size: 13px;
-            }
-            
-            .filter-actions {
-                justify-content: stretch;
-                margin-top: 12px;
-                gap: 8px;
-            }
-            
-            .filter-actions .btn {
-                flex: 1;
-                justify-content: center;
-                padding: 12px 16px;
-                font-size: 12px;
-            }
-            
-            .ghost-link {
-                padding: 12px 16px;
-                font-size: 12px;
-                justify-content: center;
-            }
-            
-            tr {
-                padding: 16px;
-                margin-bottom: 12px;
-            }
-            
-            td {
-                padding: 8px 0;
-            }
-            
-            td::before {
-                font-size: 11px;
-                margin-bottom: 4px;
-            }
-            
-            .pagination {
-                padding: 12px;
-                gap: 6px;
-            }
-            
-            .page-link, .page-current, .page-disabled {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-        }
+    }
+    
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 64px 20px;
+        color: var(--text-secondary);
+    }
+    .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
 {% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <div class="hero-content">
-            <div class="hero-main">
-                <p class="eyebrow">系统 · 监控</p>
-                <h1>审计日志</h1>
-                <p class="lede">导出、删除、访问等操作记录 · 系统安全监控</p>
-            </div>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">审计日志 / Audit Logs</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ page_obj.paginator.count }} 条操作记录</p>
         </div>
-        <div class="hero-meta">
-            {% if logs %}
-                <div class="chip">
-                    <span>📊</span>
-                    <span>共 {{ page_obj.paginator.count }} 条记录</span>
-                </div>
-            {% endif %}
-            {% if start_date or end_date or action or method or user_q or path_q %}
-                <div class="chip warning">
-                    <span>🔍</span>
-                    <span>已筛选</span>
-                </div>
-            {% endif %}
+        <div style="display: flex; gap: 12px;">
+            <button class="btn btn-secondary" onclick="location.reload()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                刷新
+            </button>
         </div>
     </div>
 
-    <section class="card">
-        <form method="get" class="filters">
-            <div class="filter-group">
-                <label for="start_date">
-                    <span>📅</span>
-                    开始日期
-                </label>
-                <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label class="form-label">开始日期 / Start Date</label>
+                    <input type="date" name="start_date" class="form-input" value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">结束日期 / End Date</label>
+                    <input type="date" name="end_date" class="form-input" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">动作类型 / Action</label>
+                    <select name="action" class="form-select">
+                        <option value="">全部 / All</option>
+                        {% for a, label in actions %}
+                            <option value="{{ a }}" {% if action == a %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">请求方法 / Method</label>
+                    <select name="method" class="form-select">
+                        <option value="">全部 / All</option>
+                        <option value="GET" {% if method == 'GET' %}selected{% endif %}>GET</option>
+                        <option value="POST" {% if method == 'POST' %}selected{% endif %}>POST</option>
+                        <option value="PUT" {% if method == 'PUT' %}selected{% endif %}>PUT</option>
+                        <option value="DELETE" {% if method == 'DELETE' %}selected{% endif %}>DELETE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">用户 / User</label>
+                    <input type="text" name="user" class="form-input" value="{{ user_q }}" placeholder="用户名/姓名">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">路径 / Path</label>
+                    <input type="text" name="path" class="form-input" value="{{ path_q }}" placeholder="例如 /reports/...">
+                </div>
             </div>
-            <div class="filter-group">
-                <label for="end_date">
-                    <span>📅</span>
-                    结束日期
-                </label>
-                <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
-            </div>
-            <div class="filter-group">
-                <label for="action">
-                    <span>⚡</span>
-                    动作 / Action
-                </label>
-                <select id="action" name="action">
-                    <option value="">全部</option>
-                    {% for a, label in actions %}
-                        <option value="{{ a }}" {% if action == a %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="method">
-                    <span>🔧</span>
-                    方法 / Method
-                </label>
-                <input type="text" id="method" name="method" value="{{ method }}" placeholder="GET/POST">
-            </div>
-            <div class="filter-group">
-                <label for="user">
-                    <span>👤</span>
-                    用户 / User
-                </label>
-                <input type="text" id="user" name="user" value="{{ user_q }}" placeholder="用户名或姓名">
-            </div>
-            <div class="filter-group">
-                <label for="path">
-                    <span>🔗</span>
-                    路径包含 / Path
-                </label>
-                <input type="text" id="path" name="path" value="{{ path_q }}" placeholder="/reports/…">
-            </div>
+            
             <div class="filter-actions">
-                <a class="ghost-link" href="{% url 'reports:audit_logs' %}">🔄 重置</a>
-                <button class="btn btn-secondary" type="submit">🔍 筛选</button>
-                <a class="btn btn-primary" href="{% url 'reports:audit_logs_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&action={{ action }}&method={{ method }}&user={{ user_q }}&path={{ path_q }}">📥 导出 CSV</a>
+                <a href="{% url 'reports:audit_logs' %}" class="btn btn-ghost">重置 / Reset</a>
+                <a href="{% url 'reports:audit_logs_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出 CSV
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选 / Filter
+                </button>
             </div>
-            <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
         </form>
-    </section>
+    </div>
 
-    <section class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>时间</th>
-                    <th>用户</th>
-                    <th>动作</th>
-                    <th>方法</th>
-                    <th>路径</th>
-                    <th>IP</th>
-                    <th>备注</th>
-                    <th>Data / UA</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
+    <!-- Data Table -->
+    <div class="card">
+        <div class="table-container">
+            {% if logs %}
+            <table class="table table-hover">
+                <thead>
                     <tr>
-                        <td data-label="时间">{{ log.created_at|localtime|date:"Y-m-d H:i" }}</td>
-                        <td data-label="用户">{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}匿名{% endif %}</td>
-                        <td data-label="动作">{{ log.get_action_display }}</td>
-                        <td data-label="方法">{{ log.method }}</td>
-                        <td data-label="路径">{{ log.path }}</td>
-                        <td data-label="IP">{{ log.ip|default:"" }}</td>
-                        <td data-label="备注">{{ log.extra|default:"" }}</td>
-                        <td data-label="Data / UA">{{ log.data }}</td>
+                        <th>时间 / Time</th>
+                        <th>用户 / User</th>
+                        <th>动作 / Action</th>
+                        <th>方法 / Method</th>
+                        <th>路径 / Path</th>
+                        <th>IP地址 / IP</th>
+                        <th>备注 / Extra</th>
+                        <th>数据 / Data</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="white-space: nowrap; color: var(--text-secondary);">
+                            {{ log.created_at|localtime|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                    {% if log.user %}
+                                        {{ log.user.username|slice:":1"|upper }}
+                                    {% else %}
+                                        ?
+                                    {% endif %}
+                                </div>
+                                <span style="font-weight: 500;">
+                                    {% if log.user %}
+                                        {{ log.user.get_full_name|default:log.user.username }}
+                                    {% else %}
+                                        <span class="text-muted">匿名 / Anonymous</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if log.action == 'create' %}
+                                <span class="badge badge-green">创建 / Create</span>
+                            {% elif log.action == 'update' %}
+                                <span class="badge badge-blue">更新 / Update</span>
+                            {% elif log.action == 'delete' %}
+                                <span class="badge badge-red">删除 / Delete</span>
+                            {% elif log.action == 'export' %}
+                                <span class="badge badge-orange">导出 / Export</span>
+                            {% elif log.action == 'access' %}
+                                <span class="badge badge-gray">访问 / Access</span>
+                            {% else %}
+                                <span class="badge badge-gray">{{ log.get_action_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="code-snippet">{{ log.method }}</span>
+                        </td>
+                        <td title="{{ log.path }}">
+                            <span style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;">
+                                {{ log.path }}
+                            </span>
+                        </td>
+                        <td>{{ log.ip|default:"-" }}</td>
+                        <td>{{ log.extra|default:"-" }}</td>
+                        <td>
+                            {% if log.data %}
+                                <span title="{{ log.data }}" style="cursor: help; border-bottom: 1px dotted var(--text-muted); color: var(--text-secondary);">查看 / View</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无日志记录</h3>
+                <p style="margin-bottom: 24px;">没有找到符合条件的审计日志。</p>
+                <a href="{% url 'reports:audit_logs' %}" class="btn btn-secondary">清除筛选</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Pagination -->
         {% if page_obj.has_other_pages %}
-            <div class="pagination">
+        <div class="pagination-container">
+            <div class="pagination-info">
+                显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条 / Showing {{ page_obj.start_index }}-{{ page_obj.end_index }}
+            </div>
+
+            <div class="pagination-controls">
                 {% if page_obj.has_previous %}
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if action %}&action={{ action }}{% endif %}{% if method %}&method={{ method }}{% endif %}{% if user_q %}&user={{ user_q }}{% endif %}{% if path_q %}&path={{ path_q }}{% endif %}">上一页</a>
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="上一页">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </a>
                 {% else %}
-                    <span class="page-disabled">上一页</span>
+                    <span class="page-btn disabled">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </span>
                 {% endif %}
-                <span class="page-current">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <span class="page-btn active">{{ i }}</span>
+                    {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                        <a href="?page={{ i }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn">{{ i }}</a>
+                    {% endif %}
+                {% endfor %}
+
                 {% if page_obj.has_next %}
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if action %}&action={{ action }}{% endif %}{% if method %}&method={{ method }}{% endif %}{% if user_q %}&user={{ user_q }}{% endif %}{% if path_q %}&path={{ path_q }}{% endif %}">下一页</a>
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="下一页">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
                 {% else %}
-                    <span class="page-disabled">下一页</span>
+                    <span class="page-btn disabled">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </span>
                 {% endif %}
             </div>
+        </div>
         {% endif %}
-    </section>
+    </div>
+
+</div>
 {% endblock %}

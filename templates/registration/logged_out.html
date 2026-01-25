@@ -2,621 +2,316 @@
 {% block title %}已退出 / Logged Out{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="已退出 / Logged Out" nav_subtitle="感谢使用，期待再次相见 / Thank you for using, see you again" %}{% endblock %}
 {% block extra_styles %}
-        :root {
-            /* 统一色彩系统 */
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --primary-3: #60a5fa;
-            --accent: #06b6d4;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            
-            /* 中性色 */
-            --ink: #1e293b;
-            --text-secondary: #475569;
-            --text-muted: #64748b;
-            --text-light: #94a3b8;
-            
-            /* 背景色 */
-            --bg-primary: rgba(255, 255, 255, 0.98);
-            --bg-secondary: rgba(248, 250, 252, 0.95);
-            --bg-glass: rgba(255, 255, 255, 0.7);
-            
-            /* 边框色 */
-            --border: rgba(226, 232, 240, 0.8);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --border-focus: rgba(59, 130, 246, 0.5);
-            
-            /* 圆角 */
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 20px;
-            --radius-xl: 24px;
-            
-            /* 阴影 */
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.15);
-            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.2);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-            
-            /* 动画 */
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f0f9ff 50%, #fef3c7 75%, #f0fdf4 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
+    .container-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
-                        radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
+    .logout-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 600px;
+        padding: 48px;
+        text-align: center;
+        border-top: 4px solid var(--primary);
+    }
 
-        .logout-container {
-            width: min(800px, 100%);
-            max-width: 800px;
-            position: relative;
-            z-index: 1;
-        }
+    .success-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+        animation: wave 2s infinite;
+        display: inline-block;
+        background: var(--primary-light);
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px auto;
+    }
 
-        .hero-section {
-            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
-            padding: clamp(40px, 6vw, 60px);
-            text-align: center;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition-smooth);
-        }
+    @keyframes wave {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(10deg); }
+        75% { transform: rotate(-10deg); }
+    }
 
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--success));
-            opacity: 0.9;
-            animation: gradientShift 3s ease-in-out infinite;
-        }
+    .logout-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 16px 0;
+    }
 
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
+    .logout-desc {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 32px;
+    }
 
-        .hero-section:hover {
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
-        }
+    .countdown-box {
+        background: var(--primary-light);
+        color: var(--primary);
+        padding: 12px 24px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 32px;
+    }
 
-        .success-icon {
-            font-size: 80px;
-            margin-bottom: 24px;
-            display: inline-block;
-            animation: successPulse 2s ease-in-out infinite;
-        }
+    /* Action Cards Grid */
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+        text-align: left;
+    }
 
-        @keyframes successPulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
+    .action-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        text-decoration: none;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
 
-        .hero-section h1 {
-            margin: 0 0 16px;
-            font-size: clamp(32px, 5vw, 40px);
-            font-weight: 700;
-            color: var(--ink);
-            line-height: 1.2;
-        }
+    .action-card:hover {
+        border-color: #1e40af;
+        box-shadow: 0 8px 24px rgba(30, 64, 175, 0.15);
+        transform: translateY(-2px);
+    }
 
-        .hero-section .subtitle {
-            margin: 0 0 32px;
-            font-size: clamp(16px, 2.5vw, 20px);
-            color: var(--muted);
-            line-height: 1.5;
-        }
+    .action-card:hover .action-title {
+        color: #1e40af;
+    }
 
-        .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
+    .action-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+        transition: transform 0.3s;
+    }
 
-        .action-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 24px;
-            text-decoration: none;
-            color: var(--ink);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .action-card:hover .action-icon {
+        transform: scale(1.1);
+    }
 
-        .action-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    .action-title {
+        font-weight: 700;
+        color: var(--text-main);
+        font-size: 15px;
+        transition: color 0.2s;
+    }
 
-        .action-card:hover::before {
-            opacity: 1;
-        }
+    .action-desc {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.4;
+    }
 
-        .action-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--border-hover);
-        }
+    /* Info Section */
+    .info-section {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        text-align: left;
+        margin-bottom: 32px;
+    }
 
-        .action-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
-            display: block;
-        }
+    .info-title {
+        font-weight: 700;
+        color: var(--text-main);
+        font-size: 14px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .action-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 8px;
-            color: var(--ink);
-        }
+    .info-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
 
-        .action-desc {
-            font-size: 13px;
-            color: var(--muted);
-            margin: 0;
-            line-height: 1.4;
-        }
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .info-section {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.08));
-            border: 1px solid rgba(59, 130, 246, 0.15);
-            border-radius: var(--radius-md);
-            padding: 24px;
-            margin-bottom: 24px;
-        }
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 32px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+    }
 
-        .info-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 16px;
-            color: var(--ink);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
 
+    .btn-primary:hover {
+        background-color: #1e40af; /* Darker blue */
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .footer-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 24px;
+    }
+
+    @media (max-width: 600px) {
+        .logout-card {
+            padding: 32px 20px;
+        }
         .info-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin: 0;
-            padding: 0;
-            list-style: none;
+            grid-template-columns: 1fr;
         }
-
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: var(--muted);
-        }
-
-        .info-item .icon {
-            color: var(--primary);
-            font-size: 16px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            border-radius: var(--radius-md);
-            border: none;
-            padding: 16px 24px;
-            font-size: 15px;
-            font-weight: 700;
-            text-decoration: none;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            font-family: inherit;
-            letter-spacing: 0.02em;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:active {
-            transform: translateY(1px) scale(0.98);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--primary-3));
-            color: #fff;
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
-        }
-
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.45);
-            transform: translateY(-3px) scale(1.02);
-        }
-
-        .btn-primary:active {
-            transform: translateY(-1px) scale(0.98);
-        }
-
-        .btn-secondary {
-            background: rgba(15, 23, 42, 0.06);
-            color: var(--ink);
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, var(--success), #059669, #10b981);
-            color: #fff;
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
-        }
-
-        .btn-success::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .btn-success:hover::before {
-            left: 100%;
-        }
-
-        .btn-success:hover {
-            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.45);
-            transform: translateY(-3px) scale(1.02);
-        }
-
-        .btn-success:active {
-            transform: translateY(-1px) scale(0.98);
-        }
-
-        .footer-info {
-            text-align: center;
-            color: var(--text-light);
-            font-size: 13px;
-            margin-top: 32px;
-        }
-
-        .footer-info a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .footer-info a:hover {
-            text-decoration: underline;
-        }
-
-        .countdown {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary);
-            margin: 16px 0;
-        }
-
-        .countdown .timer {
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            font-weight: 700;
-        }
-
-        @media (max-width: 820px) { 
-            .logout-container {
-                padding: 16px;
-            }
-            
-            .hero-section { 
-                padding: clamp(32px, 5vw, 48px);
-            }
-
-            .actions-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .info-list {
-                grid-template-columns: 1fr;
-            }
-
-            .success-icon {
-                font-size: 60px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logout-container {
-                padding: 12px;
-            }
-
-            .hero-section {
-                padding: 24px 20px;
-            }
-
-            .action-card {
-                padding: 20px;
-            }
-
-            .btn {
-                padding: 14px 20px;
-                font-size: 14px;
-            }
-        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="logout-container">
-        <div class="hero-section">
+    <div class="container-wrapper">
+        <div class="logout-card">
             <div class="success-icon">👋</div>
-            <h1>安全退出，感谢使用 / Securely Logged Out</h1>
-            <p class="subtitle">
+            <h1 class="logout-title">安全退出，感谢使用 / Securely Logged Out</h1>
+            <p class="logout-desc">
                 你已安全退出团队协作平台，今日的日报和任务已自动保存。<br>
-                You have safely logged out of the team collaboration platform. Today's reports and tasks have been automatically saved.
+                You have safely logged out. Data has been saved.
             </p>
 
-            <div class="countdown">
+            <div class="countdown-box">
                 <span>⏰</span>
-                <span>页面将在 <span class="timer" id="countdown-timer">30</span> 秒后跳转到登录页 / Page will redirect to login in <span class="timer" id="countdown-timer-2">30</span> seconds</span>
+                <span id="countdown-text">30s 后跳转到登录页 / Redirecting in 30s</span>
             </div>
 
             <div class="actions-grid">
                 <a href="{% url 'login' %}" class="action-card" id="login-link">
-                    <span class="action-icon">🔐</span>
+                    <div class="action-icon">🔐</div>
                     <div class="action-title">重新登录 / Login Again</div>
-                    <div class="action-desc">返回登录页面继续工作 / Return to login page to continue working</div>
+                    <div class="action-desc">返回登录页面继续工作</div>
                 </a>
-
                 <a href="{% url 'register' %}" class="action-card">
-                    <span class="action-icon">👤</span>
+                    <div class="action-icon">👤</div>
                     <div class="action-title">注册新账号 / New Account</div>
-                    <div class="action-desc">创建新的团队账户 / Create a new team account</div>
+                    <div class="action-desc">创建新的团队账户</div>
                 </a>
-
-                <a href="#" class="action-card" onclick="showHelpModal(); return false;">
-                    <span class="action-icon">💬</span>
-                    <div class="action-title">需要帮助？/ Need Help?</div>
-                    <div class="action-desc">查看使用指南和常见问题 / View user guide and FAQs</div>
-                </a>
-
             </div>
 
             <div class="info-section">
-                <h3 class="info-title">
-                    <span>💡</span>
-                    <span>温馨提示 / Friendly Reminder</span>
-                </h3>
-                <ul class="info-list">
-                    <li class="info-item">
-                        <span class="icon">✅</span>
-                        <span>所有数据已安全保存 / All data has been securely saved</span>
-                    </li>
-                    <li class="info-item">
-                        <span class="icon">🔒</span>
-                        <span>会话已安全结束 / Session has been securely terminated</span>
-                    </li>
-                    <li class="info-item">
-                        <span class="icon">📱</span>
-                        <span>支持移动端访问 / Mobile access supported</span>
-                    </li>
-                    <li class="info-item">
-                        <span class="icon">🌐</span>
-                        <span>24/7 系统可用 / 24/7 system availability</span>
-                    </li>
-                </ul>
+                <div class="info-title">
+                    <span>💡</span> 温馨提示 / Friendly Reminder
+                </div>
+                <div class="info-list">
+                    <div class="info-item">✅ 数据已保存 / Data saved</div>
+                    <div class="info-item">🔒 会话已结束 / Session ended</div>
+                    <div class="info-item">📱 支持移动端 / Mobile ready</div>
+                    <div class="info-item">🌐 系统在线 / System online</div>
+                </div>
             </div>
 
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <a href="{% url 'login' %}" class="btn btn-primary">
-                    <span>🚀</span>
-                    <span>立即登录 / Login Now</span>
-                </a>
+            <a href="{% url 'login' %}" class="btn btn-primary">立即登录 / Login Now</a>
 
-
+            <div class="footer-text">
+                感谢你今天的辛勤工作，期待明天继续协作
             </div>
-        </div>
-
-        <div class="footer-info">
-            <p>👋 感谢你今天的辛勤工作，期待明天继续协作 / Thank you for your hard work today, looking forward to collaborating again tomorrow</p>
-
         </div>
     </div>
 
     <script>
-        let countdownTime = 30;
-        let countdownInterval;
-
-        function updateCountdown() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(timer => {
-                timer.textContent = countdownTime;
-            });
-            
-            if (countdownTime <= 0) {
-                clearInterval(countdownInterval);
-                window.location.href = '{% url "login" %}';
-            }
-            
-            countdownTime--;
-        }
-
-        function startCountdown() {
-            countdownInterval = setInterval(updateCountdown, 1000);
-            updateCountdown();
-        }
-
-        function stopCountdown() {
-            clearInterval(countdownInterval);
-        }
-
-        function showHelpModal() {
-            alert('帮助中心即将上线，敬请期待！\n\nHelp center coming soon, stay tuned!');
-        }
-
-        function showFeedbackModal() {
-            const feedback = prompt('请输入您的宝贵意见和建议：\n\nPlease enter your valuable feedback and suggestions:');
-            if (feedback) {
-                alert('感谢您的反馈！我们会认真考虑您的建议。\n\nThank you for your feedback! We will carefully consider your suggestions.');
-            }
-        }
-
-        function showPrivacyModal() {
-            alert('隐私政策页面正在开发中...\n\nPrivacy policy page is under development...');
-        }
-
-        function showTermsModal() {
-            alert('使用条款页面正在开发中...\n\nTerms of service page is under development...');
-        }
-
-        function showContactModal() {
-            alert('联系方式：\n邮箱：support@team.com\n电话：400-123-4567\n\nContact Information:\nEmail: support@team.com\nPhone: 400-123-4567');
-        }
-
-        function sharePage() {
-            if (navigator.share) {
-                navigator.share({
-                    title: 'TM 团队协作平台',
-                    text: '体验高效的团队协作平台',
-                    url: window.location.origin
-                });
-            } else {
-                // 复制链接到剪贴板
-                navigator.clipboard.writeText(window.location.origin).then(() => {
-                    alert('链接已复制到剪贴板！\nLink copied to clipboard!');
-                });
-            }
-        }
-
-        // 页面加载完成后启动倒计时
         document.addEventListener('DOMContentLoaded', function() {
-            startCountdown();
+            let countdownTime = 30;
+            const countdownEl = document.getElementById('countdown-text');
+            const loginLink = document.getElementById('login-link');
+            let interval;
 
-            // 鼠标移动到页面时停止倒计时
-            document.addEventListener('mousemove', stopCountdown);
-            
-            // 鼠标离开页面时重新启动倒计时
-            document.addEventListener('mouseleave', startCountdown);
-
-            // 点击登录链接时停止倒计时
-            document.getElementById('login-link').addEventListener('click', stopCountdown);
-
-            // 添加页面可见性检测
-            document.addEventListener('visibilitychange', function() {
-                if (document.hidden) {
-                    stopCountdown();
-                } else {
-                    startCountdown();
-                }
-            });
-
-            // 添加键盘快捷键
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
+            function updateTimer() {
+                countdownEl.innerText = `${countdownTime}s 后跳转到登录页 / Redirecting in ${countdownTime}s`;
+                if (countdownTime <= 0) {
+                    clearInterval(interval);
                     window.location.href = '{% url "login" %}';
                 }
-                if (e.key === 'Escape') {
-                    stopCountdown();
-                }
-            });
+                countdownTime--;
+            }
 
-            // 添加页面离开确认
-            window.addEventListener('beforeunload', function(e) {
-                if (countdownTime > 0 && countdownTime < 30) {
-                    e.preventDefault();
-                    e.returnValue = '确定要离开吗？/ Are you sure you want to leave?';
+            interval = setInterval(updateTimer, 1000);
+
+            // Stop timer on interaction
+            function stopTimer() {
+                if (interval) {
+                    clearInterval(interval);
+                    interval = null;
+                    countdownEl.innerText = "倒计时已暂停 / Timer paused";
+                    countdownEl.style.backgroundColor = "#f1f5f9";
+                    countdownEl.style.color = "#64748b";
                 }
-            });
+            }
+
+            document.addEventListener('mousemove', stopTimer);
+            document.addEventListener('keydown', stopTimer);
+            if (loginLink) loginLink.addEventListener('click', stopTimer);
         });
     </script>
 {% endblock %}

@@ -2,1182 +2,612 @@
 {% load tz %}
 {% block title %}个人工作台 / Workbench{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="个人工作台 / Workbench" nav_subtitle="智能工作助手，高效管理任务与日报 / Smart work assistant for efficient task and report management" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #8b5cf6;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.8);
-            --bg-glass: rgba(255, 255, 255, 0.7);
-            --border-light: rgba(226, 232, 240, 0.6);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --border-radius: 20px;
-            --card-spacing: 20px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-            --shadow-xl: 0 20px 60px rgba(15, 23, 42, 0.2);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* 智能引导区域 */
-        .guidance-banner {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light);
-            border-radius: var(--border-radius);
-            padding: 32px;
-            margin-bottom: var(--card-spacing);
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: slideInDown 0.6s ease-out;
-        }
-
-        @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .guidance-banner.urgent {
-            border-color: rgba(239, 68, 68, 0.3);
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), var(--bg-glass));
-        }
-
-        .guidance-banner.urgent::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--danger), #f87171);
-        }
-
-        .guidance-banner.warning {
-            border-color: rgba(245, 158, 11, 0.3);
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), var(--bg-glass));
-        }
-
-        .guidance-banner.warning::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--warning), #fbbf24);
-        }
-
-        .guidance-banner.info {
-            border-color: rgba(139, 92, 246, 0.3);
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), var(--bg-glass));
-        }
-
-        .guidance-banner.info::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--info), #a78bfa);
-        }
-
-        .guidance-content {
-            display: flex;
-            align-items: flex-start;
-            gap: 24px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .guidance-tips {
-            background: rgba(59, 130, 246, 0.08);
-            border: 1px dashed rgba(59, 130, 246, 0.2);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .guidance-tips h4 {
-            margin: 0 0 8px 0;
-            color: var(--primary);
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .guidance-tips ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .guidance-tips li {
-            margin: 4px 0;
-        }
-
-        .guidance-icon {
-            font-size: 48px;
-            line-height: 1;
-            flex-shrink: 0;
-            margin-top: 4px;
-        }
-
-        .guidance-text {
-            flex: 1;
-        }
-
-        .guidance-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin: 0 0 8px 0;
-            color: var(--text-primary);
-            line-height: 1.3;
-        }
-
-        .guidance-subtitle {
-            font-size: 16px;
-            color: var(--text-secondary);
-            margin: 0 0 20px 0;
-            line-height: 1.5;
-        }
-
-        .guidance-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .guidance-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .guidance-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .guidance-btn:hover::before {
-            left: 100%;
-        }
-
-        .guidance-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-        }
-
-        .guidance-btn.secondary {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-section));
-            color: var(--text-primary);
-            border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .guidance-btn.secondary:hover {
-            border-color: var(--border-hover);
-            box-shadow: var(--shadow-md);
-        }
-
-        /* 核心指标区域 */
-        .metrics-section {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: var(--card-spacing);
-            margin-bottom: var(--card-spacing);
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .metric-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-xl);
-            border-color: var(--border-hover);
-        }
-
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .metric-card:hover::before {
-            opacity: 1;
-        }
-
-        .metric-card.highlight::before {
-            opacity: 0.8;
-        }
-
-        .metric-icon {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 32px;
-            height: 32px;
-            opacity: 0.15;
-            font-size: 24px;
-        }
-
-        .metric-value {
-            font-size: 36px;
-            font-weight: 800;
-            margin: 0;
-            color: var(--text-primary);
-            line-height: 1.1;
-            display: flex;
-            align-items: baseline;
-            gap: 6px;
-        }
-
-        .metric-value .unit {
-            font-size: 18px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .metric-label {
-            color: var(--text-secondary);
-            font-size: 13px;
-            margin: 12px 0 0;
-            font-weight: 600;
-            line-height: 1.3;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .metric-trend {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 8px;
-            padding: 4px 8px;
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .metric-trend.down {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-        }
-
-        /* 快速操作面板 */
-        .quick-actions {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .quick-actions::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
-            opacity: 0.8;
-        }
-
-        .quick-actions-help {
-            background: rgba(139, 92, 246, 0.05);
-            border: 1px solid rgba(139, 92, 246, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 16px;
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .quick-actions-help strong {
-            color: var(--info);
-            font-weight: 600;
-        }
-
-        .quick-actions h3 {
-            margin: 0 0 20px 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .action-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        .action-btn {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 20px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .action-btn:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-            border-color: var(--border-hover);
-            transform: translateX(6px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .action-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(59, 130, 246, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s ease, height 0.3s ease;
-        }
-
-        .action-btn:active::before {
-            width: 200px;
-            height: 200px;
-        }
-
-        .action-icon {
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        .action-content {
-            flex: 1;
-        }
-
-        .action-title {
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-
-        .action-desc {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        /* 内容网格 */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--card-spacing);
-        }
-
-        /* 新手引导区域 */
-        .onboarding-section {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.05));
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: var(--border-radius);
-            padding: 24px;
-            margin-bottom: var(--card-spacing);
-            box-shadow: var(--shadow-md);
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .onboarding-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .onboarding-icon {
-            font-size: 32px;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-            40% {
-                transform: translateY(-10px);
-            }
-            60% {
-                transform: translateY(-5px);
-            }
-        }
-
-        .onboarding-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--success);
-            margin: 0;
-        }
-
-        .onboarding-steps {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-        }
-
-        .step-card {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(16, 185, 129, 0.15);
-            border-radius: 12px;
-            padding: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .step-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, var(--success), #059669);
-            color: white;
-            border-radius: 50%;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .step-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0 0 6px 0;
-        }
-
-        .step-desc {
-            font-size: 12px;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            margin: 0;
-        }
-
-        .section-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-light);
-            border-radius: var(--border-radius);
-            padding: 28px;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.3s ease;
-            height: fit-content;
-        }
-
-        .section-card:hover {
-            border-color: var(--border-hover);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-        }
-
-        .section-title {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-icon {
-            font-size: 22px;
-        }
-
-        .section-badge {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            color: white;
-            padding: 6px 12px;
-            border-radius: 14px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 14px 12px;
-            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-            text-align: left;
-        }
-
-        .data-table th {
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            font-size: 11px;
-            font-weight: 700;
-            background: var(--bg-section);
-            border-bottom: 2px solid var(--border-light);
-        }
-
-        .data-table tbody tr {
-            transition: all 0.2s ease;
-        }
-
-        .data-table tbody tr:hover {
-            background-color: rgba(59, 130, 246, 0.02);
-            transform: scale(1.01);
-        }
-
-        .data-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .empty-state {
-            text-align: center;
-            color: var(--text-muted);
-            font-style: italic;
-            padding: 40px;
-            font-size: 14px;
-        }
-
-        .metric-highlight {
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .metric-success {
-            color: var(--success);
-            font-weight: 600;
-        }
-
-        .metric-warning {
-            color: var(--warning);
-            font-weight: 600;
-        }
-
-        .metric-danger {
-            color: var(--danger);
-            font-weight: 600;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-badge.submitted {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-        }
-
-        .status-badge.draft {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: rgba(226, 232, 240, 0.6);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 12px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--success), #059669);
-            border-radius: 4px;
-            transition: width 0.3s ease;
-            width: var(--progress-width, 0%);
-        }
-
-        .progress-fill.warning {
-            background: linear-gradient(90deg, var(--warning), #d97706);
-        }
-
-        .progress-fill.danger {
-            background: linear-gradient(90deg, var(--danger), #dc2626);
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 1200px) {
-            .metrics-section {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .guidance-content {
-                flex-direction: column;
-                gap: 16px;
-            }
-            
-            .guidance-icon {
-                font-size: 36px;
-            }
-        }
-
-        @media (max-width: 860px) {
-            .container {
-                padding: 0 16px;
-            }
-            
-            :root {
-                --card-spacing: 16px;
-            }
-            
-            .guidance-banner {
-                padding: 24px;
-            }
-            
-            .guidance-title {
-                font-size: 20px;
-            }
-            
-            .guidance-subtitle {
-                font-size: 14px;
-            }
-            
-            .metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-            
-            .metric-card {
-                padding: 20px;
-            }
-            
-            .metric-value {
-                font-size: 28px;
-            }
-            
-            .section-card {
-                padding: 20px;
-            }
-            
-            .data-table {
-                font-size: 13px;
-            }
-            
-            .data-table th,
-            .data-table td {
-                padding: 12px 10px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            :root {
-                --card-spacing: 12px;
-            }
-            
-            .guidance-banner {
-                padding: 20px;
-            }
-            
-            .guidance-title {
-                font-size: 18px;
-            }
-            
-            .metric-card {
-                padding: 16px;
-            }
-            
-            .metric-value {
-                font-size: 24px;
-            }
-            
-            .section-card {
-                padding: 16px;
-            }
-        }
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #8b5cf6;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
+
+    /* --- Stats Grid --- */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: #cbd5e1;
+    }
+
+    .stat-card.highlight {
+        background: linear-gradient(135deg, var(--bg-card), #f0f9ff);
+        border-color: #bfdbfe;
+    }
+
+    .stat-icon {
+        font-size: 24px;
+        margin-bottom: 12px;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--bg-page);
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text-main);
+        line-height: 1.1;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+    }
+
+    .stat-unit {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .stat-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .stat-trend {
+        margin-top: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: var(--text-secondary);
+        width: fit-content;
+    }
+    .trend-up { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .trend-down { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .trend-neutral { background: #f1f5f9; color: var(--text-secondary); }
+
+    /* --- Dashboard Grid --- */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
+
+    /* --- Quick Actions --- */
+    .section-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .action-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+        background: var(--bg-page);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .action-card:hover {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .action-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: white;
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        border: 1px solid var(--border-color);
+        flex-shrink: 0;
+        color: var(--primary);
+    }
+    
+    .action-card:hover .action-icon-box {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .action-info {
+        flex: 1;
+    }
+
+    .action-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+
+    .action-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+
+    /* --- Standard Table --- */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th, .table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+    }
+
+    .table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+    }
+
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .badge-neutral { background: #f1f5f9; color: var(--text-secondary); }
+
+    /* --- Onboarding Banner --- */
+    .onboarding-banner {
+        background: linear-gradient(135deg, #ecfdf5, #f0f9ff);
+        border: 1px solid #a7f3d0;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .onboarding-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .step-item {
+        background: rgba(255,255,255,0.6);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .step-num {
+        width: 24px; height: 24px;
+        background: var(--success);
+        color: white;
+        border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 12px; font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    /* --- Guidance Banner --- */
+    .guidance-banner {
+        background: white;
+        border-left: 4px solid var(--primary);
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    .guidance-banner.urgent { border-left-color: var(--danger); background: #fef2f2; }
+    .guidance-banner.warning { border-left-color: var(--warning); background: #fffbeb; }
+
+    @media (max-width: 1024px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; }
+        .actions-grid { grid-template-columns: 1fr; }
+    }
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <!-- 新手引导区域 -->
-        {% if streak < 3 or task_stats.total == 0 %}
-        <div class="onboarding-section">
-            <div class="onboarding-header">
-                <div class="onboarding-icon">🎉</div>
-                <h3 class="onboarding-title">欢迎使用工作台！/ Welcome to Your Workbench!</h3>
-            </div>
-            <div class="onboarding-steps">
-                <div class="step-card">
-                    <div class="step-number">1</div>
-                    <h4 class="step-title">📝 提交首份日报 / Submit First Report</h4>
-                    <p class="step-desc">记录今日工作进展，让团队了解你的贡献 / Log today's progress and let the team know your contributions</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">2</div>
-                    <h4 class="step-title">📋 管理任务 / Manage Tasks</h4>
-                    <p class="step-desc">创建和跟踪待办事项，提高工作效率 / Create and track to-dos to boost productivity</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">3</div>
-                    <h4 class="step-title">🚀 参与项目 / Join Projects</h4>
-                    <p class="step-desc">加入相关项目，协作完成团队目标 / Join relevant projects and collaborate on team goals</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">4</div>
-                    <h4 class="step-title">📊 查看数据 / View Analytics</h4>
-                    <p class="step-desc">分析工作数据，持续改进工作方式 / Analyze work data and continuously improve your workflow</p>
-                </div>
-            </div>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">个人工作台 / Workbench</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">{{ today|date:"Y年m月d日 l" }}</p>
         </div>
-        {% endif %}
-
-        <!-- 智能引导横幅 -->
-        {% if guidance.primary %}
-        <div class="guidance-banner {{ guidance.status }}">
-            <div class="guidance-content">
-                <div class="guidance-icon">
-                    {% if guidance.status == 'urgent' %}🚨
-                    {% elif guidance.status == 'warning' %}⚠️
-                    {% elif guidance.status == 'info' %}💡
-                    {% else %}🎯{% endif %}
-                </div>
-                <div class="guidance-text">
-                    <h2 class="guidance-title">{{ guidance.primary }}</h2>
-                    <p class="guidance-subtitle">{{ guidance.secondary }}</p>
-                    {% if guidance.actions %}
-                    <div class="guidance-actions">
-                        {% for action in guidance.actions %}
-                            <a href="{% url action.url %}" class="guidance-btn {% if action.priority != 'high' %}secondary{% endif %}">
-                                {% if action.priority == 'high' %}⚡{% else %}👉{% endif %}
-                                {{ action.text }}
-                            </a>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    
-                    <!-- 操作提示 -->
-                    <div class="guidance-tips">
-                        <h4>💡 操作指南 / Operation Guide</h4>
-                        {% if guidance.status == 'urgent' and not has_today_report %}
-                            <ul>
-                                <li>点击上方"立即提交日报"按钮开始填写 / Click "Submit Report" to start filling out</li>
-                                <li>根据你的角色选择相应的模板 / Choose the appropriate template based on your role</li>
-                                <li>填写完成后可实时预览和保存 / Preview and save after completion</li>
-                            </ul>
-                        {% elif guidance.status == 'warning' and task_stats.overdue > 0 %}
-                            <ul>
-                                <li>优先处理逾期任务，避免影响项目进度 / Prioritize overdue tasks to avoid project delays</li>
-                                <li>如需延期，请及时与项目经理沟通 / If extension is needed, communicate with project manager promptly</li>
-                                <li>更新任务状态，保持团队信息同步 / Update task status to keep team information synchronized</li>
-                            </ul>
-                        {% else %}
-                            <ul>
-                                <li>定期查看任务列表，合理安排工作时间 / Regularly check task list and plan work time reasonably</li>
-                                <li>利用快速操作面板提高工作效率 / Use quick actions panel to improve work efficiency</li>
-                                <li>关注项目进度，及时协作推进 / Pay attention to project progress and collaborate in a timely manner</li>
-                                <li>数据缓存约 10 分钟，性能/统计页可点击刷新查看最新 / Data cached ~10 min; use refresh on performance/stats for latest</li>
-                            </ul>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- 核心指标和快速操作 -->
-        <div class="metrics-section">
-            <div class="metrics-grid">
-                <div class="metric-card highlight" data-card="total">
-                    <span class="metric-icon">📋</span>
-                    <p class="metric-value metric-highlight">{{ task_stats.total }}</p>
-                    <p class="metric-label">任务总数 / Total Tasks</p>
-                </div>
-                <div class="metric-card" data-card="completed">
-                    <span class="metric-icon">✅</span>
-                    <p class="metric-value metric-success">{{ task_stats.completed }}</p>
-                    <p class="metric-label">已完成 / Completed</p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="--progress-width: {{ task_stats.completion_rate|default:0 }}%"></div>
-                    </div>
-                </div>
-                <div class="metric-card" data-card="in_progress">
-                    <span class="metric-icon">🚀</span>
-                    <p class="metric-value">{{ task_stats.in_progress }}</p>
-                    <p class="metric-label">进行中 / In Progress</p>
-                </div>
-                <div class="metric-card" data-card="overdue">
-                    <span class="metric-icon">⚠️</span>
-                    <p class="metric-value metric-danger">{{ task_stats.overdue }}</p>
-                    <p class="metric-label">逾期 / Overdue</p>
-                </div>
-                <div class="metric-card" data-card="rate">
-                    <span class="metric-icon">📊</span>
-                    <p class="metric-value metric-success">{{ task_stats.completion_rate|floatformat:1 }}<span class="unit">%</span></p>
-                    <p class="metric-label">完成率 / Completion Rate</p>
-                    {% if task_stats.completion_rate >= 80 %}
-                    <div class="metric-trend">📈 表现优秀</div>
-                    {% elif task_stats.completion_rate >= 60 %}
-                    <div class="metric-trend">📊 继续加油</div>
-                    {% else %}
-                    <div class="metric-trend down">📉 需要提升</div>
-                    {% endif %}
-                </div>
-                <div class="metric-card highlight" data-card="streak">
-                    <span class="metric-icon">🔥</span>
-                    <p class="metric-value metric-highlight">{{ streak }}</p>
-                    <p class="metric-label">日报连签 / Report Streak</p>
-                    {% if streak >= 7 %}
-                    <div class="metric-trend">🏆 连续一周</div>
-                    {% elif streak >= 3 %}
-                    <div class="metric-trend">📈 保持良好</div>
-                    {% endif %}
-                </div>
-                <div class="metric-card {% if missing_today %}warning{% endif %}">
-                    <span class="metric-icon">⏰</span>
-                    <p class="metric-value">{% if missing_today %}未提交 / Missing{% else %}已提交 / Submitted{% endif %}</p>
-                    <p class="metric-label">今日缺报状态 / Today</p>
-                    {% if missing_today %}
-                    <div class="metric-trend down">请尽快提交 / Please submit today</div>
-                    {% else %}
-                    <div class="metric-trend">已完成今日日报 / Done</div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="quick-actions">
-                <h3>
-                    <span>⚡</span>
-                    快速操作 / Quick Actions
-                </h3>
-                <div class="action-grid">
-                    {% if not has_today_report %}
-                    <a href="{% url 'reports:daily_report_create' %}" class="action-btn">
-                        <span class="action-icon">📝</span>
-                        <div class="action-content">
-                            <div class="action-title">提交日报 / Submit Report</div>
-                            <div class="action-desc">记录今日工作进展 / Log today's progress</div>
-                        </div>
-                    </a>
-                    {% endif %}
-                    <a href="{% url 'reports:stats' %}?date={{ today }}" class="action-btn">
-                        <span class="action-icon">⏰</span>
-                        <div class="action-content">
-                            <div class="action-title">缺报列表 / Missing</div>
-                            <div class="action-desc">查看并催报今日缺报 / Check and remind missing reports</div>
-                        </div>
-                    </a>
-                    <a href="{% url 'reports:task_list' %}" class="action-btn">
-                        <span class="action-icon">📋</span>
-                        <div class="action-content">
-                            <div class="action-title">查看任务 / View Tasks</div>
-                            <div class="action-desc">管理所有待办事项 / Manage all to-dos</div>
-                        </div>
-                    </a>
-                    {% if request.user.is_staff or request.user.managed_projects.all %}
-                    <a href="{% url 'reports:admin_task_create' %}" class="action-btn">
-                        <span class="action-icon">➕</span>
-                        <div class="action-content">
-                            <div class="action-title">创建任务 / Create Task</div>
-                            <div class="action-desc">分配新任务给团队成员 / Assign tasks to team</div>
-                        </div>
-                    </a>
-                    {% endif %}
-                    <a href="{% url 'reports:project_list' %}" class="action-btn">
-                        <span class="action-icon">🚀</span>
-                        <div class="action-content">
-                            <div class="action-title">项目概览 / Projects</div>
-                            <div class="action-desc">查看所有项目状态 / View all project status</div>
-                        </div>
-                    </a>
-                </div>
-                
-                <!-- 操作提示 -->
-                <div class="quick-actions-help">
-                    <strong>💡 使用提示 / Usage Tips:</strong> 
-                    点击上方按钮快速访问常用功能。建议每日先提交日报，再处理任务事项。
-                    / Click the buttons above for quick access to common functions. It's recommended to submit your daily report first, then handle tasks.
-                </div>
-            </div>
-        </div>
-
-        <!-- 详细内容区域 -->
-        <div class="content-grid">
-            <section class="section-card">
-                <div class="section-header">
-                    <h3 class="section-title">
-                        <span class="section-icon">🔥</span>
-                        项目进度燃尽 / Project Burndown
-                    </h3>
-                    <span class="section-badge">{{ project_burndown|length }} 项目</span>
-                </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>项目 / Project</th>
-                            <th>总任务</th>
-                            <th>已完成</th>
-                            <th>进行中</th>
-                            <th>剩余</th>
-                            <th>完成率</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in project_burndown %}
-                        <tr>
-                            <td><strong>{{ row.code }} - {{ row.project }}</strong></td>
-                            <td>{{ row.total }}</td>
-                            <td class="metric-success">{{ row.completed }}</td>
-                            <td>{{ row.in_progress }}</td>
-                            <td>{{ row.remaining }}</td>
-                            <td>
-                                <span class="{% if row.completion_rate >= 80 %}metric-success{% elif row.completion_rate >= 60 %}metric-warning{% else %}metric-danger{% endif %}">
-                                    {{ row.completion_rate|floatformat:1 }}%
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="empty-state">暂无项目数据 / No project data</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
-
-            <section class="section-card">
-                <div class="section-header">
-                    <h3 class="section-title">
-                        <span class="section-icon">📝</span>
-                        近期日报记录 / Recent Reports
-                    </h3>
-                    <span class="section-badge">{{ recent_reports|length }} 条记录</span>
-                </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>日期 / Date</th>
-                            <th>角色 / Role</th>
-                            <th>状态 / Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in recent_reports %}
-                        <tr>
-                            <td><strong>{{ r.date }}</strong></td>
-                            <td>{{ r.get_role_display }}</td>
-                            <td>
-                                {% if r.status == 'submitted' %}
-                                <span class="status-badge submitted">{{ r.get_status_display }}</span>
-                                {% elif r.status == 'draft' %}
-                                <span class="status-badge draft">{{ r.get_status_display }}</span>
-                                {% else %}
-                                {{ r.get_status_display }}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="empty-state">暂无日报记录 / No report records</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
+        <div>
+            <!-- Reserved for potential global actions -->
         </div>
     </div>
+
+    <!-- Onboarding Section -->
+    {% if streak < 3 or task_stats.total == 0 %}
+    <div class="onboarding-banner">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px;">🎉</span>
+            <div>
+                <h3 style="margin: 0; font-size: 18px; color: #065f46;">欢迎使用工作台！/ Welcome!</h3>
+                <p style="margin: 4px 0 0; color: #047857; font-size: 13px;">完成以下步骤快速上手 / Follow these steps to get started</p>
+            </div>
+        </div>
+        <div class="onboarding-steps">
+            <div class="step-item">
+                <div class="step-num">1</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);">提交首份日报 <br><span style="font-weight:400; color:var(--text-secondary);">Submit Report</span></div>
+            </div>
+            <div class="step-item">
+                <div class="step-num">2</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);">管理任务 <br><span style="font-weight:400; color:var(--text-secondary);">Manage Tasks</span></div>
+            </div>
+            <div class="step-item">
+                <div class="step-num">3</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);">查看数据 <br><span style="font-weight:400; color:var(--text-secondary);">View Analytics</span></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Guidance Banner -->
+    {% if guidance.primary %}
+    <div class="guidance-banner {{ guidance.status }}">
+        <div style="font-size: 24px;">
+            {% if guidance.status == 'urgent' %}🚨
+            {% elif guidance.status == 'warning' %}⚠️
+            {% elif guidance.status == 'info' %}💡
+            {% else %}🎯{% endif %}
+        </div>
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700; color: var(--text-main);">{{ guidance.primary }}</h3>
+            <p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 13px;">{{ guidance.secondary }}</p>
+            
+            {% if guidance.actions %}
+            <div style="display: flex; gap: 12px;">
+                {% for action in guidance.actions %}
+                    <a href="{% url action.url %}" class="btn {% if action.priority == 'high' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" style="text-decoration: none;">
+                        {{ action.text }}
+                    </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <!-- Today's Report Status -->
+        <div class="stat-card {% if missing_today %}highlight{% endif %}" data-card="today">
+            <div class="stat-icon" style="color: {% if missing_today %}var(--warning){% else %}var(--success){% endif %}; background: {% if missing_today %}#fffbeb{% else %}#ecfdf5{% endif %};">
+                {% if missing_today %}⚠️{% else %}✅{% endif %}
+            </div>
+            <div class="stat-value" style="font-size: 20px;">
+                {% if missing_today %}未提交 / Missing{% else %}已提交 / Done{% endif %}
+            </div>
+            <div class="stat-label">今日日报 / Today</div>
+            {% if missing_today %}
+                <a href="{% url 'reports:daily_report_create' %}" class="stat-trend trend-down" style="text-decoration:none; margin-top: auto;">立即提交 &rarr;</a>
+            {% else %}
+                <div class="stat-trend trend-up" style="margin-top: auto;">保持优秀</div>
+            {% endif %}
+        </div>
+
+        <!-- Task Stats -->
+        <div class="stat-card" data-card="total">
+            <div class="stat-icon" style="color: var(--primary);">📋</div>
+            <div class="stat-value">{{ task_stats.total }}</div>
+            <div class="stat-label">任务总数 / Total</div>
+        </div>
+
+        <div class="stat-card" data-card="in_progress">
+            <div class="stat-icon" style="color: var(--info);">🚀</div>
+            <div class="stat-value">{{ task_stats.in_progress }}</div>
+            <div class="stat-label">进行中 / In Progress</div>
+        </div>
+
+        <div class="stat-card" data-card="overdue">
+            <div class="stat-icon" style="color: var(--danger);">⚠️</div>
+            <div class="stat-value" style="color: var(--danger);">{{ task_stats.overdue }}</div>
+            <div class="stat-label">逾期 / Overdue</div>
+        </div>
+
+        <div class="stat-card" data-card="rate">
+            <div class="stat-icon" style="color: var(--success);">📊</div>
+            <div class="stat-value">{{ task_stats.completion_rate|floatformat:0 }}<span class="stat-unit">%</span></div>
+            <div class="stat-label">完成率 / Rate</div>
+            <div class="progress-bar" style="height: 4px; background: #f1f5f9; border-radius: 2px; margin-top: 8px; width: 100%;">
+                <div style="height: 100%; width: {{ task_stats.completion_rate }}%; background: var(--success); border-radius: 2px;"></div>
+            </div>
+        </div>
+
+        <div class="stat-card" data-card="streak">
+            <div class="stat-icon" style="color: #f59e0b;">🔥</div>
+            <div class="stat-value">{{ streak }}</div>
+            <div class="stat-label">连签 / Streak</div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Layout -->
+    <div class="dashboard-grid">
+        
+        <!-- Left Column: Quick Actions & Burndown -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- Quick Actions -->
+            <section class="section-card">
+                <div class="section-header">
+                    <h3 class="section-title">⚡ 快速操作 / Quick Actions</h3>
+                </div>
+                <div class="actions-grid">
+                    {% if not has_today_report %}
+                    <a href="{% url 'reports:daily_report_create' %}" class="action-card">
+                        <div class="action-icon-box">📝</div>
+                        <div class="action-info">
+                            <div class="action-name">提交日报</div>
+                            <div class="action-sub">Submit Report</div>
+                        </div>
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'reports:admin_task_stats' %}?date={{ today }}" class="action-card">
+                        <div class="action-icon-box">⏰</div>
+                        <div class="action-info">
+                            <div class="action-name">缺报列表</div>
+                            <div class="action-sub">Missing Reports</div>
+                        </div>
+                    </a>
+
+                    <a href="{% url 'reports:task_list' %}" class="action-card">
+                        <div class="action-icon-box">📋</div>
+                        <div class="action-info">
+                            <div class="action-name">我的任务</div>
+                            <div class="action-sub">My Tasks</div>
+                        </div>
+                    </a>
+
+                    {% if request.user.is_staff or request.user.managed_projects.all %}
+                    <a href="{% url 'reports:admin_task_create' %}" class="action-card">
+                        <div class="action-icon-box">➕</div>
+                        <div class="action-info">
+                            <div class="action-name">创建任务</div>
+                            <div class="action-sub">Create Task</div>
+                        </div>
+                    </a>
+                    {% endif %}
+
+                    <a href="{% url 'reports:project_list' %}" class="action-card">
+                        <div class="action-icon-box">🚀</div>
+                        <div class="action-info">
+                            <div class="action-name">项目概览</div>
+                            <div class="action-sub">Projects</div>
+                        </div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Project Burndown -->
+            <section class="section-card">
+                <div class="section-header">
+                    <h3 class="section-title">🔥 项目进度燃尽 / Project Burndown</h3>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-page); padding: 4px 10px; border-radius: 12px;">{{ project_burndown|length }} Projects</span>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>项目 / Project</th>
+                                <th>总任务</th>
+                                <th>已完成</th>
+                                <th>进行中</th>
+                                <th>剩余</th>
+                                <th>进度</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in project_burndown %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600; color: var(--text-main);">{{ row.project }}</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">{{ row.code }}</div>
+                                </td>
+                                <td>{{ row.total }}</td>
+                                <td style="color: var(--success); font-weight: 600;">{{ row.completed }}</td>
+                                <td>{{ row.in_progress }}</td>
+                                <td>{{ row.remaining }}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div class="progress-bar" style="height: 4px; background: #f1f5f9; width: 60px; border-radius: 2px;">
+                                            <div style="height: 100%; width: {{ row.completion_rate }}%; background: {% if row.completion_rate >= 80 %}var(--success){% elif row.completion_rate >= 50 %}var(--warning){% else %}var(--danger){% endif %}; border-radius: 2px;"></div>
+                                        </div>
+                                        <span style="font-size: 12px; font-weight: 600;">{{ row.completion_rate|floatformat:0 }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                                    暂无项目数据 / No project data
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Right Column: Recent Reports -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <section class="section-card" style="height: 100%;">
+                <div class="section-header">
+                    <h3 class="section-title">📝 近期日报 / Recent Reports</h3>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>日期 / Date</th>
+                                <th>状态 / Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in recent_reports %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600; color: var(--text-main);">{{ r.date }}</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">{{ r.get_role_display }}</div>
+                                </td>
+                                <td>
+                                    {% if r.status == 'submitted' %}
+                                        <span class="status-badge badge-success">已提交</span>
+                                    {% elif r.status == 'draft' %}
+                                        <span class="status-badge badge-warning">草稿</span>
+                                    {% else %}
+                                        <span class="status-badge badge-neutral">{{ r.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                                    暂无记录 / No records
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 16px; text-align: center;">
+                    <a href="{% url 'reports:my_reports' %}" class="btn btn-ghost btn-sm">查看全部 / View All &rarr;</a>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // 个性化仪表卡片：同步服务端偏好（Fallback 本地）
+    // Simple script to handle card visibility preference if needed
+    // Currently kept simple to match the clean design requirement
     (function() {
-        const key = 'workbench_cards';
-        const cards = document.querySelectorAll('[data-card]');
-        let prefs = {};
-
-        function applyPrefs() {
-            cards.forEach(c => {
-                const n = c.dataset.card;
-                if (prefs[n] === false) c.style.display = 'none';
-                else c.style.display = '';
-            });
-        }
-
-        async function loadPrefs() {
-            try {
-                const res = await fetch("{% url 'reports:preference_get_api' %}?key=" + key);
-                const data = await res.json();
-                prefs = data.data || {};
-                applyPrefs();
-            } catch (e) {
-                prefs = JSON.parse(localStorage.getItem(key) || '{}');
-                applyPrefs();
-            }
-        }
-
-        async function savePrefs() {
-            const form = new FormData();
-            form.append('key', key);
-            form.append('value', JSON.stringify(prefs));
-            try {
-                await fetch("{% url 'reports:preference_save_api' %}", {method:'POST', body: form, headers: {'X-CSRFToken': '{{ csrf_token }}'}});
-            } catch (e) {
-                localStorage.setItem(key, JSON.stringify(prefs));
-            }
-        }
-
-        const panel = document.createElement('div');
-        panel.style.display = 'flex';
-        panel.style.gap = '8px';
-        panel.style.flexWrap = 'wrap';
-        panel.style.margin = '12px 0 8px';
-        panel.innerHTML = '<strong style="font-size:13px;">显示卡片 / Show cards:</strong>';
-        const map = {total:'总数',completed:'已完成',in_progress:'进行中',overdue:'逾期',rate:'完成率',streak:'连签'};
-        Object.keys(map).forEach(name => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = map[name];
-            btn.className = 'guidance-btn secondary';
-            btn.style.padding = '8px 12px';
-            btn.onclick = () => {
-                prefs[name] = prefs[name] === false ? true : false;
-                applyPrefs();
-                savePrefs();
-            };
-            panel.appendChild(btn);
-        });
-        document.querySelector('.metrics-section')?.prepend(panel);
-        loadPrefs();
+        const key = 'workbench_cards_v2';
+        // Future: Implement card toggling if requested
     })();
 </script>
 {% endblock %}

@@ -1,415 +1,253 @@
 {% extends "base_topbar.html" %}
 {% load tz safe_md %}
 {% block title %}日报详情 / Daily Report Detail{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容（自适应移动端）" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容" %}{% endblock %}
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-        }
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+        margin-bottom: 24px;
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-        .hero {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px 28px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-            display: grid;
-            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-            gap: 16px;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
 
-        .eyebrow { 
-            text-transform: uppercase; 
-            letter-spacing: 0.12em; 
-            font-size: 11px; 
-            color: var(--muted); 
-            margin: 0 0 8px; 
-            font-weight: 600;
-        }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
 
-        .hero h1 { 
-            margin: 0 0 8px; 
-            font-size: clamp(22px, 3vw, 28px); 
-            line-height: 1.3;
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
 
-        .hero .lede { 
-            margin: 0; 
-            color: var(--muted); 
-            font-size: 14px; 
-            line-height: 1.5;
-        }
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+    }
 
-        .hero-meta { 
-            display: grid; 
-            gap: 8px; 
-            justify-items: end; 
-        }
+    .content-section {
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
 
-        .chip {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05));
-            color: var(--primary);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            border: 1px solid rgba(37, 99, 235, 0.2);
-        }
+    .content-header {
+        background: #f1f5f9;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        color: var(--text-main);
+        font-size: 14px;
+    }
 
-        .layout { 
-            display: grid; 
-            gap: 16px; 
-        }
+    .content-body {
+        padding: 20px;
+        background: #fff;
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text-main);
+    }
 
-        .card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px 24px;
-            box-shadow: var(--shadow);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .content-body p:last-child {
+        margin-bottom: 0;
+    }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+    }
 
-        .card:hover::before {
-            opacity: 0.6;
-        }
+    .status-draft { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .status-submitted { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+    
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
 
-        .card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
 
-        .card-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start; 
-            gap: 8px; 
-            margin-bottom: 16px; 
-        }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
 
-        .card-title { 
-            font-weight: 700; 
-            font-size: 16px; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-        }
+    .btn-primary:hover {
+        background-color: #1e40af;
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
 
-        .card-title .dot {
-            width: 22px; 
-            height: 22px;
-            border-radius: 50%;
-            background: rgba(37, 99, 235, 0.12);
-            color: var(--primary);
-            display: grid; 
-            place-items: center;
-            font-size: 12px;
-        }
+    .btn-secondary {
+        background: white;
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+    }
 
-        .card-subtitle { 
-            color: var(--muted); 
-            font-size: 12px; 
-            margin: 4px 0 0;
-        }
+    .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
+    }
 
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-        }
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
 
-        .meta-item {
-            padding: 12px 14px;
-            border-radius: var(--radius-md);
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            background: rgba(15, 23, 42, 0.02);
-            transition: all 0.3s ease;
-        }
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
 
-        .meta-item:hover {
-            background: rgba(15, 23, 42, 0.04);
-            transform: translateY(-1px);
-        }
-
-        .meta-label { 
-            font-size: 12px; 
-            color: var(--muted); 
-            margin: 0 0 4px; 
-            font-weight: 600;
-        }
-
-        .meta-value { 
-            margin: 0; 
-            font-weight: 700; 
-            color: var(--ink);
-        }
-
-        .sections { 
-            display: grid; 
-            gap: 12px; 
-        }
-
-        .section {
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            border-radius: var(--radius-md);
-            padding: 14px 16px;
-            background: rgba(248, 250, 252, 0.9);
-            transition: all 0.3s ease;
-        }
-
-        .section:hover {
-            background: rgba(248, 250, 252, 1);
-            transform: translateY(-1px);
-        }
-
-        .section h3 { 
-            margin: 0 0 8px; 
-            font-size: 14px; 
-            font-weight: 600;
-            color: var(--ink);
-        }
-
-        .section p { 
-            margin: 0; 
-            color: var(--ink); 
-            line-height: 1.6; 
-            white-space: pre-wrap; 
-        }
-
-        .empty { 
-            color: var(--muted); 
-            font-style: italic; 
-        }
-
-        .actions-row {
-            display: flex; 
-            justify-content: flex-end; 
-            gap: 12px; 
-            flex-wrap: wrap;
-            margin-top: 16px;
-        }
-
-        .btn {
-            border-radius: var(--radius-md);
-            border: none;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 18px;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:active { 
-            transform: translateY(1px) scale(0.98); 
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost { 
-            background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink); 
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #e5e7eb, #f1f5f9); 
-            color: var(--ink); 
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-secondary:hover {
-            background: linear-gradient(135deg, #d1d5db, #e2e8f0);
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 860px) {
-            .hero { 
-                grid-template-columns: 1fr; 
-                padding: 20px;
-            }
-            .hero-meta { 
-                justify-items: start; 
-            }
-            .card {
-                padding: 16px;
-            }
-        }
+    .empty-text {
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-        <div class="hero">
-            <div>
-                <p class="eyebrow">团队 · 日报</p>
-                <h1>{{ report.date }} · {{ report.get_role_display }}</h1>
-                <p class="lede">作者：{{ report.user.get_full_name|default:report.user.username }}{% if report.project %} ｜ 项目：{{ report.project }}{% endif %}</p>
-                <p class="lede">状态 / Status：{{ report.get_status_display }}</p>
-            </div>
-            <div class="hero-meta">
-                <span class="chip">创建时间 / Created at：{{ report.created_at|localtime|date:"Y-m-d H:i" }}</span>
-                <span class="chip">唯一性：同一日期 + 角色仅一条</span>
+<div class="page-container">
+    <div class="form-card">
+        <div class="section-header">
+            <h2 class="section-title">
+                日报详情 / Report Detail
+                {% if report.status == 'draft' %}
+                    <span class="status-badge status-draft">草稿 / Draft</span>
+                {% else %}
+                    <span class="status-badge status-submitted">已提交 / Submitted</span>
+                {% endif %}
+            </h2>
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                创建时间：{{ report.created_at|localtime|date:"Y-m-d H:i" }}
             </div>
         </div>
 
-        <div class="layout">
-            <section class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span class="dot">📌</span>
-                        基本信息 / Basic Info
-                    </div>
-                    <div class="card-subtitle">日期、角色、项目与作者</div>
-                </div>
-                <div class="meta-grid">
-                    <div class="meta-item">
-                        <p class="meta-label">日期 / Date</p>
-                        <p class="meta-value">{{ report.date }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">角色 / Role</p>
-                        <p class="meta-value">{{ report.get_role_display }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">项目 / Project</p>
-                        <p class="meta-value">{% if report.project_names %}{{ report.project_names }}{% else %}（未选择）{% endif %}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">作者 / Author</p>
-                        <p class="meta-value">{{ report.user.get_full_name|default:report.user.username }}</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span class="dot">📝</span>
-                        日报内容 / Report Content
-                    </div>
-                    <div class="card-subtitle">按角色展示相关字段，保留换行与要点</div>
-                </div>
-
-                <div class="sections">
-                    {% if sections %}
-                        {% for title, content in sections %}
-                            <div class="section">
-                                <h3>{{ title }}</h3>
-                                {% if content %}
-                                    <div class="description">{{ content|safe_md }}</div>
-                                {% else %}
-                                    <p class="empty">（无内容）</p>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="section">
-                            <h3>无特定内容</h3>
-                            <p class="empty">该角色未定义内容字段。</p>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="actions-row">
-                    <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">返回列表 / Back</a>
-                    {% if can_submit %}
-                    <form method="post" action="{% url 'reports:report_submit' report.pk %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-secondary">提交草稿 / Submit Draft</button>
-                    </form>
-                    {% endif %}
-                    <a class="btn btn-primary" href="{% url 'reports:daily_report_create' %}">填写新日报 / New Report</a>
-                </div>
-            </section>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">日期 / Date</span>
+                <span class="info-value">{{ report.date }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">作者 / Author</span>
+                <span class="info-value">{{ report.user.get_full_name|default:report.user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">角色 / Role</span>
+                <span class="info-value">{{ report.get_role_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">项目 / Project</span>
+                <span class="info-value">{% if report.project_names %}{{ report.project_names }}{% else %}--{% endif %}</span>
+            </div>
         </div>
+
+        {% if sections %}
+            {% for title, content in sections %}
+                <div class="content-section">
+                    <div class="content-header">{{ title }}</div>
+                    <div class="content-body">
+                        {% if content %}
+                            {{ content|safe_md }}
+                        {% else %}
+                            <span class="empty-text">（无内容 / No content）</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="content-section">
+                <div class="content-header">无内容结构</div>
+                <div class="content-body">
+                    <span class="empty-text">该角色模板未定义具体内容字段。</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="btn-toolbar">
+            <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">返回列表 / Back</a>
+            
+            {% if can_submit %}
+                <form method="post" action="{% url 'reports:report_submit' report.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary">提交草稿 / Submit Draft</button>
+                </form>
+            {% endif %}
+
+            {% if report.status == 'draft' or user.is_staff %}
+                <a class="btn btn-primary" href="{% url 'reports:report_edit' report.pk %}">编辑日报 / Edit Report</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}

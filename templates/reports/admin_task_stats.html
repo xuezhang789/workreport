@@ -1,571 +1,1015 @@
 {% extends "base_topbar.html" %}
+{% load static %}
 {% load tz %}
+
 {% block title %}任务统计 / Task Stats{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="任务统计 / Task Stats" nav_subtitle="按项目与用户查看完成率与逾期率 / Completion & overdue by project/user" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
+    /* --- Shared Design System (Matched with Project List) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+            --primary-hover: #1d4ed8;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
             --radius-md: 12px;
             --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-        }
-
-        * {
-            box-sizing: border-box;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
+            background-color: var(--bg-page);
+            color: var(--text-main);
         }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 24px 28px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: grid; 
-            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-            gap: 16px; 
-            align-items: center; 
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
+        /* --- Filter Section --- */
+        .filter-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
         }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
-
-        .hero-content h1 {
-            margin: 0 0 8px;
-            font-size: clamp(22px, 3vw, 28px);
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-content .lede {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .eyebrow {
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            font-size: 11px;
-            color: var(--muted);
-            margin: 0 0 8px;
-            font-weight: 600;
-        }
-
-        .card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 20px 24px; 
-            box-shadow: var(--shadow); 
-            margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .card:hover::before {
-            opacity: 0.6;
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
-
-        .metrics { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
-            gap: 16px; 
-        }
-
-        .metric { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md); 
-            padding: 20px; 
-            text-align: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .metric::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .metric:hover::before {
-            opacity: 1;
-        }
-
-        .metric:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.15);
-        }
-
-        .metric-title { 
-            font-size: 12px; 
-            color: var(--muted); 
-            margin: 0 0 8px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em;
-            font-weight: 600;
-        }
-
-        .metric-value { 
-            margin: 0; 
-            font-size: 32px; 
-            font-weight: 700; 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1;
-        }
-
-        .filters { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 16px; 
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
             align-items: end;
         }
 
-        label { 
-            font-size: 13px; 
-            font-weight: 600; 
-            color: var(--ink); 
-            margin-bottom: 8px; 
-            display: block; 
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        select { 
-            width: 100%; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border); 
-            padding: 12px 14px; 
-            font-size: 14px; 
-            background: rgba(255, 255, 255, 0.8); 
-            color: var(--ink);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
         }
 
-        select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            background: #fff;
-            transform: translateY(-1px);
-        }
-
-        .btn { 
-            border-radius: var(--radius-md); 
-            border: none; 
-            padding: 12px 18px; 
-            font-size: 14px; 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
+        .form-input, .form-select {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: var(--transition);
+            background-color: #fff;
             width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
         }
 
-        .btn:hover::before {
-            left: 100%;
+        .form-input:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+            outline: none;
         }
 
-        .btn:active {
-            transform: translateY(1px) scale(0.98);
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost { 
-            background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink);
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .actions-row {
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end; 
+        .filter-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
             margin-top: 16px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
         }
 
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
-            gap: 20px; 
+        /* --- Buttons --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            line-height: 1.4;
         }
 
-        .table-card { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border); 
-            border-radius: var(--radius-lg); 
-            padding: 20px; 
-            box-shadow: var(--shadow);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+
+        .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
+        
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+
+        /* --- Cards --- */
+        .content-card, .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
             overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            transition: var(--transition);
+        }
+        
+        .content-card:hover, .card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e1;
         }
 
-        .table-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(248, 250, 252, 0.5);
         }
 
-        .table-card:hover::before {
-            opacity: 0.6;
-        }
-
-        .table-card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
-
-        .table-card h3 {
-            margin: 0 0 16px;
+        .card-title {
             font-size: 16px;
             font-weight: 700;
-            color: var(--ink);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        .card-body {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .card-body.no-padding { padding: 0; }
+
+        /* --- Grid Layouts --- */
+        .dashboard-grid, .data-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .col-span-12 { grid-column: span 12; }
+        .col-span-8 { grid-column: span 8; }
+        .col-span-6 { grid-column: span 6; }
+        .col-span-4 { grid-column: span 4; }
+        .col-span-3 { grid-column: span 3; }
+
+        @media (max-width: 1024px) {
+            .col-span-3 { grid-column: span 6; }
+            .col-span-8 { grid-column: span 12; }
+            .col-span-4 { grid-column: span 12; }
+            .data-grid { display: flex; flex-direction: column; }
+        }
+        @media (max-width: 640px) {
+            .col-span-6, .col-span-3 { grid-column: span 12; }
+        }
+
+        /* --- KPI Cards (Standardized) --- */
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .kpi-content { display: flex; flex-direction: column; }
+        
+        .kpi-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+        
+        .summary-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .kpi-trend, .summary-trend {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #f8fafc;
+            padding: 4px 8px;
+            border-radius: 6px;
+            width: fit-content;
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 24px;
+        }
+
+        .bg-blue-subtle { background: #eff6ff; color: #2563eb; }
+        .bg-green-subtle { background: #dcfce7; color: #16a34a; }
+        .bg-orange-subtle { background: #ffedd5; color: #f97316; }
+        .bg-red-subtle { background: #fee2e2; color: #ef4444; }
+        .bg-cyan-subtle { background: #cffafe; color: #0891b2; }
+
+        /* --- Search & Filter --- */
+        .search-bar {
+            position: relative;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             font-size: 14px;
-            border-radius: var(--radius-md);
-            overflow: hidden;
+            transition: var(--transition);
+            background-color: #fff;
         }
 
-        .table th, .table td { 
-            padding: 12px 10px; 
-            border-bottom: 1px solid rgba(226, 232, 240, 0.6); 
-            text-align: left; 
-            vertical-align: top;
-            transition: all 0.3s ease;
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+            outline: none;
         }
 
-        .table th { 
-            font-size: 12px; 
-            color: var(--muted); 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em;
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        
+        /* --- Tables --- */
+        .table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+        .table th {
+            text-align: left;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            border-bottom: 1px solid var(--border-color);
+            background: #f8fafc;
+            text-transform: uppercase;
+        }
+        .table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+        .table tr:last-child td { border-bottom: none; }
+        .table-hover tbody tr:hover { background-color: #f8fafc; }
+        
+        .table-container { 
+            overflow-x: auto;
+            max-height: 400px; /* Fixed height for scroll */
+            overflow-y: auto;
+            border-radius: 8px; /* Slightly rounded corners */
+            border: 1px solid var(--border-color); /* Add border to container */
+        }
+        
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f1f5f9; /* Slightly darker header background */
+            box-shadow: 0 1px 0 var(--border-color); /* Maintain border look */
+        }
+
+        /* --- Badges --- */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
             font-weight: 700;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
+            display: inline-flex;
+            align-items: center;
+            line-height: 1;
+        }
+        .badge-primary { background: var(--primary-light); color: var(--primary); }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #ffedd5; color: #9a3412; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-neutral { background: #f1f5f9; color: #475569; }
+
+        /* --- Progress Bars --- */
+        .progress-track {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+            width: 100%;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.5s ease;
         }
 
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
+        .bg-success { background-color: var(--success); }
+        .bg-danger { background-color: var(--danger); }
+        
+        /* --- Text Colors --- */
+        .text-success { color: #16a34a; }
+        .text-danger { color: #dc2626; }
+        .text-muted { color: #64748b; }
 
-        .table tbody tr:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.02), rgba(6, 182, 212, 0.02));
-            transform: scale(1.01);
+        /* --- Sort Icons --- */
+        .sort-icon {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-left: 4px;
         }
-
-        .table tbody tr:hover td {
+        
+        th[onclick]:hover .sort-icon {
             color: var(--primary);
         }
+        
+        /* --- Chart Container --- */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-        .empty-state {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(16px);
-            border: 2px dashed var(--border);
-            border-radius: var(--radius-lg);
-            padding: 32px;
-            text-align: center;
-            color: var(--muted);
-            box-shadow: var(--shadow);
+        /* --- Tabs --- */
+        .tabs-nav {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 0;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            padding: 12px 20px 0;
         }
 
-        @media (max-width: 860px) {
-            .hero {
-                grid-template-columns: 1fr;
-                padding: 20px;
-                gap: 12px;
-            }
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border: none;
+            background: transparent;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+        }
 
-            .filters {
-                grid-template-columns: 1fr;
-                padding: 16px;
-                gap: 12px;
-            }
+        .tab-btn:hover {
+            color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+            border-radius: 8px 8px 0 0;
+        }
 
-            .metrics {
-                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-                gap: 12px;
-            }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-            .metric {
-                padding: 16px;
-            }
-
-            .metric-value {
-                font-size: 24px;
-            }
-
-            .grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { 
-                display: block; 
-                width: 100%; 
-            }
-
-            .table thead{display:none;} 
-
-            .table tr{ 
-                margin-bottom: 16px; 
-                border: 1px solid var(--border); 
-                border-radius: var(--radius-md); 
-                background: #fff; 
-                padding: 16px;
-                box-shadow: var(--shadow);
-            } 
-
-            .table td{ 
-                border: none; 
-                padding: 8px 0; 
-            } 
-
-            .table td::before{ 
-                content: attr(data-label); 
-                display: block; 
-                font-size: 12px; 
-                color: var(--muted); 
-                margin-bottom: 4px; 
-                text-transform: uppercase; 
-                letter-spacing: 0.04em;
-                font-weight: 600;
-            }
-
-            .actions-row {
-                justify-content: stretch;
-            }
-
-            .actions-row .btn {
-                flex: 1;
-                justify-content: center;
-            }
+        /* --- Empty State --- */
+        .empty-state {
+            text-align: center;
+            padding: 64px 20px;
+            color: var(--text-secondary);
         }
 {% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <div class="hero-content">
-            <p class="eyebrow">数据 · 分析</p>
-            <h1>任务统计</h1>
-            <p class="lede">按项目与用户维度查看任务完成率与逾期率分析。</p>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">任务统计 / Task Stats</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">任务完成情况、日报提交趋势与 SLA 监控</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn btn-secondary" onclick="location.reload()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                刷新
+            </button>
         </div>
     </div>
 
-    <section class="card">
-        <div class="metrics">
-            <div class="metric">
-                <p class="metric-title">总任务数</p>
-                <p class="metric-value">{{ total }}</p>
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label class="form-label">日期 / Date</label>
+                    <input type="date" name="date" class="form-input" value="{{ today }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">项目 / Project</label>
+                    <select name="project" class="form-select">
+                        <option value="">所有项目</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">用户 / User</label>
+                    <select name="user" class="form-select">
+                        <option value="">所有用户</option>
+                        {% for u in users %}
+                            <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-            <div class="metric">
-                <p class="metric-title">已完成</p>
-                <p class="metric-value">{{ completed }}</p>
-            </div>
-            <div class="metric">
-                <p class="metric-title">逾期</p>
-                <p class="metric-value">{{ overdue }}</p>
-            </div>
-            <div class="metric">
-                <p class="metric-title">完成率</p>
-                <p class="metric-value">{{ completion_rate|floatformat:1 }}%</p>
-            </div>
-            <div class="metric">
-                <p class="metric-title">逾期率</p>
-                <p class="metric-value">{{ overdue_rate|floatformat:1 }}%</p>
-            </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <form method="get" class="filters">
-            <div>
-                <label for="project">项目</label>
-                <select id="project" name="project">
-                    <option value="">全部</option>
-                    {% for p in projects %}
-                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="user">用户</label>
-                <select id="user" name="user">
-                    <option value="">全部</option>
-                    {% for u in users %}
-                        <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="actions-row">
-                <a class="btn btn-ghost" href="{% url 'reports:admin_task_stats' %}">重置</a>
-                <button type="submit" class="btn btn-primary">筛选</button>
-                <a class="btn btn-primary" href="{% url 'reports:admin_task_stats_export' %}?project={{ project_id }}&user={{ user_id }}">导出 CSV</a>
+            
+            <div class="filter-actions">
+                <a href="{% url 'reports:admin_task_stats' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:admin_task_stats_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出报表
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选
+                </button>
             </div>
         </form>
-    </section>
+    </div>
 
-    <div class="grid">
-        <div class="table-card">
-            <h3>按项目统计</h3>
-            {% if project_stats %}
-                <table class="table">
+    <!-- 1. Global KPI Cards -->
+    <div class="dashboard-grid">
+        <div class="col-span-3 kpi-card" style="{% if metrics.missing_today > 0 %}border-color: #fee2e2; background: #fffbfc;{% endif %}">
+            <div class="kpi-content">
+                <span class="kpi-label">今日缺报</span>
+                <span class="kpi-value" style="{% if metrics.missing_today > 0 %}color: var(--danger);{% endif %}">{{ metrics.missing_today }}</span>
+                <div class="kpi-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>窗口: {{ sla_remind }}h</span>
+                </div>
+            </div>
+            <div class="kpi-icon bg-red-subtle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+        </div>
+        <div class="col-span-3 kpi-card">
+            <div class="kpi-content">
+                <span class="kpi-label">日报总数</span>
+                <span class="kpi-value">{{ metrics.total_reports }}</span>
+                <div class="kpi-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    <span>最新: {{ metrics.last_date|default:'-' }}</span>
+                </div>
+            </div>
+            <div class="kpi-icon bg-blue-subtle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+        </div>
+        <div class="col-span-3 kpi-card">
+            <div class="kpi-content">
+                <span class="kpi-label">活跃项目</span>
+                <span class="kpi-value">{{ metrics.total_projects }}</span>
+                <div class="kpi-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span>进行中</span>
+                </div>
+            </div>
+            <div class="kpi-icon bg-green-subtle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+        </div>
+        <div class="col-span-3 kpi-card">
+            <div class="kpi-content">
+                <span class="kpi-label">总任务数</span>
+                <span class="kpi-value">{{ total }}</span>
+                <div class="kpi-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span>所有项目</span>
+                </div>
+            </div>
+            <div class="kpi-icon bg-cyan-subtle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Task Summary & Missing Reports -->
+    <div class="dashboard-grid">
+        <!-- Task Completion Summary -->
+        <div class="col-span-6 card">
+            <div class="card-header">
+                <h3 class="card-title">任务概况</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; gap: 24px;">
+                    <div style="flex: 1;">
+                        <div class="summary-label">已完成</div>
+                        <div class="summary-value text-success">{{ completed }}</div>
+                        <div class="summary-trend text-success">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            {{ completion_rate|floatformat:1 }}% 完成率
+                        </div>
+                    </div>
+                    <div style="width: 1px; background: var(--border-color);"></div>
+                    <div style="flex: 1;">
+                        <div class="summary-label">逾期任务</div>
+                        <div class="summary-value text-danger">{{ overdue }}</div>
+                        <div class="summary-trend text-danger">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            {{ overdue_rate|floatformat:1 }}% 逾期率
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Missing Reports -->
+        <div class="col-span-6 card" style="{% if metrics.missing_today > 0 %}border-left: 4px solid var(--danger);{% endif %}">
+            <div class="card-header">
+                <h3 class="card-title" style="{% if metrics.missing_today > 0 %}color: var(--danger);{% endif %}">
+                    缺报预警 ({{ metrics.missing_today }})
+                </h3>
+                {% if missing_projects %}
+                    <button class="btn btn-danger btn-sm" onclick="handleBulkReminder()">一键催报</button>
+                {% endif %}
+            </div>
+            <div class="card-body no-padding">
+                {% if missing_projects %}
+                <div class="table-container" style="max-height: 140px; overflow-y: auto;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>项目</th>
+                                <th>人数</th>
+                                <th>成员</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in missing_projects %}
+                            <tr>
+                                <td style="font-weight: 500;">{{ row.project }}</td>
+                                <td><span class="badge badge-danger">{{ row.missing_count }}</span></td>
+                                <td class="text-muted" style="font-size: 12px;">
+                                    {% for u in row.users|slice:":2" %}
+                                        {{ u.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                    {% if row.users|length > 2 %}...{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    今日全员已提交
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Charts -->
+    <div class="dashboard-grid">
+        <div class="col-span-8 card">
+            <div class="card-header">
+                <h3 class="card-title">日报提交趋势 (近14天)</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-span-4 card">
+            <div class="card-header">
+                <h3 class="card-title">角色分布</h3>
+            </div>
+            <div class="card-body">
+                <div style="height: 220px; position: relative;">
+                    <canvas id="roleChart"></canvas>
+                </div>
+                <div class="chart-legend">
+                    {% for role, count in role_counts|slice:":4" %}
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background-color: var(--chart-color-{{ forloop.counter }});"></span>
+                        {{ role }} ({{ count }})
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Urgent SLA Tasks -->
+    {% if sla_urgent_tasks %}
+    <div class="dashboard-grid">
+        <div class="col-span-12 card" style="border-left: 4px solid #f59e0b;">
+            <div class="card-header">
+                <h3 class="card-title" style="color: #b45309;">SLA 紧急任务</h3>
+            </div>
+            <div class="card-body no-padding">
+                <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>任务</th>
+                                <th>项目</th>
+                                <th>剩余时间</th>
+                                <th>负责人</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in sla_urgent_tasks %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 500;">{{ t.title }}</div>
+                                </td>
+                                <td>{{ t.project.name }}</td>
+                                <td>
+                                    {% if t.sla_info.level == 'red' %}
+                                        <span class="badge badge-danger">{{ t.sla_info.remaining_hours }}h</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">{{ t.sla_info.remaining_hours }}h</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. Detailed Stats Tables (Tabs) -->
+    <div>
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('project')">按项目统计 / By Project</button>
+            <button class="tab-btn" onclick="switchTab('user')">按用户统计 / By User</button>
+        </div>
+
+        <!-- Project Stats Tab -->
+        <div id="tab-project" class="tab-content active">
+            <div class="table-container">
+                {% if project_stats %}
+                <table class="table table-hover" id="projectTable">
                     <thead>
                         <tr>
-                            <th>项目</th>
-                            <th>总数</th>
-                            <th>完成</th>
-                            <th>逾期</th>
-                            <th>完成率</th>
-                            <th>逾期率</th>
+                            <th onclick="sortTable('projectTable', 0)" style="cursor: pointer;">项目 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 1)" style="cursor: pointer; text-align: center;">总数 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('projectTable', 2)" style="cursor: pointer; text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
+                            <th style="width: 200px;">进度</th>
+                            <th onclick="sortTable('projectTable', 4)" style="cursor: pointer; text-align: center;">完成率 <span class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in project_stats %}
-                            <tr>
-                                <td data-label="项目">{{ row.project }}</td>
-                                <td data-label="总数">{{ row.total }}</td>
-                                <td data-label="完成">{{ row.completed }}</td>
-                                <td data-label="逾期">{{ row.overdue }}</td>
-                                <td data-label="完成率">{{ row.completion_rate|floatformat:1 }}%</td>
-                                <td data-label="逾期率">{{ row.overdue_rate|floatformat:1 }}%</td>
-                            </tr>
+                        <tr>
+                            <td>
+                                <a href="?project={{ row.project_id }}&date={{ request.GET.date }}" style="font-weight: 600; color: var(--text-main); text-decoration: none;">
+                                    {{ row.project }}
+                                </a>
+                            </td>
+                            <td style="text-align: center;">{{ row.total }}</td>
+                            <td style="text-align: center;" class="text-success">{{ row.completed }}</td>
+                            <td>
+                                <div style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #f1f5f9;">
+                                    <div style="width: {{ row.completion_rate }}%; background: var(--success);" title="已完成 {{ row.completion_rate|floatformat:0 }}%"></div>
+                                    <div style="width: {{ row.overdue_rate }}%; background: var(--danger);" title="逾期 {{ row.overdue_rate|floatformat:0 }}%"></div>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <span style="font-weight: 600; color: var(--text-main);">{{ row.completion_rate|floatformat:0 }}%</span>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            {% else %}
-                <div class="empty-state">暂无项目统计数据</div>
-            {% endif %}
+                {% else %}
+                <div class="empty-state">暂无项目数据</div>
+                {% endif %}
+            </div>
         </div>
-        <div class="table-card">
-            <h3>按用户统计</h3>
-            {% if user_stats %}
-                <table class="table">
+
+        <!-- User Stats Tab -->
+        <div id="tab-user" class="tab-content">
+            <div class="table-container">
+                {% if user_stats %}
+                <table class="table table-hover" id="userTable">
                     <thead>
                         <tr>
-                            <th>用户</th>
-                            <th>总数</th>
-                            <th>完成</th>
-                            <th>逾期</th>
-                            <th>完成率</th>
-                            <th>逾期率</th>
+                            <th onclick="sortTable('userTable', 0)" style="cursor: pointer;">用户 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 1)" style="cursor: pointer; text-align: center;">总任务 <span class="sort-icon">⇅</span></th>
+                            <th onclick="sortTable('userTable', 2)" style="cursor: pointer; text-align: center;">已完成 <span class="sort-icon">⇅</span></th>
+                            <th style="width: 200px;">完成质量</th>
+                            <th onclick="sortTable('userTable', 4)" style="cursor: pointer; text-align: center;">逾期数 <span class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in user_stats %}
-                            <tr>
-                                <td data-label="用户">{{ row.username }}</td>
-                                <td data-label="总数">{{ row.total }}</td>
-                                <td data-label="完成">{{ row.completed }}</td>
-                                <td data-label="逾期">{{ row.overdue }}</td>
-                                <td data-label="完成率">{{ row.completion_rate|floatformat:1 }}%</td>
-                                <td data-label="逾期率">{{ row.overdue_rate|floatformat:1 }}%</td>
-                            </tr>
+                        <tr>
+                            <td>
+                                <a href="?user={{ row.user_id }}&date={{ request.GET.date }}" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+                                    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                        {{ row.username|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 500;">{{ row.full_name|default:row.username }}</div>
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ row.username }}</div>
+                                    </div>
+                                </a>
+                            </td>
+                            <td style="text-align: center;">{{ row.total }}</td>
+                            <td style="text-align: center;" class="text-success">{{ row.completed }}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="flex: 1; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
+                                        <div style="width: {{ row.completion_rate }}%; height: 100%; background: var(--success);"></div>
+                                    </div>
+                                    <span style="font-size: 12px; color: var(--text-secondary);">{{ row.completion_rate|floatformat:0 }}%</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                {% if row.overdue > 0 %}
+                                    <span class="badge badge-danger">{{ row.overdue }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            {% else %}
-                <div class="empty-state">暂无用户统计数据</div>
-            {% endif %}
+                {% else %}
+                <div class="empty-state">暂无用户数据</div>
+                {% endif %}
+            </div>
         </div>
     </div>
+
+</div>
+
+<script>
+    // --- Tabs Logic ---
+    function switchTab(tabName) {
+        // Update Buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        // Update Content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        const activeContent = document.getElementById(`tab-${tabName}`);
+        if (activeContent) activeContent.classList.add('active');
+        
+        // Save state
+        localStorage.setItem('admin_stats_tab', tabName);
+    }
+
+    // --- Table Sorting ---
+    function sortTable(tableId, n) {
+        const table = document.getElementById(tableId);
+        let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        switching = true;
+        dir = "asc"; 
+        
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                
+                let xVal = x.innerText.toLowerCase().replace('%', '');
+                let yVal = y.innerText.toLowerCase().replace('%', '');
+                let isNum = !isNaN(parseFloat(xVal)) && !isNaN(parseFloat(yVal));
+
+                if (dir == "asc") {
+                    if (isNum ? (parseFloat(xVal) > parseFloat(yVal)) : (xVal > yVal)) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (isNum ? (parseFloat(xVal) < parseFloat(yVal)) : (xVal < yVal)) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount ++;      
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+
+    // --- Chart Colors ---
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    document.documentElement.style.setProperty('--chart-color-1', colors[0]);
+    document.documentElement.style.setProperty('--chart-color-2', colors[1]);
+    document.documentElement.style.setProperty('--chart-color-3', colors[2]);
+    document.documentElement.style.setProperty('--chart-color-4', colors[3]);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Trend Chart
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        let gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: {{ report_trend.labels|safe }},
+                datasets: [{
+                    label: '日报提交',
+                    data: {{ report_trend.data|safe }},
+                    borderColor: '#3b82f6',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        titleColor: '#1e293b',
+                        bodyColor: '#475569',
+                        borderColor: '#e2e8f0',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { borderDash: [4, 4], color: '#f1f5f9' },
+                        ticks: { font: { size: 11 } }
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // Role Chart
+        const ctxRole = document.getElementById('roleChart').getContext('2d');
+        new Chart(ctxRole, {
+            type: 'doughnut',
+            data: {
+                labels: [{% for role, c in role_counts %}"{{ role }}",{% endfor %}],
+                datasets: [{
+                    data: [{% for role, c in role_counts %}{{ c }},{% endfor %}],
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    cutout: '75%'
+                }
+            }
+        });
+
+        // Restore active tab
+        const savedTab = localStorage.getItem('admin_stats_tab');
+        if (savedTab) {
+            switchTab(savedTab);
+        }
+    });
+
+    function handleBulkReminder() {
+        if (confirm('确定要向所有今日缺报用户发送催报邮件吗？')) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('remind', '1');
+            window.location.href = url.toString();
+        }
+    }
+</script>
 {% endblock %}

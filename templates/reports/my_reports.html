@@ -1,1021 +1,597 @@
 {% extends "base_topbar.html" %}
 {% block title %}我的日报 / My Reports{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="我的日报 / My Reports" nav_subtitle="浏览、查看详情，自适应移动端 / Browse & view reports (mobile friendly)" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的日报 / My Reports" nav_subtitle="浏览、筛选与管理您的日常工作 / Manage your daily work" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.8);
-            --border-light: rgba(226, 232, 240, 0.6);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --border-radius: 16px;
-            --card-spacing: 16px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-        }
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --success-bg: #d1fae5;
+        --warning: #f59e0b;
+        --warning-bg: #fef3c7;
+        --danger: #ef4444;
+        --danger-bg: #fee2e2;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 32px 36px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: flex; 
-            align-items: center; 
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-input, .form-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+    }
+
+    .form-input:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+    }
+
+    /* --- Reports Grid --- */
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    .report-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .report-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+
+    .card-header {
+        padding: 20px 20px 12px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .report-date {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    .report-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .status-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .status-badge.draft { background: var(--warning-bg); color: #b45309; }
+    .status-badge.submitted { background: var(--success-bg); color: #047857; }
+
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .role-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        align-self: flex-start;
+    }
+
+    .project-tag {
+        font-size: 11px;
+        color: var(--text-secondary);
+        background: var(--bg-page);
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    .summary-text {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin: 0;
+    }
+    
+    .summary-text.empty {
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    .card-footer {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-secondary {
+        background: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* --- Pagination --- */
+    .pagination-container {
+        margin-top: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pagination-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .page-btn:hover:not(.disabled):not(.active) {
+        background: var(--bg-page);
+        border-color: var(--border-color);
+    }
+
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-btn.disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .per-page-select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: white;
+        cursor: pointer;
+    }
+
+    .jump-to-page {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .jump-input {
+        width: 48px;
+        padding: 6px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    @media (min-width: 768px) {
+        .pagination-container {
+            flex-direction: row;
             justify-content: space-between;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
         }
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.9;
-        }
-        
-        .hero::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        .hero-content {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            position: relative;
-            z-index: 1;
-            flex: 1;
-        }
-        
-        .hero-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .hero .eyebrow {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .hero .eyebrow::before {
-            content: '📋';
-            font-size: 16px;
-        }
-        
-        .hero h1 { 
-            font-size: 32px; 
-            margin: 0; 
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--text-primary), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-        
-        .hero .lede { 
-            font-size: 15px; 
-            margin: 0; 
-            line-height: 1.6;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        
-        .hero-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: flex-end;
-            min-width: 200px;
-        }
-        
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .chip:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-            border-color: var(--border-hover);
-        }
-        
-        .chip.warning {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-            border-color: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-        
-        .chip.warning:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-        }
-        
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: var(--card-spacing);
-        }
-        
-        .filters-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-section)); 
-            backdrop-filter: blur(16px); 
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 28px; 
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .filters-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.6;
-        }
-        
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            align-items: end;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .filter-group label {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .filter-group input,
-        .filter-group select {
-            width: 100%;
-            border-radius: 10px;
-            border: 1px solid var(--border-light);
-            padding: 12px 16px;
-            font-size: 14px;
-            background: var(--bg-section);
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        
-        .filter-group input:hover,
-        .filter-group select:hover {
-            border-color: var(--border-hover);
-            background: rgba(255, 255, 255, 0.8);
-        }
-        
-        .filter-group input:focus,
-        .filter-group select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: white;
-            transform: translateY(-1px);
-        }
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 64px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 2px dashed var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        .reports-grid { grid-template-columns: 1fr; }
         
         .filter-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            align-items: center;
-            margin-top: 8px;
-        }
-        
-        .reports-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-            gap: 24px;
-            align-items: stretch;
-        }
-        
-        .report-card {
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            border: 1px solid rgba(226, 232, 240, 0.8); 
-            border-radius: 20px; 
-            padding: 28px; 
-            box-shadow: 
-                0 1px 3px rgba(0, 0, 0, 0.1),
-                0 10px 40px rgba(59, 130, 246, 0.08);
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-            display: flex;
             flex-direction: column;
-            gap: 20px;
-            min-height: 280px;
         }
         
-        .report-card:hover {
-            transform: translateY(-8px); 
-            box-shadow: 
-                0 4px 20px rgba(0, 0, 0, 0.15),
-                0 20px 60px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-        
-        .report-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .report-card:hover::before {
-            opacity: 1;
-        }
-        
-        .report-card::after {
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -15%;
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-        
-        .report-card:hover::after {
-            opacity: 1;
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .card-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.4;
-            flex: 1;
-        }
-        
-        .card-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-end;
-            text-align: right;
-            flex-shrink: 0;
-        }
-        
-        .meta-info {
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-            white-space: nowrap;
-        }
-        
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .badge-role {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-        }
-        
-        .badge-project {
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            color: #0369a1;
-            border: 1px solid rgba(3, 105, 161, 0.2);
-        }
-        
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            transition: all 0.2s ease;
-        }
-        
-        .status-badge:hover {
-            transform: translateY(-1px);
-        }
-        
-        .status-draft {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-        
-        .status-submitted {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-        
-        .summary {
-            margin: 0;
-            color: #475569;
-            line-height: 1.6;
-            font-size: 13px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            flex-grow: 1;
-            position: relative;
-            z-index: 1;
-            padding: 16px;
-            background: linear-gradient(135deg, #fafbfc, #f8fafc);
-            border-radius: 12px;
-            border-left: 3px solid #3b82f6;
-            font-weight: 400;
-            transition: all 0.2s ease;
-        }
-        
-        .summary:hover {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-left-color: #2563eb;
-        }
-        
-        .summary.empty {
-            color: #94a3b8;
-            font-style: italic;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-left-color: #cbd5e1;
-            font-weight: 500;
-        }
-        
-        .card-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            padding-top: 16px;
-            border-top: 1px solid rgba(226, 232, 240, 0.6);
-            position: relative;
-            z-index: 1;
-            margin-top: auto;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            cursor: pointer;
-            border: none;
-            outline: none;
-            position: relative;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s ease, height 0.3s ease;
-        }
-        
-        .btn:active::before {
-            width: 200px;
-            height: 200px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
-        }
-        
-        .btn-ghost {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #475569;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-        
-        .btn-ghost:hover {
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            border-color: rgba(59, 130, 246, 0.3);
-            color: #3b82f6;
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            color: #64748b;
-            border: 1px solid rgba(148, 163, 184, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-            border-color: rgba(148, 163, 184, 0.5);
-            color: #475569;
-        }
-        
-        .empty-state {
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            backdrop-filter: blur(16px); 
-            border: 2px dashed rgba(203, 213, 225, 0.6); 
-            border-radius: 20px; 
-            padding: 80px 40px; 
-            text-align: center; 
-            color: #64748b;
-            box-shadow: 
-                0 1px 3px rgba(0, 0, 0, 0.1),
-                0 10px 40px rgba(59, 130, 246, 0.05);
-            position: relative;
-            overflow: hidden;
-            min-height: 300px;
-            display: flex;
-            flex-direction: column;
+        .filter-actions .btn {
+            width: 100%;
             justify-content: center;
-            align-items: center;
         }
-        
-        .empty-state::before {
-            content: '📝';
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            font-size: 60px;
-            opacity: 0.08;
-        }
-        
-        .empty-state h3 {
-            margin: 0 0 16px 0;
-            font-size: 22px;
-            color: #475569;
-            font-weight: 700;
-        }
-        
-        .empty-state p {
-            margin: 0 0 32px 0;
-            font-size: 15px;
-            line-height: 1.6;
-            max-width: 400px;
-        }
-        
-        .pagination {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            margin-top: 32px;
-            padding: 24px;
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            backdrop-filter: blur(16px); 
-            border: 1px solid rgba(226, 232, 240, 0.6); 
-            border-radius: 16px; 
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.06);
-        }
-        
-        .page-link, .page-current, .page-disabled {
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .page-link {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #475569;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-        }
-        
-        .page-link:hover {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border-color: transparent;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-        
-        .page-current {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: 1px solid transparent;
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-            transform: scale(1.05);
-        }
-        
-        .page-disabled {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #cbd5e1;
-            border: 1px solid rgba(203, 213, 225, 0.4);
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        
-        .page-info {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(203, 213, 225, 0.3);
-        }
-        
-        @media (max-width: 1024px) {
-            .hero-content {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            
-            .hero-meta {
-                align-items: flex-start;
-            }
-            
-            .filters {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 12px;
-            }
-            
-            .reports-grid {
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                gap: 20px;
-            }
-            
-            .report-card {
-                padding: 24px;
-                min-height: 260px;
-            }
-        }
-        
-        @media (max-width: 860px) {
-            .container {
-                padding: 0 16px;
-            }
-            
-            .hero {
-                padding: 24px 28px;
-                flex-direction: column;
-                gap: 24px;
-                align-items: flex-start;
-            }
-            
-            .hero-content {
-                flex-direction: column;
-                gap: 20px;
-                align-items: flex-start;
-            }
-            
-            .hero h1 {
-                font-size: 26px;
-            }
-            
-            .hero-meta {
-                align-items: flex-start;
-                width: 100%;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            
-            .filters-card {
-                padding: 24px;
-            }
-            
-            .filters {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 16px;
-            }
-            
-            .reports-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .report-card {
-                padding: 24px;
-                min-height: 240px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .hero {
-                padding: 20px 24px;
-            }
-            
-            .hero h1 {
-                font-size: 22px;
-            }
-            
-            .hero .lede {
-                font-size: 14px;
-            }
-            
-            .filters {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .filter-group input,
-            .filter-group select {
-                padding: 12px 14px;
-                font-size: 14px;
-            }
-            
-            .filter-actions {
-                justify-content: stretch;
-                margin-top: 12px;
-            }
-            
-            .filter-actions .btn {
-                flex: 1;
-                justify-content: center;
-                padding: 14px 16px;
-            }
-            
-            .report-card {
-                padding: 20px;
-                min-height: 220px;
-            }
-            
-            .card-title {
-                font-size: 16px;
-            }
-            
-            .summary {
-                font-size: 12px;
-                padding: 12px;
-                -webkit-line-clamp: 2;
-            }
-            
-            .card-actions {
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            
-            .card-actions .btn {
-                flex: 1;
-                justify-content: center;
-                padding: 12px 14px;
-                font-size: 10px;
-            }
-            
-            .badge {
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            
-            .pagination {
-                padding: 16px;
-                justify-content: center;
-            }
-            
-            .page-link, .page-current, .page-disabled {
-                padding: 10px 14px;
-                font-size: 12px;
-            }
-            
-            .empty-state {
-                padding: 60px 24px;
-                min-height: 250px;
-            }
-            
-            .empty-state h3 {
-                font-size: 18px;
-            }
-            
-            .empty-state p {
-                font-size: 14px;
-            }
-        }
+    }
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="hero">
-            <div class="hero-content">
-                <div class="hero-main">
-                    <p class="eyebrow">团队 · 日报</p>
-                    <h1>你的日报总览 / Your Reports</h1>
-                    <p class="lede">当前用户 / Current user：{{ request.user.get_full_name|default:request.user.username }}</p>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+    
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">我的日报</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 份日报</p>
+        </div>
+        <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            新建日报
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label" for="q">搜索</label>
+                    <div style="position: relative;">
+                        <input type="text" id="q" name="q" class="form-input" style="padding-left: 36px;" placeholder="搜索日报内容..." value="{{ q }}">
+                        <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
                 </div>
-                <div class="hero-meta" style="justify-content:flex-end; text-align:right; align-items:flex-end;">
-                    <div class="chip">
-                        <span>📊</span>
-                        <span>总数 / Total：{{ total_count }}</span>
+
+                <div class="form-group">
+                    <label class="form-label" for="date_range">日期范围</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date|date:'Y-m-d' }}">
+                        <span style="align-self: center; color: var(--text-muted);">-</span>
+                        <input type="date" id="end_date" name="end_date" class="form-input" value="{{ end_date|date:'Y-m-d' }}">
                     </div>
-                    {% if latest_date %}
-                        <div class="chip">
-                            <span>📅</span>
-                            <span>最新日期 / Latest：{{ latest_date }}</span>
-                        </div>
-                    {% endif %}
-                    {% if not has_today %}
-                        <div class="chip warning">
-                            <span>⚠️</span>
-                            <span>今日未提交 / Missing Today</span>
-                        </div>
-                    {% endif %}
-                    <div class="chip">
-                        <span>🔥</span>
-                        <span>连签：{{ streak }} 天</span>
-                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="project">项目</label>
+                    <select id="project" name="project" class="form-select">
+                        <option value="">所有项目</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="status">状态</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">全部状态</option>
+                        <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>已提交</option>
+                        <option value="draft" {% if status == 'draft' %}selected{% endif %}>草稿</option>
+                    </select>
                 </div>
             </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'reports:my_reports' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:my_reports_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&project={{ project_id }}&role={{ role }}&status={{ status }}&q={{ q }}" class="btn btn-ghost" id="exportBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出
+                </a>
+                <button type="submit" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Reports List -->
+    {% if reports %}
+        <div class="reports-grid">
+            {% for r in reports %}
+                <article class="report-card" onclick="location.href='{% url 'reports:report_detail' r.pk %}'" style="cursor: pointer;">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="report-date">{{ r.date|date:"Y年m月d日" }}</h3>
+                            <div class="report-meta">{{ r.date|date:"l" }} · {{ r.created_at|date:"H:i" }} 创建</div>
+                        </div>
+                        <span class="status-badge {% if r.status == 'draft' %}draft{% else %}submitted{% endif %}">
+                            {{ r.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="card-body">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                            <span class="role-tag">{{ r.get_role_display }}</span>
+                            {% if r.project_names %}
+                                <span class="project-tag">{{ r.project_names }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if r.summary %}
+                            <p class="summary-text">{{ r.summary }}</p>
+                        {% else %}
+                            <p class="summary-text empty">（暂无摘要内容）</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-footer" onclick="event.stopPropagation()">
+                        <a href="{% url 'reports:report_edit' r.pk %}" class="btn btn-secondary btn-sm">编辑</a>
+                        <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-primary btn-sm">查看详情</a>
+                    </div>
+                </article>
+            {% endfor %}
         </div>
 
-        <div class="main-content">
-            <div class="filters-card">
-                <form method="get" class="filters">
-                    <div class="filter-group">
-                        <label for="q">
-                            <span>🔍</span>
-                            关键词 / Keyword
-                        </label>
-                        <input type="text" id="q" name="q" value="{{ q }}" placeholder="按内容搜索关键词 / Search by content">
-                    </div>
-                    <div class="filter-group">
-                        <label for="start_date">
-                            <span>📅</span>
-                            开始日期 / Start
-                        </label>
-                        <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
-                    </div>
-                    <div class="filter-group">
-                        <label for="end_date">
-                            <span>📅</span>
-                            结束日期 / End
-                        </label>
-                        <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
-                    </div>
-                    <div class="filter-group">
-                        <label for="project">
-                            <span>📁</span>
-                            项目 / Project
-                        </label>
-                        <select id="project" name="project">
-                            <option value="">全部</option>
-                            {% for p in projects %}
-                                <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="role">
-                            <span>👤</span>
-                            角色 / Role
-                        </label>
-                        <select id="role" name="role">
-                            <option value="">全部</option>
-                            <option value="dev" {% if role == 'dev' %}selected{% endif %}>开发</option>
-                            <option value="qa" {% if role == 'qa' %}selected{% endif %}>测试</option>
-                            <option value="pm" {% if role == 'pm' %}selected{% endif %}>产品</option>
-                            <option value="ui" {% if role == 'ui' %}selected{% endif %}>设计</option>
-                            <option value="ops" {% if role == 'ops' %}selected{% endif %}>运维</option>
-                            <option value="mgr" {% if role == 'mgr' %}selected{% endif %}>项目管理</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="status">
-                            <span>📊</span>
-                            状态 / Status
-                        </label>
-                        <select id="status" name="status">
-                            <option value="">全部</option>
-                            <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>已提交</option>
-                            <option value="draft" {% if status == 'draft' %}selected{% endif %}>草稿</option>
-                        </select>
-                    </div>
-                    <div class="filter-actions">
-                        <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">🔄 重置</a>
-                        <button type="submit" class="btn btn-secondary">🔍 筛选 / Filter</button>
-                        <a class="btn btn-primary" href="{% url 'reports:my_reports_export' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&project={{ project_id }}&role={{ role }}&status={{ status }}&q={{ q }}">📥 导出当前筛选</a>
-                    </div>
-                    <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
-                </form>
+        <!-- Pagination -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span>共 {{ total_count }} 份日报</span>
+                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+                <span>
+                    <select class="per-page-select" onchange="const url = new URL(window.location); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location = url;">
+                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页</option>
+                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页</option>
+                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页</option>
+                    </select>
+                </span>
             </div>
 
-            {% if reports %}
-                <div class="reports-grid">
-                    {% for r in reports %}
-                        <article class="report-card">
-                            <div class="card-header">
-                                <div>
-                                    <h3 class="card-title">{{ r.date }}</h3>
-                                    <div class="card-tags">
-                                        <span class="badge badge-role">{{ r.get_role_display }}</span>
-                                        {% if r.project_names %}
-                                            <span class="badge badge-project">{{ r.project_names }}</span>
-                                        {% endif %}
-                                        {% if r.status == 'draft' %}
-                                            <span class="status-badge status-draft">{{ r.get_status_display }}</span>
-                                        {% else %}
-                                            <span class="status-badge status-submitted">{{ r.get_status_display }}</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="card-meta">
-                                    <div class="meta-info">
-                                        <span>📝 创建 / {{ r.created_at|date:"Y-m-d H:i" }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            {% if r.summary %}
-                                <p class="summary">{{ r.summary }}</p>
-                            {% else %}
-                                <p class="summary empty">（无摘要 / No summary）</p>
-                            {% endif %}
-                            <div class="card-actions">
-                                <a class="btn btn-ghost" href="{% url 'reports:report_detail' r.pk %}">查看详情 / View</a>
-                                <a class="btn btn-secondary" href="{% url 'reports:report_edit' r.pk %}">编辑 / Edit</a>
-                            </div>
-                        </article>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <h3>暂无日报记录 / No reports yet</h3>
-                    <p>开始记录你的工作日常，让每一天都有迹可循</p>
-                    <a class="btn btn-primary" href="{% url 'reports:daily_report_create' %}">立即填写 / Create now</a>
-                </div>
-            {% endif %}
-
-            {% if reports and page_obj.has_other_pages %}
-                <div class="pagination">
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if role %}&role={{ role }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q }}{% endif %}">上一页</a>
+                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="上一页">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </a>
                     {% else %}
-                        <span class="page-disabled">上一页</span>
+                        <span class="page-btn disabled">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </span>
                     {% endif %}
 
-                    <span class="page-info">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <span class="page-btn active">{{ i }}</span>
+                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                            <a href="?page={{ i }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn">{{ i }}</a>
+                        {% endif %}
+                    {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if start_date %}&start_date={{ start_date|date:'Y-m-d' }}{% endif %}{% if end_date %}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if role %}&role={{ role }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q }}{% endif %}">下一页</a>
+                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="下一页">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
                     {% else %}
-                        <span class="page-disabled">下一页</span>
+                        <span class="page-btn disabled">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </span>
                     {% endif %}
+                </div>
+                
+                <div class="jump-to-page">
+                    前往
+                    <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
+                        onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
+                    页
                 </div>
             {% endif %}
         </div>
-    </div>
+
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无日报记录</h3>
+            <p style="margin-bottom: 24px;">还没有找到符合条件的日报，您可以尝试调整筛选条件或新建日报。</p>
+            <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary">新建日报</a>
+        </div>
+    {% endif %}
+
+</div>
+
 <script>
-    (function(){
-        const form = document.querySelector('form.filters');
-        const exportBtn = document.querySelector('.filters .btn.btn-primary[href*="my_reports_export"]');
-        if (!form || !exportBtn) return;
-        function syncExport() {
-            const params = new URLSearchParams();
-            ['start_date','end_date','project','role','status','q'].forEach(name => {
-                const el = form.querySelector(`[name="${name}"]`);
-                if (el && el.value) params.set(name, el.value);
-            });
-            exportBtn.href = `${exportBtn.pathname}?${params.toString()}`;
+    // Sync export button with filter form
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('filterForm');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        if (form && exportBtn) {
+            function updateExportLink() {
+                const formData = new FormData(form);
+                const params = new URLSearchParams(formData);
+                const baseUrl = exportBtn.getAttribute('href').split('?')[0];
+                exportBtn.setAttribute('href', `${baseUrl}?${params.toString()}`);
+            }
+            
+            form.addEventListener('change', updateExportLink);
+            form.addEventListener('input', updateExportLink);
         }
-        form.addEventListener('change', syncExport);
-        form.addEventListener('input', syncExport);
-        syncExport();
-    })();
+    });
 </script>
 {% endblock %}

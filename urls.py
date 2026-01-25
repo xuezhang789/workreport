@@ -15,6 +15,7 @@ urlpatterns = [
     path('accounts/register/', report_views.register, name='register'),
     path('accounts/settings/', report_views.account_settings, name='account_settings'),
     path('accounts/api/username-check/', report_views.username_check_api, name='username_check_api'),
+    path('accounts/api/email-code/', report_views.send_email_code_api, name='send_email_code_api'),
     path('accounts/logout/', report_views.logout_view, name='logout'),
     path('reports/', include('reports.urls')),
     path('', RedirectView.as_view(pattern_name='reports:workbench', permanent=False)),

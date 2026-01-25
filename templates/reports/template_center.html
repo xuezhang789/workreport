@@ -1,673 +1,787 @@
 {% extends "base_topbar.html" %}
 {% block title %}模板中心 / Template Center{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="模板中心 / Template Center" nav_subtitle="按角色与项目共享日报与任务模板 / Share report & task templates by role/project" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #8b5cf6;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.9);
-            --bg-glass: rgba(255, 255, 255, 0.8);
-            --border-light: rgba(226, 232, 240, 0.7);
-            --border-strong: rgba(59, 130, 246, 0.2);
-            --text-primary: #1e293b;
-            --text-secondary: #475569;
-            --text-muted: #94a3b8;
-            --radius-lg: 20px;
-            --radius-md: 14px;
-            --radius-sm: 10px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    /* --- Shared Design System --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * { box-sizing: border-box; }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            font-family: 'Space Grotesk', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
 
-        .template-page {
-            position: relative;
-            z-index: 1;
-        }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
 
-        .page-shell {
-            max-width: 1240px;
-            margin: 0 auto;
-            display: grid;
-            gap: 20px;
-            padding: 4px 0 24px;
-        }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
 
-        .banner {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            backdrop-filter: blur(18px);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: clamp(24px, 4vw, 36px);
-            display: grid;
-            grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-            gap: 20px;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
-        }
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
 
-        .banner::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.8;
-        }
+    .form-input, .form-select, textarea {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+        color: var(--text-main);
+    }
 
-        .banner::after {
-            content: '';
-            position: absolute;
-            right: -20%;
-            bottom: -40%;
-            width: 360px;
-            height: 360px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 65%);
-        }
+    .form-input:focus, .form-select:focus, textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
 
-        .eyebrow {
-            font-size: 13px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin: 0 0 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+    }
 
-        .banner h1 {
-            margin: 0 0 8px;
-            font-size: clamp(24px, 3vw, 30px);
-            font-weight: 800;
-            color: var(--text-primary);
-        }
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        line-height: 1.4;
+    }
 
-        .subtitle {
-            margin: 0 0 14px;
-            color: var(--text-secondary);
-            font-size: 15px;
-            line-height: 1.6;
-        }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
 
-        .chip-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 6px;
-        }
+    /* --- Tabs --- */
+    .tabs-nav {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 20px;
+    }
 
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 12px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(255, 255, 255, 0.9));
-            border: 1px solid var(--border-light);
-            font-size: 13px;
-            color: var(--text-secondary);
-            box-shadow: var(--shadow-sm);
-        }
+    .tab-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border: none;
+        background: transparent;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: var(--transition);
+    }
 
-        .chip strong { color: var(--text-primary); }
+    .tab-btn:hover { color: var(--primary); background: var(--primary-light); border-radius: 8px 8px 0 0; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-        .callout {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(6, 182, 212, 0.05));
-            border: 1px dashed var(--border-strong);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            color: var(--text-secondary);
-            font-size: 13px;
-            line-height: 1.55;
-            box-shadow: var(--shadow-sm);
-        }
+    .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+    .tab-content.active { display: block; }
 
-        .callout h4 {
-            margin: 0 0 6px;
-            font-size: 14px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 700;
-        }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-        .callout ul {
-            margin: 0;
-            padding-left: 18px;
-        }
+    /* --- Card Grid --- */
+    .template-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
 
-        .card-block {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-section));
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: 22px clamp(18px, 3vw, 26px);
-            box-shadow: var(--shadow-md);
-            position: relative;
-            overflow: hidden;
-        }
+    .template-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+    }
 
-        .card-block::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05), transparent 35%);
-            pointer-events: none;
-        }
+    .template-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
 
-        .card-block:hover { box-shadow: var(--shadow-lg); }
+    .template-card.new::after {
+        content: 'New';
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: var(--success);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
 
-        .section-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 12px;
-        }
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-        .section-title {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
 
-        .muted {
-            margin: 4px 0 0;
-            color: var(--text-secondary);
-            font-size: 13px;
-            line-height: 1.6;
-        }
+    .template-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+        line-height: 1.4;
+    }
 
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--text-primary);
-            font-size: 12px;
-            border: 1px solid var(--border-strong);
-            box-shadow: var(--shadow-sm);
-        }
+    .template-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
 
-        .filters-card .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
-            margin-top: 12px;
-        }
+    .badge {
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--bg-page);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
 
-        .field {
-            display: grid;
-            gap: 8px;
-        }
+    .template-preview {
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: var(--bg-page);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px dashed var(--border-color);
+        margin-top: auto;
+        line-height: 1.5;
+        max-height: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+    }
 
-        .field label {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
+    .card-footer {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
 
-        .field label::before {
-            content: '';
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--primary);
-        }
+    /* --- Create Section --- */
+    .create-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 32px;
+        display: none; /* Hidden by default */
+    }
+    
+    .create-section.active { display: block; animation: slideDown 0.3s ease-out; }
+    
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        input, select {
-            width: 100%;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-light);
-            padding: 13px 14px;
-            font-size: 14px;
-            background: var(--bg-glass);
-            color: var(--text-primary);
-            outline: none;
-            transition: var(--transition);
-            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
-            font-family: inherit;
-        }
+    /* --- Modal & Toast --- */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        backdrop-filter: blur(2px);
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
 
-        input:focus, select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-            background: #fff;
-        }
+    .modal-backdrop.active {
+        display: flex;
+        opacity: 1;
+    }
 
-        .form-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 2px;
-        }
+    .modal-panel {
+        background: var(--bg-card);
+        width: 90%;
+        max-width: 600px;
+        max-height: 85vh;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        transition: transform 0.2s;
+    }
 
-        .btn {
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 12px 18px;
-            font-size: 14px;
-            font-weight: 700;
-            color: #fff;
-            background: linear-gradient(135deg, var(--primary), var(--primary-2));
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-decoration: none;
-        }
+    .modal-backdrop.active .modal-panel {
+        transform: scale(1);
+    }
 
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35); }
-        .btn:active { transform: translateY(0); }
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .btn-ghost {
-            background: linear-gradient(135deg, #ffffff, var(--bg-section));
-            color: var(--text-primary);
-            border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-sm);
-        }
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-main);
+        background: #f8fafc;
+        margin: 0;
+    }
 
-        .template-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 14px;
-            margin-top: 8px;
-            position: relative;
-            z-index: 1;
-        }
+    .modal-footer {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
 
-        .form-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            box-shadow: var(--shadow-sm);
-        }
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: #1e293b;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: all 0.3s;
+        z-index: 2000;
+        box-shadow: var(--shadow-md);
+        pointer-events: none;
+    }
 
-        .form-card h3 {
-            margin: 0 0 10px;
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .toast.active {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
 
-        .form-card p {
-            margin: 0 0 10px;
-            display: grid;
-            gap: 6px;
-            font-size: 14px;
-        }
+    .help-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
 
-        .form-card label {
-            font-weight: 600;
-            color: var(--text-primary);
-            font-size: 13px;
-        }
+    /* --- Pagination --- */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+    }
 
-        .form-card input, .form-card select, .form-card textarea {
-            width: 100%;
-        }
-
-        .template-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            padding: 14px;
-            box-shadow: var(--shadow-sm);
-            display: grid;
-            gap: 6px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .template-card.new {
-            border-color: rgba(59, 130, 246, 0.35);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.18);
-        }
-
-        .template-card::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.05), transparent 30%);
-            pointer-events: none;
-        }
-
-        .template-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-
-        .template-header {
-            font-weight: 700;
-            color: var(--text-primary);
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .template-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .template-content {
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.5;
-        }
-
-        .subhead {
-            margin: 18px 0 8px;
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: inline-flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .empty-state {
-            margin: 6px 0;
-            padding: 16px;
-            border-radius: var(--radius-md);
-            border: 1px dashed var(--border-light);
-            color: var(--text-muted);
-            text-align: center;
-            background: linear-gradient(135deg, rgba(148, 163, 184, 0.06), rgba(255, 255, 255, 0.95));
-        }
-
-        .pagination {
-            margin-top: 12px;
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            align-items: center;
-            flex-wrap: wrap;
-            font-size: 13px;
-        }
-
-        .page-stat {
-            padding: 8px 10px;
-            border-radius: var(--radius-sm);
-            background: rgba(37, 99, 235, 0.08);
-            border: 1px solid var(--border-strong);
-            color: var(--text-primary);
-            font-size: 12px;
-        }
-
-        .jump-form {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .jump-form input[type="number"] {
-            width: 80px;
-            padding: 8px 10px;
-            font-size: 13px;
-        }
-
-        .jump-label {
-            margin: 0;
-            color: var(--text-secondary);
-            font-size: 12px;
-        }
-
-        .note {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 6px;
-            line-height: 1.5;
-        }
-
-        @media (max-width: 960px) {
-            .banner {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .page-shell { gap: 16px; }
-            .card-block, .banner { border-radius: 16px; padding: 18px; }
-            .template-grid { grid-template-columns: 1fr; }
-            .filters-card .form-grid { grid-template-columns: 1fr; }
-            .form-actions { justify-content: flex-start; }
-            .btn { width: 100%; justify-content: center; }
-            .jump-form { width: 100%; justify-content: center; }
-        }
+    /* --- Empty State --- */
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 48px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 2px dashed var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    @media (max-width: 640px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        .template-grid { grid-template-columns: 1fr; }
+    }
 {% endblock %}
-{% block content %}
-<div class="template-page">
-    <div class="page-shell">
-        <section class="banner">
-            <div>
-                <p class="eyebrow">📋 模板管理 / Template Management</p>
-                <h1>模板中心 / Template Center</h1>
-                <p class="subtitle">按角色与项目共享日报与任务模板，保持与工作台一致的视觉与交互体验 / Share report & task templates by role/project with the same visual language as the workbench.</p>
-                <div class="chip-row">
-                    <span class="chip"><strong>类型 / Types:</strong> 日报 · 任务</span>
-                    <span class="chip"><strong>范围 / Scope:</strong> 项目 · 角色 · 全局</span>
-                    <span class="chip"><strong>版本 / Version:</strong> 自动记录 / Auto versioned</span>
-                </div>
-            </div>
-            <div class="callout">
-                <h4>优先级 / Priority</h4>
-                <ul>
-                    <li>按 项目 → 角色 → 全局 匹配最新版本 / Match by Project → Role → Global (latest version).</li>
-                    <li>未命中时会提示并回退默认模板 / When missing, fallback to default and show notice.</li>
-                    <li>保持双语文案与工作台一致 / Bilingual copy aligned with workbench tone.</li>
-                </ul>
-            </div>
-        </section>
 
-        <section class="card-block filters-card">
-            <div class="section-head">
-                <div>
-                    <p class="eyebrow">筛选 / Filter</p>
-                    <h2 class="section-title">快速定位模板 / Quickly find templates</h2>
-                    <p class="muted">可按关键词、角色、项目与排序组合检索 / Search by keyword, role, project, and sort.</p>
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">模板中心 / Template Center</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">管理与共享日报及任务模板</p>
+        </div>
+        <button class="btn btn-primary" onclick="toggleCreateSection()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            新建模板
+        </button>
+    </div>
+
+    <!-- Create Section (Collapsible) -->
+    <div id="createSection" class="create-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin: 0;">新建模板 / Create Template</h2>
+            <button class="btn btn-ghost btn-sm" onclick="toggleCreateSection()">关闭 / Close</button>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchCreateTab('report')">📄 日报模板 / Report</button>
+            <button class="tab-btn" onclick="switchCreateTab('task')">✅ 任务模板 / Task</button>
+        </div>
+
+        <!-- Create Report Form -->
+        <div id="create-report" class="tab-content active">
+            <form method="post">
+                {% csrf_token %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label class="form-label">模板名称 / Name</label>
+                        {{ report_form.name }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">角色 / Role</label>
+                        {{ report_form.role }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">项目 / Project</label>
+                        {{ report_form.project }}
+                        <span class="help-text">留空则为全局模板 / Leave empty for global</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">共享 / Shared</label>
+                        <div style="display: flex; align-items: center; height: 42px;">
+                            {{ report_form.is_shared }} <span style="margin-left: 8px; font-size: 13px;">允许他人使用 / Allow others to use</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="pill">当前排序 / Current: {% if sort == 'updated' %}按更新时间 / By updated{% else %}按版本 / By version{% endif %}</div>
-            </div>
-            <form method="get" class="form-grid">
-                <div class="field">
-                    <label>关键词 / Keyword</label>
-                    <input type="text" name="q" value="{{ q }}" placeholder="按名称/内容搜索 / Search by name or content">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">模板内容 / Content</label>
+                    {{ report_form.content }}
+                    <span class="help-text">支持 Markdown 语法</span>
                 </div>
-                <div class="field">
-                    <label>角色 / Role</label>
-                    <select name="role">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">占位符配置 / Placeholders (JSON)</label>
+                    {{ report_form.placeholders }}
+                    <span class="help-text">例如: {"today_work": "..."}</span>
+                </div>
+                <div style="text-align: right;">
+                    <button type="submit" class="btn btn-primary">保存日报模板 / Save Report Template</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Create Task Form -->
+        <div id="create-task" class="tab-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="task">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label class="form-label">模板名称 / Name</label>
+                        {{ task_form.name }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">任务标题 / Task Title</label>
+                        {{ task_form.title }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">角色 / Role</label>
+                        {{ task_form.role }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">项目 / Project</label>
+                        {{ task_form.project }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">URL 链接</label>
+                        {{ task_form.url }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">共享 / Shared</label>
+                        <div style="display: flex; align-items: center; height: 42px;">
+                            {{ task_form.is_shared }} <span style="margin-left: 8px; font-size: 13px;">允许他人使用</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">任务描述 / Description</label>
+                    {{ task_form.content }}
+                </div>
+                <div style="text-align: right;">
+                    <button type="submit" class="btn btn-primary">保存任务模板 / Save Task Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group" style="flex: 2; min-width: 240px;">
+                    <label class="form-label">搜索 / Search</label>
+                    <input type="text" name="q" value="{{ q }}" class="form-input" placeholder="按名称或内容搜索...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">角色 / Role</label>
+                    <select name="role" class="form-select">
                         <option value="">全部 / All</option>
                         {% for val,label in report_form.fields.role.choices %}
                             <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="field">
-                    <label>项目 / Project</label>
-                    <select name="project">
+                <div class="form-group">
+                    <label class="form-label">项目 / Project</label>
+                    <select name="project" class="form-select">
                         <option value="">全部 / All</option>
                         {% for p in projects %}
                             <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="field">
-                    <label>排序 / Sort</label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button type="submit" name="sort" value="version" class="btn {% if sort == 'version' %}{% else %}btn-ghost{% endif %}">版本优先 / Version first</button>
-                        <button type="submit" name="sort" value="updated" class="btn {% if sort == 'updated' %}{% else %}btn-ghost{% endif %}">更新时间优先 / Updated first</button>
-                        <button type="submit" name="sort" value="usage" class="btn {% if sort == 'usage' %}{% else %}btn-ghost{% endif %}">使用次数 / By usage</button>
-                    </div>
-                    <p class="note">提示：版本优先常用于历史回溯；更新时间优先便于查看最新编辑；按使用次数能快速找到常用模板 / Version=history, Updated=latest, Usage=popular.</p>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn">🔍 筛选 / Filter</button>
-                    <a href="{% url 'reports:template_center' %}" class="btn btn-ghost">重置 / Reset</a>
-                </div>
-            </form>
-        </section>
-
-        <section class="card-block">
-            <div class="section-head">
-                <div>
-                    <p class="eyebrow">创建 / Create</p>
-                    <h2 class="section-title">模板创建 / Create Templates</h2>
-                    <p class="muted">支持项目/角色共享并自动记录版本，保持双语填写指引 / Share by project & role with auto versioning and bilingual hints.</p>
+                <div class="form-group">
+                    <label class="form-label">排序 / Sort</label>
+                    <select name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                        <option value="version" {% if sort == 'version' %}selected{% endif %}>版本 (v)</option>
+                        <option value="updated" {% if sort == 'updated' %}selected{% endif %}>更新时间</option>
+                        <option value="usage" {% if sort == 'usage' %}selected{% endif %}>使用次数</option>
+                    </select>
                 </div>
             </div>
-            <div class="callout" style="margin-bottom:16px;">
-                <h4>📄 日报模板默认格式 / Default Report Template</h4>
-                <ul>
-                    <li><strong>日期 / Date：</strong>YYYY-MM-DD，示例 Example：2025-01-01</li>
-                    <li><strong>今日工作 / Today’s Work：</strong>完成项 + 结果（例：完成接口开发 / Finished API endpoints）</li>
-                    <li><strong>进度与问题 / Progress & Issues：</strong>风险、阻塞、依赖（例：上线窗口待确认 / Release window pending）</li>
-                    <li><strong>明日计划 / Plan for Tomorrow：</strong>下一步动作与预期结果（例：联调并完成回归 / Integration + regression）</li>
-                    <li><strong>（可选）测试/产品/设计/运维字段：</strong>按角色填写测试范围、反馈、监控等 / Role-specific fields (QA/Product/UI/Ops)</li>
-                </ul>
-                <p class="muted">示例数据 / Sample: Today: 完成接口开发；Issues: 需接口文档评审；Tomorrow: 联调 & 回归；Testing: 回归 12 个用例。</p>
-                <h4 style="margin-top:10px;">✅ 任务模板默认结构 / Default Task Template</h4>
-                <ul>
-                    <li><strong>名称 / Name：</strong>如“上线任务模板 / Release Task”</li>
-                    <li><strong>标题 / Title：</strong>如“发布 v1.2 版本 / Release v1.2”</li>
-                    <li><strong>内容 / Content：</strong>步骤列表 + 负责人（例：1) 检查部署包 / Check build 2) 预发验证 / Staging verify 3) 正式发布 / Prod rollout）</li>
-                    <li><strong>链接 / URL：</strong>可选，关联需求/工单 / Optional related link</li>
-                </ul>
-                <p class="muted">示例数据 / Sample: Title=发布 v1.2；Content=检查构建→预发验证→灰度→全量→验证监控；URL=https://example.com/tickets/123.</p>
-                <p class="muted">灰色占位符已为关键字段给出中英文提示，直接参考并覆盖即可 / Grey placeholders show CN/EN guidance—use or replace as needed.</p>
+            <div class="filter-actions">
+                <a href="{% url 'reports:template_center' %}" class="btn btn-ghost">重置</a>
+                <button type="submit" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选
+                </button>
             </div>
-            <div class="template-grid">
-                <form method="post" action="" class="form-card">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="report">
-                    <h3>📄 日报模板 / Report Template</h3>
-                    {{ report_form.as_p }}
-                    <button type="submit" class="btn">保存日报模板 / Save Report Template</button>
-                </form>
-                <form method="post" action="" class="form-card">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="task">
-                    <h3>✅ 任务模板 / Task Template</h3>
-                    {{ task_form.as_p }}
-                    <button type="submit" class="btn">保存任务模板 / Save Task Template</button>
-                </form>
-            </div>
-        </section>
-
-        <section class="card-block">
-            <div class="section-head">
-                <div>
-                    <p class="eyebrow">最新 / Latest</p>
-                    <h2 class="section-title">最新模板 / Latest Templates</h2>
-                    <p class="muted">优先显示符合筛选的最新版本；未匹配时可清空筛选或切换项目/角色 / Shows latest for current filters; clear or switch filters if none.</p>
-                </div>
-                <span class="pill">排序 / Sort: {% if sort == 'updated' %}更新时间 / Updated{% else %}版本号 / Version{% endif %}</span>
-            </div>
-
-            <h3 class="subhead">📄 日报模板 / Report Templates</h3>
-            <div class="template-grid">
-                {% for tmpl in report_templates %}
-                <article class="template-card {% if report_templates.number == 1 and forloop.first %}new{% endif %}">
-                    <div class="template-header">📄 {{ tmpl.name }}</div>
-                    <div class="template-meta">
-                        角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}
-                    </div>
-                    <div class="template-meta">版本 / Version: v{{ tmpl.version }}</div>
-                    <div class="template-meta">使用次数 / Usage: {{ tmpl.usage_count|default:0 }}</div>
-                    <div class="template-content">{{ tmpl.content|truncatechars:120 }}</div>
-                </article>
-                {% empty %}
-                <div class="empty-state">暂无日报模板 / No Report Templates Available</div>
-                {% endfor %}
-            </div>
-            {% if report_templates.has_other_pages %}
-            <div class="pagination">
-                {% if report_templates.has_previous %}<a class="btn btn-ghost" href="?rpage={{ report_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
-                <span class="page-stat">第 {{ report_templates.number }} / {{ report_templates.paginator.num_pages }} 页 / Page</span>
-                {% if report_templates.has_next %}<a class="btn btn-ghost" href="?rpage={{ report_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
-                <form method="get" class="jump-form">
-                    <input type="hidden" name="q" value="{{ q }}">
-                    <input type="hidden" name="role" value="{{ role_filter }}">
-                    <input type="hidden" name="project" value="{{ project_filter }}">
-                    <input type="hidden" name="sort" value="{{ sort }}">
-                    <label class="jump-label" for="rpage-input">跳转 / Jump</label>
-                    <input id="rpage-input" type="number" name="rpage" min="1" max="{{ report_templates.paginator.num_pages }}">
-                    <button class="btn btn-ghost" type="submit">Go</button>
-                </form>
-            </div>
-            {% endif %}
-
-            <h3 class="subhead">✅ 任务模板 / Task Templates</h3>
-            <div class="template-grid">
-                {% for tmpl in task_templates %}
-                <article class="template-card {% if task_templates.number == 1 and forloop.first %}new{% endif %}">
-                    <div class="template-header">✅ {{ tmpl.name }}</div>
-                    <div class="template-meta">
-                        角色 / Role: {{ tmpl.get_role_display|default:"全部 / All" }} · 项目 / Project: {{ tmpl.project.name|default:"全局 / Global" }}
-                    </div>
-                    <div class="template-meta">版本 / Version: v{{ tmpl.version }}</div>
-                    <div class="template-meta">使用次数 / Usage: {{ tmpl.usage_count|default:0 }}</div>
-                    <div class="template-content">{{ tmpl.title }} — {{ tmpl.content|truncatechars:120 }}</div>
-                </article>
-                {% empty %}
-                <div class="empty-state">暂无任务模板 / No Task Templates Available</div>
-                {% endfor %}
-            </div>
-            {% if task_templates.has_other_pages %}
-            <div class="pagination">
-                {% if task_templates.has_previous %}<a class="btn btn-ghost" href="?tpage={{ task_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">上一页 / Prev</a>{% endif %}
-                <span class="page-stat">第 {{ task_templates.number }} / {{ task_templates.paginator.num_pages }} 页 / Page</span>
-                {% if task_templates.has_next %}<a class="btn btn-ghost" href="?tpage={{ task_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}">下一页 / Next</a>{% endif %}
-                <form method="get" class="jump-form">
-                    <input type="hidden" name="q" value="{{ q }}">
-                    <input type="hidden" name="role" value="{{ role_filter }}">
-                    <input type="hidden" name="project" value="{{ project_filter }}">
-                    <input type="hidden" name="sort" value="{{ sort }}">
-                    <label class="jump-label" for="tpage-input">跳转 / Jump</label>
-                    <input id="tpage-input" type="number" name="tpage" min="1" max="{{ task_templates.paginator.num_pages }}" required>
-                    <button class="btn btn-ghost" type="submit">Go</button>
-                </form>
-            </div>
-            {% endif %}
-        </section>
+        </form>
     </div>
+
+    <!-- 1. Report Templates -->
+    <h3 style="font-size: 18px; font-weight: 700; margin: 32px 0 16px; display: flex; align-items: center; gap: 8px;">
+        <span>📄 日报模板</span>
+        <span class="badge" style="background: var(--primary-light); color: var(--primary); border: none;">{{ report_templates.paginator.count }}</span>
+    </h3>
+    
+    <div class="template-grid">
+        {% for tmpl in report_templates %}
+        <article class="template-card {% if report_templates.number == 1 and forloop.first %}new{% endif %}">
+            <div class="card-body">
+                <div class="card-header-row">
+                    <h4 class="template-title">{{ tmpl.name }}</h4>
+                    <span class="badge">v{{ tmpl.version }}</span>
+                </div>
+                <div class="template-meta">
+                    <span>{{ tmpl.get_role_display|default:"全部角色" }}</span>
+                    <span>•</span>
+                    <span>{{ tmpl.project.name|default:"全局通用" }}</span>
+                </div>
+                <div class="template-preview">
+                    {{ tmpl.content|truncatechars:150 }}
+                </div>
+            </div>
+            <div class="card-footer">
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary btn-xs" onclick="openPreview('{{ tmpl.name|escapejs }}', `{{ tmpl.content|escapejs }}`)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        预览
+                    </button>
+                    <button class="btn btn-secondary btn-xs" onclick="copyContent(`{{ tmpl.content|escapejs }}`)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        复制
+                    </button>
+                </div>
+                <div style="text-align: right;">
+                    <span style="display: block;">使用: {{ tmpl.usage_count|default:0 }}</span>
+                    <span style="display: block;">{{ tmpl.created_at|date:"Y-m-d" }}</span>
+                </div>
+            </div>
+        </article>
+        {% empty %}
+        <div class="empty-state">
+            <svg class="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; display: block; opacity: 0.5;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            暂无日报模板 / No report templates
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination for Reports -->
+    {% if report_templates.has_other_pages %}
+    <div class="pagination-container">
+        {% if report_templates.has_previous %}
+            <a href="?rpage={{ report_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}" class="btn btn-secondary btn-sm">上一页</a>
+        {% endif %}
+        <span class="btn btn-ghost btn-sm" style="pointer-events: none;">{{ report_templates.number }} / {{ report_templates.paginator.num_pages }}</span>
+        {% if report_templates.has_next %}
+            <a href="?rpage={{ report_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}" class="btn btn-secondary btn-sm">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 2. Task Templates -->
+    <h3 style="font-size: 18px; font-weight: 700; margin: 48px 0 16px; display: flex; align-items: center; gap: 8px;">
+        <span>✅ 任务模板</span>
+        <span class="badge" style="background: var(--primary-light); color: var(--primary); border: none;">{{ task_templates.paginator.count }}</span>
+    </h3>
+
+    <div class="template-grid">
+        {% for tmpl in task_templates %}
+        <article class="template-card {% if task_templates.number == 1 and forloop.first %}new{% endif %}">
+            <div class="card-body">
+                <div class="card-header-row">
+                    <h4 class="template-title">{{ tmpl.name }}</h4>
+                    <span class="badge">v{{ tmpl.version }}</span>
+                </div>
+                <div class="template-meta">
+                    <span>{{ tmpl.get_role_display|default:"全部角色" }}</span>
+                    <span>•</span>
+                    <span>{{ tmpl.project.name|default:"全局通用" }}</span>
+                </div>
+                <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">{{ tmpl.title }}</div>
+                <div class="template-preview">
+                    {{ tmpl.content|truncatechars:150 }}
+                </div>
+            </div>
+            <div class="card-footer">
+                <span>使用: {{ tmpl.usage_count|default:0 }}</span>
+                <span>{{ tmpl.created_at|date:"Y-m-d" }}</span>
+            </div>
+        </article>
+        {% empty %}
+        <div class="empty-state">
+            <svg class="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; display: block; opacity: 0.5;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            暂无任务模板 / No task templates
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination for Tasks -->
+    {% if task_templates.has_other_pages %}
+    <div class="pagination-container">
+        {% if task_templates.has_previous %}
+            <a href="?tpage={{ task_templates.previous_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}" class="btn btn-secondary btn-sm">上一页</a>
+        {% endif %}
+        <span class="btn btn-ghost btn-sm" style="pointer-events: none;">{{ task_templates.number }} / {{ task_templates.paginator.num_pages }}</span>
+        {% if task_templates.has_next %}
+            <a href="?tpage={{ task_templates.next_page_number }}&q={{ q }}&role={{ role_filter }}&project={{ project_filter }}&sort={{ sort }}" class="btn btn-secondary btn-sm">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal-backdrop" onclick="closePreview(event)">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h3 class="modal-title" id="previewTitle" style="margin: 0; font-size: 16px; font-weight: 700;">模板预览</h3>
+                <button class="btn btn-ghost btn-sm" onclick="closePreview(null, true)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <pre class="modal-body" id="previewContent"></pre>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePreview(null, true)">关闭</button>
+                <button class="btn btn-primary" onclick="copyPreviewContent()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    复制内容
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>已复制到剪贴板</span>
+    </div>
+
 </div>
+
+<script>
+    // --- Modal & Copy Logic ---
+    let currentPreviewContent = '';
+
+    function openPreview(title, content) {
+        document.getElementById('previewTitle').textContent = title;
+        document.getElementById('previewContent').textContent = content;
+        currentPreviewContent = content;
+        
+        const modal = document.getElementById('previewModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    }
+
+    function closePreview(e, force) {
+        if (force || e.target === document.getElementById('previewModal')) {
+            document.getElementById('previewModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function copyContent(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('已复制到剪贴板 / Copied to clipboard');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showToast('复制失败 / Copy failed');
+        });
+    }
+
+    function copyPreviewContent() {
+        copyContent(currentPreviewContent);
+        // Optional: close modal after copy
+        // closePreview(null, true);
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.querySelector('span').textContent = msg;
+        toast.classList.add('active');
+        
+        // Reset timeout if already active
+        if (toast.timeoutId) clearTimeout(toast.timeoutId);
+        
+        toast.timeoutId = setTimeout(() => {
+            toast.classList.remove('active');
+        }, 2000);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closePreview(null, true);
+        }
+    });
+
+    function showCreateSection(tab) {
+        const section = document.getElementById('createSection');
+        section.style.display = 'block';
+        section.classList.add('active');
+        switchCreateTab(tab);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if report_form.errors %}
+            showCreateSection('report');
+        {% elif task_form.errors %}
+            showCreateSection('task');
+        {% endif %}
+    });
+
+    function toggleCreateSection() {
+        const section = document.getElementById('createSection');
+        if (section.style.display === 'block') {
+            section.style.display = 'none';
+        } else {
+            section.style.display = 'block';
+            section.classList.add('active');
+        }
+    }
+
+    function switchCreateTab(type) {
+        // Buttons
+        document.querySelectorAll('.create-section .tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.create-section .tab-btn[onclick="switchCreateTab('${type}')"]`).classList.add('active');
+        
+        // Content
+        document.querySelectorAll('.create-section .tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`create-${type}`).classList.add('active');
+    }
+</script>
 {% endblock %}

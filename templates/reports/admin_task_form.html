@@ -2,518 +2,516 @@
 {% block title %}发布任务 / New Task{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="发布任务 / New Task" nav_subtitle="仅管理员可发布 / Admin only" %}{% endblock %}
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-        }
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-        .hero {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px 28px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
+    .template-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 24px;
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        flex-wrap: wrap;
+    }
 
-        .hero h1 {
-            margin: 0 0 8px;
-            font-size: clamp(22px, 3vw, 28px);
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
 
-        .hero .lede {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
-        }
+    .form-group {
+        margin-bottom: 20px;
+    }
 
-        .eyebrow {
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            font-size: 11px;
-            color: var(--muted);
-            margin: 0 0 8px;
-            font-weight: 600;
-        }
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
 
-        .card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px 24px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+        background-color: #f8fafc;
+        color: var(--text-main);
+    }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    .form-input:hover, .form-select:hover, .form-textarea:hover {
+        background-color: #fff;
+        border-color: #cbd5e1;
+    }
 
-        .card:hover::before {
-            opacity: 0.6;
-        }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        background-color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
 
-        .card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
 
-        .form-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
-            gap: 12px; 
-        }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
 
-        label { 
-            font-size: 13px; 
-            font-weight: 600; 
-            color: var(--ink); 
-            display: block; 
-            margin-bottom: 8px; 
-        }
+    .btn-primary:hover {
+        background-color: #1e40af; /* Darker blue for better contrast */
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: white;
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
+    }
 
-        input, select, textarea { 
-            width: 100%; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border); 
-            padding: 12px 14px; 
-            font-size: 14px; 
-            background: rgba(255, 255, 255, 0.8); 
-            color: var(--ink);
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
 
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            background: #fff;
-            transform: translateY(-1px);
-        }
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+    
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+        border-radius: 6px;
+    }
 
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
+    .form-textarea {
+        min-height: 150px;
+        resize: vertical;
+        line-height: 1.6;
+    }
 
-        .actions-row { 
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end; 
-            margin-top: 16px; 
-        }
+    .help-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+    }
 
-        .btn { 
-            border-radius: var(--radius-md); 
-            border: none; 
-            padding: 12px 18px; 
-            font-size: 14px; 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
+    .alert-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
 
-        .btn:hover::before {
-            left: 100%;
-        }
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
 
-        .btn:active { 
-            transform: translateY(1px) scale(0.98); 
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost { 
-            background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink); 
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .errors { 
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05)); 
-            border: 1px solid rgba(239, 68, 68, 0.2); 
-            color: #991b1b; 
-            padding: 12px 14px; 
-            border-radius: var(--radius-md); 
-            margin-bottom: 12px; 
-            font-size: 13px;
-        }
-
-        .note {
-            font-size: 12px;
-            color: var(--muted);
-            margin-top: 6px;
-        }
-
-        @media (max-width: 860px) {
-            .hero {
-                padding: 20px;
-            }
-
-            .card {
-                padding: 16px;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+    /* Auto-complete dropdowns styling */
+    input[list]::-webkit-calendar-picker-indicator {
+        display: none !important;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <section class="card">
-        <h2 style="margin:0 0 10px;">发布任务</h2>
+<div class="page-container">
+    <div class="form-card">
+        <div class="section-header">
+            <h2 class="section-title">发布新任务 / Create New Task</h2>
+        </div>
+
         {% if errors %}
-            <div class="errors">
-                {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+            <div class="alert alert-error">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div>
+                    {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+                </div>
             </div>
         {% endif %}
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-            <select id="task-tpl-recommend" style="min-width:200px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;flex:1;">
-                <option value="">智能推荐 / Smart suggestions</option>
-            </select>
-            <input id="task-tpl-name" type="text" placeholder="模板名称（可选） / Template name (optional)" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
-            <button type="button" class="btn btn-ghost" id="apply-task-template">替换套用 / Replace</button>
-            <button type="button" class="btn btn-ghost" id="append-task-template">追加套用 / Append</button>
-            <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">
-                优先级：项目 → 角色 → 全局，未命中会回退默认模板并提示 / Priority: Project → Role → Global; falls back with a notice if not found.
-            </p>
+
+        <!-- Template Selection Bar -->
+        <div class="template-bar">
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">智能模板推荐 / Smart Template</label>
+                <select id="task-tpl-recommend" class="form-select">
+                    <option value="">加载中... / Loading...</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">手动输入模板名 / Manual Template Name</label>
+                <input id="task-tpl-name" type="text" class="form-input" placeholder="输入模板名称">
+            </div>
+            <div style="display: flex; gap: 8px; align-items: flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" id="apply-task-template">替换 / Replace</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="append-task-template">追加 / Append</button>
+            </div>
         </div>
+
         <form method="post">
             {% csrf_token %}
+            
             <div class="form-grid">
+                <!-- Left Column -->
                 <div>
-                    <label>任务标题 *</label>
-                    <input type="text" name="title" value="{{ form_values.title|default:'' }}" required>
+                    <div class="form-group">
+                        <label class="form-label">任务标题 / Task Title <span style="color:red">*</span></label>
+                        <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">所属项目 / Project <span style="color:red">*</span></label>
+                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索..." style="margin-bottom: 8px;">
+                        <datalist id="project-options"></datalist>
+                        <select name="project" id="project-select" class="form-select" required>
+                            <option value="">请选择项目 / Select Project</option>
+                            {% for p in projects %}
+                                <option value="{{ p.id }}" {% if form_values.project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">指派给 / Assign To <span style="color:red">*</span></label>
+                        <input type="text" id="user-typeahead" list="user-options" class="form-input" placeholder="输入姓名或用户名搜索..." style="margin-bottom: 8px;">
+                        <datalist id="user-options"></datalist>
+                        <select name="user" id="user-select" class="form-select" required>
+                            <option value="">请选择用户 / Select User</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}" {% if form_values.user_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="help-text">先输入搜索，再从下拉框确认选择</p>
+                    </div>
                 </div>
+
+                <!-- Right Column -->
                 <div>
-                    <label>任务 URL（可选，下拉或自填）</label>
-                    <input list="url_options" type="url" name="url" value="{{ form_values.url|default:'' }}" placeholder="可选择历史 URL 或自行填写">
-                    <datalist id="url_options">
-                        {% for u in existing_urls %}
-                            <option value="{{ u }}">{{ u }}</option>
-                        {% endfor %}
-                    </datalist>
-                </div>
-                <div style="grid-column:1/-1;">
-                    <label>任务内容（可选，支持 Markdown；URL 为空时需填写）</label>
-                    <textarea name="content" placeholder="示例：- 完成 XX 模块用例\n- 提交报告并通知 PM">{{ form_values.content|default:'' }}</textarea>
-                </div>
-                <div>
-                    <label>所属项目 *</label>
-                    <input type="text" id="project-typeahead" list="project-options" placeholder="输入项目名搜索" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                    <datalist id="project-options"></datalist>
-                    <select name="project" id="project-select" required>
-                        <option value="">请选择</option>
-                        {% for p in projects %}
-                            <option value="{{ p.id }}" {% if form_values.project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label>目标用户 *（远程搜索）</label>
-                    <input type="text" id="user-typeahead" list="user-options" placeholder="输入用户名或姓名搜索" style="margin-bottom:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);">
-                    <datalist id="user-options"></datalist>
-                    <select name="user" id="user-select">
-                        <option value="">请选择</option>
-                        {% for u in users %}
-                            <option value="{{ u.id }}" {% if form_values.user_id == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <p class="note">选择下拉或输入后选中建议，自动填充目标用户。</p>
-                </div>
-                <div>
-                    <label>完成时间（截止）</label>
-                    <input type="datetime-local" name="due_at" value="{{ form_values.due_at|default:'' }}" aria-describedby="due-tip">
-                    <p id="due-tip" class="note">未设置截止将按项目 SLA 计算 / If empty, project SLA applies</p>
-                </div>
-                <div>
-                    <label>状态</label>
-                    <select name="status">
-                        {% for val,label in task_status_choices %}
-                            <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-group">
+                        <label class="form-label">任务 URL / Link (Optional)</label>
+                        <input list="url_options" type="url" name="url" class="form-input" value="{{ form_values.url|default:'' }}" placeholder="https://...">
+                        <datalist id="url_options">
+                            {% for u in existing_urls %}
+                                <option value="{{ u }}">{{ u }}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">截止时间 / Due Date</label>
+                        <input type="datetime-local" name="due_at" class="form-input" value="{{ form_values.due_at|default:'' }}">
+                        <p class="help-text">留空则按项目 SLA 自动计算 / Leave empty for auto SLA</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">初始状态 / Status</label>
+                        <select name="status" class="form-select">
+                            {% for val,label in task_status_choices %}
+                                <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
-            <div class="actions-row">
-                <a class="btn btn-ghost" href="{% url 'reports:admin_task_list' %}">返回列表</a>
-                <button type="submit" class="btn btn-primary">发布任务</button>
+
+            <div class="form-group">
+                <label class="form-label">任务描述 / Description</label>
+                <textarea name="content" class="form-textarea" placeholder="支持 Markdown 格式...&#10;- 任务详情&#10;- 验收标准">{{ form_values.content|default:'' }}</textarea>
+            </div>
+
+            <div class="btn-toolbar">
+                <a href="{% url 'reports:admin_task_list' %}" class="btn btn-ghost">取消 / Cancel</a>
+                <button type="submit" class="btn btn-primary">发布任务 / Create Task</button>
             </div>
         </form>
-    </section>
-    <script>
-        (function() {
-            const projectTypeahead = document.getElementById('project-typeahead');
-            const projectOptions = document.getElementById('project-options');
-            const projectSelect = document.getElementById('project-select');
-            const projectApi = "{% url 'reports:project_search_api' %}";
-            async function fetchProjects(q) {
-                if (!projectOptions) return;
-                projectOptions.innerHTML = '';
-                try {
-                    const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    (data.results || []).forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = `${item.name}（${item.code}）`;
-                        opt.dataset.id = item.id;
-                        projectOptions.appendChild(opt);
-                    });
-                } catch (e) {
-                    // ignore
-                }
-            }
-            function applySelectedProject() {
-                if (!projectSelect || !projectTypeahead) return;
-                const text = projectTypeahead.value;
-                const match = Array.from(projectOptions.options).find(o => o.value === text);
-                if (!match) return;
-                const pid = match.dataset.id;
-                let opt = Array.from(projectSelect.options).find(o => o.value === pid);
-                if (!opt) {
-                    opt = document.createElement('option');
-                    opt.value = pid;
-                    opt.textContent = text;
-                    projectSelect.appendChild(opt);
-                }
-                projectSelect.value = pid;
-            }
+    </div>
+</div>
 
-            const userTypeahead = document.getElementById('user-typeahead');
-            const userOptions = document.getElementById('user-options');
-            const select = document.getElementById('user-select');
-            const api = "{% url 'reports:user_search_api' %}";
-            if (projectTypeahead) {
-                projectTypeahead.addEventListener('input', (e) => {
-                    const q = e.target.value;
-                    if (q && q.length >= 1) fetchProjects(q);
+<script>
+    (function() {
+        // --- Project Search ---
+        const projectTypeahead = document.getElementById('project-typeahead');
+        const projectOptions = document.getElementById('project-options');
+        const projectSelect = document.getElementById('project-select');
+        const projectApi = "{% url 'reports:project_search_api' %}";
+
+        async function fetchProjects(q) {
+            if (!projectOptions) return;
+            projectOptions.innerHTML = '';
+            try {
+                const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                (data.results || []).forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = `${item.name} (${item.code})`;
+                    opt.dataset.id = item.id;
+                    projectOptions.appendChild(opt);
                 });
-                projectTypeahead.addEventListener('change', applySelectedProject);
-            }
+            } catch (e) { console.error(e); }
+        }
 
-            if (!userTypeahead || !select) return;
-            const form = document.querySelector('form');
-            function validateTaskForm(e) {
-                const title = (form.querySelector('input[name="title"]') || {}).value || '';
-                const projectVal = projectSelect ? projectSelect.value : '';
-                const userVal = select.value;
-                const url = (form.querySelector('input[name="url"]') || {}).value || '';
-                const content = (form.querySelector('textarea[name="content"]') || {}).value || '';
-                if (!title.trim()) { alert('请填写任务标题'); e.preventDefault(); return false; }
-                if (!projectVal) { alert('请选择项目'); e.preventDefault(); return false; }
-                if (!userVal) { alert('请选择目标用户'); e.preventDefault(); return false; }
-                if (!url.trim() && !content.trim()) { alert('请输入 URL 或内容'); e.preventDefault(); return false; }
-                return true;
+        function applySelectedProject() {
+            if (!projectSelect || !projectTypeahead) return;
+            const text = projectTypeahead.value;
+            const match = Array.from(projectOptions.options).find(o => o.value === text);
+            if (!match) return;
+            
+            const pid = match.dataset.id;
+            let opt = Array.from(projectSelect.options).find(o => o.value === pid);
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = pid;
+                opt.textContent = text;
+                projectSelect.appendChild(opt);
             }
-            if (form) {
-                form.addEventListener('submit', validateTaskForm);
-            }
+            projectSelect.value = pid;
+            // Trigger template reload
+            loadTaskRecommendations();
+        }
 
-            async function fetchUsers(q) {
-                if (!userOptions) return;
-                userOptions.innerHTML = '';
-                try {
-                    const res = await fetch(`${api}?q=${encodeURIComponent(q)}`);
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    (data.results || []).forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = `${item.name} (${item.username})`;
-                        opt.dataset.id = item.id;
-                        userOptions.appendChild(opt);
-                    });
-                } catch (e) {
-                    // ignore
-                }
+        if (projectTypeahead) {
+            projectTypeahead.addEventListener('input', (e) => {
+                const q = e.target.value;
+                if (q && q.length >= 1) fetchProjects(q);
+            });
+            projectTypeahead.addEventListener('change', applySelectedProject);
+        }
+
+        // --- User Search ---
+        const userTypeahead = document.getElementById('user-typeahead');
+        const userOptions = document.getElementById('user-options');
+        const userSelect = document.getElementById('user-select');
+        const userApi = "{% url 'reports:user_search_api' %}";
+
+        async function fetchUsers(q) {
+            if (!userOptions) return;
+            userOptions.innerHTML = '';
+            try {
+                const res = await fetch(`${userApi}?q=${encodeURIComponent(q)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                (data.results || []).forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = `${item.name} (${item.username})`;
+                    opt.dataset.id = item.id;
+                    userOptions.appendChild(opt);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function applySelectedUser() {
+            const text = userTypeahead.value;
+            const match = Array.from(userOptions.options).find(o => o.value === text);
+            if (!match) return;
+            
+            const uid = match.dataset.id;
+            let opt = Array.from(userSelect.options).find(o => o.value === uid);
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = uid;
+                opt.textContent = text;
+                userSelect.appendChild(opt);
             }
-            function applySelectedUser() {
-                const text = userTypeahead.value;
-                const match = Array.from(userOptions.options).find(o => o.value === text);
-                if (!match) return;
-                const uid = match.dataset.id;
-                let opt = Array.from(select.options).find(o => o.value === uid);
-                if (!opt) {
-                    opt = document.createElement('option');
-                    opt.value = uid;
-                    opt.textContent = text;
-                    select.appendChild(opt);
-                }
-                select.value = uid;
-            }
+            userSelect.value = uid;
+        }
+
+        if (userTypeahead) {
             userTypeahead.addEventListener('input', (e) => {
                 const q = e.target.value;
                 if (q && q.length >= 1) fetchUsers(q);
             });
             userTypeahead.addEventListener('change', applySelectedUser);
+        }
 
-            // Task template apply
-            const tplBtn = document.getElementById('apply-task-template');
-            const tplAppendBtn = document.getElementById('append-task-template');
-            const tplName = document.getElementById('task-tpl-name');
-            const tplRecommend = document.getElementById('task-tpl-recommend');
-            const titleInput = document.querySelector('input[name="title"]');
-            const contentInput = document.querySelector('textarea[name="content"]');
-            const urlInput = document.querySelector('input[name="url"]');
-            const tplApi = "{% url 'reports:template_apply_api' %}";
-            async function applyTaskTemplate(mode = 'replace') {
-                const name = tplName ? tplName.value.trim() : '';
+        // --- Form Validation ---
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const title = form.querySelector('input[name="title"]').value;
                 const projectVal = projectSelect ? projectSelect.value : '';
-                const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
-                const params = new URLSearchParams({type: 'task'});
-                if (name) params.append('name', name);
-                if (projectVal) params.append('project', projectVal);
-                if (roleVal) params.append('role', roleVal);
-                try {
-                    const res = await fetch(`${tplApi}?${params.toString()}`);
-                    const data = await res.json();
-                    if (!res.ok) { alert((data.error || '未找到模板 / No template found') + ' · 可尝试清空筛选或选择全局模板'); return; }
-                    if (titleInput && data.title) {
-                        if (mode === 'append' && titleInput.value) {
-                            titleInput.value = `${titleInput.value} / ${data.title}`;
-                        } else {
-                            titleInput.value = data.title;
-                        }
-                    }
-                    if (contentInput && data.content) {
-                        if (mode === 'append' && contentInput.value) {
-                            contentInput.value = contentInput.value + "\n" + data.content;
-                        } else {
-                            contentInput.value = data.content;
-                        }
-                    }
-                    if (urlInput && data.url) urlInput.value = data.url;
-                    if (data.project && projectSelect) {
-                        let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
-                        if (opt) projectSelect.value = String(data.project);
-                    }
-                    if (data.fallback) {
-                        alert('已套用默认模板（匹配角色/全局） / Applied fallback template');
-                    } else {
-                        alert('模板已套用 / Template applied');
-                    }
-                } catch (e) {
-                    alert('加载模板失败，请稍后再试');
-                }
-            }
-            if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
-            if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
+                const userVal = userSelect ? userSelect.value : '';
+                const url = form.querySelector('input[name="url"]').value;
+                const content = form.querySelector('textarea[name="content"]').value;
 
-            async function loadTaskRecommendations() {
-                if (!tplRecommend) return;
-                const recApi = "{% url 'reports:template_recommend_api' %}";
-                const params = new URLSearchParams({type: 'task'});
-                const projectVal = projectSelect ? projectSelect.value : '';
-                const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
-                if (roleVal) params.append('role', roleVal);
-                if (projectVal) params.append('project', projectVal);
-                try {
-                    const res = await fetch(`${recApi}?${params.toString()}`);
-                    const data = await res.json();
-                    tplRecommend.innerHTML = '<option value=\"\">智能推荐 / Smart suggestions</option>';
-                    (data.results || []).forEach(item => {
-                        const label = `${item.name} · ${item.project_name || '全局/Global'} · v${item.version}`;
-                        const opt = document.createElement('option');
-                        opt.value = item.name;
-                        opt.textContent = label;
-                        tplRecommend.appendChild(opt);
-                    });
-                } catch (e) {
-                    console.warn('task tpl recommend failed', e);
-                }
-            }
-            if (tplRecommend) {
-                tplRecommend.addEventListener('change', (e) => {
-                    if (tplName) tplName.value = e.target.value;
+                if (!title.trim()) { alert('请填写任务标题'); e.preventDefault(); return; }
+                if (!projectVal) { alert('请选择项目'); e.preventDefault(); return; }
+                if (!userVal) { alert('请选择目标用户'); e.preventDefault(); return; }
+                if (!url.trim() && !content.trim()) { alert('请输入 URL 或任务描述内容'); e.preventDefault(); return; }
+            });
+        }
+
+        // --- Template System ---
+        const tplBtn = document.getElementById('apply-task-template');
+        const tplAppendBtn = document.getElementById('append-task-template');
+        const tplName = document.getElementById('task-tpl-name');
+        const tplRecommend = document.getElementById('task-tpl-recommend');
+        const titleInput = document.querySelector('input[name="title"]');
+        const contentInput = document.querySelector('textarea[name="content"]');
+        const urlInput = document.querySelector('input[name="url"]');
+        const tplApi = "{% url 'reports:template_apply_api' %}";
+        const recApi = "{% url 'reports:template_recommend_api' %}";
+
+        async function loadTaskRecommendations() {
+            if (!tplRecommend) return;
+            const params = new URLSearchParams({type: 'task'});
+            const projectVal = projectSelect ? projectSelect.value : '';
+            // Pass current user role for context, though admin is creating
+            const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
+            
+            if (roleVal) params.append('role', roleVal);
+            if (projectVal) params.append('project', projectVal);
+
+            try {
+                const res = await fetch(`${recApi}?${params.toString()}`);
+                const data = await res.json();
+                tplRecommend.innerHTML = '<option value="">智能推荐 / Smart suggestions</option>';
+                (data.results || []).forEach(item => {
+                    const label = `${item.name} · ${item.project_name || '全局'} · v${item.version}`;
+                    const opt = document.createElement('option');
+                    opt.value = item.name;
+                    opt.textContent = label;
+                    tplRecommend.appendChild(opt);
                 });
-                loadTaskRecommendations();
-                if (projectSelect) projectSelect.addEventListener('change', loadTaskRecommendations);
+            } catch (e) {
+                console.warn('Template load failed', e);
             }
-        })();
-    </script>
+        }
+
+        async function applyTaskTemplate(mode = 'replace') {
+            const name = tplName ? tplName.value.trim() : '';
+            const projectVal = projectSelect ? projectSelect.value : '';
+            const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
+            
+            const params = new URLSearchParams({type: 'task'});
+            if (name) params.append('name', name);
+            if (projectVal) params.append('project', projectVal);
+            if (roleVal) params.append('role', roleVal);
+
+            try {
+                const res = await fetch(`${tplApi}?${params.toString()}`);
+                const data = await res.json();
+                
+                if (!res.ok) { 
+                    alert((data.error || '未找到模板') + ' · 请尝试其他名称或清空筛选'); 
+                    return; 
+                }
+
+                if (titleInput && data.title) {
+                    titleInput.value = (mode === 'append' && titleInput.value) 
+                        ? `${titleInput.value} / ${data.title}` 
+                        : data.title;
+                }
+                
+                if (contentInput && data.content) {
+                    contentInput.value = (mode === 'append' && contentInput.value) 
+                        ? contentInput.value + "\n" + data.content 
+                        : data.content;
+                }
+
+                if (urlInput && data.url) urlInput.value = data.url;
+
+                if (data.project && projectSelect) {
+                    // Try to select the project if it exists in the list
+                    // Note: Since list might be filtered, this might not always work if option missing
+                    // Ideally we should add the option dynamically if missing, but for now basic selection:
+                    let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
+                    if (opt) projectSelect.value = String(data.project);
+                }
+
+                alert(data.fallback ? '已应用默认模板 (Fallback)' : '模板已应用 (Applied)');
+                
+            } catch (e) {
+                alert('操作失败，请重试');
+            }
+        }
+
+        if (tplRecommend) {
+            tplRecommend.addEventListener('change', (e) => {
+                if (tplName) tplName.value = e.target.value;
+            });
+            // Initial load
+            loadTaskRecommendations();
+            if (projectSelect) projectSelect.addEventListener('change', loadTaskRecommendations);
+        }
+
+        if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
+        if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
+
+    })();
+</script>
 {% endblock %}
