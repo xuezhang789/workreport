@@ -1,6 +1,6 @@
 {% extends "base_topbar.html" %}
-{% block title %}发布任务 / New Task{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="发布任务 / New Task" nav_subtitle="仅管理员可发布 / Admin only" %}{% endblock %}
+{% block title %}{% if task %}编辑任务 / Edit Task{% else %}发布任务 / New Task{% endif %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title=task|yesno:"编辑任务 / Edit Task,发布任务 / New Task" nav_subtitle="仅管理员或相关人员可操作 / Restricted Access" %}{% endblock %}
 {% block extra_styles %}
 <style>
     /* --- Design System (Consistent with Admin Pages) --- */
@@ -270,6 +270,38 @@
     .remove-btn:hover {
         background: rgba(37, 99, 235, 0.2);
     }
+
+    /* Collaborator Tags */
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .user-tag {
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 4px 10px;
+        border-radius: 16px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #bae6fd;
+    }
+    .user-tag-remove {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(3, 105, 161, 0.1);
+    }
+    .user-tag-remove:hover {
+        background: rgba(3, 105, 161, 0.2);
+    }
 </style>
 {% endblock %}
 
@@ -277,7 +309,7 @@
 <div class="page-container">
     <div class="form-card">
         <div class="section-header">
-            <h2 class="section-title">发布新任务 / Create New Task</h2>
+            <h2 class="section-title">{% if task %}编辑任务 / Edit Task{% else %}发布新任务 / Create New Task{% endif %}</h2>
         </div>
 
         {% if errors %}
@@ -331,13 +363,46 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">指派给 / Assign To <span style="color:red">*</span></label>
-                        <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" style="margin-bottom: 8px;">
+                        <label class="form-label">主负责人 / Primary Owner <span style="color:red">*</span></label>
+                        <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" style="margin-bottom: 8px;" value="{% if task %}{{ task.user.get_full_name|default:task.user.username }}{% endif %}">
                         <select name="user" id="user-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto;">
                         </select>
-                        <input type="hidden" name="user" id="user-hidden-input" required>
-                        <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); display: none;"></div>
+                        <input type="hidden" name="user" id="user-hidden-input" required value="{{ form_values.user_id|default:'' }}">
+                        <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); {% if not form_values.user_id %}display: none;{% endif %}">
+                            {% if task %}已选择: {{ task.user.get_full_name|default:task.user.username }}{% endif %}
+                        </div>
                         <p class="help-text">输入关键词自动搜索，点击列表选择用户</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">协作人 / Collaborators</label>
+                        <div style="position: relative;">
+                            <input type="text" id="collab-typeahead" class="form-input" placeholder="搜索添加协作人..." autocomplete="off">
+                            <select id="collab-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; top: 100%; left: 0;">
+                            </select>
+                        </div>
+                        <div id="collab-tags" class="tag-container">
+                            {% for u in users %}
+                                {% if u.id in form_values.collaborator_ids or u.id|stringformat:"s" in form_values.collaborator_ids %}
+                                     <div class="user-tag" id="collab-tag-{{ u.id }}">
+                                         {{ u.get_full_name|default:u.username }}
+                                         <span class="user-tag-remove" onclick="removeCollaborator('{{ u.id }}')">×</span>
+                                         <input type="hidden" name="collaborators" value="{{ u.id }}">
+                                     </div>
+                                {% endif %}
+                            {% endfor %}
+                            {% if task %}
+                                {% for c in task.collaborators.all %}
+                                    {% if c.id not in form_values.collaborator_ids and c.id|stringformat:"s" not in form_values.collaborator_ids %}
+                                        <div class="user-tag" id="collab-tag-{{ c.id }}">
+                                             {{ c.get_full_name|default:c.username }}
+                                             <span class="user-tag-remove" onclick="removeCollaborator('{{ c.id }}')">×</span>
+                                             <input type="hidden" name="collaborators" value="{{ c.id }}">
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -543,6 +608,101 @@
                 }
             });
         }
+
+        // --- Collaborator Search ---
+        const collabTypeahead = document.getElementById('collab-typeahead');
+        const collabSelect = document.getElementById('collab-select');
+        const collabTags = document.getElementById('collab-tags');
+        let collabDebounceTimer;
+
+        async function fetchCollaborators(q) {
+            if (!collabSelect) return;
+            collabSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
+            collabSelect.style.display = 'block';
+
+            try {
+                const res = await fetch(`${userApi}?q=${encodeURIComponent(q)}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                collabSelect.innerHTML = '';
+                
+                if (!data.results || data.results.length === 0) {
+                     const opt = document.createElement('option');
+                     opt.disabled = true;
+                     opt.textContent = '未找到相关用户';
+                     collabSelect.appendChild(opt);
+                } else {
+                    const primaryOwnerId = document.getElementById('user-hidden-input').value;
+                    data.results.forEach(item => {
+                        // Skip if already selected or is primary owner
+                        if (document.getElementById(`collab-tag-${item.id}`)) return;
+                        if (item.id == primaryOwnerId) return;
+
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.textContent = `${item.name} (${item.username})`;
+                        opt.dataset.name = item.name;
+                        opt.dataset.username = item.username;
+                        collabSelect.appendChild(opt);
+                    });
+                }
+            } catch (e) { 
+                console.error(e);
+                collabSelect.style.display = 'none';
+            }
+        }
+
+        if (collabTypeahead) {
+            collabTypeahead.addEventListener('input', (e) => {
+                const q = e.target.value.trim();
+                clearTimeout(collabDebounceTimer);
+                if (q.length < 1) {
+                    collabSelect.style.display = 'none';
+                    return;
+                }
+                collabDebounceTimer = setTimeout(() => fetchCollaborators(q), 300);
+            });
+            
+             collabSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption && !selectedOption.disabled) {
+                    const uid = selectedOption.value;
+                    const name = selectedOption.dataset.name;
+                    const username = selectedOption.dataset.username || '';
+                    
+                    addCollaboratorTag(uid, name, username);
+                    
+                    collabTypeahead.value = '';
+                    collabSelect.style.display = 'none';
+                }
+            });
+
+            // Click outside
+            document.addEventListener('click', function(e) {
+                if (!collabTypeahead.contains(e.target) && !collabSelect.contains(e.target)) {
+                    collabSelect.style.display = 'none';
+                }
+            });
+        }
+
+        function addCollaboratorTag(id, name, username) {
+            if (document.getElementById(`collab-tag-${id}`)) return;
+            
+            const div = document.createElement('div');
+            div.className = 'user-tag';
+            div.id = `collab-tag-${id}`;
+            div.innerHTML = `
+                ${name} ${username ? `(${username})` : ''}
+                <span class="user-tag-remove" onclick="removeCollaborator('${id}')">×</span>
+                <input type="hidden" name="collaborators" value="${id}">
+            `;
+            collabTags.appendChild(div);
+        }
+
+        window.removeCollaborator = function(id) {
+            const el = document.getElementById(`collab-tag-${id}`);
+            if (el) el.remove();
+        };
 
         // Prevent Enter Key Submission globally for the form
         const form = document.querySelector('form');

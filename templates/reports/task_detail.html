@@ -280,7 +280,9 @@
             </div>
             <div style="display: flex; gap: 8px;">
                 <a href="{% url 'reports:task_list' %}" class="btn btn-ghost">返回列表</a>
-                {% if request.user.is_staff %}<a href="{% url 'reports:admin_task_list' %}" class="btn btn-ghost">管理</a>{% endif %}
+                {% if can_edit or request.user.is_staff or request.user == task.user or request.user in task.collaborators.all %}
+                    <a href="{% url 'reports:admin_task_edit' task.pk %}" class="btn btn-secondary">编辑 / Edit</a>
+                {% endif %}
                 
                 <!-- Status Actions -->
                 {% if request.user == task.user or request.user.is_staff %}
@@ -315,12 +317,25 @@
                 <span class="info-value">{{ task.project.name }}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">负责人 / Assignee</span>
+                <span class="info-label">主负责人 / Primary Owner</span>
                 <span class="info-value">
                     <div style="width: 24px; height: 24px; background: #e0e7ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">
                         {{ task.user.username|slice:":1"|upper }}
                     </div>
                     {{ task.user.get_full_name|default:task.user.username }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">协作人 / Collaborators</span>
+                <span class="info-value" style="flex-wrap: wrap; gap: 6px;">
+                    {% for c in task.collaborators.all %}
+                        <div style="display: flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-size: 13px;">
+                            <div style="width: 16px; height: 16px; background: #cbd5e1; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">{{ c.username|slice:":1"|upper }}</div>
+                            {{ c.get_full_name|default:c.username }}
+                        </div>
+                    {% empty %}
+                        <span style="color: var(--text-secondary); font-size: 13px;">--</span>
+                    {% endfor %}
                 </span>
             </div>
             <div class="info-item">

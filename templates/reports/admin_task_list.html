@@ -522,10 +522,20 @@
                             </td>
                             <td class="col-user" data-label="负责人">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                    <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid var(--primary-light); z-index: 2;">
                                         {{ t.user.username|slice:":1"|upper }}
                                     </div>
-                                    <span>{{ t.user.username }}</span>
+                                    {% for c in t.collaborators.all|slice:":2" %}
+                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -12px; border: 1px solid white; z-index: 1;">
+                                            {{ c.username|slice:":1"|upper }}
+                                        </div>
+                                    {% endfor %}
+                                    {% if t.collaborators.count > 2 %}
+                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -12px; border: 1px solid white; z-index: 1;">
+                                            +{{ t.collaborators.count|add:"-2" }}
+                                        </div>
+                                    {% endif %}
+                                    <span style="font-size: 13px; margin-left: 4px;">{{ t.user.username }}</span>
                                 </div>
                             </td>
                             <td class="col-status" data-label="状态">
