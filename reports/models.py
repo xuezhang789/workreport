@@ -82,6 +82,21 @@ class ProjectPhaseChangeLog(models.Model):
     def __str__(self):
         return f"{self.project.name}: {self.old_phase} -> {self.new_phase}"
 
+class ProjectAttachment(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='attachments', verbose_name="项目")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_project_attachments', verbose_name="上传人")
+    file = models.FileField(upload_to='project_attachments/', verbose_name="文件")
+    original_filename = models.CharField(max_length=255, verbose_name="原始文件名")
+    file_size = models.PositiveIntegerField(default=0, verbose_name="文件大小(Bytes)")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "项目附件"
+        verbose_name_plural = "项目附件"
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.project.name})"
 
 class ReminderRule(models.Model):
     """日报提醒规则：按项目/角色配置提醒时间与渠道。"""

@@ -181,9 +181,94 @@
         border-top: 1px solid var(--border-color);
     }
 
-    /* Auto-complete dropdowns styling */
-    input[list]::-webkit-calendar-picker-indicator {
-        display: none !important;
+    /* File Upload Styles (Synced with Project Form) */
+    .file-upload-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 16px;
+    }
+
+    .file-upload-container:hover, .file-upload-container.drag-over {
+        border-color: var(--primary);
+        background: #eff6ff;
+    }
+
+    .upload-icon {
+        color: var(--primary);
+        margin-bottom: 12px;
+    }
+
+    .upload-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+
+    .upload-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--text-main);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .remove-btn {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        padding: 0;
+    }
+
+    .remove-btn:hover {
+        background: rgba(37, 99, 235, 0.2);
     }
 </style>
 {% endblock %}
@@ -270,11 +355,17 @@
 
                     <div class="form-group">
                         <label class="form-label">附件 / Attachments</label>
-                        <div class="file-upload-wrapper" style="position: relative;">
-                            <input type="file" name="attachments" id="file-input" class="form-input" multiple style="padding-bottom: 30px;">
-                            <div id="file-list" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);"></div>
+                        <div class="file-upload-container" id="file-upload-zone">
+                            <input type="file" id="file-input" name="attachments" multiple style="display: none;">
+                            <div class="upload-placeholder">
+                                <div class="upload-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </div>
+                                <div class="upload-text">点击或拖拽文件到此处上传</div>
+                                <div class="upload-hint">支持文档、图片、压缩包等格式 (Max 50MB)</div>
+                            </div>
                         </div>
-                        <p class="help-text">支持多文件上传，单个文件不超过 50MB</p>
+                        <div class="file-list" id="file-list"></div>
                     </div>
 
                     <div class="form-group">
@@ -574,22 +665,64 @@
         if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
         if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
 
-        // --- File Upload Preview ---
+        // --- File Upload Logic (Synced with Project Form) ---
+        const uploadZone = document.getElementById('file-upload-zone');
         const fileInput = document.getElementById('file-input');
         const fileList = document.getElementById('file-list');
-        if (fileInput && fileList) {
-            fileInput.addEventListener('change', function() {
-                const files = Array.from(this.files);
-                if (files.length === 0) {
-                    fileList.innerHTML = '';
-                    return;
-                }
-                const items = files.map(f => {
-                    const size = (f.size / 1024 / 1024).toFixed(2);
-                    return `<div>📄 ${f.name} (${size} MB)</div>`;
-                }).join('');
-                fileList.innerHTML = items;
+        let globalDataTransfer = new DataTransfer();
+
+        if (uploadZone && fileInput) {
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-over');
             });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-over');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-over');
+                Array.from(e.dataTransfer.files).forEach(file => globalDataTransfer.items.add(file));
+                updateFileList();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                Array.from(e.target.files).forEach(file => globalDataTransfer.items.add(file));
+                updateFileList();
+            });
+
+            function updateFileList() {
+                fileList.innerHTML = '';
+                Array.from(globalDataTransfer.files).forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <div class="file-info">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                            <div>
+                                <div class="file-name" title="${file.name}">${file.name}</div>
+                                <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+                            </div>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="removeFile(${index})">×</button>
+                    `;
+                    fileList.appendChild(item);
+                });
+                fileInput.files = globalDataTransfer.files;
+            }
+
+            window.removeFile = function(index) {
+                const newDataTransfer = new DataTransfer();
+                Array.from(globalDataTransfer.files).forEach((file, i) => {
+                    if (i !== index) newDataTransfer.items.add(file);
+                });
+                globalDataTransfer = newDataTransfer;
+                updateFileList();
+            };
         }
 
     })();

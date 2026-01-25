@@ -67,4 +67,12 @@ urlpatterns = [
     path('teams/<int:user_id>/role/', views_teams.team_member_update_role, name='team_member_update_role'),
     path('teams/<int:user_id>/project/add/', views_teams.team_member_add_project, name='team_member_add_project'),
     path('teams/<int:user_id>/project/<int:project_id>/remove/', views_teams.team_member_remove_project, name='team_member_remove_project'),
+
+    # Project Attachments
+    path('projects/<int:project_id>/upload-attachment/', views.project_upload_attachment, name='project_upload_attachment'),
+    path('projects/attachments/<int:attachment_id>/delete/', views.project_delete_attachment, name='project_delete_attachment'),
+
+    # Task Attachments
+    path('tasks/<int:task_id>/upload-attachment/', views.task_upload_attachment, name='task_upload_attachment'),
+    path('tasks/attachments/<int:attachment_id>/delete/', views.task_delete_attachment, name='task_delete_attachment'),
 ]
