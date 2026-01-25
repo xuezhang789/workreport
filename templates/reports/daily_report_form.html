@@ -387,7 +387,7 @@
                             <select id="tpl-recommend" class="form-select" style="width: auto; flex: 1;">
                                 <option value="">智能推荐模板 / Recommended Templates</option>
                             </select>
-                            <input type="text" id="tpl-name" class="form-input" placeholder="模板名称" style="width: 140px;">
+                            <input type="text" id="tpl-name" class="form-input" placeholder="模板名称 / Template Name" style="width: 140px;">
                             <button type="button" id="apply-template" class="btn btn-secondary btn-sm">替换 / Replace</button>
                             <button type="button" id="apply-template-append" class="btn btn-ghost btn-sm">追加 / Append</button>
                         </div>
@@ -408,15 +408,15 @@
                     <div id="role-dev" class="role-section">
                         <div class="form-group">
                             <label class="form-label">1️⃣ 今日完成工作 / Work Completed Today</label>
-                            <textarea id="dev-today" name="today_work" class="form-textarea" placeholder="已交付功能、重构、优化..."></textarea>
+                            <textarea id="dev-today" name="today_work" class="form-textarea" placeholder="已交付功能、重构、优化... / Delivered features, refactoring, optimization..."></textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label">2️⃣ 今日进展 & 问题 / Progress & Issues</label>
-                            <textarea id="dev-progress" name="progress_issues" class="form-textarea" placeholder="风险、阻塞、需要协助..."></textarea>
+                            <textarea id="dev-progress" name="progress_issues" class="form-textarea" placeholder="风险、阻塞、需要协助... / Risks, blockers, assistance needed..."></textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label">3️⃣ 明日工作计划 / Plan for Tomorrow</label>
-                            <textarea id="dev-tomorrow" name="tomorrow_plan" class="form-textarea" placeholder="明日交付目标、KPI预期..."></textarea>
+                            <textarea id="dev-tomorrow" name="tomorrow_plan" class="form-textarea" placeholder="明日交付目标、KPI预期... / Tomorrow's goals, KPI expectations..."></textarea>
                         </div>
                     </div>
 
@@ -1040,30 +1040,30 @@
             // I will re-inject the full sample logic to ensure functionality is identical.
             
             if (role === 'dev') {
-                document.getElementById('dev-today').value = '- 完成登录模块 Token 续期逻辑开发与自测\n- 调整网关多企业路由配置';
-                document.getElementById('dev-progress').value = '- 网关灰度发布脚本仍在调试阶段';
-                document.getElementById('dev-tomorrow').value = '- 完成网关发布脚本优化与联调';
+                document.getElementById('dev-today').value = '- 完成登录模块 Token 续期逻辑开发与自测 / Completed token renewal logic\n- 调整网关多企业路由配置 / Adjusted gateway routing';
+                document.getElementById('dev-progress').value = '- 网关灰度发布脚本仍在调试阶段 / Gateway canary script still debugging';
+                document.getElementById('dev-tomorrow').value = '- 完成网关发布脚本优化与联调 / Finish gateway script optimization';
             } else if (role === 'qa') {
-                 document.getElementById('qa-scope').value = '新增功能用例 3 条';
-                 document.getElementById('qa-progress').value = '测试进度 40%';
-                 document.getElementById('qa-bugs').value = '待解决缺陷 20 条';
-                 document.getElementById('qa-tomorrow').value = '覆盖率提升至 ≥70%';
+                 document.getElementById('qa-scope').value = '新增功能用例 3 条 / Added 3 new test cases';
+                 document.getElementById('qa-progress').value = '测试进度 40% / Progress 40%';
+                 document.getElementById('qa-bugs').value = '待解决缺陷 20 条 / 20 open bugs';
+                 document.getElementById('qa-tomorrow').value = '覆盖率提升至 ≥70% / Increase coverage to ≥70%';
             } else if (role === 'pm') {
-                document.getElementById('pm-today').value = '梳理版本需求优先级';
-                document.getElementById('pm-coord').value = '与研发确认接口变更影响';
-                document.getElementById('pm-tomorrow').value = '完成告警策略需求验收';
+                document.getElementById('pm-today').value = '梳理版本需求优先级 / Prioritize version requirements';
+                document.getElementById('pm-coord').value = '与研发确认接口变更影响 / Confirm API changes with dev';
+                document.getElementById('pm-tomorrow').value = '完成告警策略需求验收 / Accept alert policy requirements';
             } else if (role === 'ui') {
-                document.getElementById('ui-today').value = '完成告警中心高保真与切图';
-                document.getElementById('ui-feedback').value = '根据 PM 反馈调整交互';
-                document.getElementById('ui-tomorrow').value = '输出移动端适配稿';
+                document.getElementById('ui-today').value = '完成告警中心高保真与切图 / Completed alert center Hi-Fi & assets';
+                document.getElementById('ui-feedback').value = '根据 PM 反馈调整交互 / Adjust interaction per PM feedback';
+                document.getElementById('ui-tomorrow').value = '输出移动端适配稿 / Output mobile adaptation drafts';
             } else if (role === 'ops') {
-                document.getElementById('ops-today').value = '完成预发环境扩容';
-                document.getElementById('ops-monitor').value = '监控无严重告警';
-                document.getElementById('ops-tomorrow').value = '上线新告警策略';
+                document.getElementById('ops-today').value = '完成预发环境扩容 / Completed staging environment expansion';
+                document.getElementById('ops-monitor').value = '监控无严重告警 / No critical alerts';
+                document.getElementById('ops-tomorrow').value = '上线新告警策略 / Deploy new alert policy';
             } else if (role === 'mgr') {
-                document.getElementById('mgr-progress').value = '本周整体进度 40%';
-                document.getElementById('mgr-risk').value = '延期缺陷 5 条';
-                document.getElementById('mgr-tomorrow').value = '组织缺陷收敛专项';
+                document.getElementById('mgr-progress').value = '本周整体进度 40% / Weekly progress 40%';
+                document.getElementById('mgr-risk').value = '延期缺陷 5 条 / 5 delayed bugs';
+                document.getElementById('mgr-tomorrow').value = '组织缺陷收敛专项 / Organize bug convergence task force';
             }
             
             showToast('✅ 已填入示例 / Sample filled');
@@ -1092,7 +1092,7 @@
             const res = await fetch(`${tplApi}?${params.toString()}`);
             const data = await res.json();
             if (!res.ok) {
-                showToast((data.error || '未找到模板') + ' · 请尝试其他条件');
+                showToast((data.error || '未找到模板 / Template not found') + ' · 请尝试其他条件 / Please try other criteria');
                 return;
             }
             const placeholders = data.placeholders || {};
