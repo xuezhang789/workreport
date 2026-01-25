@@ -1,1274 +1,777 @@
 {% extends "base_topbar.html" %}
-{% load tz %}
+{% load static %}
+
 {% block title %}我的任务 / My Tasks{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="浏览、查看详情，自适应移动端 / Browse & view tasks (mobile friendly)" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="查看、筛选与更新您的日常任务 / View, filter & update your daily tasks" %}{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --bg-card: rgba(255, 255, 255, 0.95);
-            --bg-section: rgba(248, 250, 252, 0.8);
-            --border-light: rgba(226, 232, 240, 0.6);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --border-radius: 16px;
-            --card-spacing: 16px;
-            --shadow-sm: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.15);
-        }
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
 
-        .hero { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 32px 36px; 
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1); 
-            display: flex; 
-            align-items: center; 
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-input, .form-select {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+    }
+
+    .form-input:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    /* --- Task Grid --- */
+    .task-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    /* --- Task Card --- */
+    .task-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: var(--transition);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .task-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+
+    .card-status-bar {
+        height: 4px;
+        background: var(--border-color);
+        width: 100%;
+    }
+
+    .card-status-bar.status-completed { background: var(--success); }
+    .card-status-bar.status-in_progress { background: var(--primary); }
+    .card-status-bar.status-overdue { background: var(--danger); }
+    .card-status-bar.status-on_hold { background: var(--warning); }
+    .card-status-bar.status-pending { background: var(--text-muted); }
+
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .task-project {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background: var(--bg-page);
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        display: inline-block;
+        margin-bottom: 8px;
+    }
+
+    .task-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.4;
+        color: var(--text-main);
+    }
+    
+    .task-title a {
+        color: inherit;
+        text-decoration: none;
+    }
+    
+    .task-title a:hover {
+        color: var(--primary);
+    }
+
+    .task-content {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .meta-icon {
+        color: var(--text-muted);
+        width: 14px;
+        height: 14px;
+    }
+
+    .card-footer {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-secondary {
+        background: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* --- Pagination --- */
+    .pagination-container {
+        margin-top: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pagination-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .page-btn:hover:not(.disabled):not(.active) {
+        background: var(--bg-page);
+        border-color: var(--border-color);
+    }
+
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-btn.disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .jump-to-page {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .jump-input {
+        width: 48px;
+        padding: 6px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 13px;
+    }
+    
+    @media (min-width: 768px) {
+        .pagination-container {
+            flex-direction: row;
             justify-content: space-between;
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
         }
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.9;
-        }
-        
-        .hero::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        .hero-content {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            position: relative;
-            z-index: 1;
-            flex: 1;
-        }
-        
-        .hero-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .hero .eyebrow {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .hero .eyebrow::before {
-            content: '✅';
-            font-size: 16px;
-        }
-        
-        .hero h1 { 
-            font-size: 32px; 
-            margin: 0; 
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--text-primary), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-        
-        .hero .lede { 
-            font-size: 15px; 
-            margin: 0; 
-            line-height: 1.6;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        
-        .hero-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: flex-end;
-            min-width: 200px;
-        }
-        
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .chip:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-            border-color: var(--border-hover);
-        }
-        
-        .chip.warning {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-            border-color: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-        
-        .chip.warning:hover {
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-        }
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 64px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 2px dashed var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
 
-        @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+    /* --- Bulk Actions Bar --- */
+    .bulk-actions-bar {
+        position: fixed;
+        bottom: 32px;
+        left: 50%;
+        transform: translateX(-50%) translateY(150%);
+        background: #1e293b;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 100px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        z-index: 1000;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
 
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: var(--card-spacing);
-        }
+    .bulk-actions-bar.visible {
+        transform: translateX(-50%) translateY(0);
+    }
 
-        /* 筛选区域 */
-        .filters-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-section)); 
-            backdrop-filter: blur(16px); 
-            border: 1px solid var(--border-light); 
-            border-radius: var(--border-radius); 
-            padding: 28px; 
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .filters-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.6;
-        }
-        
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            align-items: end;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .filter-group label {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .filter-group input,
-        .filter-group select {
-            width: 100%;
-            border-radius: 10px;
-            border: 1px solid var(--border-light);
-            padding: 12px 16px;
-            font-size: 14px;
-            background: var(--bg-section);
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-        
-        .filter-group input:hover,
-        .filter-group select:hover {
-            border-color: var(--border-hover);
-            background: rgba(255, 255, 255, 0.8);
-        }
-        
-        .filter-group input:focus,
-        .filter-group select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: white;
-            transform: translateY(-1px);
-        }
-        
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            align-items: center;
-            margin-top: 8px;
-        }
+    .bulk-count {
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        /* 批量操作栏 */
-        .bulk-bar { 
-            display: flex; 
-            gap: 12px; 
-            align-items: center; 
-            margin-bottom: var(--card-spacing); 
-            padding: 16px 20px; 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.06)); 
-            border-radius: var(--border-radius); 
-            border: 1px solid rgba(59, 130, 246, 0.15);
-            flex-wrap: wrap;
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .bulk-bar::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0.6;
-        }
+    .bulk-btn {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
 
-        /* 任务网格 */
-        .reports-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-            gap: 24px;
-            align-items: stretch;
-        }
-        
-        .report-card {
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            border: 1px solid rgba(226, 232, 240, 0.8); 
-            border-radius: 20px; 
-            padding: 28px; 
-            box-shadow: 
-                0 1px 3px rgba(0, 0, 0, 0.1),
-                0 10px 40px rgba(59, 130, 246, 0.08);
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            min-height: 280px;
-        }
-        
-        .report-card:hover {
-            transform: translateY(-8px); 
-            box-shadow: 
-                0 4px 20px rgba(0, 0, 0, 0.15),
-                0 20px 60px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-        
-        .report-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .report-card:hover::before {
-            opacity: 1;
-        }
-        
-        .report-card::after {
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -15%;
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-        
-        .report-card:hover::after {
-            opacity: 1;
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .card-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.4;
-            flex: 1;
-        }
-        
-        .card-title a {
-            color: inherit;
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
-        
-        .card-title a:hover {
-            color: #3b82f6;
-        }
-        
-        .card-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-end;
-            text-align: right;
-            flex-shrink: 0;
-        }
-        
-        .meta-info {
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-            white-space: nowrap;
-        }
-        
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-            margin-top: 4px;
-        }
-        
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .badge-role {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-        }
-        
-        .badge-project {
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            color: #0369a1;
-            border: 1px solid rgba(3, 105, 161, 0.2);
-        }
-        
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .status-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .status-draft {
-            background: linear-gradient(135deg, #fef2f2, #fee2e2);
-            color: #dc2626;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-        
-        .status-submitted {
-            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-            color: #059669;
-            border: 1px solid rgba(5, 150, 105, 0.2);
-        }
-        
-        .status-pending {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #64748b;
-            border: 1px solid rgba(100, 116, 139, 0.2);
-        }
-        
-        .status-in-progress {
-            background: linear-gradient(135deg, #eff6ff, #dbeafe);
-            color: #2563eb;
-            border: 1px solid rgba(37, 99, 235, 0.2);
-        }
-        
-        .status-on-hold {
-            background: linear-gradient(135deg, #fffbeb, #fef3c7);
-            color: #d97706;
-            border: 1px solid rgba(217, 119, 6, 0.2);
-        }
-        
-        .status-completed {
-            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-            color: #059669;
-            border: 1px solid rgba(5, 150, 105, 0.2);
-        }
-        
-        .status-reopened {
-            background: linear-gradient(135deg, #fef2f2, #fee2e2);
-            color: #dc2626;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-        
-        .status-overdue {
-            background: linear-gradient(135deg, #fef2f2, #fecaca);
-            color: #dc2626;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { 
-                opacity: 1; 
-                box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
-            }
-            50% { 
-                opacity: 0.8; 
-                box-shadow: 0 4px 16px rgba(220, 38, 38, 0.2);
-            }
-        }
-        
-        .summary {
-            margin: 0;
-            color: #475569;
-            line-height: 1.6;
-            font-size: 13px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            flex-grow: 1;
-            position: relative;
-            z-index: 1;
-            padding: 16px;
-            background: linear-gradient(135deg, #fafbfc, #f8fafc);
-            border-radius: 12px;
-            border-left: 3px solid #3b82f6;
-            font-weight: 400;
-            transition: all 0.2s ease;
-        }
-        
-        .summary:hover {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-left-color: #2563eb;
-        }
-        
-        .summary.empty {
-            color: #94a3b8;
-            font-style: italic;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-left-color: #cbd5e1;
-            font-weight: 500;
-        }
-        
-        .card-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            padding-top: 16px;
-            border-top: 1px solid rgba(226, 232, 240, 0.6);
-            position: relative;
-            z-index: 1;
-            margin-top: auto;
-        }
-        
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            cursor: pointer;
-            border: none;
-            outline: none;
-            position: relative;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s ease, height 0.3s ease;
-        }
-        
-        .btn:active::before {
-            width: 200px;
-            height: 200px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
-        }
-        
-        .btn-ghost {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #475569;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-        
-        .btn-ghost:hover {
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            border-color: rgba(59, 130, 246, 0.3);
-            color: #3b82f6;
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            color: #64748b;
-            border: 1px solid rgba(148, 163, 184, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-            border-color: rgba(148, 163, 184, 0.5);
-            color: #475569;
-        }
-        
-        .empty-state {
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            backdrop-filter: blur(16px); 
-            border: 2px dashed rgba(203, 213, 225, 0.6); 
-            border-radius: 20px; 
-            padding: 80px 40px; 
-            text-align: center; 
-            color: #64748b;
-            box-shadow: 
-                0 1px 3px rgba(0, 0, 0, 0.1),
-                0 10px 40px rgba(59, 130, 246, 0.05);
-            position: relative;
-            overflow: hidden;
-            min-height: 300px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .empty-state::before {
-            content: '✅';
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            font-size: 60px;
-            opacity: 0.08;
-        }
-        
-        .empty-state h3 {
-            margin: 0 0 16px 0;
-            font-size: 22px;
-            color: #475569;
-            font-weight: 700;
-        }
-        
-        .empty-state p {
-            margin: 0 0 32px 0;
-            font-size: 15px;
-            line-height: 1.6;
-            max-width: 400px;
-        }
-        
-        .pagination {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            margin-top: 32px;
-            padding: 24px;
-            background: linear-gradient(145deg, #ffffff, #f8fafc); 
-            backdrop-filter: blur(16px); 
-            border: 1px solid rgba(226, 232, 240, 0.6); 
-            border-radius: 16px; 
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.06);
-        }
-        
-        .page-link, .page-current, .page-disabled {
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .page-link {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #475569;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-        }
-        
-        .page-link:hover {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border-color: transparent;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-        
-        .page-current {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: 1px solid transparent;
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-            transform: scale(1.05);
-        }
-        
-        .page-disabled {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            color: #cbd5e1;
-            border: 1px solid rgba(203, 213, 225, 0.4);
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        
-        .page-info {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(203, 213, 225, 0.3);
-        }
+    .bulk-btn:hover {
+        background: white;
+        color: #1e293b;
+    }
+    
+    /* Selection Checkbox */
+    .task-checkbox-container {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .task-card:hover .task-checkbox-container,
+    .task-checkbox-container.checked {
+        opacity: 1;
+    }
+    
+    .task-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    
+    /* SLA Badges */
+    .sla-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+    }
+    
+    .sla-red { background: #fee2e2; color: #ef4444; }
+    .sla-orange { background: #ffedd5; color: #f97316; }
 
-        @media (max-width: 1024px) {
-            .hero-content {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            
-            .hero-meta {
-                align-items: flex-start;
-            }
-            
-            .filters {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 12px;
-            }
-            
-            .reports-grid {
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                gap: 20px;
-            }
-            
-            .report-card {
-                padding: 24px;
-                min-height: 260px;
-            }
-        }
+    /* Priority Badges */
+    .priority-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+        margin-right: 4px;
+    }
+    .priority-high { background: #fee2e2; color: #ef4444; }
+    .priority-medium { background: #ffedd5; color: #f97316; }
+    .priority-low { background: #dcfce7; color: #16a34a; }
 
-        @media (max-width: 860px) {
-            .container {
-                padding: 0 16px;
-            }
-            
-            .hero {
-                padding: 24px 28px;
-                flex-direction: column;
-                gap: 24px;
-                align-items: flex-start;
-            }
-            
-            .hero-content {
-                flex-direction: column;
-                gap: 20px;
-                align-items: flex-start;
-            }
-            
-            .hero h1 {
-                font-size: 26px;
-            }
-            
-            .hero-meta {
-                align-items: flex-start;
-                width: 100%;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            
-            .filters-card {
-                padding: 24px;
-            }
-            
-            .filters {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 16px;
-            }
-            
-            .reports-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .report-card {
-                padding: 24px;
-                min-height: 240px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .hero {
-                padding: 20px 24px;
-            }
-            
-            .hero h1 {
-                font-size: 22px;
-            }
-            
-            .hero .lede {
-                font-size: 14px;
-            }
-            
-            .filters {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .filter-group input,
-            .filter-group select {
-                padding: 12px 14px;
-                font-size: 14px;
-            }
-            
-            .filter-actions {
-                justify-content: stretch;
-                margin-top: 12px;
-            }
-            
-            .filter-actions .btn {
-                flex: 1;
-                justify-content: center;
-                padding: 14px 16px;
-            }
-            
-            .report-card {
-                padding: 20px;
-                min-height: 220px;
-            }
-            
-            .card-title {
-                font-size: 16px;
-            }
-            
-            .summary {
-                font-size: 12px;
-                padding: 12px;
-                -webkit-line-clamp: 2;
-            }
-            
-            .card-actions {
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            
-            .card-actions .btn {
-                flex: 1;
-                justify-content: center;
-                padding: 12px 14px;
-                font-size: 10px;
-            }
-            
-            .badge, .status-badge {
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            
-            .pagination {
-                padding: 16px;
-                justify-content: center;
-            }
-            
-            .page-link, .page-current, .page-disabled {
-                padding: 10px 14px;
-                font-size: 12px;
-            }
-            
-            .empty-state {
-                padding: 60px 24px;
-                min-height: 250px;
-            }
-            
-            .empty-state h3 {
-                font-size: 18px;
-            }
-            
-            .empty-state p {
-                font-size: 14px;
-            }
-        }
-
-        .task-info-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .task-info-row span {
-            padding: 4px 8px;
-            background: rgba(148, 163, 184, 0.1);
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .task-info-row span:hover {
-            background: rgba(148, 163, 184, 0.2);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="hero">
-            <div class="hero-content">
-                <div class="hero-main">
-                    <p class="eyebrow">团队 · 任务</p>
-                    <h1>你的任务总览 / Your Tasks</h1>
-                    <p class="lede">当前用户 / Current user：{{ request.user.get_full_name|default:request.user.username }}</p>
-                </div>
-                <div class="hero-meta">
-                    <div class="chip">
-                        <span>📊</span>
-                        <span>总数 / Total：{{ total_count }}</span>
-                    </div>
-                    {% if urgent_count %}
-                        <div class="chip warning">
-                            <span>⚠️</span>
-                            <span>紧急任务 / Urgent：{{ urgent_count }}</span>
-                        </div>
-                    {% endif %}
-                    {% if overdue_count %}
-                        <div class="chip warning">
-                            <span>🔥</span>
-                            <span>逾期任务 / Overdue：{{ overdue_count }}</span>
-                        </div>
-                    {% endif %}
-                    <div class="chip">
-                        <span>✅</span>
-                        <span>已完成：{{ completed_count }}</span>
-                    </div>
-                    {% if sla_thresholds %}
-                    <div class="chip">
-                        <span>⏱️</span>
-                        <span>SLA 阈值：红 {{ sla_thresholds.red }}h / 黄 {{ sla_thresholds.amber }}h</span>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">我的任务</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">管理您的日常工作与待办事项</p>
         </div>
-
-        <div class="main-content">
-            <div class="main-content">
-            <div class="filters-card">
-            <form method="get" class="filters">
-                <div class="filter-group">
-                    <label for="q">
-                        <span>🔍</span>
-                        关键词搜索 / Search
-                    </label>
-                    <input type="text" id="q" name="q" value="{{ q }}" placeholder="按标题或内容搜索 / Search by title or content">
-                </div>
-                <div class="filter-group">
-                    <label for="project">
-                        <span>📁</span>
-                        项目 / Project
-                    </label>
-                    <select id="project" name="project">
-                        <option value="">全部项目 / All Projects</option>
-                        {% for p in projects %}
-                            <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="status">
-                        <span>📊</span>
-                        状态 / Status
-                    </label>
-                    <select id="status" name="status">
-                        <option value="">全部状态 / All Status</option>
-                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
-                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
-                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
-                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
-                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
-                        <option value="reopened" {% if status == 'reopened' %}selected{% endif %}>重新打开 / Reopened</option>
-                    </select>
-                </div>
-                <div class="filter-group" style="align-self:flex-end;">
-                    <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#4b5563;">
-                        <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %}>
-                        仅看紧张/逾期 / Hot & Overdue
-                    </label>
-                </div>
-                <div class="filter-actions" style="grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
-                    <button type="submit" class="btn btn-primary">🔍 筛选 / Filter</button>
-                    <a class="btn btn-ghost" href="{% url 'reports:task_list' %}">🔄 重置 / Reset</a>
-                    <a class="btn btn-primary" href="{% url 'reports:task_export' %}?status={{ status }}&project={{ project_id }}&q={{ q }}&hot={{ hot|yesno:'1,0' }}">📥 导出 / Export</a>
-                </div>
-            </form>
-        </div>
-
-            {% if tasks %}
-        <form id="bulk-form" method="post" action="{% url 'reports:task_bulk_action' %}">
-            {% csrf_token %}
-            <div class="bulk-bar">
-                <label style="font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; font-weight: 500;">
-                    <input type="checkbox" id="select-all"> 全选 / Select All
-                </label>
-                <select name="bulk_action" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;">
-                    <option value="">批量操作 / Bulk Action</option>
-                    <option value="complete">批量完成 / Complete All</option>
-                    <option value="reopen">批量重新打开 / Reopen All</option>
-                    <option value="update">批量更新状态/截止 / Update fields</option>
-                </select>
-                <select name="status_value" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;">
-                    <option value="">状态（可选）/ Status (optional)</option>
-                    {% for val,label in task_status_choices %}
-                        <option value="{{ val }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
-                <input type="datetime-local" name="due_at" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px;" placeholder="截止时间（可选）">
-                <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
-                <button type="submit" id="bulk-submit" class="btn btn-primary" disabled>执行 / Execute</button>
-                <button type="submit" formaction="{% url 'reports:task_export_selected' %}" formmethod="post" class="btn btn-ghost" id="bulk-export" disabled>导出选中 / Export Selected</button>
-            </div>
-                    <p class="hint" style="margin-top:6px;color:#64748b;font-size:12px;">导出提示：若数据量大，请先缩小过滤范围 / If export is large, narrow filters first.</p>
-        </form>
-            <div class="reports-grid">
-                {% for t in tasks %}
-                    <article class="report-card task-card">
-                        <div class="card-header">
-                            <div style="display:flex; gap:10px; align-items:flex-start;">
-                                <input type="checkbox" name="task_ids" value="{{ t.id }}" form="bulk-form" class="task-checkbox" style="margin-top:4px;">
-                                <div>
-                                    <h3 class="card-title">
-                                        <a href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">{{ t.title }}</a>
-                                    </h3>
-                                    <div class="card-tags" style="margin-top:6px;">
-                                        <span class="badge badge-project">{{ t.project.name }}</span>
-                                        {% if t.status == 'pending' %}
-                                            <span class="status-badge status-pending">未开始 / Pending</span>
-                                        {% elif t.status == 'in_progress' %}
-                                            <span class="status-badge status-in-progress">进行中 / In Progress</span>
-                                        {% elif t.status == 'on_hold' %}
-                                            <span class="status-badge status-on-hold">挂起 / On Hold</span>
-                                        {% elif t.status == 'completed' %}
-                                            <span class="status-badge status-completed">已完成 / Completed</span>
-                                        {% elif t.status == 'reopened' %}
-                                            <span class="status-badge status-reopened">重新打开 / Reopened</span>
-                                        {% else %}
-                                            <span class="status-badge status-overdue">逾期 / Overdue</span>
-                                        {% endif %}
-                                        {% if t.sla_info %}
-                                            {% if t.sla_info.level == 'red' %}
-                                                <span class="status-badge status-overdue">SLA 🔴 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                            {% elif t.sla_info.level == 'amber' %}
-                                                <span class="status-badge status-on-hold">SLA 🟡 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                            {% elif t.sla_info.level == 'green' %}
-                                                <span class="status-badge status-in-progress">SLA 🟢 {{ t.sla_info.remaining_hours|default:'--' }}h</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-meta">
-                                <span class="meta-info">创建 {{ t.created_at|localtime|date:"m-d H:i" }}</span>
-                                <span class="meta-info">
-                                    {% if t.due_at %}
-                                        截止 {{ t.due_at|localtime|date:"m-d H:i" }}
-                                    {% else %}
-                                        未设截止
-                                    {% endif %}
-                                </span>
-                                {% if t.completed_at %}
-                                    <span class="meta-info">完成 {{ t.completed_at|localtime|date:"m-d H:i" }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        {% if t.content %}
-                            <p class="summary {% if not t.content %}empty{% endif %}">{{ t.content }}</p>
-                        {% else %}
-                            <p class="summary empty">暂无描述 / No description</p>
-                        {% endif %}
-
-                        <div class="task-info-row">
-                            {% if t.sla_info and t.sla_info.deadline %}
-                                <span>截止：{{ t.sla_info.deadline|localtime|date:"m-d H:i" }}</span>
-                                {% if t.status != 'completed' %}
-                                    <span>剩余：{{ t.sla_info.remaining_hours|default:"--" }}h</span>
-                                {% else %}
-                                    <span>完成时差：{{ t.sla_info.remaining_hours|default:"--" }}h</span>
-                                {% endif %}
-                            {% endif %}
-                            {% if t.is_due_soon %}<span class="status-badge status-on-hold">24h 内到期</span>{% endif %}
-                            {% if not t.due_at %}<span class="status-badge status-on-hold">未设截止</span>{% endif %}
-                        </div>
-
-                        <div class="card-actions task-actions">
-                            <a class="btn btn-ghost" href="{% url 'reports:task_view' t.pk %}" target="_blank" rel="noopener noreferrer">查看 / View</a>
-                            {% if t.status != 'completed' %}
-                            <form method="post" action="{% url 'reports:task_complete' t.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-primary">完成 / Complete</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </article>
-                {% endfor %}
-            </div>
-        {% if page_obj.has_other_pages %}
-            <div class="pagination">
-                {% if page_obj.has_previous %}
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if hot %}&hot=1{% endif %}">上一页</a>
-                {% else %}
-                    <span class="page-disabled">上一页</span>
-                {% endif %}
-                    <span class="page-info">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
-                {% if page_obj.has_next %}
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if hot %}&hot=1{% endif %}">下一页</a>
-                {% else %}
-                    <span class="page-disabled">下一页</span>
-                {% endif %}
-            </div>
-        {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <h3>暂无任务记录 / No tasks yet</h3>
-                    <p>请调整筛选条件或等待新任务分配</p>
-                    <a class="btn btn-primary" href="{% url 'reports:my_reports' %}">返回日报 / Back to Reports</a>
-                </div>
+        <div style="display: flex; gap: 12px;">
+            {% if request.user.is_staff %}
+            <!-- Optional: New Task Button -->
             {% endif %}
         </div>
     </div>
-<script>
-    (function(){
-        const form = document.querySelector('form.filters');
-        const exportBtn = document.querySelector('.filter-actions .btn.btn-primary[href*="task_export"]');
-        if (form && exportBtn) {
-            function syncExport() {
-                const params = new URLSearchParams();
-                ['status','project','q'].forEach(name => {
-                    const el = form.querySelector(`[name="${name}"]`);
-                    if (el && el.value) params.set(name, el.value);
-                });
-                exportBtn.href = `${exportBtn.pathname}?${params.toString()}`;
-            }
-            form.addEventListener('change', syncExport);
-            form.addEventListener('input', syncExport);
-            syncExport();
-        }
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <div class="form-group" style="flex: 2; min-width: 240px;">
+                    <label class="form-label" for="q">搜索</label>
+                    <div style="position: relative;">
+                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="任务标题或内容..." value="{{ q }}">
+                        <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="project">项目</label>
+                    <select id="project" name="project" class="form-select">
+                        <option value="">所有项目</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="status">状态</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">所有状态</option>
+                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始</option>
+                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中</option>
+                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成</option>
+                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起</option>
+                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="priority">优先级</label>
+                    <select id="priority" name="priority" class="form-select">
+                        <option value="">所有优先级</option>
+                        {% for p_val, p_label in priorities %}
+                        <option value="{{ p_val }}" {% if priority == p_val %}selected{% endif %}>{{ p_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="flex: 0 0 auto;">
+                     <label class="form-label">&nbsp;</label>
+                     <label style="display: flex; align-items: center; gap: 8px; height: 42px; cursor: pointer;">
+                        <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %} onchange="this.form.submit()">
+                        <span style="font-size: 14px; font-weight: 500; color: var(--text-main);">仅显示紧急</span>
+                     </label>
+                </div>
+
+                <div class="form-group" style="flex: 0 0 auto; margin-left: auto;">
+                    <label class="form-label">SLA 阈值说明</label>
+                    <div style="font-size: 11px; color: var(--text-secondary); display: flex; flex-direction: column; justify-content: center; height: 42px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="sla-badge sla-red" style="font-size: 10px; padding: 1px 6px;">紧急</span>
+                            <span>&lt; {{ sla_thresholds.red }}h</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                            <span class="sla-badge sla-orange" style="font-size: 10px; padding: 1px 6px;">关注</span>
+                            <span>&lt; {{ sla_thresholds.amber }}h</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'reports:task_list' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:task_export' %}?{{ request.GET.urlencode }}" class="btn btn-ghost">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出
+                </a>
+                <button type="submit" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    筛选
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Task Grid -->
+    <form id="bulkForm" method="post" action="{% url 'reports:task_bulk_action' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" id="bulkActionInput">
+        <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+
+        {% if tasks %}
+        <div class="task-grid">
+            {% for task in tasks %}
+            <article class="task-card" onclick="if(!event.target.closest('input') && !event.target.closest('a') && !event.target.closest('button')) location.href='{% url 'reports:task_view' task.id %}'" style="cursor: pointer;">
+                <div class="card-status-bar status-{{ task.status }}"></div>
+                
+                <!-- Checkbox -->
+                <div class="task-checkbox-container">
+                    <input type="checkbox" name="task_ids" value="{{ task.id }}" class="task-checkbox" onclick="event.stopPropagation()">
+                </div>
+
+                <div class="card-body">
+                    <div>
+                        <span class="task-project">{{ task.project.code }}</span>
+                        {% if task.priority == 'high' %}
+                            <span class="priority-badge priority-high">{{ task.get_priority_display }}</span>
+                        {% elif task.priority == 'medium' %}
+                            <span class="priority-badge priority-medium">{{ task.get_priority_display }}</span>
+                        {% elif task.priority == 'low' %}
+                            <span class="priority-badge priority-low">{{ task.get_priority_display }}</span>
+                        {% endif %}
+                        {% if task.sla_info.level == 'red' %}
+                            <span class="sla-badge sla-red">紧急</span>
+                        {% elif task.sla_info.level == 'orange' %}
+                            <span class="sla-badge sla-orange">关注</span>
+                        {% endif %}
+                        <h3 class="task-title">
+                            <a href="{% url 'reports:task_view' task.id %}">{{ task.title }}</a>
+                        </h3>
+                    </div>
+
+                    <p class="task-content">
+                        {{ task.content|striptags|default:"无详细内容" }}
+                    </p>
+
+                    <div class="card-meta-grid">
+                        <div class="meta-item">
+                            <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="{% if task.sla_info.level == 'red' %}text-danger fw-bold{% endif %}">
+                                {% if task.due_at %}{{ task.due_at|date:"m-d H:i" }}{% else %}--{% endif %}
+                            </span>
+                        </div>
+                        <div class="meta-item">
+                            <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>{{ task.get_status_display }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer" onclick="event.stopPropagation()">
+                    <div class="meta-item">
+                         <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                             {{ task.user.username|slice:":1"|upper }}
+                         </div>
+                         <span>{{ task.user.username }}</span>
+                    </div>
+                    <div class="card-actions" style="display: flex; gap: 8px;">
+                        {% if task.status != 'completed' %}
+                            <a href="{% url 'reports:task_complete' task.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary btn-sm" title="完成">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                完成
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'reports:task_view' task.id %}" class="btn btn-primary btn-sm">详情</a>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到任务</h3>
+            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者到项目中创建新任务。</p>
+            <a href="{% url 'reports:task_list' %}" class="btn btn-secondary">清除筛选</a>
+        </div>
+        {% endif %}
+    </form>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            <span>共 {{ page_obj.paginator.count }} 个任务</span>
+            <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条</span>
+        </div>
+
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="上一页">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </a>
+            {% else %}
+                <span class="page-btn disabled">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </span>
+            {% endif %}
+
+            {% for i in page_obj.paginator.page_range %}
+                {% if page_obj.number == i %}
+                    <span class="page-btn active">{{ i }}</span>
+                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                    <a href="?page={{ i }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn">{{ i }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="下一页">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            {% else %}
+                <span class="page-btn disabled">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </span>
+            {% endif %}
+        </div>
         
-        const selectAllCheckbox = document.getElementById('select-all');
-        const taskCheckboxes = document.querySelectorAll('input[name="task_ids"]');
-        const submitBtn = document.getElementById('bulk-submit');
-        const bulkExportBtn = document.getElementById('bulk-export');
-        const bulkForm = document.getElementById('bulk-form');
+        <div class="jump-to-page">
+            前往
+            <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
+                onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
+            页
+        </div>
+    </div>
+    {% endif %}
 
-        function updateBulkState() {
-            const allChecked = Array.from(taskCheckboxes).every(cb => cb.checked);
-            const someChecked = Array.from(taskCheckboxes).some(cb => cb.checked);
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = allChecked;
-                selectAllCheckbox.indeterminate = someChecked && !allChecked;
-            }
-            if (submitBtn) submitBtn.disabled = !someChecked;
-            if (bulkExportBtn) bulkExportBtn.disabled = !someChecked;
-        }
+    <!-- Bulk Actions Bar -->
+    <div id="bulkActionsBar" class="bulk-actions-bar">
+        <div class="bulk-count">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            已选择 <span id="selectedCount">0</span> 项
+        </div>
+        <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.2);"></div>
+        <button type="button" class="bulk-btn" onclick="submitBulkAction('complete')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            标记完成
+        </button>
+        <button type="button" class="bulk-btn" onclick="submitBulkAction('reopen')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+            重新打开
+        </button>
+    </div>
 
-        if (selectAllCheckbox && taskCheckboxes.length > 0) {
-            selectAllCheckbox.addEventListener('change', function() {
-                taskCheckboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-                updateBulkState();
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.task-checkbox');
+        const bulkBar = document.getElementById('bulkActionsBar');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const bulkForm = document.getElementById('bulkForm');
+
+        function updateBulkBar() {
+            const checkedBoxes = document.querySelectorAll('.task-checkbox:checked');
+            const count = checkedBoxes.length;
+            
+            // Toggle check class for visibility
+            document.querySelectorAll('.task-checkbox-container').forEach(el => {
+                if (el.querySelector('input').checked) {
+                    el.classList.add('checked');
+                } else {
+                    el.classList.remove('checked');
+                }
             });
             
-            taskCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateBulkState);
-            });
-            updateBulkState();
+            if (count > 0) {
+                bulkBar.classList.add('visible');
+                selectedCountSpan.textContent = count;
+            } else {
+                bulkBar.classList.remove('visible');
+            }
         }
 
-        if (bulkForm) {
-            bulkForm.addEventListener('submit', (e) => {
-                const selected = Array.from(taskCheckboxes).filter(cb => cb.checked);
-                if (!selected.length) {
-                    e.preventDefault();
-                    alert('请选择至少一个任务 / Select at least one task');
-                    return;
-                }
-                const action = bulkForm.querySelector('[name="bulk_action"]')?.value || '';
-                const statusVal = bulkForm.querySelector('[name="status_value"]')?.value || '';
-                const dueVal = bulkForm.querySelector('[name="due_at"]')?.value || '';
-                if (action === 'update') {
-                    const fields = [];
-                    if (statusVal) fields.push(`状态: ${statusVal}`);
-                    if (dueVal) fields.push(`截止: ${dueVal}`);
-                    if (!fields.length) {
-                        e.preventDefault();
-                        alert('批量更新需至少选择状态或截止时间 / Choose status or due date for bulk update');
-                        return;
-                    }
-                    if (!confirm(`即将更新 ${selected.length} 条任务：${fields.join('，')}，确认继续？`)) {
-                        e.preventDefault();
-                    }
-                } else {
-                    if (!action) {
-                        e.preventDefault();
-                        alert('请选择批量操作 / Select bulk action');
-                    } else if (!confirm(`确认对 ${selected.length} 条任务执行 ${action}？`)) {
-                        e.preventDefault();
-                    }
-                }
-            });
-        }
-    })();
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkBar);
+        });
+
+        window.submitBulkAction = function(actionType) {
+            document.getElementById('bulkActionInput').value = actionType;
+            bulkForm.submit();
+        };
+    });
 </script>
 {% endblock %}

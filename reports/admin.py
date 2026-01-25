@@ -41,8 +41,8 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'project', 'status', 'created_at', 'completed_at', 'due_at')
-    list_filter = ('status', 'project', 'created_at')
+    list_display = ('title', 'user', 'project', 'status', 'priority', 'created_at', 'completed_at', 'due_at')
+    list_filter = ('status', 'priority', 'project', 'created_at')
     search_fields = ('title', 'user__username', 'project__name')
 
 

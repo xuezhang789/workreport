@@ -30,13 +30,13 @@
                     </button>
                     <div class="admin-menu" id="admin-menu">
                         {% if can_view_admin_project %}
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">管理员日报 / Admin Reports</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
                         {% endif %}
                         {% if can_view_admin_global %}
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'reports:stats' %}">统计看板 / Stats Board</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'template_center' %}active{% endif %}" href="{% url 'reports:template_center' %}">模板中心 / Template Center</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'role_template_manage' %}active{% endif %}" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>

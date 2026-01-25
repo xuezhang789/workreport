@@ -253,12 +253,19 @@ class Task(models.Model):
         ('reopened', '重新打开 / Reopened'),
     ]
 
+    PRIORITY_CHOICES = [
+        ('high', '高 / High'),
+        ('medium', '中 / Medium'),
+        ('low', '低 / Low'),
+    ]
+
     title = models.CharField(max_length=200)
     url = models.URLField(blank=True)
     content = models.TextField(blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
     due_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     overdue_notified_at = models.DateTimeField(null=True, blank=True)

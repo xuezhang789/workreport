@@ -1,970 +1,773 @@
-{% extends "base_topbar.html" %}
+{% extends 'base_topbar.html' %}
+{% load static %}
+
 {% block title %}个人中心 / Personal Center{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="个人中心 / Personal Center" nav_subtitle="管理账户设置与个人信息 / Manage Account Settings & Personal Information" %}{% endblock %}
+
+{% block nav_header %}
+    {% include "partials/nav.html" with nav_title="个人中心 / Personal Center" nav_subtitle="管理您的个人信息、安全设置和通知偏好" %}
+{% endblock %}
+
 {% block extra_styles %}
-        :root {
-            /* 统一色彩系统 */
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --primary-3: #60a5fa;
-            --accent: #06b6d4;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            
-            /* 中性色 */
-            --ink: #1e293b;
-            --text-secondary: #475569;
-            --text-muted: #64748b;
-            --text-light: #94a3b8;
-            
-            /* 背景色 */
-            --bg-primary: rgba(255, 255, 255, 0.98);
-            --bg-secondary: rgba(248, 250, 252, 0.95);
-            --bg-glass: rgba(255, 255, 255, 0.7);
-            
-            /* 边框色 */
-            --border: rgba(226, 232, 240, 0.8);
-            --border-hover: rgba(59, 130, 246, 0.3);
-            --border-focus: rgba(59, 130, 246, 0.5);
-            
-            /* 圆角 */
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 20px;
-            --radius-xl: 24px;
-            
-            /* 阴影 */
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.1);
-            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.15);
-            --shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.2);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-            
-            /* 动画 */
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 25%, #f0f9ff 50%, #fef3c7 75%, #f0fdf4 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-            position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container-wrapper {
-            min-height: 100vh;
-            padding: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .settings-shell {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            gap: 24px;
-        }
-
-        .settings-hero {
-            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: clamp(32px, 4vw, 48px);
-            display: grid;
-            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-            gap: 32px;
-            box-shadow: var(--shadow-xl);
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition-smooth);
-        }
-
-        .settings-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent), var(--success));
-            opacity: 0.9;
-            animation: gradientShift 3s ease-in-out infinite;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .settings-hero:hover {
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
-        }
-        .hero-main {
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-        }
-
-        .avatar-bubble {
-            width: 80px;
-            height: 80px;
-            border-radius: var(--radius-lg);
-            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--accent));
-            color: #fff;
-            display: grid;
-            place-items: center;
-            font-weight: 800;
-            font-size: 28px;
-            letter-spacing: 0.02em;
-            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.35);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        .avatar-bubble::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transform: rotate(45deg);
-            transition: transform 0.6s ease;
-        }
-
-        .avatar-bubble:hover::before {
-            transform: rotate(45deg) translate(100%, 100%);
-        }
-
-        .avatar-bubble:hover {
-            transform: scale(1.08) rotate(2deg);
-            box-shadow: 0 16px 36px rgba(59, 130, 246, 0.45);
-        }
-
-        .hero-copy h1 {
-            margin: 0 0 12px;
-            font-size: clamp(24px, 3.5vw, 32px);
-            font-weight: 800;
-            color: var(--ink);
-            line-height: 1.2;
-        }
-
-        .hero-copy .lede {
-            margin: 0 0 16px;
-            color: var(--text-muted);
-            font-size: 15px;
-            line-height: 1.6;
-        }
-        .tag-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 16px;
-        }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            border-radius: 16px;
-            border: 1px dashed rgba(59, 130, 246, 0.3);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
-            color: var(--text-muted);
-            font-size: 13px;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-
-        .chip strong { 
-            color: var(--ink); 
-            font-weight: 700;
-        }
-
-        .chip.success { 
-            border-color: rgba(16, 185, 129, 0.35); 
-            color: #065f46; 
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.08));
-        }
-
-        .chip.warn { 
-            border-color: rgba(239, 68, 68, 0.3); 
-            color: #991b1b; 
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.08));
-        }
-
-        .chip:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
-        }
-
-        .status-card {
-            background: linear-gradient(135deg, var(--bg-primary), rgba(255, 255, 255, 0.9));
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 20px;
-            display: grid;
-            gap: 16px;
-            box-shadow: var(--shadow-md);
-            transition: var(--transition);
-        }
-
-        .status-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 14px;
-            color: var(--text-muted);
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-        }
-
-        .status-row:last-child {
-            border-bottom: none;
-        }
-
-        .status-row .label { 
-            color: var(--ink); 
-            font-weight: 700; 
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .settings-grid {
-            display: grid;
-            gap: 24px;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        }
-
-        .card {
-            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            display: grid;
-            gap: 20px;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition-smooth);
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.08));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .card:hover::before { 
-            opacity: 1; 
-        }
-
-        .card:hover {
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
-        }
-
-        .card h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--ink);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card p {
-            margin: 0;
-            color: var(--text-muted);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        .field {
-            display: grid;
-            gap: 8px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .field label {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--ink);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .field label::before {
-            content: '';
-            width: 4px;
-            height: 4px;
-            background: var(--primary);
-            border-radius: 50%;
-        }
-
-        input {
-            width: 100%;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-            padding: 16px 20px;
-            font-size: 15px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
-            color: var(--ink);
-            outline: none;
-            transition: var(--transition);
-            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
-            position: relative;
-            font-family: inherit;
-        }
-
-        input::placeholder {
-            color: var(--text-light);
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
-        }
-
-        input:focus::placeholder {
-            opacity: 0.5;
-        }
-
-        input:focus { 
-            border-color: var(--primary); 
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 8px 24px rgba(59, 130, 246, 0.2); 
-            background: rgba(255, 255, 255, 0.98); 
-            transform: translateY(-2px);
-        }
-
-        input:hover {
-            border-color: var(--border-hover);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
-            transform: translateY(-1px);
-        }
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .btn {
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 16px 24px;
-            font-size: 15px;
-            font-weight: 700;
-            color: #fff;
-            background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--primary-3));
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-family: inherit;
-            letter-spacing: 0.02em;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.45);
-        }
-
-        .btn:active {
-            transform: translateY(-1px) scale(0.98);
-        }
-
-        .btn.secondary {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
-            color: var(--ink);
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-        }
-
-        .btn.secondary:hover {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-        }
-        .hint { 
-            font-size: 12px; 
-            color: var(--text-light); 
-            margin: 0; 
-            line-height: 1.4;
-        }
-
-        .errors, .non-field-errors { 
-            margin: 0; 
-            padding: 12px 16px; 
-            border-radius: var(--radius-md); 
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.04)); 
-            border: 1px solid rgba(239, 68, 68, 0.2); 
-            color: var(--danger); 
-            font-size: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .errors::before, .non-field-errors::before {
-            content: '⚠️';
-            font-size: 14px;
-        }
-
-        .errors li, .non-field-errors li {
-            margin: 2px 0;
-        }
-
-        .success-note { 
-            margin: 0; 
-            padding: 12px 16px; 
-            border-radius: var(--radius-md); 
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.08)); 
-            color: #065f46; 
-            border: 1px solid rgba(16, 185, 129, 0.25); 
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .success-note::before {
-            content: '✅';
-            font-size: 14px;
-        }
-        .strength-bar {
-            height: 6px;
-            background: var(--border);
-            border-radius: 999px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-
-        .strength-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s ease, background 0.3s ease;
-            background: var(--danger);
-            border-radius: 999px;
-        }
-
-        .requirements {
-            display: grid;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text-light);
-            margin-top: 8px;
-        }
-
-        .requirements .met { 
-            color: var(--success); 
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .requirements .met::before {
-            content: '✓';
-            color: var(--success);
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            padding: 6px 12px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.04));
-            color: var(--primary);
-            font-weight: 600;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
-        .small-note { 
-            font-size: 12px; 
-            color: var(--text-muted); 
-            margin: 0; 
-            line-height: 1.4;
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 820px) { 
-            .container-wrapper {
-                padding: 16px;
-            }
-            
-            .settings-hero { 
-                grid-template-columns: 1fr; 
-                gap: 24px;
-                padding: clamp(24px, 5vw, 32px);
-            }
-
-            .hero-main {
-                gap: 16px;
-            }
-
-            .avatar-bubble {
-                width: 64px;
-                height: 64px;
-                font-size: 22px;
-            }
-
-            .settings-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-
-            .card {
-                padding: 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container-wrapper {
-                padding: 12px;
-            }
-
-            .settings-hero {
-                border-radius: var(--radius-md);
-                padding: 20px;
-            }
-
-            .card {
-                padding: 16px;
-                border-radius: var(--radius-md);
-            }
-
-            .btn {
-                padding: 14px 20px;
-                font-size: 14px;
-            }
-
-            input {
-                padding: 14px 16px;
-                font-size: 14px;
-            }
-
-            .tag-row {
-                gap: 8px;
-            }
-
-            .chip {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-        }
+<style>
+    /* --- Design System (Consistent with Admin Task List) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
+
+    /* --- Page Header --- */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 24px;
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 4px 0;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    /* --- Main Settings Container (Single White Module) --- */
+    .settings-container {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        min-height: 600px;
+        overflow: hidden;
+    }
+
+    /* --- Sidebar Navigation --- */
+    .settings-sidebar {
+        width: 260px;
+        background: #f1f5f9;
+        border-right: 1px solid var(--border-color);
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+        background-color: #e2e8f0;
+        color: var(--text-main);
+    }
+
+    .nav-item.active {
+        background-color: #ffffff;
+        color: var(--primary);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
+        font-weight: 700;
+    }
+
+    .nav-item svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* --- Content Area --- */
+    .settings-content {
+        flex: 1;
+        padding: 32px 40px;
+        overflow-y: auto;
+        background-color: #ffffff;
+    }
+
+    .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .tab-pane.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-header {
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0 0 8px 0;
+    }
+
+    .section-desc {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    /* --- Overview Cards (Inside Content) --- */
+    .overview-card {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 32px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .user-avatar-lg {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 800;
+        border: 1px solid rgba(37,99,235,0.2);
+        overflow: hidden;
+    }
+
+    .user-avatar-lg img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* --- Forms & Inputs --- */
+    .form-group {
+        margin-bottom: 20px;
+        max-width: 480px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        color: var(--text-main);
+    }
+
+    .form-input:hover {
+        border-color: #94a3b8;
+    }
+
+    .form-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        outline: none;
+    }
+
+    .form-input:disabled {
+        background-color: #f1f5f9;
+        cursor: not-allowed;
+        color: var(--text-muted);
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+    /* --- Helpers --- */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .badge-success { background: #dcfce7; color: #16a34a; }
+    .badge-warning { background: #ffedd5; color: #f97316; }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        line-height: 1.5;
+        margin-bottom: 24px;
+        max-width: 600px;
+    }
+    .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+    .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    .help-text { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+    .text-danger { color: var(--danger); }
+    .text-success { color: var(--success); }
+
+    .password-strength-meter { height: 4px; background-color: #e2e8f0; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .password-strength-bar { height: 100%; width: 0; transition: width 0.3s ease, background-color 0.3s ease; }
+    .strength-text { font-size: 11px; margin-top: 4px; text-align: right; font-weight: 500; color: var(--text-secondary); }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+        .settings-container { flex-direction: column; min-height: auto; }
+        .settings-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); flex-direction: row; overflow-x: auto; padding: 12px; }
+        .nav-item { white-space: nowrap; padding: 8px 12px; }
+        .settings-content { padding: 24px; }
+        .overview-card { flex-direction: column; text-align: center; }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container-wrapper">
-    <div class="settings-shell">
-        <section class="settings-hero">
-            <div class="hero-main">
-                <div class="avatar-bubble">{{ request.user.get_full_name|default:request.user.username|slice:":1"|upper }}</div>
-                <div class="hero-copy">
-                    <p class="chip" style="border-style: solid; border-color: rgba(59,130,246,0.15); background: rgba(255,255,255,0.6);">🔒 安全优先 / Security First</p>
-                    <h1>个人中心 / Personal Center</h1>
-                    <p class="lede">管理您的账户设置、个人信息和安全选项 / Manage your account settings, personal information, and security options</p>
-                    <div class="tag-row">
-                        <span class="chip"><strong>当前用户 / Current User:</strong> {{ request.user.username }}</span>
-                        <span class="chip"><strong>邮箱 / Email:</strong> {{ request.user.email|default:"未绑定 / Not Bound" }}</span>
-                        {% if pending_email %}
-                            <span class="chip warn">⏳ 待验证 / Pending: {{ pending_email.email }}</span>
+<div style="max-width: 1100px; margin: 0 auto; padding-bottom: 60px;">
+
+    <!-- Page Header (Outside) -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">个人中心</h1>
+            <p class="page-subtitle">管理您的个人信息、安全设置和通知偏好</p>
+        </div>
+    </div>
+
+    <!-- Single White Module -->
+    <div class="settings-container">
+        <!-- Sidebar -->
+        <nav class="settings-sidebar">
+            <div class="nav-item active" onclick="switchTab('overview')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path></svg>
+                概览
+            </div>
+            <div class="nav-item" onclick="switchTab('profile')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                个人资料
+            </div>
+            <div class="nav-item" onclick="switchTab('security')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                账户安全
+            </div>
+            <div class="nav-item" onclick="switchTab('email')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                邮箱验证
+            </div>
+            <div class="nav-item" onclick="switchTab('privacy')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                隐私设置
+            </div>
+            <div class="nav-item" onclick="switchTab('notify')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                通知偏好
+            </div>
+        </nav>
+
+        <!-- Content -->
+        <div class="settings-content">
+            
+            <!-- Tab: Overview -->
+            <div id="tab-overview" class="tab-pane active">
+                <div class="section-header">
+                    <h2 class="section-title">概览 / Overview</h2>
+                    <p class="section-desc">您的账户状态与基本信息摘要。</p>
+                </div>
+
+                <div class="overview-card">
+                    <div class="user-avatar-lg" id="overview-avatar">
+                        {% if user.profile.avatar_url %}
+                        <img src="{{ user.profile.avatar_url }}" alt="Avatar">
+                        {% else %}
+                        {{ user.username|slice:":1"|upper }}
                         {% endif %}
                     </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</h3>
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">{{ user.email }}</div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);">角色: {{ user.profile.get_position_display|default:"-" }}</span>
+                            {% if user.profile.email_verified %}
+                            <span class="badge badge-success">已验证</span>
+                            {% else %}
+                            <span class="badge badge-warning">未验证</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div style="text-align: right; min-width: 140px;">
+                        <div style="font-size: 12px; color: var(--text-secondary);">注册时间</div>
+                        <div style="font-weight: 600; margin-bottom: 8px;">{{ user.date_joined|date:"Y-m-d" }}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">上次登录</div>
+                        <div style="font-weight: 600;">{{ user.last_login|date:"Y-m-d"|default:"-" }}</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div style="padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">本周日报</div>
+                        <div style="font-size: 24px; font-weight: 800; color: var(--primary);">{{ week_report_count|default:"0" }}</div>
+                    </div>
+                    <div style="padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">参与项目</div>
+                        <div style="font-size: 24px; font-weight: 800; color: var(--text-main);">{{ project_count|default:"0" }}</div>
+                    </div>
                 </div>
             </div>
-            <div class="status-card">
-                <div class="status-row">
-                    <span class="label">🔐 密码保护 / Password Protection</span>
-                    <span class="badge">原密码验证 + 8位混合字符 / Old Password + 8-char mix</span>
+
+            <!-- Tab: Profile -->
+            <div id="tab-profile" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">个人资料 / Profile</h2>
+                    <p class="section-desc">管理您的公开信息和用户名。</p>
                 </div>
-                <div class="status-row">
-                    <span class="label">👤 用户名唯一性 / Username Uniqueness</span>
-                    <span class="badge" id="username-status-chip">实时检测 / Real-time Check</span>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_username">
+                    <div class="form-group">
+                        <label class="form-label">当前用户名</label>
+                        <input type="text" class="form-input" value="{{ user.username }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ username_form.username.id_for_label }}" class="form-label">新用户名</label>
+                        {{ username_form.username }}
+                        {% if username_form.username.errors %}
+                        <div class="help-text text-danger">{{ username_form.username.errors.0 }}</div>
+                        {% endif %}
+                        <div id="username-feedback" class="help-text"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存用户名更改</button>
+                </form>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;">
+
+                <div class="form-group">
+                    <label class="form-label">头像 / Avatar</label>
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <div class="user-avatar-lg" id="avatar-preview" style="width: 64px; height: 64px; font-size: 24px;">
+                            {% if user.profile.avatar_url %}
+                            <img src="{{ user.profile.avatar_url }}" alt="Avatar">
+                            {% else %}
+                            {{ user.username|slice:":1"|upper }}
+                            {% endif %}
+                        </div>
+                        <label class="btn btn-secondary" style="cursor: pointer;">
+                            上传新头像
+                            <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                        </label>
+                    </div>
                 </div>
-                <div class="status-row">
-                    <span class="label">📧 邮箱验证 / Email Verification</span>
-                    <span class="badge">{{ request.user.email|default:"待绑定 / To Be Bound" }}</span>
+
+                <div class="form-group">
+                    <label class="form-label">昵称 / Nickname</label>
+                    <input id="nickname-input" type="text" class="form-input" placeholder="如：张三 / Zhang San">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">简介 / Bio</label>
+                    <input id="bio-input" type="text" class="form-input" placeholder="一句话介绍自己 / A short description">
+                </div>
+                <button type="button" id="profile-pref-save" class="btn btn-secondary">保存资料偏好</button>
             </div>
-        </section>
 
-    <div class="settings-grid">
-        <section class="card" id="password-card">
-            <h2>🔒 密码修改 / Change Password</h2>
-            <p>需要输入原密码，新密码至少 8 位且包含大写、小写与数字。保存后将自动退出，请用新密码重新登录。 / Enter current password, then use a new password (min 8 chars with upper/lower/digit). You will be logged out after saving.</p>
-            <form method="post" class="settings-form" id="password-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="change_password">
-                <div class="field">
-                    <label for="{{ password_form.old_password.id_for_label }}">当前密码 / Current Password</label>
-                    {{ password_form.old_password }}
-                    {% if password_form.old_password.errors %}
-                        <div class="errors">
-                            {% for error in password_form.old_password.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
+            <!-- Tab: Security -->
+            <div id="tab-security" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">账户安全 / Security</h2>
+                    <p class="section-desc">保护您的账户，定期更新密码。</p>
                 </div>
-                <div class="field">
-                    <label for="{{ password_form.new_password1.id_for_label }}">新密码 / New Password</label>
-                    {{ password_form.new_password1 }}
-                    <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-                    <div class="password-score" id="password-score-text">需满足：至少 8 位，且包含大写/小写/数字</div>
-                    <div class="requirements" id="requirements">
-                        <span id="req-len">• 至少8位 / At least 8 characters</span>
-                        <span id="req-upper">• 包含大写字母 / Contains uppercase</span>
-                        <span id="req-lower">• 包含小写字母 / Contains lowercase</span>
-                        <span id="req-num">• 包含数字 / Contains number</span>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_password">
+                    {% for field in password_form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="help-text text-danger">{{ field.errors.0 }}</div>
+                        {% endif %}
+                        {% if field.name == 'new_password1' %}
+                        <div class="password-strength-meter"><div class="password-strength-bar" id="strength-bar"></div></div>
+                        <div class="strength-text" id="strength-text"></div>
+                        {% endif %}
                     </div>
-                    {% if password_form.new_password1.errors %}
-                        <div class="errors">
-                            {% for error in password_form.new_password1.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                <div class="field">
-                    <label for="{{ password_form.new_password2.id_for_label }}">确认新密码 / Confirm New Password</label>
-                    {{ password_form.new_password2 }}
-                    {% if password_form.new_password2.errors %}
-                        <div class="errors">
-                            {% for error in password_form.new_password2.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                {% if password_form.non_field_errors %}
-                    <div class="errors">
-                        {% for error in password_form.non_field_errors %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-                <div class="form-actions">
-                    <button type="submit" class="btn">💾 保存新密码 / Save New Password</button>
-                    <p class="hint">提交后将退出登录，请用新密码重新登录 / You will be logged out and must log in again</p>
-                </div>
-            </form>
-        </section>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary">更新密码</button>
+                </form>
+            </div>
 
-        <section class="card" id="username-card">
-            <h2>👤 用户名修改 / Change Username</h2>
-            <p>保持团队唯一性，保存前会自动检测是否被占用，并需输入当前密码确认 / Automatic availability check; current password required to confirm</p>
-            <form method="post" class="settings-form" id="username-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="change_username">
-                <div class="field">
-                    <label for="{{ username_form.username.id_for_label }}">新的用户名 / New Username</label>
-                    {{ username_form.username }}
-                    <p class="hint" id="username-hint">需输入当前密码以确认，更改前会实时检查占用状态 / Current password required; availability checked in real time</p>
-                    {% if username_form.username.errors %}
-                        <div class="errors">
-                            {% for error in username_form.username.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
+            <!-- Tab: Email -->
+            <div id="tab-email" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">邮箱验证 / Email</h2>
+                    <p class="section-desc">验证邮箱以接收重要通知和找回密码。</p>
                 </div>
-                <div class="field">
-                    <label for="{{ username_form.password.id_for_label }}">当前密码 / Current Password</label>
-                    {{ username_form.password }}
-                    {% if username_form.password.errors %}
-                        <div class="errors">
-                            {% for error in username_form.password.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn">✏️ 更新用户名 / Update Username</button>
-                    <span class="small-note" id="username-status-text">实时检测中... / Checking...</span>
-                </div>
-            </form>
-        </section>
 
-        <section class="card" id="email-card">
-            <h2>📧 邮箱设置 / Email Settings</h2>
-            <p>绑定后用于通知与安全校验，需要验证码完成验证 / Used for notifications and security verification after binding, requires verification code</p>
-
-            <form method="post" class="settings-form" style="margin-bottom: 10px;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="send_email_code">
-                <div class="field">
-                    <label for="{{ email_request_form.email.id_for_label }}">邮箱地址 / Email Address</label>
-                    {{ email_request_form.email }}
-                    <p class="hint">点击下方按钮获取验证码，生产环境将通过邮件接收（开发环境可能直接显示提示） / Click to get a code; production sends via email (dev may show it directly)</p>
-                    {% if email_request_form.email.errors %}
-                        <div class="errors">
-                            {% for error in email_request_form.email.errors %}{{ error }}{% endfor %}
-                        </div>
+                <div class="form-group">
+                    <label class="form-label">当前邮箱</label>
+                    <div style="font-size: 15px; font-weight: 500;">{{ user.email }}</div>
+                    {% if user.profile.email_verified %}
+                    <div class="help-text text-success">✓ 已验证</div>
+                    {% else %}
+                    <div class="help-text text-danger">! 未验证</div>
                     {% endif %}
                 </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn secondary" id="send-code-btn" data-next-send="{{ pending_email.next_send_at|default:'' }}">📤 发送验证码 / Send Verification Code</button>
-                    <span class="small-note" id="send-code-note">{% if pending_email %}验证码已发送，可稍后重发 / Sent, you can resend later{% else %}未收到邮件？请确认邮箱拼写无误 / Didn't receive email? Please check spelling{% endif %}</span>
+
+                <form method="post" id="email-form" style="margin-top: 24px;">
+                    {% csrf_token %}
                     {% if pending_email %}
-                        <span class="chip success">⏳ 待验证邮箱 / Pending Email: {{ pending_email.email }}</span>
+                        <div class="alert alert-warning">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            <div>验证码已发送至 <strong>{{ pending_email.email }}</strong></div>
+                        </div>
+                        <input type="hidden" name="email" value="{{ pending_email.email }}">
+                    {% else %}
+                        <div class="form-group">
+                            <label for="{{ email_request_form.email.id_for_label }}" class="form-label">新邮箱地址</label>
+                            {{ email_request_form.email }}
+                            {% if email_request_form.email.errors %}
+                            <div class="help-text text-danger">{{ email_request_form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     {% endif %}
-                </div>
-            </form>
+                    <div class="form-group">
+                        <label for="{{ email_confirm_form.code.id_for_label }}" class="form-label">验证码</label>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1;">{{ email_confirm_form.code }}</div>
+                            <button type="button" id="send-code-btn" class="btn btn-secondary" style="width: auto;">
+                                {% if pending_email %}重发{% else %}获取{% endif %}
+                            </button>
+                        </div>
+                        {% if email_confirm_form.code.errors %}
+                        <div class="help-text text-danger">{{ email_confirm_form.code.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" name="action" value="update_email" class="btn btn-primary">确认验证并更新</button>
+                </form>
+            </div>
 
-            <form method="post" class="settings-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="update_email">
-                <div class="field">
-                    <label for="{{ email_confirm_form.email.id_for_label }}">确认邮箱地址 / Confirm Email Address</label>
-                    {{ email_confirm_form.email }}
-                    {% if email_confirm_form.email.errors %}
-                        <div class="errors">
-                            {% for error in email_confirm_form.email.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
+            <!-- Tab: Privacy -->
+            <div id="tab-privacy" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">隐私设置 / Privacy</h2>
+                    <p class="section-desc">控制您的信息在团队中的可见性。</p>
                 </div>
-                <div class="field">
-                    <label for="{{ email_confirm_form.code.id_for_label }}">验证码 / Verification Code</label>
-                    {{ email_confirm_form.code }}
-                    {% if email_confirm_form.code.errors %}
-                        <div class="errors">
-                            {% for error in email_confirm_form.code.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label">公开信息</label>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input id="privacy-show-email" type="checkbox">
+                            <span style="font-size: 14px;">公开显示邮箱</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input id="privacy-show-role" type="checkbox">
+                            <span style="font-size: 14px;">公开显示角色</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn">✅ 验证并更新邮箱 / Verify & Update Email</button>
-                    <span class="small-note" id="email-countdown" data-expire="{{ pending_email.expires_at|default:'' }}">验证码10分钟内有效 / Code valid for 10 minutes</span>
+                <button type="button" id="privacy-save" class="btn btn-secondary">保存隐私偏好</button>
+            </div>
+
+            <!-- Tab: Notify -->
+            <div id="tab-notify" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">通知偏好 / Notifications</h2>
+                    <p class="section-desc">选择您希望接收通知的方式。</p>
                 </div>
-            </form>
-        </section>
+
+                <div class="form-group">
+                    <label class="form-label">通知渠道</label>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input id="notify-email-digest" type="checkbox">
+                            <span style="font-size: 14px;">邮件周报（绩效简报）</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input id="notify-inapp" type="checkbox">
+                            <span style="font-size: 14px;">站内通知（任务与日报提醒）</span>
+                        </label>
+                    </div>
+                </div>
+                <button type="button" id="notify-save" class="btn btn-secondary">保存通知偏好</button>
+            </div>
+
+        </div>
     </div>
 </div>
 
 <script>
-    (function() {
-        const newPwd = document.getElementById("{{ password_form.new_password1.id_for_label }}");
-        const confirmPwd = document.getElementById("{{ password_form.new_password2.id_for_label }}");
-        const passwordForm = document.getElementById('password-form');
-        const strengthFill = document.getElementById('strength-fill');
-        const scoreText = document.getElementById('password-score-text');
-        const reqs = {
-            len: document.getElementById('req-len'),
-            upper: document.getElementById('req-upper'),
-            lower: document.getElementById('req-lower'),
-            num: document.getElementById('req-num'),
-        };
-        function calcState(password) {
-            return {
-                len: password.length >= 8,
-                upper: /[A-Z]/.test(password),
-                lower: /[a-z]/.test(password),
-                num: /[0-9]/.test(password),
-            };
-        }
-        function updateStrength(password) {
-            const state = calcState(password);
-            Object.entries(reqs).forEach(([key, el]) => {
-                if (!el) return;
-                el.classList.toggle('met', !!state[key]);
-            });
-            const metCount = ['len', 'upper', 'lower', 'num'].filter(k => state[k]).length;
-            if (strengthFill) {
-                const percent = (metCount / 4) * 100;
-                strengthFill.style.width = percent + '%';
-                strengthFill.style.background = state.len && state.upper && state.lower && state.num ? '#10b981' : '#f59e0b';
-            }
-            if (scoreText) {
-                if (state.len && state.upper && state.lower && state.num) {
-                    scoreText.textContent = '满足复杂度要求 ✅';
-                    scoreText.style.color = '#065f46';
-                } else {
-                    scoreText.textContent = '需满足：至少8位，且包含大写/小写/数字';
-                    scoreText.style.color = '#991b1b';
-                }
-            }
-            return state;
-        }
-        if (newPwd) {
-            newPwd.addEventListener('input', (e) => updateStrength(e.target.value));
-        }
-        if (passwordForm && newPwd) {
-            passwordForm.addEventListener('submit', (e) => {
-                const state = updateStrength(newPwd.value || '');
-                const confirmVal = confirmPwd ? (confirmPwd.value || '') : '';
-                const ok = state.len && state.upper && state.lower && state.num;
-                if (!ok) {
-                    e.preventDefault();
-                    if (scoreText) {
-                        scoreText.textContent = '请确保新密码至少8位并包含大写、小写和数字';
-                        scoreText.style.color = '#991b1b';
-                    }
-                    return;
-                }
-                if (confirmPwd && confirmVal !== (newPwd.value || '')) {
-                    e.preventDefault();
-                    if (scoreText) {
-                        scoreText.textContent = '两次输入的新密码需一致';
-                        scoreText.style.color = '#991b1b';
-                    }
-                }
-            });
-        }
+    // --- Tabs Logic ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        const activeItem = document.querySelector(`.nav-item[onclick="switchTab('${tabName}')"]`);
+        if (activeItem) activeItem.classList.add('active');
 
-        // 用户名唯一性校验
-        const usernameInput = document.getElementById("{{ username_form.username.id_for_label }}");
-        const usernamePwdInput = document.getElementById("{{ username_form.password.id_for_label }}");
-        const statusText = document.getElementById('username-status-text');
-        const statusChip = document.getElementById('username-status-chip');
-        let usernameTimer;
-        const checkUrl = "{% url 'username_check_api' %}";
-        function setStatus(message, ok) {
-            if (!statusText) return;
-            statusText.textContent = message;
-            statusText.style.color = ok ? '#065f46' : '#991b1b';
-            if (statusChip) {
-                statusChip.textContent = ok ? '可用 / Available' : '不可用 / Unavailable';
-                statusChip.style.background = ok ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)';
-                statusChip.style.color = ok ? '#065f46' : '#991b1b';
-            }
-        }
-        async function checkUsername(value) {
-            if (!value) {
-                setStatus('请输入要检测的用户名 / Please enter a username to check', false);
-                return;
-            }
-            setStatus('检测中... / Checking...', true);
-            try {
-                const resp = await fetch(checkUrl + '?username=' + encodeURIComponent(value), {headers: {'X-Requested-With': 'XMLHttpRequest'}});
-                const data = await resp.json();
-                if (resp.ok && data.available) {
-                    setStatus('用户名可用 / Username available', true);
-                } else if (!resp.ok && data.reason) {
-                    setStatus(data.reason, false);
-                } else {
-                    setStatus('该用户名已被使用 / Username already taken', false);
-                }
-            } catch (e) {
-                setStatus('网络异常，请稍后再试 / Network error, please try again', false);
-            }
-        }
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        const activePane = document.getElementById(`tab-${tabName}`);
+        if (activePane) activePane.classList.add('active');
+
+        localStorage.setItem('settings_tab', tabName);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedTab = localStorage.getItem('settings_tab') || 'overview';
+        switchTab(savedTab);
+
+        // --- Styles & Validation ---
+        const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"]');
+        inputs.forEach(input => { if (!input.classList.contains('form-input')) { input.classList.add('form-input'); } });
+
+        // --- Username Check ---
+        const usernameInput = document.querySelector('input[name="username"]');
+        const feedbackDiv = document.getElementById('username-feedback');
         if (usernameInput) {
-            usernameInput.addEventListener('input', (e) => {
-                clearTimeout(usernameTimer);
-                const value = e.target.value.trim();
-                usernameTimer = setTimeout(() => checkUsername(value), 400);
-            });
-            usernameInput.addEventListener('blur', (e) => checkUsername(e.target.value.trim()));
-        }
-        const usernameForm = document.getElementById('username-form');
-        if (usernameForm) {
-            usernameForm.addEventListener('submit', (e) => {
-                const val = (usernameInput && usernameInput.value || '').trim();
-                const pwdVal = usernamePwdInput ? usernamePwdInput.value : '';
-                if (!val) {
-                    e.preventDefault();
-                    setStatus('请输入要修改的用户名 / Please enter a username', false);
-                    return;
-                }
-                if (!pwdVal) {
-                    e.preventDefault();
-                    setStatus('请输入当前密码以确认 / Please enter your current password', false);
-                }
-            });
-        }
-
-        // 邮箱验证码倒计时提示
-        const countdownEl = document.getElementById('email-countdown');
-        if (countdownEl && countdownEl.dataset.expire) {
-            const expireTs = parseFloat(countdownEl.dataset.expire) * 1000;
-            const tick = () => {
-                const diff = expireTs - Date.now();
-                if (diff <= 0) {
-                    countdownEl.textContent = '验证码已过期，请重新发送 / Code expired, please resend';
-                    countdownEl.style.color = '#991b1b';
-                    return;
-                }
-                const minutes = Math.floor(diff / 60000);
-                const seconds = Math.floor((diff % 60000) / 1000);
-                countdownEl.textContent = `验证码剩余 ${minutes}分${seconds}秒 / Code: ${minutes}m ${seconds}s remaining`;
-                requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
-        }
-
-        // 发送验证码冷却倒计时
-        const sendBtn = document.getElementById('send-code-btn');
-        const sendNote = document.getElementById('send-code-note');
-        if (sendBtn) {
-            const nextSendRaw = sendBtn.dataset.nextSend || '';
-            const nextSendTs = parseFloat(nextSendRaw);
-            const targetMs = Number.isFinite(nextSendTs) ? nextSendTs * 1000 : null;
-            const tickSend = () => {
-                if (!targetMs) return;
-                const diff = targetMs - Date.now();
-                if (diff > 0) {
-                    const seconds = Math.ceil(diff / 1000);
-                    sendBtn.disabled = true;
-                    sendBtn.textContent = `重新发送（${seconds}s） / Resend (${seconds}s)`;
-                    if (sendNote) sendNote.textContent = '请稍后再试，避免频繁请求 / Please wait to avoid frequent requests';
-                    requestAnimationFrame(tickSend);
+            let timeout = null;
+            usernameInput.addEventListener('input', function() {
+                const username = this.value;
+                clearTimeout(timeout);
+                if (username.length > 0) {
+                    timeout = setTimeout(() => {
+                        fetch('{% url "username_check_api" %}?username=' + encodeURIComponent(username))
+                            .then(response => response.json())
+                            .then(data => {
+                                const taken = (data.is_taken === true) || (data.available === false);
+                                if (taken) {
+                                    feedbackDiv.textContent = '用户名已被占用';
+                                    feedbackDiv.className = 'help-text text-danger';
+                                    usernameInput.style.borderColor = 'var(--danger)';
+                                } else {
+                                    feedbackDiv.textContent = '用户名可用';
+                                    feedbackDiv.className = 'help-text text-success';
+                                    usernameInput.style.borderColor = 'var(--success)';
+                                }
+                            });
+                    }, 500);
                 } else {
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = '📤 发送验证码 / Send Verification Code';
-                    if (sendNote) sendNote.textContent = '可重新发送验证码 / You can resend now';
+                    feedbackDiv.textContent = '';
+                    usernameInput.style.borderColor = '';
                 }
-            };
-            tickSend();
+            });
         }
-    })();
+
+        // --- Password Meter ---
+        const passwordInput = document.querySelector('input[name="new_password1"]');
+        const strengthBar = document.getElementById('strength-bar');
+        const strengthText = document.getElementById('strength-text');
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 0, color = '#e2e8f0', text = '';
+                if (password.length > 0) {
+                    if (password.length >= 8) strength += 1;
+                    if (/[a-z]+/.test(password)) strength += 1;
+                    if (/[A-Z]+/.test(password)) strength += 1;
+                    if (/[0-9]+/.test(password)) strength += 1;
+                    if (/[$@#&!]+/.test(password)) strength += 1;
+                    if (strength <= 2) { color = 'var(--danger)'; text = '弱'; }
+                    else if (strength <= 4) { color = 'var(--warning)'; text = '中'; }
+                    else { color = 'var(--success)'; text = '强'; }
+                }
+                strengthBar.style.width = (strength * 20) + '%';
+                strengthBar.style.backgroundColor = color;
+                strengthText.textContent = text;
+                strengthText.style.color = color;
+            });
+        }
+
+        // --- Preferences API ---
+        function prefGet(key, cb) {
+            const url = '{% url "reports:preference_get_api" %}' + (key ? ('?key=' + encodeURIComponent(key)) : '');
+            fetch(url).then(r => r.json()).then(d => cb && cb(d.data || {})).catch(() => cb && cb({}));
+        }
+        function prefSave(key, value, cb) {
+            const formData = new FormData();
+            formData.append('key', key);
+            formData.append('value', JSON.stringify(value || {}));
+            fetch('{% url "reports:preference_save_api" %}', { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: formData })
+                .then(r => r.json()).then(d => cb && cb(d)).catch(() => cb && cb({ ok: false }));
+        }
+
+        // --- Load Prefs ---
+        const avatarInput = document.getElementById('avatar-input');
+        const avatarPreview = document.getElementById('avatar-preview');
+        const overviewAvatar = document.getElementById('overview-avatar');
+        const nicknameInput = document.getElementById('nickname-input');
+        const bioInput = document.getElementById('bio-input');
+        
+        prefGet('profile', (data) => {
+            if (data.avatar_data_url) {
+                const imgTag = `<img src="${data.avatar_data_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                if (avatarPreview) avatarPreview.innerHTML = imgTag;
+                if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
+            }
+            if (nicknameInput) nicknameInput.value = data.nickname || '';
+            if (bioInput) bioInput.value = data.bio || '';
+        });
+
+        // --- Save Prefs ---
+        const profilePrefSave = document.getElementById('profile-pref-save');
+        if (profilePrefSave) {
+            profilePrefSave.addEventListener('click', function() {
+                const img = avatarPreview.querySelector('img');
+                const dataUrl = img ? img.src : '';
+                prefSave('profile', { avatar_data_url: dataUrl, nickname: nicknameInput.value || '', bio: bioInput.value || '' }, function(resp) {
+                    alert(resp.ok ? '保存成功' : '保存失败');
+                });
+            });
+        }
+
+        // --- Avatar Upload ---
+        if (avatarInput) {
+            avatarInput.addEventListener('change', function() {
+                const file = this.files && this.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const imgTag = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                    avatarPreview.innerHTML = imgTag;
+                    if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- Other Prefs ---
+        const privacyShowEmail = document.getElementById('privacy-show-email');
+        const privacyShowRole = document.getElementById('privacy-show-role');
+        const privacySave = document.getElementById('privacy-save');
+        prefGet('privacy', (data) => {
+            if (privacyShowEmail) privacyShowEmail.checked = !!data.show_email;
+            if (privacyShowRole) privacyShowRole.checked = !!data.show_role;
+        });
+        if (privacySave) {
+            privacySave.addEventListener('click', () => {
+                prefSave('privacy', { show_email: !!privacyShowEmail.checked, show_role: !!privacyShowRole.checked }, (r) => alert(r.ok ? '已保存' : '失败'));
+            });
+        }
+
+        const notifyEmailDigest = document.getElementById('notify-email-digest');
+        const notifyInapp = document.getElementById('notify-inapp');
+        const notifySave = document.getElementById('notify-save');
+        prefGet('notify', (data) => {
+            if (notifyEmailDigest) notifyEmailDigest.checked = !!data.email_digest;
+            if (notifyInapp) notifyInapp.checked = !!data.inapp;
+        });
+        if (notifySave) {
+            notifySave.addEventListener('click', () => {
+                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => alert(r.ok ? '已保存' : '失败'));
+            });
+        }
+
+        // --- Email Code ---
+        const sendCodeBtn = document.getElementById('send-code-btn');
+        if (sendCodeBtn) {
+            sendCodeBtn.addEventListener('click', function() {
+                const emailInput = document.getElementById('id_email'); // from form
+                let email = emailInput ? emailInput.value : '';
+                if (!email) {
+                    const hiddenEmail = document.querySelector('input[name="email"]');
+                    if (hiddenEmail) email = hiddenEmail.value;
+                }
+                if (!email) { alert('请输入邮箱'); return; }
+                
+                sendCodeBtn.disabled = true;
+                sendCodeBtn.innerText = '发送中...';
+                fetch('{% url "send_email_code_api" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ email: email })
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        let t = 60;
+                        sendCodeBtn.innerText = t + 's';
+                        const timer = setInterval(() => {
+                            t--; sendCodeBtn.innerText = t + 's';
+                            if (t <= 0) { clearInterval(timer); sendCodeBtn.disabled = false; sendCodeBtn.innerText = '重发'; }
+                        }, 1000);
+                    } else {
+                        alert(data.error || '失败');
+                        sendCodeBtn.disabled = false;
+                        sendCodeBtn.innerText = '重试';
+                    }
+                }).catch(() => {
+                    alert('网络错误');
+                    sendCodeBtn.disabled = false;
+                    sendCodeBtn.innerText = '重试';
+                });
+            });
+        }
+    });
 </script>
 {% endblock %}

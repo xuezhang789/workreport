@@ -1,674 +1,480 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
-{% load tz %}
 {% block title %}项目详情 / Project Detail{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情 / Project Detail" nav_subtitle="查看项目基本信息与近期日报 / View basics & recent reports" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情 / Project Detail" nav_subtitle="查看项目基本信息与近期动态 / View basics & activities" %}{% endblock %}
 {% block extra_styles %}
-        :root {
-            --primary: #2563eb;
-            --primary-2: #3b82f6;
-            --accent: #06b6d4;
-            --card: rgba(255, 255, 255, 0.95);
-            --border: rgba(226, 232, 240, 0.8);
-            --ink: #1e293b;
-            --muted: #64748b;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
-        }
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-hover: #1e40af;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-page: #f8fafc;
+        --radius-lg: 16px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
 
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: var(--ink);
-            line-height: 1.6;
-        }
+    /* Info Card & Layout */
+    .card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
 
-        .hero {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px 28px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-            display: grid;
-            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-            gap: 16px;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-        }
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .eyebrow { 
-            text-transform: uppercase; 
-            letter-spacing: 0.12em; 
-            font-size: 11px; 
-            color: var(--muted); 
-            margin: 0 0 8px; 
-            font-weight: 600;
-        }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
 
-        .hero h1 { 
-            margin: 0 0 8px; 
-            font-size: clamp(22px, 3vw, 28px); 
-            line-height: 1.3;
-            background: linear-gradient(135deg, var(--ink), #334155);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
 
-        .hero .lede { 
-            margin: 0; 
-            color: var(--muted); 
-            font-size: 14px; 
-            line-height: 1.5;
-        }
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
 
-        .hero-meta { 
-            display: grid; 
-            gap: 8px; 
-            justify-items: end; 
-        }
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+    }
 
-        .chip {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05));
-            color: var(--primary);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            border: 1px solid rgba(37, 99, 235, 0.2);
-        }
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
 
-        .card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px 24px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        transform: translateY(-1px);
+    }
 
-        .card:hover::before {
-            opacity: 0.6;
-        }
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
 
-        .card:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
-        }
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
 
-        .meta-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 12px; 
-        }
+    /* Phase & Progress */
+    .progress-track {
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
 
-        .meta-item { 
-            padding: 12px 14px; 
-            border-radius: var(--radius-md); 
-            border: 1px solid rgba(15, 23, 42, 0.06); 
-            background: rgba(15, 23, 42, 0.02);
-            transition: all 0.3s ease;
-        }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), #60a5fa);
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
 
-        .meta-item:hover {
-            background: rgba(15, 23, 42, 0.04);
-            transform: translateY(-1px);
-        }
+    /* Tables */
+    .table-container {
+        overflow-x: auto;
+    }
 
-        .meta-label { 
-            font-size: 12px; 
-            color: var(--muted); 
-            margin: 0 0 4px; 
-            font-weight: 600;
-        }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
 
-        .meta-value { 
-            margin: 0; 
-            font-weight: 700; 
-            color: var(--ink);
-        }
+    .table th {
+        text-align: left;
+        padding: 12px 16px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
 
-        .description { 
-            margin: 0; 
-            color: var(--ink); 
-            line-height: 1.6; 
-            white-space: pre-wrap; 
-        }
+    .table td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text-main);
+    }
 
-        .list { 
-            margin: 0; 
-            padding-left: 20px; 
-            color: var(--ink); 
-            line-height: 1.6;
-        }
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .table tr:hover td {
+        background-color: #f8fafc;
+    }
 
-        .list li {
-            margin-bottom: 4px;
-        }
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-active { background: #dbeafe; color: #1e40af; }
+    .badge-completed { background: #dcfce7; color: #166534; }
+    .badge-overdue { background: #fee2e2; color: #991b1b; }
+    .badge-default { background: #f1f5f9; color: #475569; }
 
-        .actions-row { 
-            display: flex; 
-            gap: 12px; 
-            flex-wrap: wrap; 
-            justify-content: flex-end; 
-            margin-top: 16px; 
-        }
-
-        .btn { 
-            border-radius: var(--radius-md); 
-            border: none; 
-            text-decoration: none; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 12px 18px; 
-            font-weight: 600; 
-            font-size: 14px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:active { 
-            transform: translateY(1px) scale(0.98); 
-        }
-
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-2)); 
-            color: #fff; 
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost { 
-            background: rgba(15, 23, 42, 0.06); 
-            color: var(--ink); 
-            border: 1px solid rgba(15, 23, 42, 0.1);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(15, 23, 42, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .section { 
-            margin-top: 16px; 
-        }
-
-        .card-header {
-            margin-bottom: 12px;
-        }
-
-        .card-title {
-            font-weight: 700;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0;
-        }
-
-        .card-title .dot {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: rgba(37, 99, 235, 0.12);
-            color: var(--primary);
-            display: grid;
-            place-items: center;
-            font-size: 12px;
-        }
-
-        .status-badge { 
-            display: inline-flex; 
-            align-items: center; 
-            padding: 4px 10px; 
-            border-radius: 20px; 
-            font-size: 11px; 
-            font-weight: 700;
-            border: 1px solid;
-            text-transform: uppercase;
-        }
-
-        .status-pending { 
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05)); 
-            color: #92400e; 
-            border-color: rgba(245, 158, 11, 0.3);
-        }
-
-        .status-in-progress { 
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(96, 165, 250, 0.05)); 
-            color: #1d4ed8; 
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-
-        .status-on-hold { 
-            background: linear-gradient(135deg, rgba(107, 114, 128, 0.1), rgba(156, 163, 175, 0.05)); 
-            color: #374151; 
-            border-color: rgba(107, 114, 128, 0.3);
-        }
-
-        .status-completed { 
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05)); 
-            color: #0f766e; 
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .status-overdue { 
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.05)); 
-            color: #b91c1c; 
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
-        .status-reopened { 
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(129, 140, 248, 0.05)); 
-            color: #312e81; 
-            border-color: rgba(99, 102, 241, 0.3);
-        }
-
-        @media (max-width: 860px) { 
-            .hero { 
-                grid-template-columns: 1fr; 
-                padding: 20px;
-            } 
-            .hero-meta { 
-                justify-items: start; 
-            }
-            .card {
-                padding: 16px;
-            }
-        }
+    /* Filters */
+    .filter-select {
+        padding: 6px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--text-main);
+        background-color: white;
+        outline: none;
+    }
+    
+    .filter-select:focus {
+        border-color: var(--primary);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-        <div class="hero">
+<div class="page-container">
+    
+    <!-- Header / Overview -->
+    <div class="card">
+        <div class="card-header">
             <div>
-                <p class="eyebrow">团队 · 项目</p>
-                <h1>{{ project.name }}</h1>
-                <p class="lede">代码：{{ project.code }}</p>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--text-main);">{{ project.name }}</h1>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                    <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--text-secondary);">{{ project.code }}</span>
+                    {% if project.is_active %}
+                        <span class="status-badge badge-active">进行中 / Active</span>
+                    {% else %}
+                        <span class="status-badge badge-default">已归档 / Archived</span>
+                    {% endif %}
+                </div>
             </div>
-            <div class="hero-meta">
-                {% if project.start_date %}<span class="chip">开始：{{ project.start_date }}</span>{% endif %}
-                {% if project.end_date %}<span class="chip">结束：{{ project.end_date }}</span>{% endif %}
-                <span class="chip">成员数：{{ project.members.count }}</span>
+            <div style="display: flex; gap: 8px;">
+                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">返回列表</a>
+                {% if can_manage %}
+                    <a href="{% url 'reports:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Phase Management Module -->
-        <section class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 20px;">🚩</span> 阶段状态管理 / Phase Status
-                </h3>
-                <a href="{% url 'reports:project_phase_history' project.pk %}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 13px;">变更记录 / History</a>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">负责人 / Owner</span>
+                <span class="info-value">
+                    {% if project.owner %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 24px; height: 24px; background: #e0e7ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">
+                                {{ project.owner.username|slice:":1"|upper }}
+                            </div>
+                            {{ project.owner.get_full_name|default:project.owner.username }}
+                        </div>
+                    {% else %}
+                        <span style="color: var(--text-secondary);">--</span>
+                    {% endif %}
+                </span>
             </div>
-
-            <div style="margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary);">
-                    <span id="current-phase-name">{{ project.current_phase.phase_name|default:"未设置 / N/A" }}</span>
-                    <span id="current-progress">{{ project.overall_progress }}%</span>
-                </div>
-                <div style="height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative;">
-                    <div id="progress-bar" style="width: {{ project.overall_progress }}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 6px; transition: width 0.6s ease;"></div>
-                </div>
+            <div class="info-item">
+                <span class="info-label">时间周期 / Duration</span>
+                <span class="info-value">
+                    {{ project.start_date|default:"--" }} 
+                    <span style="color: var(--text-secondary); margin: 0 4px;">→</span> 
+                    {{ project.end_date|default:"--" }}
+                </span>
             </div>
+            <div class="info-item">
+                <span class="info-label">成员 / Members</span>
+                <span class="info-value">{{ project.members.count }} 人</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">SLA 配置</span>
+                <span class="info-value">{% if project.sla_hours %}{{ project.sla_hours }}h{% else %}全局配置{% endif %}</span>
+            </div>
+        </div>
+        
+        {% if project.description %}
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                <span class="info-label" style="display: block; margin-bottom: 8px;">项目描述 / Description</span>
+                <p style="margin: 0; font-size: 14px; color: var(--text-main); line-height: 1.6;">{{ project.description }}</p>
+            </div>
+        {% endif %}
+    </div>
 
-            {% if can_manage %}
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(248, 250, 252, 0.6); padding: 16px; border-radius: 12px; border: 1px solid var(--border-light);">
-                <label for="phase-select" style="font-weight: 600; font-size: 14px; margin: 0;">变更阶段 / Change Phase:</label>
-                <select id="phase-select" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 14px; outline: none; min-width: 240px; background: white;">
+    <!-- Phase Management -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>🚩</span> 阶段与进度 / Phase & Progress
+            </div>
+            <a href="{% url 'reports:project_phase_history' project.pk %}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;">变更记录</a>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+            <div>
+                <span style="font-size: 16px; font-weight: 600; color: var(--text-main);">{{ project.current_phase.phase_name|default:"未设置阶段" }}</span>
+            </div>
+            <span style="font-size: 20px; font-weight: 700; color: var(--primary);">{{ project.overall_progress }}%</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width: {{ project.overall_progress }}%;"></div>
+        </div>
+
+        {% if can_manage %}
+            <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">变更阶段:</span>
+                <select id="phase-select" class="filter-select" style="min-width: 200px;">
                     {% for phase in phases %}
-                        <option value="{{ phase.id }}" data-progress="{{ phase.progress_percentage }}" {% if project.current_phase_id == phase.id %}selected{% endif %}>
+                        <option value="{{ phase.id }}" {% if project.current_phase_id == phase.id %}selected{% endif %}>
                             {{ phase.phase_name }} ({{ phase.progress_percentage }}%)
                         </option>
                     {% endfor %}
                 </select>
-                <button id="update-phase-btn" class="btn btn-primary" style="padding: 10px 18px;">
-                    更新 / Update
-                </button>
+                <button id="update-phase-btn" class="btn btn-primary">更新 / Update</button>
+                <span id="update-msg" style="font-size: 12px; margin-left: 8px;"></span>
             </div>
-            <div id="update-msg" style="margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px;"></div>
-            
-            <script>
-                document.getElementById('update-phase-btn').addEventListener('click', function() {
-                    const select = document.getElementById('phase-select');
-                    const phaseId = select.value;
-                    const btn = this;
-                    const msg = document.getElementById('update-msg');
-                    
-                    if (!phaseId) return;
-                    
-                    if (!confirm('确认变更项目阶段？这会更新项目整体进度并通知相关人员。\nConfirm change phase? This will update overall progress and notify stakeholders.')) {
-                        return;
-                    }
-                    
-                    btn.disabled = true;
-                    btn.textContent = '更新中 / Updating...';
-                    msg.textContent = '';
-                    msg.style.color = 'inherit';
-                    
-                    fetch("{% url 'reports:project_update_phase' project.pk %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: 'phase_id=' + phaseId
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        btn.disabled = false;
-                        btn.textContent = '更新 / Update';
-                        
-                        if (data.status === 'success') {
-                            document.getElementById('current-phase-name').textContent = data.phase_name;
-                            document.getElementById('current-progress').textContent = data.progress + '%';
-                            document.getElementById('progress-bar').style.width = data.progress + '%';
-                            
-                            msg.textContent = '阶段已更新 / Phase updated';
-                            msg.style.color = 'var(--success)';
-                        } else {
-                            msg.textContent = '更新失败: ' + data.message;
-                            msg.style.color = 'var(--danger)';
-                        }
-                    })
-                    .catch(error => {
-                        btn.disabled = false;
-                        btn.textContent = '更新 / Update';
-                        msg.textContent = '网络错误 / Network error';
-                        msg.style.color = 'var(--danger)';
-                        console.error(error);
-                    });
-                });
-            </script>
-            {% endif %}
-        </section>
+        {% endif %}
+    </div>
 
-        <section class="card">
-            <div class="meta-grid">
-                <div class="meta-item">
-                    <p class="meta-label">负责人 / Owner</p>
-                    <p class="meta-value">{% if project.owner %}{{ project.owner.get_full_name|default:project.owner.username }}{% else %}未指定{% endif %}</p>
-                </div>
-                <div class="meta-item">
-                    <p class="meta-label">创建时间 / Created</p>
-                    <p class="meta-value">{{ project.created_at|localtime|date:"Y-m-d H:i" }}</p>
-                </div>
-                <div class="meta-item">
-                    <p class="meta-label">开始日期 / Start</p>
-                    <p class="meta-value">{% if project.start_date %}{{ project.start_date }}{% else %}—{% endif %}</p>
-                </div>
-                <div class="meta-item">
-                    <p class="meta-label">结束日期 / End</p>
-                    <p class="meta-value">{% if project.end_date %}{{ project.end_date }}{% else %}—{% endif %}</p>
-                </div>
-                <div class="meta-item">
-                    <p class="meta-label">SLA 提醒 / SLA Hours</p>
-                    <p class="meta-value">{% if project.sla_hours %}{{ project.sla_hours }} 小时{% else %}使用全局配置{% endif %}</p>
-                </div>
+    <!-- Tasks Module -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>📋</span> 关联任务 / Tasks
             </div>
-            <div class="section" style="margin-top:16px;">
-                <p class="meta-label" style="margin:0 0 6px;">SLA 完成概览 / SLA Overview</p>
-                <div class="meta-grid">
-                    <div class="meta-item">
-                        <p class="meta-label">总任务</p>
-                        <p class="meta-value">{{ task_stats.total }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">已完成</p>
-                        <p class="meta-value">{{ task_stats.completed }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">逾期</p>
-                        <p class="meta-value">{{ task_stats.overdue }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">SLA 内完成</p>
-                        <p class="meta-value">{{ task_stats.within_sla }}</p>
-                    </div>
-                    <div class="meta-item">
-                        <p class="meta-label">SLA 达成率</p>
-                        <p class="meta-value">{{ task_stats.sla_rate|floatformat:1 }}%</p>
-                    </div>
-                </div>
-            </div>
-            <div class="section">
-                <p class="meta-label" style="margin:0 0 6px;">描述 / Description</p>
-                <p class="description">{% if project.description %}{{ project.description }}{% else %}暂无描述{% endif %}</p>
-            </div>
-            <div class="section">
-                <p class="meta-label" style="margin:0 0 6px;">成员 / Members</p>
-                {% if project.members.all %}
-                    <ul class="list">
-                        {% for m in project.members.all %}
-                            <li>{{ m.get_full_name|default:m.username }}</li>
-                        {% empty %}
-                            <li style="color: var(--muted);">暂无成员</li>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <form method="get" style="display: flex; gap: 8px;">
+                    <select name="task_status" class="filter-select" onchange="this.form.submit()">
+                        <option value="">状态: 全部</option>
+                        <option value="active" {% if task_status == 'active' %}selected{% endif %}>进行中</option>
+                        {% for k, v in task_status_choices %}
+                            <option value="{{ k }}" {% if task_status == k %}selected{% endif %}>{{ v }}</option>
                         {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="meta-value" style="color: var(--muted);">暂无成员</p>
-                {% endif %}
-            </div>
-            <div class="section">
-                <p class="meta-label" style="margin:0 0 6px;">管理员 / Managers</p>
-                {% if project.managers.all %}
-                    <ul class="list">
-                        {% for m in project.managers.all %}
-                            <li>{{ m.get_full_name|default:m.username }}</li>
-                        {% empty %}
-                            <li style="color: var(--muted);">暂无管理员</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="meta-value" style="color: var(--muted);">暂无管理员</p>
-                {% endif %}
-            </div>
-            <div class="actions-row">
-                <a class="btn btn-ghost" href="{% url 'reports:project_list' %}">返回列表</a>
+                    </select>
+                </form>
                 {% if can_manage %}
-                    <a class="btn btn-primary" href="{% url 'reports:project_edit' project.pk %}">编辑</a>
-                    <a class="btn btn-primary" href="{% url 'reports:project_delete' project.pk %}">删除</a>
+                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务</a>
                 {% endif %}
-                <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">我的日报</a>
             </div>
-        </section>
+        </div>
 
-        <!-- Task List Module -->
-        <section class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-                <div class="card-title"><span class="dot">📋</span>项目任务 / Project Tasks</div>
-                
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <!-- Filter & Sort -->
-                    <form method="get" id="task-filter-form" style="display: flex; gap: 8px; align-items: center; margin: 0;">
-                        <select name="task_status" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; background: white;">
-                            <option value="">状态: 全部 / All</option>
-                            <option value="active" {% if task_status == 'active' %}selected{% endif %}>进行中 / Active</option>
-                            {% for k, v in task_status_choices %}
-                                <option value="{{ k }}" {% if task_status == k %}selected{% endif %}>{{ v }}</option>
-                            {% endfor %}
-                        </select>
-                        
-                        <select name="task_sort" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; background: white;">
-                            <option value="">排序: 默认 / Default</option>
-                            <option value="due_at" {% if task_sort == 'due_at' %}selected{% endif %}>截止时间 (早→晚)</option>
-                            <option value="-due_at" {% if task_sort == '-due_at' %}selected{% endif %}>截止时间 (晚→早)</option>
-                            <option value="priority" {% if task_sort == 'priority' %}selected{% endif %}>优先级 / Priority</option>
-                        </select>
-                    </form>
-                    
-                    {% if can_manage %}
-                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;">
-                        + 新建
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-
-            {% if tasks %}
-                <div style="overflow-x: auto;">
-                    <table class="table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                        <thead>
-                            <tr style="border-bottom: 2px solid #f1f5f9; text-align: left;">
-                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">标题 / Title</th>
-                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">负责人 / Owner</th>
-                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">截止 / Due</th>
-                                <th style="padding: 10px; color: var(--muted); font-weight: 600;">状态 / Status</th>
-                                <th style="padding: 10px; color: var(--muted); font-weight: 600; text-align: right;">操作 / Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for task in tasks %}
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 12px 10px;">
-                                    <div style="font-weight: 500; display: flex; align-items: center; gap: 6px;">
-                                        <a href="{% url 'reports:task_view' task.pk %}" style="color: inherit; text-decoration: none;">{{ task.title }}</a>
-                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="color: var(--primary); font-size: 12px;">🔗</a>{% endif %}
+        {% if tasks %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>任务标题</th>
+                            <th>负责人</th>
+                            <th>截止日期</th>
+                            <th>状态</th>
+                            <th style="text-align: right;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                            <tr>
+                                <td>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <a href="{% url 'reports:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
+                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接</a>{% endif %}
                                     </div>
-                                    {% if task.sla_info.is_overdue %}
-                                        <span style="font-size: 11px; color: var(--danger); font-weight: 600;">⚠ 逾期 / Overdue</span>
-                                    {% endif %}
                                 </td>
-                                <td style="padding: 12px 10px;">
+                                <td>
                                     {% if task.user %}
                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                            <div style="width: 24px; height: 24px; background: #eff6ff; color: var(--primary); border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: bold;">
-                                                {{ task.user.username|slice:":2"|upper }}
+                                            <div style="width: 24px; height: 24px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px;">
+                                                {{ task.user.username|slice:":1"|upper }}
                                             </div>
                                             <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username }}</span>
                                         </div>
                                     {% else %}
-                                        <span style="color: var(--muted);">-</span>
+                                        <span style="color: var(--text-secondary);">--</span>
                                     {% endif %}
                                 </td>
-                                <td style="padding: 12px 10px;">
+                                <td>
                                     {% if task.due_at %}
-                                        <span style="font-variant-numeric: tabular-nums; {% if task.sla_info.is_overdue and task.status != 'completed' %}color: var(--danger); font-weight: bold;{% endif %}">
+                                        <span {% if task.sla_info.is_overdue and task.status != 'completed' %}style="color: #ef4444; font-weight: 600;"{% endif %}>
                                             {{ task.due_at|date:"Y-m-d" }}
                                         </span>
-                                    {% else %}
-                                        <span style="color: var(--muted);">-</span>
-                                    {% endif %}
+                                    {% else %}--{% endif %}
                                 </td>
-                                <td style="padding: 12px 10px;">
-                                    <span style="
-                                        display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
-                                        {% if task.status == 'completed' %}background: #dcfce7; color: #166534;
-                                        {% elif task.status == 'in_progress' %}background: #dbeafe; color: #1e40af;
-                                        {% elif task.status == 'overdue' %}background: #fee2e2; color: #991b1b;
-                                        {% elif task.status == 'reopened' %}background: #ffedd5; color: #9a3412;
-                                        {% else %}background: #f1f5f9; color: #475569;{% endif %}
-                                    ">
+                                <td>
+                                    <span class="status-badge 
+                                        {% if task.status == 'completed' %}badge-completed
+                                        {% elif task.status == 'overdue' %}badge-overdue
+                                        {% elif task.status == 'in_progress' %}badge-active
+                                        {% else %}badge-default{% endif %}">
                                         {{ task.get_status_display }}
                                     </span>
                                 </td>
-                                <td style="padding: 12px 10px; text-align: right;">
-                                    <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: auto;">查看</a>
+                                <td style="text-align: right;">
+                                    <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
                                 </td>
                             </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                
-                {% if tasks.has_other_pages %}
-                <div style="margin-top: 20px; display: flex; justify-content: center; gap: 8px;">
-                    {% if tasks.has_previous %}
-                        <a href="?page={{ tasks.previous_page_number }}&task_status={{ task_status|default:'' }}&task_sort={{ task_sort|default:'' }}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 13px;">&laquo; 上一页</a>
-                    {% endif %}
-                    <span style="display: flex; align-items: center; font-size: 13px; color: var(--muted); font-weight: 500;">
-                        {{ tasks.number }} / {{ tasks.paginator.num_pages }}
-                    </span>
-                    {% if tasks.has_next %}
-                        <a href="?page={{ tasks.next_page_number }}&task_status={{ task_status|default:'' }}&task_sort={{ task_sort|default:'' }}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 13px;">下一页 &raquo;</a>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-            {% else %}
-                <div style="text-align: center; padding: 40px 0; color: var(--muted);">
-                    <div style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;">📋</div>
-                    <p style="margin: 0;">暂无符合条件的任务</p>
-                    <p style="font-size: 13px; margin: 4px 0 16px;">No tasks match your criteria</p>
-                    {% if can_manage %}
-                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
-                        创建任务 / Create Task
-                    </a>
-                    {% endif %}
-                </div>
-            {% endif %}
-        </section>
-
-        <section class="card">
-            <div class="card-header" style="margin-bottom:8px;">
-                <div class="card-title"><span class="dot">📰</span>最近日报</div>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            {% if recent_reports %}
-                <ul class="list">
-                    {% for r in recent_reports %}
-                        <li>{{ r.date }} · {{ r.get_role_display }} · {{ r.user.get_full_name|default:r.user.username }} <a href="{% url 'reports:report_detail' r.pk %}" style="margin-left:6px;">查看</a></li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="meta" style="color: var(--muted);">暂无日报</p>
+            
+            <!-- Pagination -->
+            {% if tasks.has_other_pages %}
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+                    {% if tasks.has_previous %}
+                        <a href="?page={{ tasks.previous_page_number }}" class="btn btn-ghost">&laquo; 上一页</a>
+                    {% endif %}
+                    <span class="btn btn-ghost" style="pointer-events: none;">{{ tasks.number }} / {{ tasks.paginator.num_pages }}</span>
+                    {% if tasks.has_next %}
+                        <a href="?page={{ tasks.next_page_number }}" class="btn btn-ghost">下一页 &raquo;</a>
+                    {% endif %}
+                </div>
             {% endif %}
-        </section>
+        {% else %}
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <p>暂无关联任务</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span>📰</span> 最近日报 / Recent Reports</div>
+        </div>
+        {% if recent_reports %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>提交人</th>
+                            <th>角色</th>
+                            <th style="text-align: right;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recent_reports %}
+                            <tr>
+                                <td>{{ r.date }}</td>
+                                <td>{{ r.user.get_full_name|default:r.user.username }}</td>
+                                <td>{{ r.get_role_display }}</td>
+                                <td style="text-align: right;">
+                                    <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 32px; color: var(--text-secondary);">暂无日报记录</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    // Phase Update Logic
+    const updateBtn = document.getElementById('update-phase-btn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', function() {
+            const select = document.getElementById('phase-select');
+            const phaseId = select.value;
+            const btn = this;
+            const msg = document.getElementById('update-msg');
+            
+            if (!phaseId) return;
+            
+            if (!confirm('确认变更项目阶段？这将更新项目整体进度。')) return;
+            
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            
+            fetch("{% url 'reports:project_update_phase' project.pk %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'phase_id=' + phaseId
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '更新 / Update';
+                
+                if (data.status === 'success') {
+                    msg.textContent = '更新成功';
+                    msg.style.color = '#166534';
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    msg.textContent = '更新失败';
+                    msg.style.color = '#991b1b';
+                }
+            });
+        });
+    }
+</script>
 {% endblock %}

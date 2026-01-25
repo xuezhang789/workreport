@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_preferences
+from . import views_teams
 
 app_name = 'reports'
 
@@ -39,8 +40,7 @@ urlpatterns = [
     path('projects/<int:pk>/', views.project_detail, name='project_detail'),
     path('projects/<int:pk>/edit/', views.project_edit, name='project_edit'),
     path('projects/<int:pk>/delete/', views.project_delete, name='project_delete'),
-    path('stats/', views.stats, name='stats'),
-    path('stats/export/', views.stats_export, name='stats_export'),
+
     path('audit/', views.audit_logs, name='audit_logs'),
     path('audit/export/', views.audit_logs_export, name='audit_logs_export'),
     path('templates/center/', views.template_center, name='template_center'),
@@ -60,4 +60,10 @@ urlpatterns = [
     # Project Phase Actions
     path('projects/<int:project_id>/update-phase/', views.project_update_phase, name='project_update_phase'),
     path('projects/<int:project_id>/phase-history/', views.project_phase_history, name='project_phase_history'),
+    
+    # Team Management
+    path('teams/', views_teams.teams_list, name='teams'),
+    path('teams/<int:user_id>/role/', views_teams.team_member_update_role, name='team_member_update_role'),
+    path('teams/<int:user_id>/project/add/', views_teams.team_member_add_project, name='team_member_add_project'),
+    path('teams/<int:user_id>/project/<int:project_id>/remove/', views_teams.team_member_remove_project, name='team_member_remove_project'),
 ]

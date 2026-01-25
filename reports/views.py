@@ -1,4 +1,4 @@
-from django.contrib.auth import login, logout, get_user_model
+from django.contrib.auth import login, logout, get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
@@ -413,13 +413,13 @@ def workbench(request):
     completion_rate = (completed / total * 100) if total else 0
     overdue_rate = (overdue / total * 100) if total else 0
 
-    # 获取今日任务和即将到期任务
+    # 获取今日任务和即将到期任务数量
     today = timezone.now()
-    today_tasks = tasks.filter(due_at__date=today.date()).exclude(status='completed')
-    upcoming_tasks = tasks.filter(
+    today_tasks_count = tasks.filter(due_at__date=today.date()).exclude(status='completed').count()
+    upcoming_tasks_count = tasks.filter(
         due_at__date__gt=today.date(),
         due_at__date__lte=today.date() + timedelta(days=3)
-    ).exclude(status='completed')
+    ).exclude(status='completed').count()
 
     # daily report streak and today's report status
     today_date = timezone.localdate()
@@ -468,13 +468,13 @@ def workbench(request):
     # 获取用户角色用于个性化引导
     try:
         user_role = request.user.profile.position
-    except:
+    except (Profile.DoesNotExist, AttributeError):
         user_role = 'dev'
     
     # 智能引导文案生成
     guidance = generate_workbench_guidance(
         total, completed, overdue, in_progress, pending,
-        streak, has_today_report, user_role, len(today_tasks), len(upcoming_tasks)
+        streak, has_today_report, user_role, today_tasks_count, upcoming_tasks_count
     )
 
     return render(request, 'reports/workbench.html', {
@@ -487,8 +487,8 @@ def workbench(request):
             'completion_rate': completion_rate,
             'overdue_rate': overdue_rate,
         },
-        'today_tasks': today_tasks,
-        'upcoming_tasks': upcoming_tasks,
+        'today_tasks_count': today_tasks_count,
+        'upcoming_tasks_count': upcoming_tasks_count,
         'project_burndown': project_burndown,
         'streak': streak,
         'has_today_report': has_today_report,
@@ -1285,6 +1285,80 @@ def logout_view(request):
 
 
 @login_required
+def send_email_code_api(request):
+    """API for sending email verification code."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    if not email:
+        return JsonResponse({'error': '请输入邮箱地址 / Please enter email address'}, status=400)
+
+    # Check if email is valid format (simple check)
+    if '@' not in email or '.' not in email:
+        return JsonResponse({'error': '邮箱格式不正确 / Invalid email format'}, status=400)
+
+    user = request.user
+    UserModel = get_user_model()
+    
+    # Check availability
+    if UserModel.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+        return JsonResponse({'error': '该邮箱已被其他账号使用 / Email already in use'}, status=400)
+    
+    if email.lower() == (user.email or '').lower():
+         return JsonResponse({'error': '该邮箱已绑定，无需重复验证 / Email already bound'}, status=400)
+
+    # Cooldown check
+    cooldown = 60
+    now_ts = time.time()
+    last_send = request.session.get('email_verification_last_send') or 0
+    if now_ts - last_send < cooldown:
+        remain = int(cooldown - (now_ts - last_send))
+        return JsonResponse({'error': f'发送过于频繁，请 {remain} 秒后再试 / Too frequent, try again in {remain}s'}, status=429)
+
+    code = f"{random.randint(100000, 999999)}"
+    subject = "邮箱验证 / Email verification code"
+    body = (
+        f"您的验证码(your code)：{code}\n"
+        f"10 分钟内有效，请勿泄露。If you did not request this, please ignore."
+    )
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        log_action(request, 'error', f"send email code failed to {email}", data={'error': str(exc)})
+        return JsonResponse({'error': '验证码发送失败，请联系管理员 / Failed to send email'}, status=500)
+
+    # Save to session
+    request.session['email_verification'] = {
+        'email': email,
+        'code': code,
+        'expires_at': time.time() + 600,
+    }
+    request.session['email_verification_last_send'] = now_ts
+    request.session.modified = True
+    
+    log_action(request, 'update', f"send email code to {email}")
+    
+    msg = f"验证码已发送至 {email}"
+    if settings.DEBUG:
+        msg += f" (Code: {code})"
+        
+    return JsonResponse({'success': True, 'message': msg})
+
+
+@login_required
 def account_settings(request):
     """个人中心：用户名、密码与邮箱设置。"""
     user = request.user
@@ -1303,80 +1377,20 @@ def account_settings(request):
                 new_username = username_form.cleaned_data['username']
                 user.username = new_username
                 user.save(update_fields=['username'])
-                messages.success(request, "用户名已更新，新的标识已生效 / Username updated successfully")
+                messages.success(request, "用户名已更新 / Username updated successfully")
                 log_action(request, 'update', f"username {old_username} -> {new_username}")
                 return redirect('account_settings')
-            messages.error(request, "用户名更新失败，请检查提示 / Username update failed, please check the errors")
-
+            
         elif action == 'change_password':
             password_form = PasswordUpdateForm(user=user, data=request.POST)
             if password_form.is_valid():
                 new_password = password_form.cleaned_data['new_password1']
                 user.set_password(new_password)
                 user.save()
+                update_session_auth_hash(request, user)  # Keep user logged in
                 log_action(request, 'update', "password changed")
-                logout(request)
-                messages.success(request, "密码已更新，请使用新密码重新登录")
-                return redirect('login')
-            messages.error(request, "密码更新失败，请检查提示")
-
-        elif action == 'send_email_code':
-            email_request_form = EmailVerificationRequestForm(data=request.POST)
-            if email_request_form.is_valid():
-                email = email_request_form.cleaned_data['email']
-                # 若邮箱已被其他账号占用，直接提示，不发送验证码
-                if UserModel.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
-                    messages.error(request, "该邮箱已被其他账号使用，请更换邮箱")
-                    return redirect('account_settings')
-                # 当前邮箱相同则无需发送
-                if email and email.lower() == (user.email or '').lower():
-                    messages.info(request, "该邮箱已绑定，无需重复验证")
-                    return redirect('account_settings')
-                # 简易冷却：默认 60 秒内只允许发送一次
-                cooldown = 60
-                now_ts = time.time()
-                last_send = request.session.get('email_verification_last_send') or 0
-                if now_ts - last_send < cooldown:
-                    remain = int(cooldown - (now_ts - last_send))
-                    messages.error(request, f"发送过于频繁，请 {remain} 秒后再试")
-                    return redirect('account_settings')
-                code = f"{random.randint(100000, 999999)}"
-                # 先尝试发送邮件，成功后再写入 session，避免失败后仍提示成功
-                subject = "邮箱验证 / Email verification code"
-                body = (
-                    f"您的验证码(your code)：{code}\n"
-                    f"10 分钟内有效，请勿泄露。If you did not request this, please ignore."
-                )
-                try:
-                    send_mail(
-                        subject=subject,
-                        message=body,
-                        from_email=settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER,
-                        recipient_list=[email],
-                        fail_silently=False,
-                    )
-                except Exception as exc:
-                    messages.error(request, f"验证码发送失败，请稍后再试：{exc}")
-                    log_action(request, 'error', f"send email code failed to {_mask_email(email)}", data={'error': str(exc)})
-                    return redirect('account_settings')
-
-                # 将验证码存入 session，演示环境直接展示验证码
-                request.session['email_verification'] = {
-                    'email': email,
-                    'code': code,
-                    'expires_at': time.time() + 600,
-                    'next_send_at': now_ts + cooldown,
-                }
-                request.session['email_verification_last_send'] = now_ts
-                request.session.modified = True
-                masked = _mask_email(email)
-                if settings.DEBUG:
-                    messages.success(request, f"验证码已发送到 {masked}，10 分钟内有效。（演示验证码：{code}）")
-                else:
-                    messages.success(request, f"验证码已发送到 {masked}，10 分钟内有效。")
-                log_action(request, 'update', f"send email code to {masked}")
+                messages.success(request, "密码已更新 / Password updated successfully")
                 return redirect('account_settings')
-            messages.error(request, "邮箱格式有误，请检查后再试")
 
         elif action == 'update_email':
             email_confirm_form = EmailVerificationConfirmForm(data=request.POST)
@@ -1384,25 +1398,61 @@ def account_settings(request):
                 email = email_confirm_form.cleaned_data['email']
                 code = email_confirm_form.cleaned_data['code']
                 pending = request.session.get('email_verification') or {}
+                
                 if not pending or pending.get('email') != email:
-                    messages.error(request, "请先获取该邮箱的验证码")
+                    messages.error(request, "请先获取该邮箱的验证码 / Please request code first")
                 elif pending.get('expires_at', 0) < time.time():
-                    messages.error(request, "验证码已过期，请重新发送")
+                    messages.error(request, "验证码已过期 / Code expired")
                 elif str(pending.get('code')) != str(code):
-                    messages.error(request, "验证码不正确")
+                    messages.error(request, "验证码不正确 / Invalid code")
                 elif UserModel.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
-                    messages.error(request, "邮箱已被其他账号使用")
+                    messages.error(request, "邮箱已被其他账号使用 / Email already in use")
                 else:
                     user.email = email
                     user.save(update_fields=['email'])
                     request.session.pop('email_verification', None)
                     request.session.modified = True
-                    messages.success(request, "邮箱已更新并完成验证，后续可用该邮箱找回密码")
+                    
+                    if hasattr(user, 'profile'):
+                        user.profile.email_verified = True
+                        user.profile.save()
+
+                    messages.success(request, "邮箱已更新并完成验证 / Email updated and verified")
                     log_action(request, 'update', f"email updated to {email}")
                     return redirect('account_settings')
             else:
-                messages.error(request, "邮箱更新失败，请检查提示")
+                messages.error(request, "输入有误，请检查 / Invalid input")
 
+    # Calculate user statistics
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+    
+    user_reports = DailyReport.objects.filter(user=user)
+    week_reports = user_reports.filter(date__gte=week_start)
+    month_reports = user_reports.filter(date__gte=month_start)
+    
+    # Statistics
+    week_report_count = week_reports.count()
+    month_report_count = month_reports.count()
+    total_report_count = user_reports.count()
+    
+    # Calculate completion rate (reports submitted vs expected)
+    expected_week_reports = 7  # Assuming 7 days a week
+    completion_rate = min(100, int((week_report_count / expected_week_reports) * 100)) if expected_week_reports > 0 else 0
+    
+    # Project participation
+    if hasattr(user, 'profile'):
+        project_count = user.profile.projects.count()
+    else:
+        project_count = 0
+    
+    # Average completion time (placeholder - would need timestamp data)
+    avg_completion_time = 2.5  # hours (placeholder)
+    
     pending_email = request.session.get('email_verification')
     context = {
         'username_form': username_form,
@@ -1411,6 +1461,13 @@ def account_settings(request):
         'email_confirm_form': email_confirm_form,
         'pending_email': pending_email,
         'password_min_score': getattr(settings, 'PASSWORD_MIN_SCORE', 3),
+        # Statistics data
+        'week_report_count': week_report_count,
+        'month_report_count': month_report_count,
+        'total_report_count': total_report_count,
+        'completion_rate': completion_rate,
+        'project_count': project_count,
+        'avg_completion_time': avg_completion_time,
     }
     return render(request, 'registration/account_settings.html', context)
 
@@ -1533,7 +1590,7 @@ def task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').filter(user=request.user).order_by('-created_at')
     now = timezone.now()
     
     project_obj = None
@@ -1614,7 +1671,7 @@ def task_export(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks = Task.objects.select_related('project', 'user', 'user__profile').filter(user=request.user).order_by('-created_at')
+    tasks = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').filter(user=request.user).order_by('-created_at')
     
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
@@ -1971,7 +2028,7 @@ def task_view(request, pk: int):
         'comments': comments,
         'attachments': attachments,
         'histories': histories,
-        'sla': _calc_sla_info(task, as_of=sla_ref_time),
+        'sla': calculate_sla_info(task, as_of=sla_ref_time),
     })
 
 
@@ -2283,32 +2340,175 @@ def admin_task_stats(request):
 
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
+    date_str = request.GET.get('date')
+    today = timezone.localdate()
+    query_date = parse_date(date_str) if date_str else today
 
-    tasks = Task.objects.select_related('project', 'user').order_by('project__name', 'user__username')
+    # Base QuerySets
+    tasks_qs = Task.objects.select_related('project', 'user')
+    reports_qs = DailyReport.objects.select_related('user').prefetch_related('projects')
+
+    # Apply permissions
     if not is_admin:
-        tasks = tasks.filter(project_id__in=manageable_project_ids)
+        tasks_qs = tasks_qs.filter(project_id__in=manageable_project_ids)
+        reports_qs = reports_qs.filter(projects__id__in=manageable_project_ids)
+
+    # Apply filters
     if project_id and project_id.isdigit():
         pid = int(project_id)
         if is_admin or pid in manageable_project_ids:
-            tasks = tasks.filter(project_id=pid)
+            tasks_qs = tasks_qs.filter(project_id=pid)
+            reports_qs = reports_qs.filter(projects__id=pid)
         else:
-            tasks = tasks.none()
+            tasks_qs = tasks_qs.none()
+            reports_qs = reports_qs.none()
+    
     if user_id and user_id.isdigit():
-        tasks = tasks.filter(user_id=int(user_id))
+        uid = int(user_id)
+        tasks_qs = tasks_qs.filter(user_id=uid)
+        reports_qs = reports_qs.filter(user_id=uid)
 
-    total = tasks.count()
-    completed = tasks.filter(status='completed').count()
-    overdue = tasks.filter(status='overdue').count()
+    # --- 1. Task Metrics ---
+    total = tasks_qs.count()
+    completed = tasks_qs.filter(status='completed').count()
+    overdue = tasks_qs.filter(status='overdue').count()
     completion_rate = (completed / total * 100) if total else 0
     overdue_rate = (overdue / total * 100) if total else 0
 
-    # group by project/user
-    project_stats_qs = tasks.values('project__id', 'project__name').annotate(
+    # --- 2. Report Metrics ---
+    total_reports = reports_qs.count()
+    last_report = reports_qs.order_by('-created_at').first()
+    
+    # Missing Reports (Today/Query Date)
+    User = get_user_model()
+    if is_admin:
+        relevant_projects = Project.objects.filter(is_active=True)
+    else:
+        relevant_projects = Project.objects.filter(id__in=manageable_project_ids, is_active=True)
+    
+    if project_id and project_id.isdigit():
+        relevant_projects = relevant_projects.filter(id=int(project_id))
+    
+    # Get users who are members of relevant projects
+    # Note: This might be slow for large datasets, consider optimizing
+    relevant_users = User.objects.filter(
+        Q(project_memberships__in=relevant_projects) | 
+        Q(managed_projects__in=relevant_projects) |
+        Q(owned_projects__in=relevant_projects)
+    ).distinct()
+    
+    if user_id and user_id.isdigit():
+        relevant_users = relevant_users.filter(id=int(user_id))
+
+    reports_today = reports_qs.filter(created_at__date=query_date)
+    reported_user_ids = set(reports_today.values_list('user_id', flat=True))
+    
+    missing_users = relevant_users.exclude(id__in=reported_user_ids)
+    missing_count = missing_users.count()
+
+    if request.GET.get('remind') == '1':
+        # Simple email reminder logic
+        sent_count = 0
+        subject = f"[提醒] 请提交今日日报 ({today})"
+        from_email = settings.DEFAULT_FROM_EMAIL
+        for u in missing_users:
+            if u.email:
+                try:
+                    # In a real app, use a template and maybe async task
+                    send_mail(
+                        subject,
+                        f"Hi {u.get_full_name() or u.username},\n\n请记得提交今天的日报。\nPlease submit your daily report for today.",
+                        from_email,
+                        [u.email],
+                        fail_silently=True
+                    )
+                    sent_count += 1
+                except Exception as e:
+                    # Log the error instead of swallowing it
+                    print(f"Failed to send reminder email to {u.email}: {e}")
+                    pass
+        messages.success(request, f"已向 {sent_count} 位用户发送催报邮件 / Sent reminders to {sent_count} users")
+        return redirect(request.path)
+
+    metrics = {
+        'missing_today': missing_count,
+        'total_reports': total_reports,
+        'last_date': last_report.created_at.date() if last_report else None,
+        'total_projects': relevant_projects.count(),
+    }
+
+    # --- 3. Charts Data ---
+    # Trend (Last 14 days)
+    trend_labels = []
+    trend_data = []
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        trend_labels.append(d.strftime('%m-%d'))
+        c = reports_qs.filter(created_at__date=d).count()
+        trend_data.append(c)
+    
+    report_trend = {'labels': trend_labels, 'data': trend_data}
+
+    # Role Distribution
+    role_counts_raw = list(reports_qs.values_list('role').annotate(c=Count('id')).order_by('-c'))
+    role_map = dict(DailyReport.ROLE_CHOICES)
+    role_counts = [(role_map.get(r, r), c) for r, c in role_counts_raw]
+
+    # --- 4. Urgent SLA Tasks ---
+    # Fetch settings
+    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+
+    urgent_tasks = []
+    candidates = tasks_qs.filter(status__in=['pending', 'in_progress'], due_at__isnull=False)
+    # Limit candidates to avoid performance hit
+    candidates = candidates.order_by('due_at')[:50] 
+    
+    for t in candidates:
+         info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+         if info['level'] in ('red', 'orange'):
+             t.sla_info = info
+             urgent_tasks.append(t)
+    urgent_tasks.sort(key=lambda x: x.sla_info['remaining_hours'])
+    sla_urgent_tasks = urgent_tasks[:10]
+
+    # --- 5. Missing Projects Table ---
+    # Group missing users by project
+    missing_projects_map = {}
+    # Prefetch to reduce queries
+    for u in missing_users.prefetch_related('project_memberships'):
+        # Find intersection of user's projects and relevant_projects
+        user_pids = set(u.project_memberships.values_list('id', flat=True))
+        # Also check owned/managed? usually project_memberships covers members
+        relevant_pids = set(relevant_projects.values_list('id', flat=True))
+        common = user_pids.intersection(relevant_pids)
+        
+        for pid in common:
+            if pid not in missing_projects_map:
+                pname = relevant_projects.get(id=pid).name
+                missing_projects_map[pid] = {'project': pname, 'users': []}
+            missing_projects_map[pid]['users'].append({'name': u.get_full_name() or u.username})
+            
+    missing_projects = []
+    for pid, data in missing_projects_map.items():
+        missing_projects.append({
+            'project': data['project'],
+            'missing_count': len(data['users']),
+            'users': data['users']
+        })
+    missing_projects.sort(key=lambda x: x['missing_count'], reverse=True)
+    missing_projects = missing_projects[:10]
+
+    # --- 6. Stats Tables (Project/User) ---
+    project_stats_qs = tasks_qs.values('project__id', 'project__name').annotate(
         total=models.Count('id'),
         completed=models.Count('id', filter=models.Q(status='completed')),
         overdue=models.Count('id', filter=models.Q(status='overdue'))
     ).order_by('project__name')
-    user_stats_qs = tasks.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
+    
+    user_stats_qs = tasks_qs.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
         total=models.Count('id'),
         completed=models.Count('id', filter=models.Q(status='completed')),
         overdue=models.Count('id', filter=models.Q(status='overdue'))
@@ -2326,6 +2526,7 @@ def admin_task_stats(request):
             'overdue': ovd_p,
             'completion_rate': (comp_p / total_p * 100) if total_p else 0,
             'overdue_rate': (ovd_p / total_p * 100) if total_p else 0,
+            'sla_rate': 0, # Placeholder, calculation is expensive without pre-aggregation
         })
 
     user_stats = []
@@ -2344,7 +2545,7 @@ def admin_task_stats(request):
             'overdue_rate': (ovd_u / total_u * 100) if total_u else 0,
         })
 
-    User = get_user_model()
+    # Choices for filters
     if is_admin:
         user_choices = User.objects.select_related('profile').all().order_by('username')
         project_choices = Project.objects.filter(is_active=True).order_by('name')
@@ -2355,6 +2556,7 @@ def admin_task_stats(request):
             Q(managed_projects__id__in=manageable_project_ids) |
             Q(owned_projects__id__in=manageable_project_ids)
         ).distinct().order_by('username')
+        
     if project_id and project_id.isdigit():
         pid = int(project_id)
         project_choices = project_choices.filter(id=pid)
@@ -2373,10 +2575,17 @@ def admin_task_stats(request):
         'overdue_rate': overdue_rate,
         'project_stats': project_stats,
         'user_stats': user_stats,
+        'metrics': metrics,
+        'report_trend': report_trend,
+        'role_counts': role_counts,
+        'missing_projects': missing_projects,
+        'sla_urgent_tasks': sla_urgent_tasks,
         'project_id': int(project_id) if project_id and project_id.isdigit() else '',
         'user_id': int(user_id) if user_id and user_id.isdigit() else '',
         'projects': project_choices,
         'users': user_choices,
+        'today': today.isoformat(),
+        'sla_remind': DEFAULT_SLA_REMIND,
     })
 
 
@@ -3418,3 +3627,68 @@ def project_phase_history(request, project_id):
     logs = project.phase_logs.all().select_related('old_phase', 'new_phase', 'changed_by')
     
     return render(request, 'reports/project_stage_history.html', {'project': project, 'logs': logs})
+
+@login_required
+def daily_report_batch_create(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            reports_data = data.get('reports', [])
+            created_count = 0
+            errors = []
+            
+            # Get user's role/position
+            try:
+                role = request.user.profile.position
+            except (Profile.DoesNotExist, AttributeError):
+                role = 'dev'
+
+            for index, item in enumerate(reports_data):
+                date_str = item.get('date')
+                project_ids = item.get('projects', [])
+                content = item.get('content', '')
+                plan = item.get('plan', '')
+                
+                if not date_str:
+                    errors.append(f"第 {index + 1} 行：日期不能为空")
+                    continue
+                
+                try:
+                    report_date = parse_date(date_str)
+                    if not report_date:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    errors.append(f"第 {index + 1} 行：日期格式无效")
+                    continue
+
+                if DailyReport.objects.filter(user=request.user, date=report_date, role=role).exists():
+                     errors.append(f"第 {index + 1} 行：{date_str} 的日报已存在")
+                     continue
+                
+                # Create report
+                report = DailyReport(
+                    user=request.user,
+                    date=report_date,
+                    role=role,
+                    today_work=content,
+                    tomorrow_plan=plan,
+                    status='submitted'
+                )
+                report.save()
+                
+                if project_ids:
+                    # Filter valid project IDs
+                    valid_projects = Project.objects.filter(id__in=project_ids)
+                    report.projects.set(valid_projects)
+                
+                created_count += 1
+            
+            if errors:
+                return JsonResponse({'success': False, 'message': '部分日报创建失败', 'errors': errors, 'created_count': created_count})
+            
+            return JsonResponse({'success': True, 'message': f'成功创建 {created_count} 份日报'})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
