@@ -1,0 +1,195 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+
+{% block title %}高级报表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>高级报表</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">报表筛选</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" id="reportFilterForm">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <label for="projectSelect" class="form-label">选择项目</label>
+                        <select class="form-select" id="projectSelect" name="project_id">
+                            <option value="">所有项目</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}" 
+                                    {% if project.id == selected_project_id %}selected{% endif %}>
+                                    {{ project.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary d-block">应用筛选</button>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'reports:export_report' %}?format=pdf&project_id={{ selected_project_id }}" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-file-pdf"></i> 导出PDF
+                            </a>
+                            <a href="{% url 'reports:export_report' %}?format=excel&project_id={{ selected_project_id }}" 
+                               class="btn btn-outline-success">
+                                <i class="bi bi-file-excel"></i> 导出Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    {% if gantt_data.tasks %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">项目甘特图</h5>
+        </div>
+        <div class="card-body">
+            <div id="ganttChart" style="height: 500px;"></div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if burn_down_data %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">项目燃尽图</h5>
+        </div>
+        <div class="card-body">
+            <div id="burnDownChart" style="height: 400px;"></div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if not gantt_data.tasks and not burn_down_data %}
+    <div class="alert alert-info">
+        <h6 class="alert-heading">暂无数据</h6>
+        <p>请先选择一个项目或确保所选项目中有任务数据。</p>
+    </div>
+    {% endif %}
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.css">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化甘特图
+    {% if gantt_data.tasks %}
+    var ganttOptions = {
+        series: [{
+            data: [
+                {% for task in gantt_data.tasks %}
+                {
+                    x: '{{ task.title }}',
+                    y: [
+                        new Date('{{ task.start_date }}').getTime(),
+                        new Date('{% if task.due_date %}{{ task.due_date }}{% else %}{{ task.start_date }}{% endif %}').getTime()
+                    ],
+                    fillColor: getStatusColor('{{ task.status }}')
+                },
+                {% endfor %}
+            ]
+        }],
+        chart: {
+            height: 500,
+            type: 'rangeBar'
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                distributed: true
+            }
+        },
+        xaxis: {
+            type: 'datetime'
+        },
+        tooltip: {
+            custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                const task = {{ gantt_data.tasks|safe|safe }};
+                const t = task[dataPointIndex];
+                return (
+                    '<div class="arrow_box">' +
+                    "<span>" + t.title + "</span><br>" +
+                    "<span>负责人：" + t.assignee + "</span><br>" +
+                    "<span>项目：" + t.project + "</span><br>" +
+                    "<span>状态：" + t.status + "</span>" +
+                    "</div>"
+                );
+            }
+        }
+    };
+
+    var ganttChart = new ApexCharts(document.querySelector("#ganttChart"), ganttOptions);
+    ganttChart.render();
+    {% endif %}
+    
+    // 初始化燃尽图
+    {% if burn_down_data %}
+    var burnDownOptions = {
+        chart: {
+            type: 'line',
+            height: 400
+        },
+        series: [{
+            name: '剩余任务数',
+            data: [
+                {% for point in burn_down_data.data %}
+                { x: '{{ point.date }}', y: {{ point.remaining_tasks }} },
+                {% endfor %}
+            ]
+        }],
+        xaxis: {
+            type: 'datetime',
+            categories: [
+                {% for point in burn_down_data.data %}
+                '{{ point.date }}',
+                {% endfor %}
+            ]
+        },
+        stroke: {
+            curve: 'straight'
+        },
+        markers: {
+            size: 5,
+            hover: {
+                sizeOffset: 6
+            }
+        },
+        tooltip: {
+            x: {
+                format: 'dd/MM/yy HH:mm'
+            },
+        },
+        title: {
+            text: '燃尽图 - {{ burn_down_data.project_name }}',
+            align: 'left'
+        }
+    };
+
+    var burnDownChart = new ApexCharts(document.querySelector("#burnDownChart"), burnDownOptions);
+    burnDownChart.render();
+    {% endif %}
+});
+
+function getStatusColor(status) {
+    const colorMap = {
+        'pending': '#5c6bc0',
+        'in_progress': '#2196f3',
+        'on_hold': '#ff9800',
+        'completed': '#66bb6a',
+        'overdue': '#ef5350',
+        'reopened': '#ab47bc'
+    };
+    return colorMap[status] || '#9e9e9e';
+}
+</script>
+{% endblock %}

@@ -3,350 +3,19 @@
 {% block nav_header %}{% include "partials/nav.html" with nav_title="团队管理 / Team Management" nav_subtitle="管理所有成员、角色分配与项目归属 / Manage members, roles and project assignments" %}{% endblock %}
 
 {% block extra_styles %}
-    :root {
-        --primary: #2563eb;
-        --primary-light: #eff6ff;
-        --primary-hover: #1d4ed8;
-        --text-main: #1e293b;
-        --text-secondary: #64748b;
-        --text-muted: #94a3b8;
-        --bg-page: #f8fafc;
-        --bg-card: #ffffff;
-        --border-color: #e2e8f0;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body {
-        background-color: var(--bg-page);
-        color: var(--text-main);
-    }
-
-    /* --- Filter Section --- */
-    .filter-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        margin-bottom: 24px;
-        box-shadow: var(--shadow-sm);
-    }
-
-    .filter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        align-items: end;
-    }
-
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .form-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-
-    .form-input, .form-select {
-        padding: 10px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 14px;
-        transition: var(--transition);
-        background-color: #fff;
-    }
-
-    .form-input:focus, .form-select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px var(--primary-light);
-        outline: none;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        margin-top: 16px;
-    }
-
-    /* --- Team Grid --- */
-    .team-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 24px;
-    }
-
-    /* --- User Card --- */
-    .user-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        transition: var(--transition);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .user-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-lg);
-        border-color: #cbd5e1;
-    }
-
-    .card-body {
-        padding: 20px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .user-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .user-avatar {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), #06b6d4);
-        color: white;
-        display: grid;
-        place-items: center;
-        font-size: 20px;
-        font-weight: 700;
-        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
-        border: 2px solid white;
-    }
-
-    .user-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .user-name {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--text-main);
-        margin: 0 0 4px 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .user-username {
-        font-size: 13px;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .role-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-    }
-    .badge-dev { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
-    .badge-qa { background: rgba(139, 92, 246, 0.1); color: #7c3aed; }
-    .badge-pm { background: rgba(16, 185, 129, 0.1); color: #059669; }
-    .badge-ui { background: rgba(236, 72, 153, 0.1); color: #db2777; }
-    .badge-ops { background: rgba(249, 115, 22, 0.1); color: #c2410c; }
-    .badge-mgr { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
-    .badge-default { background: #f1f5f9; color: #64748b; }
-
-    .meta-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--text-secondary);
-    }
-
-    .project-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 4px;
-    }
-
-    .project-tag {
-        font-size: 11px;
-        padding: 2px 8px;
-        background: #f1f5f9;
-        color: var(--text-main);
-        border-radius: 4px;
-        border: 1px solid var(--border-color);
-    }
-
-    .card-footer {
-        padding: 12px 20px;
-        background: #f8fafc;
-        border-top: 1px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
-    .status-dot {
-        width: 8px; height: 8px; border-radius: 50%;
-    }
-    .status-active { background: var(--success); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
-    .status-inactive { background: var(--text-muted); }
-
-    /* --- Buttons --- */
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        transition: var(--transition);
-        border: 1px solid transparent;
-    }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
-    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
-    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
-    .btn-ghost { background: transparent; color: var(--text-secondary); }
-    .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
-
-    /* --- Pagination --- */
-    .pagination-container {
-        margin-top: 32px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-    }
-    .pagination-info { font-size: 13px; color: var(--text-secondary); }
-    .pagination-controls {
-        display: flex; align-items: center; gap: 8px;
-        background: white; padding: 4px; border-radius: 8px;
-        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);
-    }
-    .page-btn {
-        display: flex; align-items: center; justify-content: center;
-        min-width: 36px; height: 36px; border-radius: 6px;
-        color: var(--text-main); text-decoration: none; font-size: 13px; font-weight: 600;
-        transition: var(--transition); border: 1px solid transparent;
-    }
-    .page-btn:hover:not(.disabled):not(.active) { background: var(--bg-page); border-color: var(--border-color); }
-    .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-    .page-btn.disabled { color: var(--text-muted); cursor: not-allowed; opacity: 0.6; }
-
-    @media (min-width: 768px) {
-        .pagination-container { flex-direction: row; justify-content: space-between; }
-    }
-
-    /* --- Empty State --- */
-    .empty-state {
-        text-align: center;
-        padding: 64px 20px;
-        background: var(--bg-card);
-        border-radius: var(--radius-lg);
-        border: 2px dashed var(--border-color);
-        color: var(--text-secondary);
-    }
-    .empty-icon { width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 16px; opacity: 0.5; }
-
-    /* --- Modals --- */
-    .modal-overlay {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.5);
-        backdrop-filter: blur(4px);
-        z-index: 1000;
-        display: none;
-        place-items: center;
-        padding: 20px;
-    }
-    .modal-overlay.open { display: grid; }
-    .modal-content {
-        background: white;
-        width: 100%;
-        max-width: 480px;
-        border-radius: var(--radius-lg);
-        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-        overflow: hidden;
-        animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes modalSlide {
-        from { transform: translateY(20px) scale(0.96); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    .modal-header {
-        padding: 16px 24px;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f8fafc;
-    }
-    .modal-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); }
-    .close-btn {
-        background: none; border: none; font-size: 20px; color: var(--text-secondary);
-        cursor: pointer; padding: 4px; border-radius: 4px; transition: var(--transition);
-        line-height: 1; display: flex; align-items: center; justify-content: center;
-    }
-    .close-btn:hover { background: rgba(0,0,0,0.05); color: var(--text-main); }
-    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 24px; }
-    
-    .modal-section { display: flex; flex-direction: column; gap: 12px; }
-    .modal-section-title {
-        font-size: 12px; font-weight: 700; color: var(--text-secondary);
-        text-transform: uppercase; letter-spacing: 0.05em;
-    }
+    /* --- Page Specific Styles --- */
+    /* Modal Specifics for Project List */
     .project-list-modal {
         display: flex; flex-direction: column; gap: 8px;
         max-height: 240px; overflow-y: auto;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 8px;
-        background: #f8fafc;
+        border: 1px solid var(--border-color); border-radius: 8px;
+        padding: 8px; background: #f8fafc;
     }
     .project-item-modal {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 12px;
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        font-size: 13px;
-        transition: var(--transition);
+        padding: 8px 12px; background: white;
+        border: 1px solid var(--border-color); border-radius: 6px;
+        font-size: 13px; transition: var(--transition);
     }
     .project-item-modal:hover { border-color: #cbd5e1; }
     .btn-remove {
@@ -355,21 +24,16 @@
         display: flex; align-items: center; justify-content: center;
     }
     .btn-remove:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
-
-    @media (max-width: 640px) {
-        .filter-grid { grid-template-columns: 1fr; }
-        .team-grid { grid-template-columns: 1fr; }
-    }
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
+<div class="page-container">
 
     <!-- Header -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+    <div class="page-header">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">团队管理 / Team Management</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 位成员</p>
+            <h1 class="page-title">团队管理 / Team Management</h1>
+            <p class="page-subtitle">共 {{ total_count }} 位成员</p>
         </div>
         <!-- Future: Add 'Invite Member' button here -->
     </div>
@@ -378,19 +42,27 @@
     <div class="filter-section">
         <form method="get" id="filterForm">
             <div class="filter-grid">
-                <div class="form-group" style="flex: 2; min-width: 240px;">
-                    <label class="form-label" for="q">搜索 / Search</label>
-                    <div style="position: relative;">
-                        <input type="text" id="q" name="q" class="form-input" style="width: 100%; padding-left: 36px;" placeholder="姓名、邮箱或用户名..." value="{{ q }}">
-                        <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <!-- Search -->
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label" for="q">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        搜索 / Search
+                    </label>
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
+                        <input type="text" id="q" name="q" class="search-input" placeholder="姓名、邮箱或用户名..." value="{{ q }}">
                     </div>
                 </div>
                 
+                <!-- Role Filter -->
                 <div class="form-group">
-                    <label class="form-label" for="role">角色 / Role</label>
+                    <label class="form-label" for="role">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        角色 / Role
+                    </label>
                     <select id="role" name="role" class="form-select">
                         <option value="">全部角色 / All Roles</option>
                         {% for r_val, r_label in roles %}
@@ -399,9 +71,24 @@
                     </select>
                 </div>
 
-                <div class="filter-actions" style="margin-bottom: 1px;">
+                <!-- Project Filter -->
+                <div class="form-group">
+                    <label class="form-label" for="project">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        项目 / Project
+                    </label>
+                    <select id="project" name="project" class="form-select">
+                        <option value="">全部项目 / All Projects</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }} ({{ p.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="filter-actions">
                     <a href="{% url 'reports:teams' %}" class="btn btn-ghost">重置 / Reset</a>
-                    <button type="submit" class="btn btn-secondary">
+                    <button type="submit" class="btn btn-primary" onclick="showLoading()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                         </svg>
@@ -412,9 +99,21 @@
         </form>
     </div>
 
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="text-align: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; color: var(--primary);">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <div style="margin-top: 12px; font-weight: 600; color: var(--text-main);">正在加载...</div>
+        </div>
+    </div>
+    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    <script>function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }</script>
+
     <!-- Team Grid -->
     {% if users %}
-    <div class="team-grid">
+    <div class="card-grid">
         {% for user in users %}
         <div class="user-card">
             <div class="card-body">

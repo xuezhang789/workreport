@@ -7,11 +7,11 @@ from django.contrib.auth import get_user_model
 import statistics
 from datetime import timedelta
 
-def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None):
+def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None, q=None):
     """
     Optimized performance stats calculation using DB aggregation.
     """
-    cache_key = f"performance_stats_v2_{start_date}_{end_date}_{project_id}_{role_filter}"
+    cache_key = f"performance_stats_v2_{start_date}_{end_date}_{project_id}_{role_filter}_{q}"
     cached = cache.get(cache_key)
     if cached:
         return cached
@@ -28,6 +28,12 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         tasks_qs = tasks_qs.filter(project_id=project_id)
     if role_filter and role_filter in dict(Profile.ROLE_CHOICES):
         tasks_qs = tasks_qs.filter(user__profile__position=role_filter)
+    if q:
+        tasks_qs = tasks_qs.filter(
+            Q(user__username__icontains=q) | 
+            Q(user__first_name__icontains=q) | 
+            Q(user__last_name__icontains=q)
+        )
 
     # Aggregation Helpers
     def get_stats_aggregate(queryset, group_by_field):

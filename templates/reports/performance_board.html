@@ -90,7 +90,7 @@
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
-        padding: 20px;
+        padding: 24px;
         margin-bottom: 24px;
         box-shadow: var(--shadow-sm);
     }
@@ -98,20 +98,23 @@
     .filter-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
+        gap: 20px;
         align-items: end;
     }
 
     .form-group {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
     }
 
     .form-label {
         font-size: 13px;
         font-weight: 600;
         color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .form-select, .form-input {
@@ -122,6 +125,7 @@
         transition: var(--transition);
         background-color: #fff;
         width: 100%;
+        height: 42px; /* Fixed height for alignment */
     }
 
     .form-select {
@@ -137,11 +141,21 @@
         outline: none;
     }
 
-    /* --- Search & Filter --- */
-    .search-bar {
+    /* Search Input with Icon */
+    .search-wrapper {
         position: relative;
-        max-width: 400px;
         width: 100%;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        pointer-events: none;
+        width: 16px;
+        height: 16px;
     }
 
     .search-input {
@@ -152,21 +166,13 @@
         font-size: 14px;
         transition: var(--transition);
         background-color: #fff;
+        height: 42px;
     }
-
+    
     .search-input:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px var(--primary-light);
         outline: none;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-secondary);
-        pointer-events: none;
     }
 
     .filter-actions {
@@ -174,7 +180,15 @@
         gap: 12px;
         justify-content: flex-end;
         align-items: center;
-        margin-top: 16px;
+        grid-column: 1 / -1; /* Actions span full width on mobile, or shift to end */
+        margin-top: 4px;
+    }
+    
+    @media (min-width: 1024px) {
+        .filter-actions {
+            grid-column: auto; /* Auto placement on desktop */
+            margin-top: 0;
+        }
     }
 
     .data-grid {
@@ -186,6 +200,7 @@
     
     @media (max-width: 1024px) {
         .data-grid { grid-template-columns: 1fr; }
+        .filter-grid { grid-template-columns: 1fr; } /* Stack filters on mobile */
     }
 
     .card {
@@ -219,8 +234,9 @@
 
     .table-container {
         overflow-x: auto;
-        max-height: 400px; /* Fixed height for scroll */
+        height: 500px; /* Fixed height for scroll */
         overflow-y: auto;
+        background: #fff;
     }
 
     .table thead th {
@@ -439,28 +455,73 @@
 
     <!-- Filter Bar -->
     <div class="filter-section">
-        <form method="get">
-            <div class="filter-grid" style="align-items: center;">
-                <div class="form-group search-bar" style="grid-column: span 2;">
-                    <label class="form-label" for="search">搜索 / Search</label>
-                    <div style="position: relative;">
-                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <form method="get" id="filterForm">
+            <div class="filter-grid">
+                <!-- Name Search -->
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label" for="search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        姓名搜索 / Name Search
+                    </label>
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="search" name="q" class="search-input" placeholder="姓名、部门或指标..." value="{{ request.GET.q }}">
+                        <input type="text" id="search" name="q" class="search-input" placeholder="输入姓名..." value="{{ request.GET.q }}">
                     </div>
                 </div>
+
+                <!-- Department / Role -->
                 <div class="form-group">
-                    <label class="form-label" for="start">开始日期 / Start</label>
+                    <label class="form-label" for="role">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        部门 / Department
+                    </label>
+                    <select id="role" name="role" class="form-select">
+                        <option value="">所有部门</option>
+                        {% for r_code, r_name in report_roles %}
+                        <option value="{{ r_code }}" {% if role_filter == r_code %}selected{% endif %}>{{ r_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="form-group">
+                    <label class="form-label" for="start">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        开始日期 / Start
+                    </label>
                     <input type="date" id="start" name="start" class="form-input" value="{{ start|date:'Y-m-d' }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="end">结束日期 / End</label>
+                    <label class="form-label" for="end">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        结束日期 / End
+                    </label>
                     <input type="date" id="end" name="end" class="form-input" value="{{ end|date:'Y-m-d' }}">
                 </div>
+
+                <!-- KPI Filter (Visual only for now if backend logic missing) -->
                 <div class="form-group">
-                    <label class="form-label" for="project">项目 / Project</label>
+                    <label class="form-label" for="kpi">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        关键指标 / KPI
+                    </label>
+                    <select id="kpi" name="kpi" class="form-select">
+                        <option value="">默认排序</option>
+                        <option value="completion_desc" {% if request.GET.kpi == 'completion_desc' %}selected{% endif %}>完成率: 高 -> 低</option>
+                        <option value="completion_asc" {% if request.GET.kpi == 'completion_asc' %}selected{% endif %}>完成率: 低 -> 高</option>
+                        <option value="overdue_desc" {% if request.GET.kpi == 'overdue_desc' %}selected{% endif %}>逾期率: 高 -> 低</option>
+                    </select>
+                </div>
+                
+                <!-- Project Filter -->
+                <div class="form-group">
+                    <label class="form-label" for="project">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        项目 / Project
+                    </label>
                     <select id="project" name="project" class="form-select">
                         <option value="">所有项目</option>
                         {% for p in projects %}
@@ -468,35 +529,40 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="role">角色 / Role</label>
-                    <select id="role" name="role" class="form-select">
-                        <option value="">所有角色</option>
-                        {% for r_code, r_name in report_roles %}
-                        <option value="{{ r_code }}" {% if role_filter == r_code %}selected{% endif %}>{{ r_name }}</option>
-                        {% endfor %}
-                    </select>
+
+                <!-- Actions -->
+                <div class="filter-actions">
+                    <a href="{% url 'reports:performance_board' %}" class="btn btn-ghost">重置</a>
+                    <button type="submit" class="btn btn-primary" onclick="showLoading()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        筛选 / Filter
+                    </button>
+                    <a href="{% url 'reports:performance_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        导出
+                    </a>
                 </div>
-            </div>
-            <div class="filter-actions">
-                <a href="{% url 'reports:performance_board' %}" class="btn btn-ghost">重置</a>
-                <button type="submit" class="btn btn-primary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    筛选
-                </button>
-                <a href="{% url 'reports:performance_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    导出
-                </a>
             </div>
         </form>
     </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="text-align: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; color: var(--primary);">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <div style="margin-top: 12px; font-weight: 600; color: var(--text-main);">正在加载...</div>
+        </div>
+    </div>
+    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    <script>function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }</script>
 
     <!-- Data Tables -->
     <div class="data-grid">

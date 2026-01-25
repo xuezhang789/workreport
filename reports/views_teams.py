@@ -15,8 +15,11 @@ def teams_list(request):
 
     q = (request.GET.get('q') or '').strip()
     role = (request.GET.get('role') or '').strip()
+    project_id = request.GET.get('project')
     
-    qs = team_service.get_team_members(q=q, role=role)
+    project_filter = int(project_id) if project_id and project_id.isdigit() else None
+    
+    qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -26,9 +29,10 @@ def teams_list(request):
         'page_obj': page_obj,
         'q': q,
         'role': role,
+        'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
         'total_count': qs.count(),
-        'projects': Project.objects.filter(is_active=True).order_by('name'), # For modal
+        'projects': Project.objects.filter(is_active=True).order_by('name'), # For modal & filter
     })
 
 @login_required

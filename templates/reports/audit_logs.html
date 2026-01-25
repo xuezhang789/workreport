@@ -145,7 +145,13 @@
     }
 
     /* --- Tables --- */
-    .table-container { overflow-x: auto; }
+    .table-container { 
+        overflow-x: auto;
+        max-height: 600px; /* Fixed height for scroll */
+        overflow-y: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
     .table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
     .table th {
         text-align: left;
@@ -154,8 +160,12 @@
         font-weight: 600;
         font-size: 12px;
         border-bottom: 1px solid var(--border-color);
-        background: var(--bg-page);
+        background: #f8fafc;
         text-transform: uppercase;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 1px 0 var(--border-color);
     }
     .table td {
         padding: 16px 20px;
