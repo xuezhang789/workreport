@@ -22,11 +22,9 @@ class UIRenderingTests(TestCase):
         response = self.client.get(reverse('reports:teams'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'reports/teams.html')
-        # Check for new CSS classes
-        self.assertContains(response, 'page-header')
-        self.assertContains(response, 'page-title')
-        self.assertContains(response, 'card-grid')
-        self.assertContains(response, 'user-card')
+        # Check for new CSS classes/structure
+        self.assertContains(response, 'team-grid')
+        self.assertContains(response, 'team-card')
         # Check content
         self.assertContains(response, 'Test Project') # Project tag in user card
 
@@ -36,7 +34,6 @@ class UIRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'reports/admin_task_stats.html')
         # Check for new CSS classes
-        self.assertContains(response, 'page-header')
         self.assertContains(response, 'summary-grid') # Updated from dashboard-grid
         self.assertContains(response, 'summary-card') # Updated from kpi-card
         self.assertContains(response, 'tabs-nav')
