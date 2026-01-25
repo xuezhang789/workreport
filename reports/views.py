@@ -142,13 +142,14 @@ def has_project_manage_permission(user, project: Project):
 
 def _streak_map():
     """计算用户连签天数字典，键为 user_id。优化性能，使用Django ORM高效查询"""
-    from django.db.models import Max
-    from django.db.models.functions import RowNumber
-    from django.db.models import Window
+    # 仅查询最近365天的数据，避免加载全部历史导致OOM
+    today = timezone.localdate()
+    start_date = today - timedelta(days=365)
     
     # 获取所有提交的报告，按用户和日期排序
     submissions = DailyReport.objects.filter(
-        status='submitted'
+        status='submitted',
+        date__gte=start_date
     ).order_by('user_id', 'date').values('user_id', 'date')
     
     # 构建每个用户的日期集合
@@ -156,7 +157,6 @@ def _streak_map():
     for item in submissions:
         user_dates.setdefault(item['user_id'], set()).add(item['date'])
     
-    today = timezone.localdate()
     streaks = {}
     
     # 对每个用户计算连签天数
@@ -411,6 +411,9 @@ def user_search_api(request):
 @login_required
 def username_check_api(request):
     """实时检查用户名是否可用。"""
+    if not has_manage_permission(request.user):
+         return JsonResponse({'available': False, 'reason': 'Permission denied'}, status=403)
+         
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")
     if _throttle(request, 'username_check_ts', min_interval=0.4):
@@ -1021,6 +1024,8 @@ def daily_report_create(request):
                 errors.append("该日期、该角色的日报已存在，请编辑已有日报。")
 
         if errors:
+            for e in errors:
+                messages.error(request, e)
             context = {
                 'user_position': position,
                 'projects': projects_qs,
@@ -1065,6 +1070,8 @@ def daily_report_create(request):
             # 编辑时避免与其他日报冲突
             if conflict_exists:
                 errors.append("已存在相同日期与角色的日报，请调整日期或角色后再保存。")
+                for e in errors:
+                    messages.error(request, e)
                 context = {
                     'user_position': position,
                     'projects': projects_qs,

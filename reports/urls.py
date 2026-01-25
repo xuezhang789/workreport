@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/role-template/', views.role_template_api, name='role_template_api'),
     path('api/projects/', views.project_search_api, name='project_search_api'),
     path('api/users/', views.user_search_api, name='user_search_api'),
+    path('api/check-username/', views.username_check_api, name='username_check_api'),
     path('tasks/', views.task_list, name='task_list'),
     path('tasks/bulk/', views.task_bulk_action, name='task_bulk_action'),
     path('tasks/export/', views.task_export, name='task_export'),

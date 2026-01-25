@@ -2,6 +2,7 @@
 {% block title %}团队管理 / Team Management{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="团队管理 / Team Management" nav_subtitle="管理所有成员、角色分配与项目归属 / Manage members, roles and project assignments" %}{% endblock %}
 
+{% load reports_filters %}
 {% block extra_styles %}
     :root {
         --primary: #2563eb;
@@ -492,7 +493,11 @@
                 <div class="meta-list">
                     <div class="meta-item">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                        {{ user.email|default:"No Email" }}
+                        {% if request.user.is_staff or has_manage_permission %}
+                            {{ user.email|default:"No Email" }}
+                        {% else %}
+                            {{ user.email|default:"No Email"|mask_email }}
+                        {% endif %}
                     </div>
                     <div class="meta-item" style="align-items: flex-start;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 3px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
