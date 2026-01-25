@@ -104,6 +104,29 @@ def _friendly_forbidden(request, message):
     return render(request, '403.html', {'detail': message}, status=403)
 
 
+def _validate_file(file):
+    """
+    Validates file size and extension.
+    Returns (is_valid, error_message)
+    """
+    MAX_SIZE = 50 * 1024 * 1024  # 50MB
+    ALLOWED_EXTENSIONS = {
+        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+        '.txt', '.md', '.csv',
+        '.jpg', '.jpeg', '.png', '.gif', '.svg',
+        '.zip', '.rar', '.7z', '.tar', '.gz'
+    }
+    
+    if file.size > MAX_SIZE:
+        return False, f"文件大小超过限制 (Max 50MB): {file.name}"
+        
+    ext = os.path.splitext(file.name)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False, f"不支持的文件类型: {ext}"
+        
+    return True, None
+
+
 def _notify(request, users, message, category="info"):
     """
     简易通知闭环：写入审计日志，并可扩展为邮件/Webhook。
@@ -2845,7 +2868,8 @@ def admin_task_create(request):
         projects_qs = projects_qs.filter(id__in=manageable_project_ids)
     projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
-    user_objs = list(User.objects.all().order_by('username'))
+    # Performance optimization: Do NOT load all users.
+    # user_objs = list(User.objects.all().order_by('username'))
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
@@ -2892,7 +2916,7 @@ def admin_task_create(request):
             return render(request, 'reports/admin_task_form.html', {
                 'errors': errors,
                 'projects': projects,
-                'users': user_objs,
+                'users': collaborators,
                 'task_status_choices': Task.STATUS_CHOICES,
                 'existing_urls': existing_urls,
                 'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
@@ -2924,7 +2948,7 @@ def admin_task_create(request):
 
     return render(request, 'reports/admin_task_form.html', {
         'projects': projects,
-        'users': user_objs,
+        'users': [],
         'task_status_choices': Task.STATUS_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
@@ -2959,7 +2983,8 @@ def admin_task_edit(request, pk):
         
     projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
-    user_objs = list(User.objects.all().order_by('username'))
+    # Performance optimization
+    # user_objs = list(User.objects.all().order_by('username'))
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
@@ -3009,7 +3034,7 @@ def admin_task_edit(request, pk):
                 'task': task,
                 'errors': errors,
                 'projects': projects,
-                'users': user_objs,
+                'users': collaborators,
                 'task_status_choices': Task.STATUS_CHOICES,
                 'existing_urls': existing_urls,
                 'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
@@ -3041,7 +3066,7 @@ def admin_task_edit(request, pk):
     return render(request, 'reports/admin_task_form.html', {
         'task': task,
         'projects': projects,
-        'users': user_objs,
+        'users': task.collaborators.all(),
         'task_status_choices': Task.STATUS_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
@@ -4075,6 +4100,10 @@ def task_upload_attachment(request, task_id):
     if request.method == 'POST' and request.FILES.getlist('files'):
         uploaded_files = []
         for file in request.FILES.getlist('files'):
+            is_valid, error_msg = _validate_file(file)
+            if not is_valid:
+                return JsonResponse({'status': 'error', 'message': error_msg}, status=400)
+                
             attachment = TaskAttachment.objects.create(
                 task=task,
                 user=request.user,
@@ -4121,6 +4150,10 @@ def project_upload_attachment(request, project_id):
     if request.method == 'POST' and request.FILES.getlist('files'):
         uploaded_files = []
         for file in request.FILES.getlist('files'):
+            is_valid, error_msg = _validate_file(file)
+            if not is_valid:
+                return JsonResponse({'status': 'error', 'message': error_msg}, status=400)
+                
             attachment = ProjectAttachment.objects.create(
                 project=project,
                 uploaded_by=request.user,
