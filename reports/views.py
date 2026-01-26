@@ -3003,6 +3003,38 @@ def admin_task_create(request):
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
+        # Enforce Collaborator-only Restrictions
+        if is_collaborator_only:
+            # Title
+            req_title = (request.POST.get('title') or '').strip()
+            if req_title != task.title:
+                return _admin_forbidden(request, "权限不足：协作人无法修改任务标题 / Collaborators cannot change title")
+            
+            # Project
+            req_project = request.POST.get('project')
+            if req_project and int(req_project) != task.project.id:
+                return _admin_forbidden(request, "权限不足：协作人无法移动项目 / Collaborators cannot change project")
+                
+            # Owner
+            req_user = request.POST.get('user')
+            if req_user and int(req_user) != task.user.id:
+                return _admin_forbidden(request, "权限不足：协作人无法转让负责人 / Collaborators cannot change owner")
+            
+            # Collaborators
+            req_collabs = set(map(int, filter(None, request.POST.getlist('collaborators'))))
+            cur_collabs = set(task.collaborators.values_list('id', flat=True))
+            if req_collabs != cur_collabs:
+                return _admin_forbidden(request, "权限不足：协作人无法修改协作人列表 / Collaborators cannot change collaborators")
+
+            # URL & Content (Simple Check)
+            req_url = (request.POST.get('url') or '').strip()
+            if req_url != task.url:
+                 return _admin_forbidden(request, "权限不足：协作人无法修改 URL / Collaborators cannot change URL")
+                 
+            # Note: We allow Due Date to pass if it's not in POST (disabled input), 
+            # but if it IS in POST and changed, we should block.
+            # However, simpler to rely on frontend disable + above core checks for now.
+
         title = (request.POST.get('title') or '').strip()
         url = (request.POST.get('url') or '').strip()
         content = (request.POST.get('content') or '').strip()
@@ -3212,6 +3244,12 @@ def admin_task_edit(request, pk):
     if not can_manage:
         return _admin_forbidden(request)
 
+    # Permission Check: Collaborator-only Restriction
+    can_full_edit = user.is_superuser or \
+                    can_manage_project(user, task.project) or \
+                    task.user == user
+    is_collaborator_only = not can_full_edit and task.collaborators.filter(pk=user.pk).exists()
+
     projects_qs = Project.objects.filter(is_active=True)
     if not user.is_superuser:
         # Limit project choices to projects user can MANAGE (if they want to move it)
@@ -3235,65 +3273,92 @@ def admin_task_edit(request, pk):
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
-        title = (request.POST.get('title') or '').strip()
-        url = (request.POST.get('url') or '').strip()
-        content = (request.POST.get('content') or '').strip()
-        project_id = request.POST.get('project')
-        user_id = request.POST.get('user')
+        # Enforce Collaborator-only Restrictions: Check if they tried to bypass UI
+        if is_collaborator_only:
+             if 'title' in request.POST and (request.POST.get('title') or '').strip() != task.title:
+                 return _admin_forbidden(request, "权限不足：协作人无法修改任务标题")
+             if 'project' in request.POST and request.POST.get('project') and int(request.POST.get('project')) != task.project.id:
+                 return _admin_forbidden(request, "权限不足：协作人无法移动项目")
+             if 'user' in request.POST and request.POST.get('user') and int(request.POST.get('user')) != task.user.id:
+                 return _admin_forbidden(request, "权限不足：协作人无法转让负责人")
+        
         status = request.POST.get('status') or 'pending'
-        due_at_str = request.POST.get('due_at')
-
         errors = []
-        if not title:
-            errors.append("请输入任务标题")
-        if not url and not content:
-            errors.append("任务内容需填写：请选择 URL 或填写文本内容")
+        
+        if is_collaborator_only:
+            # Use existing values
+            title = task.title
+            url = task.url
+            content = task.content
+            project = task.project
+            target_user = task.user
+            due_at = task.due_at
+            # Collaborators: keep existing (set later)
+            collaborators = list(task.collaborators.all())
+        else:
+            title = (request.POST.get('title') or '').strip()
+            url = (request.POST.get('url') or '').strip()
+            content = (request.POST.get('content') or '').strip()
+            project_id = request.POST.get('project')
+            user_id = request.POST.get('user')
+            due_at_str = request.POST.get('due_at')
+
+            if not title:
+                errors.append("请输入任务标题")
+            if not url and not content:
+                errors.append("任务内容需填写：请选择 URL 或填写文本内容")
+            
+            project = None
+            target_user = None
+            if project_id and project_id.isdigit():
+                project = Project.objects.filter(id=int(project_id)).first()
+            if not project:
+                errors.append("请选择项目")
+            elif not user.is_superuser:
+                 if project.id != task.project.id:
+                     if not can_manage_project(user, project):
+                         errors.append("您没有权限移动任务到此项目 (需目标项目管理权限)")
+
+            if user_id and user_id.isdigit():
+                target_user = User.objects.filter(id=int(user_id)).first()
+            if not target_user:
+                errors.append("请选择目标用户")
+
+            collaborator_ids = request.POST.getlist('collaborators')
+            collaborators = []
+            if collaborator_ids:
+                collaborators = User.objects.filter(id__in=collaborator_ids)
+
+            due_at = None
+            if due_at_str:
+                try:
+                    parsed = datetime.fromisoformat(due_at_str)
+                    due_at = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
+                except ValueError:
+                    errors.append("完成时间格式不正确，请使用日期时间选择器")
+
         if status not in dict(Task.STATUS_CHOICES):
             errors.append("请选择有效的状态")
-            
-        project = None
-        target_user = None
-        if project_id and project_id.isdigit():
-            project = Project.objects.filter(id=int(project_id)).first()
-        if not project:
-            errors.append("请选择项目")
-        elif not user.is_superuser:
-             # If user is not superuser, check if they can manage the target project
-             # OR if they are just keeping it in the same project (and they have edit rights to task)
-             if project.id != task.project.id:
-                 if not can_manage_project(user, project):
-                     errors.append("您没有权限移动任务到此项目 (需目标项目管理权限)")
-             else:
-                 # Same project, check if they can still access it? (already checked by accessible_projects)
-                 pass
-
-        if user_id and user_id.isdigit():
-            target_user = User.objects.filter(id=int(user_id)).first()
-        if not target_user:
-            errors.append("请选择目标用户")
-
-        collaborator_ids = request.POST.getlist('collaborators')
-        collaborators = []
-        if collaborator_ids:
-            collaborators = User.objects.filter(id__in=collaborator_ids)
-
-        due_at = None
-        if due_at_str:
-            try:
-                parsed = datetime.fromisoformat(due_at_str)
-                due_at = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
-            except ValueError:
-                errors.append("完成时间格式不正确，请使用日期时间选择器")
 
         if errors:
             return render(request, 'reports/admin_task_form.html', {
                 'task': task,
+                'is_collaborator_only': is_collaborator_only,
                 'errors': errors,
                 'projects': projects,
-                'users': collaborators,
+                'users': collaborators if not is_collaborator_only else task.collaborators.all(),
                 'task_status_choices': Task.STATUS_CHOICES,
                 'existing_urls': existing_urls,
-                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
+                'form_values': {
+                    'title': title, 
+                    'url': url, 
+                    'content': content, 
+                    'project_id': project.id if project else '', 
+                    'user_id': target_user.id if target_user else '', 
+                    'status': status, 
+                    'due_at': due_at.isoformat() if due_at else '', 
+                    'collaborator_ids': [c.id for c in collaborators]
+                },
             })
 
         # Update task
@@ -3308,19 +3373,21 @@ def admin_task_edit(request, pk):
         
         task.collaborators.set(collaborators)
 
-        # Handle attachments
-        for f in request.FILES.getlist('attachments'):
-            TaskAttachment.objects.create(
-                task=task,
-                user=request.user,
-                file=f
-            )
+        # Handle attachments (Only allow upload if not collaborator-only)
+        if not is_collaborator_only:
+            for f in request.FILES.getlist('attachments'):
+                TaskAttachment.objects.create(
+                    task=task,
+                    user=request.user,
+                    file=f
+                )
 
         log_action(request, 'update', f"task {task.id}")
         return redirect('reports:task_view', pk=task.id)
 
     return render(request, 'reports/admin_task_form.html', {
         'task': task,
+        'is_collaborator_only': is_collaborator_only,
         'projects': projects,
         'users': task.collaborators.all(),
         'task_status_choices': Task.STATUS_CHOICES,
@@ -4141,8 +4208,25 @@ def project_edit(request, pk: int):
     if not can_manage_project(request.user, project):
         return _admin_forbidden(request, "需要管理员权限 / Admin or project manager required")
 
+    # Permission Logic
+    is_superuser = request.user.is_superuser
+    is_owner = (request.user == project.owner)
+    
+    # Rule 1: Only Superuser can edit Owner
+    can_edit_owner = is_superuser
+    
+    # Rule 2: Only Superuser and Owner can edit Managers
+    can_edit_managers = is_superuser or is_owner
+
     if request.method == 'POST':
         form = ProjectForm(request.POST, instance=project)
+        
+        # Enforce restrictions by disabling fields (Django ignores POST data for disabled fields)
+        if not can_edit_owner:
+            form.fields['owner'].disabled = True
+        if not can_edit_managers:
+            form.fields['managers'].disabled = True
+            
         if form.is_valid():
             project = form.save()
             log_action(request, 'update', f"project {project.id} {project.code}")
@@ -4150,7 +4234,19 @@ def project_edit(request, pk: int):
             return redirect('reports:project_detail', pk=project.pk)
     else:
         form = ProjectForm(instance=project)
-    return render(request, 'reports/project_form.html', {'form': form, 'mode': 'edit', 'project': project})
+        # Set initial disabled state for UI rendering
+        if not can_edit_owner:
+            form.fields['owner'].disabled = True
+        if not can_edit_managers:
+            form.fields['managers'].disabled = True
+
+    return render(request, 'reports/project_form.html', {
+        'form': form, 
+        'mode': 'edit', 
+        'project': project,
+        'can_edit_owner': can_edit_owner,
+        'can_edit_managers': can_edit_managers
+    })
 
 
 @login_required
@@ -4582,3 +4678,53 @@ def project_delete_attachment(request, attachment_id):
         return JsonResponse({'status': 'success'})
         
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+# In reports/views.py
+
+@login_required
+def api_project_detail(request, pk: int):
+    """API to get project details for editing form."""
+    project = get_object_or_404(Project, pk=pk)
+    if not can_manage_project(request.user, project):
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+        
+    return JsonResponse({
+        'id': project.id,
+        'name': project.name,
+        'code': project.code,
+        'description': project.description,
+        'start_date': project.start_date.isoformat() if project.start_date else '',
+        'end_date': project.end_date.isoformat() if project.end_date else '',
+        'sla_hours': project.sla_hours,
+        'is_active': project.is_active,
+        'owner_id': project.owner_id,
+        'manager_ids': list(project.managers.values_list('id', flat=True)),
+        'member_ids': list(project.members.values_list('id', flat=True)),
+    })
+
+@login_required
+def api_task_detail(request, pk: int):
+    """API to get task details for editing form."""
+    task = get_object_or_404(Task, pk=pk)
+    
+    # Permission check (reuse logic from admin_task_edit)
+    can_see = request.user.is_superuser or \
+              get_accessible_projects(request.user).filter(id=task.project.id).exists() or \
+              task.user == request.user or \
+              task.collaborators.filter(pk=request.user.pk).exists()
+              
+    if not can_see:
+        return JsonResponse({'error': 'Not Found'}, status=404)
+        
+    return JsonResponse({
+        'id': task.id,
+        'title': task.title,
+        'url': task.url,
+        'content': task.content,
+        'project_id': task.project_id,
+        'user_id': task.user_id,
+        'status': task.status,
+        'priority': task.priority,
+        'due_at': task.due_at.isoformat() if task.due_at else '',
+        'collaborator_ids': list(task.collaborators.values_list('id', flat=True)),
+    })
