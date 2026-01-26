@@ -66,12 +66,23 @@ def has_manage_permission(user):
 
 def log_action(request, action: str, extra: str = "", data=None):
     ip = request.META.get('REMOTE_ADDR')
+    # Handle Proxy
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+        
     ua = request.META.get('HTTP_USER_AGENT', '')[:512]
     elapsed_ms = getattr(request, '_elapsed_ms', None)
     if elapsed_ms is None and hasattr(request, '_elapsed_start'):
         elapsed_ms = int((time.monotonic() - request._elapsed_start) * 1000)
+    
+    # Try to determine operator name if user is not logged in but we have a username in data
+    user = request.user if request.user.is_authenticated else None
+    operator_name = user.get_full_name() or user.username if user else 'System/Anonymous'
+    
     AuditLog.objects.create(
-        user=request.user if request.user.is_authenticated else None,
+        user=user,
+        operator_name=operator_name,
         action=action,
         path=request.path[:255],
         method=request.method,
@@ -82,6 +93,8 @@ def log_action(request, action: str, extra: str = "", data=None):
             'ua': ua,
             **({'elapsed_ms': elapsed_ms} if elapsed_ms is not None else {}),
         },
+        entity_type='AccessLog', # Mark manual logs distinct from Data Changes
+        entity_id='0',
     )
 
 
@@ -2045,6 +2058,9 @@ def task_bulk_action(request):
         messages.success(request, f"批量操作完成：更新 {updated}/{total_selected} 条")
     else:
         messages.info(request, "未更新任何任务，请检查操作与选择")
+    
+    # log_action is manual business log, AuditLog is automatic data log. 
+    # We keep log_action for high-level "bulk action" tracking.
     log_action(
         request,
         'update',
@@ -3282,6 +3298,11 @@ def admin_task_edit(request, pk):
              if 'user' in request.POST and request.POST.get('user') and int(request.POST.get('user')) != task.user.id:
                  return _admin_forbidden(request, "权限不足：协作人无法转让负责人")
         
+        # Capture old state for history
+        old_status = task.status
+        old_due = task.due_at
+        old_user = task.user
+        
         status = request.POST.get('status') or 'pending'
         errors = []
         
@@ -3360,6 +3381,11 @@ def admin_task_edit(request, pk):
                     'collaborator_ids': [c.id for c in collaborators]
                 },
             })
+
+        # Capture old state for history
+        old_status = task.status
+        old_due = task.due_at
+        old_user = task.user
 
         # Update task
         task.title = title
@@ -4029,8 +4055,14 @@ def audit_logs(request):
     method = (request.GET.get('method') or '').strip()
     user_q = (request.GET.get('user') or '').strip()
     path_q = (request.GET.get('path') or '').strip()
+    
+    # New filters
+    entity_type = (request.GET.get('entity_type') or '').strip()
+    entity_id = (request.GET.get('entity_id') or '').strip()
+    project_id = (request.GET.get('project_id') or '').strip()
+    task_id = (request.GET.get('task_id') or '').strip()
 
-    qs = AuditLog.objects.select_related('user').order_by('-created_at')
+    qs = AuditLog.objects.select_related('user', 'project', 'task').order_by('-created_at')
     if start_date:
         qs = qs.filter(created_at__date__gte=start_date)
     if end_date:
@@ -4040,12 +4072,37 @@ def audit_logs(request):
     if method:
         qs = qs.filter(method__iexact=method)
     if user_q:
-        qs = qs.filter(Q(user__username__icontains=user_q) | Q(user__first_name__icontains=user_q) | Q(user__last_name__icontains=user_q))
+        qs = qs.filter(
+            Q(user__username__icontains=user_q) | 
+            Q(user__first_name__icontains=user_q) | 
+            Q(user__last_name__icontains=user_q) |
+            Q(operator_name__icontains=user_q)
+        )
     if path_q:
         qs = qs.filter(path__icontains=path_q)
+    if entity_type:
+        qs = qs.filter(entity_type__icontains=entity_type)
+    if entity_id:
+        qs = qs.filter(entity_id=entity_id)
+    if project_id:
+        qs = qs.filter(project_id=project_id)
+    if task_id:
+        qs = qs.filter(task_id=task_id)
 
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
+
+    # Get all active projects for the filter dropdown
+    projects = Project.objects.filter(is_active=True).values('id', 'name', 'code')
+    
+    # Get relevant tasks if project is selected, otherwise top recent tasks or empty
+    # For performance, maybe better to use an AJAX autocomplete, but let's just list recent active tasks if project selected
+    tasks = []
+    if project_id:
+        tasks = Task.objects.filter(project_id=project_id).exclude(status='completed').values('id', 'title')[:50]
+    elif task_id:
+        # If task is selected but no project, ensure we show that task in dropdown
+        tasks = Task.objects.filter(id=task_id).values('id', 'title')
 
     context = {
         'logs': page_obj,
@@ -4056,6 +4113,12 @@ def audit_logs(request):
         'method': method,
         'user_q': user_q,
         'path_q': path_q,
+        'entity_type': entity_type,
+        'entity_id': entity_id,
+        'project_id': project_id,
+        'task_id': task_id,
+        'projects': projects,
+        'tasks': tasks,
         'actions': AuditLog.ACTION_CHOICES,
     }
     return render(request, 'reports/audit_logs.html', context)
@@ -4094,21 +4157,79 @@ def audit_logs_export(request):
 
     rows = (
         [
-            log.created_at.astimezone(timezone.get_current_timezone()).strftime("%Y-%m-%d %H:%M"),
-            log.user.get_full_name() or log.user.username if log.user else "匿名",
+            log.created_at.astimezone(timezone.get_current_timezone()).strftime("%Y-%m-%d %H:%M:%S"),
+            log.operator_name or (log.user.username if log.user else "System"),
             log.get_action_display(),
-            log.method,
-            log.path,
+            log.entity_type,
+            log.entity_id,
+            json.dumps(log.changes, ensure_ascii=False) if log.changes else "",
             log.ip or "",
-            log.extra or "",
+            log.remarks or log.extra or "",
         ]
         for log in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
-    header = ["时间", "用户", "动作", "方法", "路径", "IP", "备注"]
+    header = ["时间", "操作人", "动作", "实体类型", "实体ID", "变更详情", "IP", "备注"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="audit_logs.csv"'
     log_action(request, 'export', f"audit_logs count={qs.count()} action={action} method={method}")
     return response
+
+@login_required
+def api_audit_logs(request):
+    """
+    API endpoint for querying audit logs.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    start_date = parse_date(request.GET.get('start_date') or '')
+    end_date = parse_date(request.GET.get('end_date') or '')
+    action = (request.GET.get('action') or '').strip()
+    entity_type = (request.GET.get('entity_type') or '').strip()
+    entity_id = (request.GET.get('entity_id') or '').strip()
+    user_q = (request.GET.get('user') or '').strip()
+    project_id = (request.GET.get('project_id') or '').strip()
+    task_id = (request.GET.get('task_id') or '').strip()
+
+    qs = AuditLog.objects.select_related('user', 'project', 'task').order_by('-created_at')
+    
+    if start_date: qs = qs.filter(created_at__date__gte=start_date)
+    if end_date: qs = qs.filter(created_at__date__lte=end_date)
+    if action: qs = qs.filter(action=action)
+    if entity_type: qs = qs.filter(entity_type__icontains=entity_type)
+    if entity_id: qs = qs.filter(entity_id=entity_id)
+    if project_id: qs = qs.filter(project_id=project_id)
+    if task_id: qs = qs.filter(task_id=task_id)
+    if user_q:
+        qs = qs.filter(
+            Q(user__username__icontains=user_q) | 
+            Q(operator_name__icontains=user_q)
+        )
+
+    limit = int(request.GET.get('limit', 20))
+    paginator = Paginator(qs, limit)
+    page = paginator.get_page(request.GET.get('page'))
+
+    data = [{
+        'id': log.id,
+        'action': log.action,
+        'entity_type': log.entity_type,
+        'entity_id': log.entity_id,
+        'changes': log.changes,
+        'operator': log.operator_name,
+        'timestamp': log.created_at.isoformat(),
+        'ip': log.ip,
+        'remarks': log.remarks or log.extra,
+        'project': {'id': log.project.id, 'name': log.project.name} if log.project else None,
+        'task': {'id': log.task.id, 'title': log.task.title} if log.task else None,
+    } for log in page]
+
+    return JsonResponse({
+        'results': data,
+        'count': paginator.count,
+        'num_pages': paginator.num_pages,
+        'current_page': page.number
+    })
 
 
 @login_required

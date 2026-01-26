@@ -57,6 +57,7 @@ urlpatterns = [
     # API
     path('api/projects/<int:pk>/', views.api_project_detail, name='api_project_detail'),
     path('api/tasks/<int:pk>/', views.api_task_detail, name='api_task_detail'),
+    path('api/audit-logs/', views.api_audit_logs, name='api_audit_logs'),
 
     # Phase Management
     path('admin/phases/', views.project_phase_config_list, name='project_phase_config_list'),

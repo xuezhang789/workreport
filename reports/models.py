@@ -262,24 +262,49 @@ class AuditLog(models.Model):
         ('create', '创建'),
         ('update', '更新'),
         ('access', '访问'),
+        ('other', '其他'),
     ]
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="用户")
+    operator_name = models.CharField(max_length=150, blank=True, verbose_name="操作人姓名")
     action = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name="动作")
-    path = models.CharField(max_length=255, verbose_name="路径")
-    method = models.CharField(max_length=10, verbose_name="方法")
+    path = models.CharField(max_length=255, verbose_name="路径", blank=True)
+    method = models.CharField(max_length=10, verbose_name="方法", blank=True)
     ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP地址")
+    
+    # Core Entity Info
+    entity_type = models.CharField(max_length=100, blank=True, verbose_name="实体类型")
+    entity_id = models.CharField(max_length=100, blank=True, verbose_name="实体ID")
+    
+    # Detailed Changes
+    changes = models.JSONField(default=dict, blank=True, verbose_name="变更详情")
+    
+    # Project Context
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="关联项目")
+    
+    # Task Context
+    task = models.ForeignKey('Task', null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="关联任务")
+
     extra = models.TextField(blank=True, verbose_name="额外信息")
+    remarks = models.TextField(blank=True, verbose_name="备注")
     data = models.JSONField(default=dict, blank=True, verbose_name="数据快照")
+    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="记录时间")
 
     class Meta:
         ordering = ['-created_at']
         verbose_name = "审计日志"
         verbose_name_plural = "审计日志"
+        indexes = [
+            models.Index(fields=['entity_type', 'entity_id']),
+            models.Index(fields=['action']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['project']),
+            models.Index(fields=['task']),
+        ]
 
     def __str__(self):
-        who = self.user.username if self.user else 'anonymous'
-        return f"{self.action} by {who} at {self.created_at:%Y-%m-%d %H:%M:%S}"
+        who = self.operator_name or (self.user.username if self.user else 'anonymous')
+        return f"{self.action} {self.entity_type}#{self.entity_id} by {who} at {self.created_at:%Y-%m-%d %H:%M:%S}"
 
 
 class Task(models.Model):
