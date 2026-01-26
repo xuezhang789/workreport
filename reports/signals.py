@@ -1,65 +1,70 @@
-from django.db.models.signals import post_save, post_delete, m2m_changed
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
+from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.utils import timezone
+from reports.models import Project, Task, DailyReport, AuditLog
+from reports.middleware import get_current_user, get_current_ip
+from reports.services.audit_service import AuditService
 
-from .models import Task, DailyReport, SystemSetting
+TRACKED_MODELS = [Project, Task, DailyReport, User]
 
+def _invalidate_stats_cache(sender=None, **kwargs):
+    """
+    Invalidate statistics cache. Can be used as a signal receiver or helper.
+    """
+    try:
+        cache.delete_pattern("stats_*")
+    except Exception:
+        pass
 
-def _invalidate_stats_cache():
-    # 清除绩效缓存，包含带筛选的前缀
-    prefixes = ["performance_stats_v1", "performance_stats_v1_None_None"]
-    for key in prefixes:
-        cache.delete(key)
-    if hasattr(cache, "delete_pattern"):
+@receiver(pre_save)
+def audit_pre_save(sender, instance, **kwargs):
+    if sender not in TRACKED_MODELS:
+        return
+    
+    if instance.pk:
         try:
-            cache.delete_pattern("performance_stats_v1_*")
-        except Exception:
-            pass
-    today = timezone.localdate()
-    for project_filter in ("", "None", None):
-        for role_filter in ("", "None", None):
-            cache.delete(f"stats_metrics_v1_{today}_{project_filter}_{role_filter}")
+            old_instance = sender.objects.get(pk=instance.pk)
+            instance._audit_diff = AuditService._calculate_diff(old_instance, instance)
+        except sender.DoesNotExist:
+            instance._audit_diff = None
+    else:
+        instance._audit_diff = None
 
+@receiver(post_save)
+def audit_post_save(sender, instance, created, **kwargs):
+    # Cache Invalidation for core models
+    if sender in [Project, Task, DailyReport]:
+        _invalidate_stats_cache()
 
-def _invalidate_sla_cache():
-    # 清除SLA相关缓存
-    cache.delete("sla_hours_setting")
-    cache.delete("sla_thresholds_setting")
+    if sender not in TRACKED_MODELS:
+        return
 
+    user = get_current_user()
+    ip = get_current_ip()
+    
+    if created:
+        AuditService.log_change(user, 'create', instance, ip=ip)
+    else:
+        # Update
+        if hasattr(instance, '_audit_diff') and instance._audit_diff:
+            AuditService.log_change(
+                user, 
+                'update', 
+                instance, 
+                ip=ip, 
+                changes=instance._audit_diff
+            )
 
-@receiver(post_save, sender=Task)
-def clear_cache_on_task_change(sender, **kwargs):
-    _invalidate_stats_cache()
+@receiver(post_delete)
+def audit_post_delete(sender, instance, **kwargs):
+    if sender in [Project, Task, DailyReport]:
+        _invalidate_stats_cache()
 
+    if sender not in TRACKED_MODELS:
+        return
 
-@receiver(post_save, sender=DailyReport)
-def clear_cache_on_report_change(sender, **kwargs):
-    _invalidate_stats_cache()
-
-
-@receiver(post_save, sender=SystemSetting)
-def clear_cache_on_system_setting_change(sender, **kwargs):
-    instance = kwargs.get('instance')
-    if instance and instance.key in ['sla_hours', 'sla_thresholds']:
-        _invalidate_sla_cache()
-
-
-@receiver(post_delete, sender=Task)
-def clear_cache_on_task_delete(sender, **kwargs):
-    _invalidate_stats_cache()
-
-
-@receiver(post_delete, sender=DailyReport)
-def clear_cache_on_report_delete(sender, **kwargs):
-    _invalidate_stats_cache()
-
-
-@receiver(post_delete, sender=SystemSetting)
-def clear_cache_on_system_setting_delete(sender, **kwargs):
-    _invalidate_sla_cache()
-
-
-@receiver(m2m_changed, sender=DailyReport.projects.through)
-def clear_cache_on_report_project_link(sender, **kwargs):
-    _invalidate_stats_cache()
+    user = get_current_user()
+    ip = get_current_ip()
+    
+    AuditService.log_change(user, 'delete', instance, ip=ip)

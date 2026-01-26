@@ -1,6 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load static %}
 {% load tz %}
+{% load reports_filters %}
 
 {% block title %}审计日志 / Audit Logs{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="审计日志 / Audit Logs" nav_subtitle="查看与导出系统的操作审计记录 / View & export system audit logs" %}{% endblock %}
@@ -302,8 +303,14 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="filter-section">
-        <form method="get" id="filterForm">
+    <details class="filter-section" style="cursor: pointer;" open>
+        <summary style="font-weight: 600; margin-bottom: 16px; outline: none;">
+             <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                高级筛选 / Filter
+             </div>
+        </summary>
+        <form method="get" id="filterForm" style="cursor: default;">
             <div class="filter-grid">
                 <div class="form-group">
                     <label class="form-label">开始日期 / Start Date</label>
@@ -312,6 +319,24 @@
                 <div class="form-group">
                     <label class="form-label">结束日期 / End Date</label>
                     <input type="date" name="end_date" class="form-input" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">所属项目 / Project</label>
+                    <select name="project_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">全部 / All</option>
+                        {% for p in projects %}
+                            <option value="{{ p.id }}" {% if project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }} ({{ p.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">所属任务 / Task</label>
+                    <select name="task_id" class="form-select">
+                        <option value="">全部 / All</option>
+                        {% for t in tasks %}
+                            <option value="{{ t.id }}" {% if task_id == t.id|stringformat:"s" %}selected{% endif %}>{{ t.title }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">动作类型 / Action</label>
@@ -323,20 +348,18 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">请求方法 / Method</label>
-                    <select name="method" class="form-select">
-                        <option value="">全部 / All</option>
-                        <option value="GET" {% if method == 'GET' %}selected{% endif %}>GET</option>
-                        <option value="POST" {% if method == 'POST' %}selected{% endif %}>POST</option>
-                        <option value="PUT" {% if method == 'PUT' %}selected{% endif %}>PUT</option>
-                        <option value="DELETE" {% if method == 'DELETE' %}selected{% endif %}>DELETE</option>
-                    </select>
+                    <label class="form-label">实体类型 / Entity Type</label>
+                    <input type="text" name="entity_type" class="form-input" value="{{ entity_type }}" placeholder="e.g. Task, Project">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">实体 ID / Entity ID</label>
+                    <input type="text" name="entity_id" class="form-input" value="{{ entity_id }}" placeholder="ID">
                 </div>
                 <div class="form-group">
                     <label class="form-label">用户 / User</label>
                     <input type="text" name="user" class="form-input" value="{{ user_q }}" placeholder="用户名/姓名">
                 </div>
-                <div class="form-group">
+                 <div class="form-group">
                     <label class="form-label">路径 / Path</label>
                     <input type="text" name="path" class="form-input" value="{{ path_q }}" placeholder="例如 /reports/...">
                 </div>
@@ -356,11 +379,11 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
-                    筛选 / Filter
+                    应用筛选 / Apply
                 </button>
             </div>
         </form>
-    </div>
+    </details>
 
     <!-- Data Table -->
     <div class="card">
@@ -370,19 +393,20 @@
                 <thead>
                     <tr>
                         <th>时间 / Time</th>
-                        <th>用户 / User</th>
+                        <th>用户 / Operator</th>
                         <th>动作 / Action</th>
-                        <th>方法 / Method</th>
-                        <th>路径 / Path</th>
+                        <th>项目 / Project</th>
+                        <th>任务 / Task</th>
+                        <th>实体 / Entity</th>
+                        <th>变更详情 / Changes</th>
                         <th>IP地址 / IP</th>
-                        <th>备注 / Extra</th>
-                        <th>数据 / Data</th>
+                        <th>备注 / Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td style="white-space: nowrap; color: var(--text-secondary);">
+                        <td style="white-space: nowrap; color: var(--text-secondary); font-size: 12px;">
                             {{ log.created_at|localtime|date:"Y-m-d H:i:s" }}
                         </td>
                         <td>
@@ -391,15 +415,11 @@
                                     {% if log.user %}
                                         {{ log.user.username|slice:":1"|upper }}
                                     {% else %}
-                                        ?
+                                        S
                                     {% endif %}
                                 </div>
-                                <span style="font-weight: 500;">
-                                    {% if log.user %}
-                                        {{ log.user.get_full_name|default:log.user.username }}
-                                    {% else %}
-                                        <span class="text-muted">匿名 / Anonymous</span>
-                                    {% endif %}
+                                <span style="font-weight: 500; font-size: 13px;">
+                                    {{ log.operator_name|default:"System" }}
                                 </span>
                             </div>
                         </td>
@@ -419,22 +439,47 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="code-snippet">{{ log.method }}</span>
-                        </td>
-                        <td title="{{ log.path }}">
-                            <span style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;">
-                                {{ log.path }}
-                            </span>
-                        </td>
-                        <td>{{ log.ip|default:"-" }}</td>
-                        <td>{{ log.extra|default:"-" }}</td>
-                        <td>
-                            {% if log.data %}
-                                <span title="{{ log.data }}" style="cursor: help; border-bottom: 1px dotted var(--text-muted); color: var(--text-secondary);">查看 / View</span>
+                            {% if log.project %}
+                                <a href="{% url 'reports:project_detail' log.project.id %}" style="text-decoration: none; color: var(--primary); font-weight: 500;">
+                                    {{ log.project.name }}
+                                </a>
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if log.task %}
+                                <a href="{% url 'reports:task_view' log.task.id %}" style="text-decoration: none; color: var(--primary); font-weight: 500;">
+                                    {{ log.task.title|truncatechars:20 }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.entity_type %}
+                                <span class="code-snippet">{{ log.entity_type }} #{{ log.entity_id }}</span>
+                            {% else %}
+                                <span class="text-muted" title="{{ log.path }}">{{ log.path|truncatechars:30 }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="max-width: 400px; white-space: normal;">
+                            {% if log.changes %}
+                                <details>
+                                    <summary style="cursor: pointer; color: var(--primary); font-size: 12px;">查看变更 / View Details</summary>
+                                    <pre style="margin-top: 8px; background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 11px; overflow-x: auto; border: 1px solid #e2e8f0;">{{ log.changes|pretty_json }}</pre>
+                                </details>
+                            {% elif log.data %}
+                                <details>
+                                    <summary style="cursor: pointer; color: var(--text-secondary); font-size: 12px;">数据快照 / Snapshot</summary>
+                                    <pre style="margin-top: 8px; background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 11px; overflow-x: auto; border: 1px solid #e2e8f0;">{{ log.data|pretty_json }}</pre>
+                                </details>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 12px;">{{ log.ip|default:"-" }}</td>
+                        <td style="font-size: 12px;">{{ log.remarks|default:log.extra|default:"-"|truncatechars:50 }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

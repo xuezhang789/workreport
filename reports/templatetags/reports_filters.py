@@ -1,5 +1,7 @@
 from django import template
 from django.core.exceptions import ObjectDoesNotExist
+import json
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -33,3 +35,15 @@ def mask_email(email):
         return f"{masked_local}@{domain}"
     except Exception:
         return email
+
+@register.filter
+def pretty_json(value):
+    """
+    Format dictionary as pretty JSON string.
+    """
+    try:
+        if isinstance(value, str):
+            value = json.loads(value)
+        return mark_safe(json.dumps(value, indent=2, ensure_ascii=False))
+    except Exception:
+        return value
