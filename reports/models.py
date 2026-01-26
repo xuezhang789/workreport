@@ -546,6 +546,8 @@ class Notification(models.Model):
     message = models.TextField(verbose_name="内容")
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, verbose_name="类型")
     is_read = models.BooleanField(default=False, verbose_name="是否已读")
+    is_pushed = models.BooleanField(default=False, verbose_name="是否已推送")
+    expires_at = models.DateTimeField(null=True, blank=True, verbose_name="过期时间")
     data = models.JSONField(default=dict, blank=True, verbose_name="数据")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
@@ -553,6 +555,10 @@ class Notification(models.Model):
         ordering = ['-created_at']
         verbose_name = "通知"
         verbose_name_plural = "通知"
+        indexes = [
+            models.Index(fields=['user', 'is_read']),
+            models.Index(fields=['created_at']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.title}"

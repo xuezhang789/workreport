@@ -6,6 +6,7 @@ from django.core.mail import send_mail
 from django.db.models import Q
 
 from reports.models import DailyReport, ReminderRule, ReportMiss, Profile
+from reports.services.notification_service import send_notification
 
 
 class Command(BaseCommand):
@@ -60,8 +61,19 @@ class Command(BaseCommand):
                     miss.notified_at = now
                     miss.save(update_fields=['notified_at'])
 
-                if user.email and should_notify:
-                    self._send_email(user, project.name, today)
+                if should_notify:
+                    # Email Notification
+                    if user.email:
+                        self._send_email(user, project.name, today)
+                    
+                    # In-App Notification
+                    send_notification(
+                        user=user,
+                        title="日报缺报提醒",
+                        message=f"您尚未提交 {today} 的日报（项目：{project.name}），请尽快补交。",
+                        notification_type='report_reminder',
+                        data={'project_id': project.id, 'date': str(today)}
+                    )
                     total_notified += 1
 
         self.stdout.write(self.style.SUCCESS(f"检查用户 {total_checked} 个，发送提醒 {total_notified} 封。"))
