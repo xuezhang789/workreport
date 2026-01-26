@@ -1,6 +1,19 @@
 from django import template
+from django.core.exceptions import ObjectDoesNotExist
 
 register = template.Library()
+
+@register.filter
+def get_avatar_url(user):
+    """
+    Safely get user avatar URL from UserPreference.
+    """
+    try:
+        if user.is_authenticated:
+            return user.preferences.data.get('profile', {}).get('avatar_data_url')
+    except (ObjectDoesNotExist, AttributeError):
+        pass
+    return None
 
 @register.filter
 def mask_email(email):

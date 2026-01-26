@@ -29,7 +29,7 @@ from .forms import (
     ProjectForm,
     RegistrationForm,
     PasswordUpdateForm,
-    UsernameUpdateForm,
+    NameUpdateForm,
     EmailVerificationRequestForm,
     EmailVerificationConfirmForm,
     ReportTemplateForm,
@@ -448,7 +448,16 @@ def user_search_api(request):
             Q(last_name__icontains=q)
         )
     users = qs.order_by('username')[:20]
-    data = [{'id': u.id, 'name': u.get_full_name() or u.username, 'username': u.username} for u in users]
+    data = []
+    for u in users:
+        full_name = u.get_full_name()
+        display_name = f"{full_name} ({u.username})" if full_name else u.username
+        data.append({
+            'id': u.id,
+            'name': full_name or u.username,
+            'username': u.username,
+            'text': display_name  # For standard frontend components
+        })
     return JsonResponse({'results': data})
 
 
@@ -1267,8 +1276,9 @@ def my_reports(request):
 
     today = timezone.localdate()
     has_today = qs.filter(date=today).exists()
-    # streak: count consecutive days back from today with submitted
-    dates = list(qs.filter(status='submitted').values_list('date', flat=True).order_by('-date'))
+    # streak: count consecutive days back from today with submitted, independent of filters
+    streak_qs = DailyReport.objects.filter(user=request.user, status='submitted').values_list('date', flat=True).order_by('-date')
+    dates = list(streak_qs)
     streak = 0
     curr = today
     date_set = set(dates)
@@ -1462,25 +1472,26 @@ def send_email_code_api(request):
 
 @login_required
 def account_settings(request):
-    """个人中心：用户名、密码与邮箱设置。"""
+    """个人中心：姓名、密码与邮箱设置。"""
     user = request.user
     UserModel = get_user_model()
-    username_form = UsernameUpdateForm(user=user, initial={'username': user.username})
+    name_form = NameUpdateForm(user=user, initial={'full_name': user.get_full_name()})
     password_form = PasswordUpdateForm(user=user)
     email_request_form = EmailVerificationRequestForm(initial={'email': user.email})
     email_confirm_form = EmailVerificationConfirmForm(initial={'email': user.email})
 
     if request.method == 'POST':
         action = request.POST.get('action')
-        if action == 'change_username':
-            username_form = UsernameUpdateForm(user=user, data=request.POST)
-            if username_form.is_valid():
-                old_username = user.username
-                new_username = username_form.cleaned_data['username']
-                user.username = new_username
-                user.save(update_fields=['username'])
-                messages.success(request, "用户名已更新 / Username updated successfully")
-                log_action(request, 'update', f"username {old_username} -> {new_username}")
+        if action == 'change_name':
+            name_form = NameUpdateForm(user=user, data=request.POST)
+            if name_form.is_valid():
+                full_name = name_form.cleaned_data['full_name']
+                parts = full_name.split(None, 1)
+                user.first_name = parts[0]
+                user.last_name = parts[1] if len(parts) > 1 else ''
+                user.save(update_fields=['first_name', 'last_name'])
+                messages.success(request, "姓名已更新 / Name updated successfully")
+                log_action(request, 'update', f"name updated to {full_name}")
                 return redirect('account_settings')
             
         elif action == 'change_password':
@@ -1554,7 +1565,7 @@ def account_settings(request):
     
     pending_email = request.session.get('email_verification')
     context = {
-        'username_form': username_form,
+        'name_form': name_form,
         'password_form': password_form,
         'email_request_form': email_request_form,
         'email_confirm_form': email_confirm_form,
@@ -1965,14 +1976,30 @@ def task_bulk_action(request):
     updated = 0
     if action == 'complete':
         now = timezone.now()
+        history_batch = []
         for t in tasks:
-            _add_history(t, request.user, 'status', t.status, 'completed')
+            history_batch.append(TaskHistory(
+                task=t, 
+                user=request.user, 
+                field='status', 
+                old_value=t.status, 
+                new_value='completed'
+            ))
+        TaskHistory.objects.bulk_create(history_batch)
         tasks.update(status='completed', completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
+        history_batch = []
         for t in tasks:
-            _add_history(t, request.user, 'status', t.status, 'reopened')
+            history_batch.append(TaskHistory(
+                task=t, 
+                user=request.user, 
+                field='status', 
+                old_value=t.status, 
+                new_value='reopened'
+            ))
+        TaskHistory.objects.bulk_create(history_batch)
         tasks.update(status='reopened', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
@@ -2204,7 +2231,37 @@ def admin_task_list(request):
         tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
     if hot:
-        tasks = list(tasks_qs)
+        # Optimize: Filter at DB level to reduce memory usage
+        # 'hot' means 'overdue' or 'tight' (remaining < amber_threshold)
+        # adjusted_due = due_at + total_paused_seconds
+        # remaining = adjusted_due - now
+        # hot condition: remaining < amber_threshold
+        # => due_at + total_paused_seconds - now < amber_threshold
+        # => due_at + total_paused_seconds < now + amber_threshold
+        
+        amber_hours = get_sla_thresholds(sla_thresholds_val).get('amber', 4)
+        cutoff_time = now + timedelta(hours=amber_hours)
+        
+        from django.db.models import F, ExpressionWrapper, DateTimeField, DurationField
+        from django.db.models.functions import Coalesce
+        
+        # Annotate with effective due date (considering pause)
+        # Note: This assumes due_at is set. If due_at is null, we treat as not hot for now or use created_at logic if needed.
+        # Handling null due_at is complex in DB if we need fallback to created_at + SLA.
+        # For safety, we filter where due_at IS NOT NULL for this optimization, or accept that null due_at tasks won't show in hot.
+        
+        hot_qs = tasks_qs.exclude(status='completed').filter(due_at__isnull=False).annotate(
+            paused_sec=Coalesce('sla_timer__total_paused_seconds', 0),
+            adjusted_due=ExpressionWrapper(
+                F('due_at') + F('paused_sec') * timedelta(seconds=1),
+                output_field=DateTimeField()
+            )
+        ).filter(adjusted_due__lt=cutoff_time)
+        
+        # Fallback to Python for exact status calculation and sorting, but on a much smaller set
+        tasks = list(hot_qs)
+        
+        # Double check with Python logic to ensure consistency with calculate_sla_info
         tasks = [t for t in tasks if calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)['status'] in ('tight', 'overdue')]
         
         far_future = now + timedelta(days=365)
@@ -2282,20 +2339,44 @@ def admin_task_bulk_action(request):
     updated = 0
     if action == 'complete':
         now = timezone.now()
+        history_batch = []
         for t in tasks:
-            _add_history(t, request.user, 'status', t.status, 'completed')
+            history_batch.append(TaskHistory(
+                task=t, 
+                user=request.user, 
+                field='status', 
+                old_value=t.status, 
+                new_value='completed'
+            ))
+        TaskHistory.objects.bulk_create(history_batch)
         tasks.update(status='completed', completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
+        history_batch = []
         for t in tasks:
-            _add_history(t, request.user, 'status', t.status, 'reopened')
+            history_batch.append(TaskHistory(
+                task=t, 
+                user=request.user, 
+                field='status', 
+                old_value=t.status, 
+                new_value='reopened'
+            ))
+        TaskHistory.objects.bulk_create(history_batch)
         tasks.update(status='reopened', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
     elif action == 'overdue':
+        history_batch = []
         for t in tasks:
-            _add_history(t, request.user, 'status', t.status, 'overdue')
+            history_batch.append(TaskHistory(
+                task=t, 
+                user=request.user, 
+                field='status', 
+                old_value=t.status, 
+                new_value='overdue'
+            ))
+        TaskHistory.objects.bulk_create(history_batch)
         tasks.update(status='overdue')
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
