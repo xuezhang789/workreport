@@ -3625,7 +3625,7 @@ def stats(request):
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
 
-    for t in Task.objects.select_related('project', 'user').exclude(status='completed'):
+    for t in Task.objects.select_related('project', 'user').exclude(status='completed').iterator():
         info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info

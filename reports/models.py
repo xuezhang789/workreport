@@ -62,6 +62,10 @@ class Project(models.Model):
         ordering = ['name']
         verbose_name = "项目"
         verbose_name_plural = "项目"
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['code']),
+        ]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
