@@ -52,6 +52,15 @@ MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
+# File Upload Settings
+UPLOAD_MAX_SIZE = 50 * 1024 * 1024  # 50MB
+UPLOAD_ALLOWED_EXTENSIONS = {
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.txt', '.md', '.csv',
+    '.jpg', '.jpeg', '.png', '.gif', '.svg',
+    '.zip', '.rar', '.7z', '.tar', '.gz'
+}
+
 
 def has_manage_permission(user):
     if not user.is_authenticated:
@@ -123,19 +132,11 @@ def _validate_file(file):
     Validates file size and extension.
     Returns (is_valid, error_message)
     """
-    MAX_SIZE = 50 * 1024 * 1024  # 50MB
-    ALLOWED_EXTENSIONS = {
-        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.txt', '.md', '.csv',
-        '.jpg', '.jpeg', '.png', '.gif', '.svg',
-        '.zip', '.rar', '.7z', '.tar', '.gz'
-    }
-    
-    if file.size > MAX_SIZE:
-        return False, f"文件大小超过限制 (Max 50MB): {file.name}"
+    if file.size > UPLOAD_MAX_SIZE:
+        return False, f"文件大小超过限制 (Max {UPLOAD_MAX_SIZE // (1024*1024)}MB): {file.name}"
         
     ext = os.path.splitext(file.name)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in UPLOAD_ALLOWED_EXTENSIONS:
         return False, f"不支持的文件类型: {ext}"
         
     return True, None
@@ -175,42 +176,6 @@ def has_project_manage_permission(user, project: Project):
     if hasattr(project, '_prefetched_objects_cache') and 'managers' in project._prefetched_objects_cache:
         return any(m.id == user.id for m in project.managers.all())
     return project.managers.filter(id=user.id).exists()
-
-
-def _streak_map():
-    """计算用户连签天数字典，键为 user_id。优化性能，使用Django ORM高效查询"""
-    # 仅查询最近365天的数据，避免加载全部历史导致OOM
-    today = timezone.localdate()
-    start_date = today - timedelta(days=365)
-    
-    # 获取所有提交的报告，按用户和日期排序
-    submissions = DailyReport.objects.filter(
-        status='submitted',
-        date__gte=start_date
-    ).order_by('user_id', 'date').values('user_id', 'date')
-    
-    # 构建每个用户的日期集合
-    user_dates = {}
-    for item in submissions:
-        user_dates.setdefault(item['user_id'], set()).add(item['date'])
-    
-    streaks = {}
-    
-    # 对每个用户计算连签天数
-    for uid, dates in user_dates.items():
-        if not dates:
-            streaks[uid] = 0
-            continue
-            
-        # 从今天开始倒推，计算连续日期的数量
-        curr = today
-        streak = 0
-        while curr in dates:
-            streak += 1
-            curr = curr - timedelta(days=1)
-        streaks[uid] = streak
-    
-    return streaks
 
 
 def _filtered_reports(request):
@@ -2212,7 +2177,7 @@ def admin_task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile').prefetch_related('collaborators').order_by('-created_at')
+    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').prefetch_related('collaborators').order_by('-created_at')
     
     # Pre-fetch SLA settings once
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -2356,6 +2321,8 @@ def admin_task_bulk_action(request):
     if action == 'complete':
         now = timezone.now()
         history_batch = []
+        audit_batch = []
+        ip = request.META.get('REMOTE_ADDR')
         for t in tasks:
             history_batch.append(TaskHistory(
                 task=t, 
@@ -2364,12 +2331,26 @@ def admin_task_bulk_action(request):
                 old_value=t.status, 
                 new_value='completed'
             ))
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='update',
+                entity_type='Task',
+                entity_id=str(t.id),
+                changes={'status': {'old': t.status, 'new': 'completed'}},
+                project=t.project,
+                task=t,
+                ip=ip
+            ))
         TaskHistory.objects.bulk_create(history_batch)
+        AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='completed', completed_at=now)
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
+        log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}", entity_type='AccessLog', entity_id='0')
     elif action == 'reopen':
         history_batch = []
+        audit_batch = []
+        ip = request.META.get('REMOTE_ADDR')
         for t in tasks:
             history_batch.append(TaskHistory(
                 task=t, 
@@ -2378,12 +2359,26 @@ def admin_task_bulk_action(request):
                 old_value=t.status, 
                 new_value='reopened'
             ))
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='update',
+                entity_type='Task',
+                entity_id=str(t.id),
+                changes={'status': {'old': t.status, 'new': 'reopened'}},
+                project=t.project,
+                task=t,
+                ip=ip
+            ))
         TaskHistory.objects.bulk_create(history_batch)
+        AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='reopened', completed_at=None)
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
+        log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}", entity_type='AccessLog', entity_id='0')
     elif action == 'overdue':
         history_batch = []
+        audit_batch = []
+        ip = request.META.get('REMOTE_ADDR')
         for t in tasks:
             history_batch.append(TaskHistory(
                 task=t, 
@@ -2392,10 +2387,22 @@ def admin_task_bulk_action(request):
                 old_value=t.status, 
                 new_value='overdue'
             ))
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='update',
+                entity_type='Task',
+                entity_id=str(t.id),
+                changes={'status': {'old': t.status, 'new': 'overdue'}},
+                project=t.project,
+                task=t,
+                ip=ip
+            ))
         TaskHistory.objects.bulk_create(history_batch)
+        AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='overdue')
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
+        log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}", entity_type='AccessLog', entity_id='0')
     elif action == 'update' or action in ('assign', 'change_status'): # Support separate actions or merged update
         # Map frontend params to backend logic
         status_value = (request.POST.get('target_status') or request.POST.get('status_value') or '').strip()
@@ -2457,7 +2464,8 @@ def admin_task_bulk_action(request):
                 t.save(update_fields=update_fields)
                 updated += 1
         if updated:
-            log_action(request, 'update', f"admin_task_bulk_update status={status_value or '-'} due_at={'yes' if parsed_due else 'no'} assign={'yes' if assign_user else 'no'} count={updated}")
+            # log_action removed to avoid duplication with final summary log
+            pass
     if updated:
         messages.success(request, f"批量操作完成：更新 {updated}/{total_selected} 条")
         if skipped_perm:
