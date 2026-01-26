@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 
 from reports.models import Task, TaskSlaTimer, TaskHistory
 from reports.services.sla import get_sla_thresholds
+from reports.services.notification_service import send_notification
 
 
 class Command(BaseCommand):
@@ -86,30 +87,49 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"逾期标记 {overdue_count} 条，发送提醒 {notified_count} 条。"))
 
     def _notify_overdue(self, task, deadline):
-        if not task.user.email:
-            return
-        subject = f"[任务逾期] {task.title}"
-        deadline_text = timezone.localtime(deadline).strftime("%Y-%m-%d %H:%M") if deadline else "未提供"
-        body = (
-            f"{task.user.get_full_name() or task.user.username}，您好：\n\n"
-            f"任务《{task.title}》已逾期。\n"
-            f"项目：{task.project.name}\n"
-            f"截止：{deadline_text}\n"
-            "请尽快处理或与管理员沟通调整。\n"
+        # Email Notification
+        if task.user.email:
+            subject = f"[任务逾期] {task.title}"
+            deadline_text = timezone.localtime(deadline).strftime("%Y-%m-%d %H:%M") if deadline else "未提供"
+            body = (
+                f"{task.user.get_full_name() or task.user.username}，您好：\n\n"
+                f"任务《{task.title}》已逾期。\n"
+                f"项目：{task.project.name}\n"
+                f"截止：{deadline_text}\n"
+                "请尽快处理或与管理员沟通调整。\n"
+            )
+            send_mail(subject, body, None, [task.user.email], fail_silently=True)
+
+        # In-App Notification
+        send_notification(
+            user=task.user,
+            title="任务逾期",
+            message=f"任务 {task.title} 已逾期，请尽快处理。",
+            notification_type='sla_reminder',
+            data={'task_id': task.id, 'project_id': task.project_id}
         )
-        send_mail(subject, body, None, [task.user.email], fail_silently=True)
 
     def _notify_sla(self, task, level, deadline):
-        if not task.user.email:
-            return
         label = "SLA 红色提醒" if level == 'red' else "SLA 黄色提醒"
-        subject = f"[{label}] {task.title}"
         deadline_text = timezone.localtime(deadline).strftime("%Y-%m-%d %H:%M") if deadline else "未提供"
-        body = (
-            f"{task.user.get_full_name() or task.user.username}，您好：\n\n"
-            f"任务《{task.title}》即将超出 SLA，当前等级：{label}。\n"
-            f"项目：{task.project.name}\n"
-            f"SLA 截止：{deadline_text}\n"
-            "请尽快处理或与管理员沟通调整。\n"
+        
+        # Email Notification
+        if task.user.email:
+            subject = f"[{label}] {task.title}"
+            body = (
+                f"{task.user.get_full_name() or task.user.username}，您好：\n\n"
+                f"任务《{task.title}》即将超出 SLA，当前等级：{label}。\n"
+                f"项目：{task.project.name}\n"
+                f"SLA 截止：{deadline_text}\n"
+                "请尽快处理或与管理员沟通调整。\n"
+            )
+            send_mail(subject, body, None, [task.user.email], fail_silently=True)
+
+        # In-App Notification
+        send_notification(
+            user=task.user,
+            title=label,
+            message=f"任务 {task.title} 即将超时 ({label})，截止时间：{deadline_text}",
+            notification_type='sla_reminder',
+            data={'task_id': task.id, 'project_id': task.project_id}
         )
-        send_mail(subject, body, None, [task.user.email], fail_silently=True)

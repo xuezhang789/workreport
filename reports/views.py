@@ -295,6 +295,17 @@ def _generate_export_file(job, header, rows_iterable):
         job.status = 'done'
         job.file_path = path
         job.save(update_fields=['status', 'progress', 'file_path', 'updated_at'])
+        
+        # Notify user
+        from reports.services.notification_service import send_notification
+        send_notification(
+            user=job.user,
+            title="导出完成",
+            message=f"您的导出任务 ({job.export_type}) 已完成，请前往导出中心下载。",
+            notification_type='system',
+            data={'job_id': job.id, 'link': f'/reports/export/jobs/{job.id}/download/'}
+        )
+        
     return path
 
 
@@ -334,7 +345,8 @@ def _filtered_projects(request):
     owner = (request.GET.get('owner') or '').strip()
 
     # 按创建时间倒序展示，确保最近的项目排在前面
-    qs = Project.objects.select_related('owner', 'current_phase').prefetch_related('members', 'reports', 'managers').filter(is_active=True).order_by('-created_at', '-id')
+    # Removed prefetch_related to avoid overhead in list views that only need counts
+    qs = Project.objects.select_related('owner', 'current_phase').filter(is_active=True).order_by('-created_at', '-id')
     if not request.user.is_superuser:
         # Only Super Admin sees all.
         # Ordinary users (including PMs/Managers who are not superuser) see only accessible projects.
@@ -4399,6 +4411,9 @@ def project_export(request):
     # The _filtered_projects function already filters by accessible projects.
     
     projects, q, start_date, end_date, owner = _filtered_projects(request)
+    
+    # Eager load for export loop
+    projects = projects.prefetch_related('members', 'managers')
 
     if not (q or start_date or end_date or owner):
         return HttpResponse("请至少提供搜索关键词、负责人或日期范围后再导出。", status=400)
@@ -4411,8 +4426,8 @@ def project_export(request):
             p.name,
             p.code,
             p.owner.get_full_name() or p.owner.username if p.owner else "",
-            ", ".join(p.members.values_list('username', flat=True)),
-            ", ".join(p.managers.values_list('username', flat=True)),
+            ", ".join([u.username for u in p.members.all()]),
+            ", ".join([u.username for u in p.managers.all()]),
             p.start_date.isoformat() if p.start_date else "",
             p.end_date.isoformat() if p.end_date else "",
             timezone.localtime(p.created_at).strftime("%Y-%m-%d %H:%M"),
@@ -4557,7 +4572,25 @@ def project_update_phase(request, project_id):
             )
             
             # Send notification
-            _send_phase_change_notification(project, old_phase, new_phase, request.user)
+            # _send_phase_change_notification(project, old_phase, new_phase, request.user) # Legacy placeholder?
+            
+            # Notify all project members
+            from reports.services.notification_service import send_notification
+            members = set(project.members.all())
+            if project.owner:
+                members.add(project.owner)
+            for manager in project.managers.all():
+                members.add(manager)
+                
+            for member in members:
+                if member != request.user: # Don't notify self
+                    send_notification(
+                        user=member,
+                        title="项目阶段变更",
+                        message=f"项目 {project.name} 阶段已更新为：{new_phase.phase_name} ({new_phase.progress_percentage}%)",
+                        notification_type='project_update',
+                        data={'project_id': project.id}
+                    )
             
             # Log audit
             log_action(request, 'update', f"Project {project.code} phase changed to {new_phase.phase_name}")

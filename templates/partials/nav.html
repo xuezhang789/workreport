@@ -51,6 +51,7 @@
         
         <!-- 用户操作 -->
         {% if request.user.is_authenticated %}
+            {% include "components/notification_center.html" %}
             <a class="user-center {% if request.resolver_match and request.resolver_match.url_name == 'account_settings' %}active{% endif %}" href="{% url 'account_settings' %}">
                 <div class="user-avatar">
                     {% with avatar_url=request.user|get_avatar_url %}

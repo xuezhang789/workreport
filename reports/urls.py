@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import views_preferences
 from . import views_teams
+from . import views_notifications
 
 app_name = 'reports'
 
@@ -78,6 +79,12 @@ urlpatterns = [
     # Project Attachments
     path('projects/<int:project_id>/upload-attachment/', views.project_upload_attachment, name='project_upload_attachment'),
     path('projects/attachments/<int:attachment_id>/delete/', views.project_delete_attachment, name='project_delete_attachment'),
+
+    # Notifications
+    path('api/notifications/list/', views_notifications.notification_list_api, name='notification_list_api'),
+    path('api/notifications/mark-read/', views_notifications.mark_read_api, name='mark_all_read_api'),
+    path('api/notifications/<int:pk>/mark-read/', views_notifications.mark_read_api, name='mark_read_api'),
+    path('notifications/', views_notifications.notification_full_list, name='notification_list'),
 
     # Task Attachments
     path('tasks/<int:task_id>/upload-attachment/', views.task_upload_attachment, name='task_upload_attachment'),

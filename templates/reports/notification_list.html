@@ -1,0 +1,59 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+{% load tz %}
+
+{% block title %}通知中心 / Notification Center{% endblock %}
+
+{% block content %}
+<div class="panel">
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>通知中心 / Notifications</h2>
+        <button id="mark-all-read-page" class="btn btn-secondary">全部标为已读 / Mark all read</button>
+    </div>
+    
+    <div class="notification-full-list">
+        {% for n in notifications %}
+            <div class="notif-row {% if not n.is_read %}unread{% endif %}" style="padding: 16px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 16px;">
+                <div class="notif-icon" style="font-size: 24px;">
+                    {% if n.notification_type == 'task_assigned' %}📋
+                    {% elif n.notification_type == 'task_mention' %}@
+                    {% elif n.notification_type == 'task_updated' %}📝
+                    {% else %}🔔{% endif %}
+                </div>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="font-weight: 600; font-size: 15px;">{{ n.title }}</span>
+                        <span style="font-size: 12px; color: #94a3b8;">{{ n.created_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                    <div style="color: #64748b; font-size: 14px; margin-bottom: 8px;">{{ n.message }}</div>
+                    {% if n.data.task_id %}
+                        <a href="{% url 'reports:task_view' n.data.task_id %}" class="btn btn-sm btn-ghost">查看详情 / View Details</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div style="padding: 40px; text-align: center; color: #94a3b8;">暂无通知 / No notifications</div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .notif-row.unread {
+        background-color: #eff6ff;
+        border-radius: 8px;
+    }
+</style>
+
+<script>
+    document.getElementById('mark-all-read-page').addEventListener('click', function() {
+        fetch("{% url 'reports:mark_all_read_api' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        }).then(() => {
+            location.reload();
+        });
+    });
+</script>
+{% endblock %}
