@@ -505,47 +505,9 @@
                 </div>
             </div>
 
-            <!-- Full Width Sections for Members -->
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">成员管理 / Members</label>
-                <div class="multi-select-container" id="members-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
-                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="member-filter" placeholder="搜索成员... / Search members..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
-                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选 / Selected</span>
-                    </div>
-                    
-                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
-                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
-                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                <input type="checkbox" id="select-all-members" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                <span>全选 / Select All</span>
-                            </label>
-                        </div>
-                        <div class="options-container">
-                            {% for user in form.members.field.queryset %}
-                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
-                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                        <input type="checkbox" name="members" value="{{ user.pk }}" 
-                                               {% if form.members.value %}{% if user.pk|stringformat:"s" in form.members.value|stringformat:"s" %}checked{% endif %}{% endif %}
-                                               class="member-checkbox"
-                                               data-name="{{ user.get_full_name|default:user.username }}"
-                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
-                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
-                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
-                                        </div>
-                                    </div>
-                                </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    
-                    <div class="selected-tags" id="selected-members-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
-                    <!-- Hidden select for form submission if needed, though checkboxes handle name="members" -->
-                </div>
-            </div>
-
+            <!-- Full Width Sections -->
+            
+            <!-- 1. Managers Section (Moved to Top) -->
             <div class="form-group" style="margin-bottom: 20px;">
                 <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">管理员 / Managers</label>
                 
@@ -597,7 +559,67 @@
                     <div class="selected-tags" id="selected-managers-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
                 </div>
                 {% endif %}
-                <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">项目管理员拥有管理该项目任务和成员的权限 / Project managers can manage tasks and members</p>
+                
+                <!-- Permission Info Box for Managers -->
+                <div style="margin-top: 12px; padding: 12px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; display: flex; gap: 10px;">
+                    <div style="color: var(--primary); font-size: 16px;">🛡️</div>
+                    <div style="font-size: 13px; color: #1e40af; line-height: 1.5;">
+                        <strong style="display: block; margin-bottom: 2px;">管理员权限 / Manager Permissions</strong>
+                        可以修改项目设置、添加/移除成员、管理所有任务及查看高级报表。<br>
+                        <span style="opacity: 0.8;">Can edit project settings, manage members & tasks, and access advanced reports.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Members Section (Moved Below) -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">成员管理 / Members</label>
+                <div class="multi-select-container" id="members-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
+                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                        <input type="text" id="member-filter" placeholder="搜索成员... / Search members..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
+                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选 / Selected</span>
+                    </div>
+                    
+                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
+                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
+                                <input type="checkbox" id="select-all-members" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
+                                <span>全选 / Select All</span>
+                            </label>
+                        </div>
+                        <div class="options-container">
+                            {% for user in form.members.field.queryset %}
+                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
+                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
+                                        <input type="checkbox" name="members" value="{{ user.pk }}" 
+                                               {% if form.members.value %}{% if user.pk|stringformat:"s" in form.members.value|stringformat:"s" %}checked{% endif %}{% endif %}
+                                               class="member-checkbox"
+                                               data-name="{{ user.get_full_name|default:user.username }}"
+                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
+                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
+                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
+                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="selected-tags" id="selected-members-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
+                    <!-- Hidden select for form submission if needed, though checkboxes handle name="members" -->
+                </div>
+                
+                <!-- Permission Info Box for Members -->
+                <div style="margin-top: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; gap: 10px;">
+                    <div style="color: var(--text-secondary); font-size: 16px;">👥</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                        <strong style="display: block; margin-bottom: 2px; color: var(--text-main);">成员权限 / Member Permissions</strong>
+                        可以查看项目详情、被分配任务、参与讨论及上传附件。无法修改项目设置或管理其他成员。<br>
+                        <span style="opacity: 0.8;">Can view project details, be assigned tasks, participate in discussions, and upload files. Cannot edit settings.</span>
+                    </div>
+                </div>
             </div>
 
             <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
