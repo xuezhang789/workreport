@@ -1547,10 +1547,7 @@ def account_settings(request):
     completion_rate = min(100, int((week_report_count / expected_week_reports) * 100)) if expected_week_reports > 0 else 0
     
     # Project participation
-    if hasattr(user, 'profile'):
-        project_count = user.profile.projects.count()
-    else:
-        project_count = 0
+    project_count = get_accessible_projects(user).count()
     
     # Average completion time (placeholder - would need timestamp data)
     avg_completion_time = 2.5  # hours (placeholder)
@@ -3391,35 +3388,82 @@ def stats(request):
     else:
         missing_projects = []
         total_missing = 0
+        
+        # Pre-fetch all needed data to avoid N+1 queries
+        # 1. Collect all missing user IDs across all active projects
+        all_missing_ids = set()
+        project_missing_map = {} # pid -> [uid, uid...]
+        
+        # Ensure we use prefetched relations to avoid DB hits
+        # active_projects already prefetches 'members', 'managers'
+        
         for p in active_projects:
-            expected_users = set(p.members.values_list('id', flat=True)) | set(p.managers.values_list('id', flat=True))
+            # use .all() to hit the prefetch cache instead of .values_list() which hits DB
+            member_ids = {u.id for u in p.members.all()}
+            manager_ids = {u.id for u in p.managers.all()}
+            expected_ids = member_ids | manager_ids
             if p.owner_id:
-                expected_users.add(p.owner_id)
-            missing_ids = [uid for uid in expected_users if uid not in todays_user_ids]
-            if not missing_ids:
-                continue
-            user_qs = get_user_model().objects.select_related('profile').filter(id__in=missing_ids)
-            if role_filter in dict(Profile.ROLE_CHOICES):
-                user_qs = user_qs.filter(profile__position=role_filter)
-                missing_ids = list(user_qs.values_list('id', flat=True))
-            if not missing_ids:
-                continue
-            total_missing += len(missing_ids)
-            last_report_dates = DailyReport.objects.filter(user_id__in=missing_ids, status='submitted').values('user_id').annotate(last_date=models.Max('date'))
+                expected_ids.add(p.owner_id)
+                
+            missing_ids = [uid for uid in expected_ids if uid not in todays_user_ids]
+            if missing_ids:
+                all_missing_ids.update(missing_ids)
+                project_missing_map[p.id] = missing_ids
+
+        # 2. Fetch all missing users in one query
+        if all_missing_ids:
+            users_qs = get_user_model().objects.select_related('profile').filter(id__in=all_missing_ids)
+            users_map = {u.id: u for u in users_qs}
+            
+            # 3. Fetch last report dates for all missing users in one query
+            last_report_dates = DailyReport.objects.filter(
+                user_id__in=all_missing_ids, 
+                status='submitted'
+            ).values('user_id').annotate(last_date=models.Max('date'))
+            
             last_map = {item['user_id']: item['last_date'] for item in last_report_dates}
-            users = user_qs
+        else:
+            users_map = {}
+            last_map = {}
+
+        # 4. Build result structure
+        for p in active_projects:
+            p_missing_ids = project_missing_map.get(p.id, [])
+            if not p_missing_ids:
+                continue
+                
+            filtered_users = []
+            for uid in p_missing_ids:
+                u = users_map.get(uid)
+                if not u: continue
+                
+                # Apply role filter in memory
+                if role_filter in dict(Profile.ROLE_CHOICES):
+                    if not hasattr(u, 'profile') or u.profile.position != role_filter:
+                        continue
+                filtered_users.append(u)
+            
+            if not filtered_users:
+                continue
+                
+            total_missing += len(filtered_users)
+            
+            # Prepare user list for this project
+            user_list = []
+            for u in filtered_users:
+                user_list.append({
+                    'name': u.get_full_name() or u.username,
+                    'last_date': last_map.get(u.id)
+                })
+                
             missing_projects.append({
                 'project': p.name,
                 'project_id': p.id,
-                'missing_count': len(missing_ids),
-                'users': [
-                    {
-                        'name': u.get_full_name() or u.username,
-                        'last_date': last_map.get(u.id)
-                    } for u in users
-                ],
-                'last_map': last_map,
+                'missing_count': len(filtered_users),
+                'users': user_list,
+                'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # For individual reminders if needed
             })
+            
         cache.set(cache_key, (missing_projects, total_missing), 300)
 
     # 一键催报（立即邮件通知）
