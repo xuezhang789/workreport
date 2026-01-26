@@ -10,6 +10,21 @@ from typing import Tuple, List
 from .models import Profile, Project, ReportTemplateVersion, TaskTemplateVersion, ProjectPhaseConfig
 
 
+
+class UserChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        full_name = obj.get_full_name()
+        if full_name:
+            return f"{full_name} ({obj.username})"
+        return obj.username
+
+class UserMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        full_name = obj.get_full_name()
+        if full_name:
+            return f"{full_name} ({obj.username})"
+        return obj.username
+
 class ProjectPhaseConfigForm(forms.ModelForm):
     class Meta:
         model = ProjectPhaseConfig
@@ -114,12 +129,12 @@ class PasswordUpdateForm(forms.Form):
         return cleaned_data
 
 
-class UsernameUpdateForm(forms.Form):
-    # 仅更新用户名，校验唯一性与合法字符
-    username = forms.CharField(
+class NameUpdateForm(forms.Form):
+    # 仅更新姓名（first_name/last_name），不更新用户名
+    full_name = forms.CharField(
         max_length=150,
-        label='用户名 / Username',
-        widget=forms.TextInput(attrs={'placeholder': '新的用户名 / New username'})
+        label='新姓名 / New Name',
+        widget=forms.TextInput(attrs={'placeholder': '请输入您的真实姓名 / Enter your full name'})
     )
     password = forms.CharField(
         label='当前密码 / Current password',
@@ -130,13 +145,11 @@ class UsernameUpdateForm(forms.Form):
         self.user = user
         super().__init__(*args, **kwargs)
 
-    def clean_username(self):
-        username = (self.cleaned_data.get('username') or '').strip()
-        if not username:
-            raise forms.ValidationError("请输入新的用户名")
-        if User.objects.filter(username__iexact=username).exclude(pk=self.user.pk).exists():
-            raise forms.ValidationError("该用户名已被占用 / Username already exists")
-        return username
+    def clean_full_name(self):
+        full_name = (self.cleaned_data.get('full_name') or '').strip()
+        if not full_name:
+            raise forms.ValidationError("请输入您的姓名")
+        return full_name
 
     def clean_password(self):
         password = self.cleaned_data.get('password') or ''
@@ -194,6 +207,11 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ['name', 'code', 'description', 'start_date', 'end_date', 'sla_hours', 'owner', 'members', 'managers', 'is_active']
+        field_classes = {
+            'owner': UserChoiceField,
+            'members': UserMultipleChoiceField,
+            'managers': UserMultipleChoiceField,
+        }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'members': forms.SelectMultiple(attrs={'size': 8}),
@@ -205,9 +223,9 @@ class ProjectForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['owner'].queryset = User.objects.order_by('username')
-        self.fields['members'].queryset = User.objects.order_by('username')
-        self.fields['managers'].queryset = User.objects.order_by('username')
+        self.fields['owner'].queryset = User.objects.filter(is_active=True).order_by('username')
+        self.fields['members'].queryset = User.objects.filter(is_active=True).order_by('username')
+        self.fields['managers'].queryset = User.objects.filter(is_active=True).order_by('username')
         # 显式启用多选并设置易于识别的 id，避免前端样式或组件覆盖成单选
         self.fields['members'].widget.attrs.update({'id': 'members-select', 'multiple': 'multiple'})
         self.fields['managers'].widget.attrs.update({'id': 'managers-select', 'multiple': 'multiple'})

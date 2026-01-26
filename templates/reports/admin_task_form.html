@@ -556,7 +556,7 @@
                     data.results.forEach(item => {
                         const opt = document.createElement('option');
                         opt.value = item.id;
-                        opt.textContent = `${item.name} (${item.username})`;
+                        opt.textContent = item.text || `${item.name} (${item.username})`;
                         opt.dataset.name = item.name;
                         userSelect.appendChild(opt);
                     });
@@ -644,7 +644,7 @@
 
                         const opt = document.createElement('option');
                         opt.value = item.id;
-                        opt.textContent = `${item.name} (${item.username})`;
+                        opt.textContent = item.text || `${item.name} (${item.username})`;
                         opt.dataset.name = item.name;
                         opt.dataset.username = item.username;
                         collabSelect.appendChild(opt);

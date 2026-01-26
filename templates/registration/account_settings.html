@@ -392,20 +392,34 @@
 
                 <form method="post">
                     {% csrf_token %}
-                    <input type="hidden" name="action" value="change_username">
+                    <input type="hidden" name="action" value="change_name">
                     <div class="form-group">
-                        <label class="form-label">当前用户名 / Current Username</label>
-                        <input type="text" class="form-input" value="{{ user.username }}" disabled>
+                        <label class="form-label">用户名 / Username (ID)</label>
+                        <input type="text" class="form-input" value="{{ user.username }}" disabled style="background-color: #f1f5f9; cursor: not-allowed; color: var(--text-muted);">
+                        <div class="help-text">用户名用于登录，不可更改 / Username is used for login and cannot be changed.</div>
                     </div>
                     <div class="form-group">
-                        <label for="{{ username_form.username.id_for_label }}" class="form-label">新用户名 / New Username</label>
-                        {{ username_form.username }}
-                        {% if username_form.username.errors %}
-                        <div class="help-text text-danger">{{ username_form.username.errors.0 }}</div>
+                        <label class="form-label">当前姓名 / Current Name</label>
+                        <div style="font-size: 15px; font-weight: 500; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: var(--text-main);">
+                            {{ user.get_full_name|default:"-" }}
+                        </div>
+                        <div class="help-text">姓名（昵称），用于前端展示，便于识别 / Name (Nickname), used for frontend display for easy identification</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ name_form.full_name.id_for_label }}" class="form-label">新姓名 / New Name</label>
+                        {{ name_form.full_name }}
+                        {% if name_form.full_name.errors %}
+                        <div class="help-text text-danger">{{ name_form.full_name.errors.0 }}</div>
                         {% endif %}
-                        <div id="username-feedback" class="help-text"></div>
                     </div>
-                    <button type="submit" class="btn btn-primary">保存用户名更改 / Save Username</button>
+                    <div class="form-group">
+                        <label for="{{ name_form.password.id_for_label }}" class="form-label">当前密码 / Current Password</label>
+                        {{ name_form.password }}
+                        {% if name_form.password.errors %}
+                        <div class="help-text text-danger">{{ name_form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存姓名更改 / Save Name</button>
                 </form>
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;">
@@ -427,14 +441,6 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">昵称 / Nickname</label>
-                    <input id="nickname-input" type="text" class="form-input" placeholder="如：张三 / Zhang San">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">简介 / Bio</label>
-                    <input id="bio-input" type="text" class="form-input" placeholder="一句话介绍自己 / A short description">
-                </div>
                 <button type="button" id="profile-pref-save" class="btn btn-secondary">保存资料偏好 / Save Preferences</button>
             </div>
 
@@ -661,8 +667,6 @@
         const avatarInput = document.getElementById('avatar-input');
         const avatarPreview = document.getElementById('avatar-preview');
         const overviewAvatar = document.getElementById('overview-avatar');
-        const nicknameInput = document.getElementById('nickname-input');
-        const bioInput = document.getElementById('bio-input');
         
         prefGet('profile', (data) => {
             if (data.avatar_data_url) {
@@ -670,8 +674,6 @@
                 if (avatarPreview) avatarPreview.innerHTML = imgTag;
                 if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
             }
-            if (nicknameInput) nicknameInput.value = data.nickname || '';
-            if (bioInput) bioInput.value = data.bio || '';
         });
 
         // --- Save Prefs ---
@@ -680,7 +682,7 @@
             profilePrefSave.addEventListener('click', function() {
                 const img = avatarPreview.querySelector('img');
                 const dataUrl = img ? img.src : '';
-                prefSave('profile', { avatar_data_url: dataUrl, nickname: nicknameInput.value || '', bio: bioInput.value || '' }, function(resp) {
+                prefSave('profile', { avatar_data_url: dataUrl }, function(resp) {
                     alert(resp.ok ? '保存成功' : '保存失败');
                 });
             });

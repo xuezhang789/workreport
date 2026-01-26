@@ -336,7 +336,7 @@
                         <div class="form-group">
                             <label class="form-label" for="name">姓名 / Name</label>
                             <input type="text" id="name" class="form-input" 
-                                   value="{{ form_user.get_full_name|default:form_user.username }}" readonly disabled
+                                   value="{{ form_user.first_name }} {{ form_user.last_name }} ({{ form_user.username }})" readonly disabled
                                    style="background-color: var(--bg-page); color: var(--text-secondary);">
                         </div>
                         

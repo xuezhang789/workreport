@@ -633,10 +633,12 @@
                          <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid var(--primary-light); z-index: 2;">
                              {{ task.user.username|slice:":1"|upper }}
                          </div>
-                         {% for c in task.collaborators.all|slice:":3" %}
+                         {% for c in task.collaborators.all %}
+                            {% if forloop.counter <= 3 %}
                             <div style="width: 20px; height: 20px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -8px; border: 1px solid white; z-index: 1;">
                                  {{ c.username|slice:":1"|upper }}
                             </div>
+                            {% endif %}
                          {% endfor %}
                          {% if task.collaborators.count > 3 %}
                             <div style="width: 20px; height: 20px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -8px; border: 1px solid white; z-index: 1;">
