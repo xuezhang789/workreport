@@ -4387,9 +4387,13 @@ def task_upload_attachment(request, task_id):
     task = get_object_or_404(Task, pk=task_id)
     
     # Check permission
-    can_manage = has_manage_permission(request.user) or task.user == request.user or task.project.owner == request.user
+    # Superuser, Project Owner/Manager, Task Owner, or Collaborator
+    can_upload = request.user.is_superuser or \
+                 can_manage_project(request.user, task.project) or \
+                 task.user == request.user or \
+                 task.collaborators.filter(pk=request.user.pk).exists()
     
-    if not can_manage:
+    if not can_upload:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
     
     if request.method == 'POST' and request.FILES.getlist('files'):
@@ -4423,9 +4427,13 @@ def task_delete_attachment(request, attachment_id):
     task = attachment.task
     
     # Check permission
-    can_manage = has_manage_permission(request.user) or attachment.user == request.user or task.project.owner == request.user
+    # Superuser, Project Owner/Manager, Task Owner, or Uploader
+    can_delete = request.user.is_superuser or \
+                 can_manage_project(request.user, task.project) or \
+                 task.user == request.user or \
+                 attachment.user == request.user
     
-    if not can_manage:
+    if not can_delete:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
         
     if request.method == 'POST':
@@ -4437,9 +4445,14 @@ def task_delete_attachment(request, attachment_id):
 @login_required
 def project_upload_attachment(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    can_manage = has_manage_permission(request.user) or request.user == project.owner or project.managers.filter(pk=request.user.pk).exists() or project.members.filter(pk=request.user.pk).exists()
+    # Check permission: Superuser or Project Member (Owner, Manager, Member)
+    # Using get_accessible_projects logic or direct check
+    can_upload = request.user.is_superuser or \
+                 project.owner == request.user or \
+                 project.managers.filter(pk=request.user.pk).exists() or \
+                 project.members.filter(pk=request.user.pk).exists()
     
-    if not can_manage:
+    if not can_upload:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
     
     if request.method == 'POST' and request.FILES.getlist('files'):
@@ -4474,10 +4487,13 @@ def project_delete_attachment(request, attachment_id):
     attachment = get_object_or_404(ProjectAttachment, pk=attachment_id)
     project = attachment.project
     
-    # Check permission (owner, manager, or the uploader)
-    can_manage = has_manage_permission(request.user) or request.user == project.owner or project.managers.filter(pk=request.user.pk).exists() or attachment.uploaded_by == request.user
+    # Check permission (Superuser, Owner, Manager, or the uploader)
+    can_delete = request.user.is_superuser or \
+                 request.user == project.owner or \
+                 project.managers.filter(pk=request.user.pk).exists() or \
+                 attachment.uploaded_by == request.user
     
-    if not can_manage:
+    if not can_delete:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
         
     if request.method == 'POST':
