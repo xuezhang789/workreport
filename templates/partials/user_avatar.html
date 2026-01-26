@@ -1,0 +1,37 @@
+{% load reports_filters %}
+{% comment %}
+    Usage:
+    {% include "partials/user_avatar.html" with user=target_user size="32px" font_size="12px" %}
+{% endcomment %}
+{% with avatar_url=user|get_avatar_url %}
+<div class="avatar-component" style="
+    width: {{ size|default:'32px' }}; 
+    height: {{ size|default:'32px' }}; 
+    border-radius: 50%; 
+    overflow: hidden; 
+    background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%); 
+    color: #3b82f6; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-weight: 700; 
+    font-size: {{ font_size|default:'12px' }};
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.5);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    position: relative;
+    {{ style }}
+">
+    {% if avatar_url %}
+        <img src="{{ avatar_url }}" 
+             alt="{{ user.get_full_name|default:user.username }}" 
+             style="width: 100%; height: 100%; object-fit: cover;"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="avatar-fallback" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">
+            {{ user.username|slice:":1"|upper }}
+        </span>
+    {% else %}
+        <span>{{ user.username|slice:":1"|upper }}</span>
+    {% endif %}
+</div>
+{% endwith %}
