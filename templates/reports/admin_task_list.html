@@ -516,56 +516,58 @@
                     <thead>
                         <tr>
                             <th class="col-checkbox"></th>
-                            <th class="col-title">任务标题</th>
-                            <th class="col-project">项目</th>
-                            <th class="col-user">负责人</th>
-                            <th class="col-status">状态</th>
-                            <th class="col-priority">优先级</th>
-                            <th class="col-due">截止/SLA</th>
-                            <th class="col-actions">操作</th>
+                            <th class="col-title">任务标题 / Task Title</th>
+                            <th class="col-project">项目 / Project</th>
+                            <th class="col-user">负责人 / Owner</th>
+                            <th class="col-status">状态 / Status</th>
+                            <th class="col-priority">优先级 / Priority</th>
+                            <th class="col-due">截止/SLA / Due/SLA</th>
+                            <th class="col-actions">操作 / Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in tasks %}
                         <tr>
-                            <td class="col-checkbox" data-label="选择">
+                            <td class="col-checkbox" data-label="选择 / Select">
                                 <input type="checkbox" name="task_ids" value="{{ t.id }}" class="task-check">
                             </td>
-                            <td class="col-title" data-label="标题">
+                            <td class="col-title" data-label="标题 / Title">
                                 <a href="{% url 'reports:task_view' t.pk %}" class="task-title-link">{{ t.title }}</a>
                                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                                    {{ t.content|striptags|truncatechars:50|default:"无详细内容" }}
+                                    {{ t.content|striptags|truncatechars:50|default:"无详细内容 / No details" }}
                                 </div>
                             </td>
-                            <td class="col-project" data-label="项目">
+                            <td class="col-project" data-label="项目 / Project">
                                 <span class="badge" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-color);">
                                     {{ t.project.code }}
                                 </span>
                             </td>
-                            <td class="col-user" data-label="负责人">
+                            <td class="col-user" data-label="负责人 / Owner">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid var(--primary-light); z-index: 2;">
                                         {{ t.user.username|slice:":1"|upper }}
                                     </div>
-                                    {% for c in t.collaborators.all|slice:":2" %}
+                                    {% for c in t.collaborators.all %}
+                                        {% if forloop.counter <= 3 %}
                                         <div style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -12px; border: 1px solid white; z-index: 1;">
                                             {{ c.username|slice:":1"|upper }}
                                         </div>
+                                        {% endif %}
                                     {% endfor %}
-                                    {% if t.collaborators.count > 2 %}
+                                    {% if t.collaborators.count > 3 %}
                                         <div style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -12px; border: 1px solid white; z-index: 1;">
-                                            +{{ t.collaborators.count|add:"-2" }}
+                                            +{{ t.collaborators.count|add:"-3" }}
                                         </div>
                                     {% endif %}
                                     <span style="font-size: 13px; margin-left: 4px;">{{ t.user.username }}</span>
                                 </div>
                             </td>
-                            <td class="col-status" data-label="状态">
+                            <td class="col-status" data-label="状态 / Status">
                                 <span class="badge badge-status-{{ t.status }}">
                                     {{ t.get_status_display }}
                                 </span>
                             </td>
-                            <td class="col-priority" data-label="优先级">
+                            <td class="col-priority" data-label="优先级 / Priority">
                                 <span class="badge badge-priority-{{ t.priority }}">
                                     {{ t.get_priority_display }}
                                 </span>
@@ -579,14 +581,14 @@
                                     {% endif %}
                                     
                                     {% if t.sla_info.level == 'red' %}
-                                        <span class="badge badge-sla-red" style="font-size: 10px;">紧急: {{ t.sla_info.remaining_hours }}h</span>
+                                        <span class="badge badge-sla-red" style="font-size: 10px;">紧急 / Urgent: {{ t.sla_info.remaining_hours }}h</span>
                                     {% elif t.sla_info.level == 'amber' %}
-                                        <span class="badge badge-sla-amber" style="font-size: 10px;">关注: {{ t.sla_info.remaining_hours }}h</span>
+                                        <span class="badge badge-sla-amber" style="font-size: 10px;">关注 / Warning: {{ t.sla_info.remaining_hours }}h</span>
                                     {% endif %}
                                 </div>
                             </td>
-                            <td class="col-actions" data-label="操作">
-                                <a href="{% url 'reports:task_view' t.pk %}" class="btn btn-ghost btn-sm">详情</a>
+                            <td class="col-actions" data-label="操作 / Actions">
+                                <a href="{% url 'reports:task_view' t.pk %}" class="btn btn-ghost btn-sm">详情 / View</a>
                             </td>
                         </tr>
                         {% endfor %}

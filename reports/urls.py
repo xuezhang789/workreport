@@ -54,6 +54,10 @@ urlpatterns = [
     path('prefs/', views_preferences.preference_get_api, name='preference_get_api'),
     path('prefs/save/', views_preferences.preference_save_api, name='preference_save_api'),
 
+    # API
+    path('api/projects/<int:pk>/', views.api_project_detail, name='api_project_detail'),
+    path('api/tasks/<int:pk>/', views.api_task_detail, name='api_task_detail'),
+
     # Phase Management
     path('admin/phases/', views.project_phase_config_list, name='project_phase_config_list'),
     path('admin/phases/new/', views.project_phase_config_create, name='project_phase_config_create'),

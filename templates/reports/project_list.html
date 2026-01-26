@@ -569,7 +569,7 @@
                                 <span class="project-code">{{ p.code }}</span>
                             </div>
                             <span class="phase-badge {% if '开发' in p.current_phase.phase_name %}phase-dev{% elif '测试' in p.current_phase.phase_name %}phase-qa{% elif '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
-                                {{ p.current_phase.phase_name|default:"未开始" }}
+                                {{ p.current_phase.phase_name|default:"未开始 / Not Started" }}
                             </span>
                         </div>
 
@@ -588,7 +588,7 @@
                                 <div class="avatar-circle">
                                     {{ p.owner.username|slice:":1"|upper|default:"?" }}
                                 </div>
-                                <span style="font-weight: 500;">{{ p.owner.get_full_name|default:p.owner.username|default:"未分配" }}</span>
+                                <span style="font-weight: 500;">{{ p.owner.get_full_name|default:p.owner.username|default:"未分配 / Unassigned" }}</span>
                             </div>
                             <div class="meta-item" title="团队成员 / Team Members">
                                 <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>

@@ -433,15 +433,20 @@
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" for="{{ form.code.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">项目代码 / Code <span style="color:red">*</span></label>
                         {{ form.code }}
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">唯一标识符，建议使用大写字母 (e.g. PRJ-001)</p>
+                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">唯一标识符，建议使用大写字母 (e.g. PRJ-001) / Unique ID, uppercase recommended</p>
                         {% if form.code.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.code.errors.0 }}</div>{% endif %}
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" for="{{ form.owner.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">负责人 / Owner</label>
                         <div class="owner-select-container" style="position: relative;">
-                            <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人..." style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
-                            {{ form.owner }}
+                            {% if can_edit_owner is False %}
+                                <input type="text" class="form-input" value="{{ project.owner.get_full_name|default:project.owner.username }}" disabled style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
+                                <div style="display:none;">{{ form.owner }}</div>
+                            {% else %}
+                                <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人... / Search owner..." style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
+                                {{ form.owner }}
+                            {% endif %}
                         </div>
                         {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
                     </div>
@@ -463,7 +468,7 @@
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" for="{{ form.sla_hours.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">SLA 提醒 (小时) / SLA Hours</label>
                         {{ form.sla_hours }}
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">留空则使用系统默认全局配置</p>
+                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">留空则使用系统默认全局配置 / Leave empty for system default</p>
                         {% if form.sla_hours.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.sla_hours.errors.0 }}</div>{% endif %}
                     </div>
 
@@ -483,15 +488,15 @@
                     {% if mode == 'create' %}
                     <!-- File Upload Section for Create Mode -->
                     <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">附件上传 / Attachments</label>
+                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">附件上传 / Attachments</label> </label>
                         <div class="file-upload-container" id="file-upload-zone" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;">
                             <input type="file" id="file-input" name="files" multiple style="display: none;">
                             <div class="upload-placeholder">
                                 <div class="upload-icon" style="color: var(--primary); margin-bottom: 12px;">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                                 </div>
-                                <div class="upload-text" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽文件到此处上传</div>
-                                <div class="upload-hint" style="font-size: 12px; color: var(--text-secondary);">支持文档、图片、压缩包等格式 (Max 50MB)</div>
+                                <div class="upload-text" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽文件到此处上传 / Click or Drag files here</div>
+                                <div class="upload-hint" style="font-size: 12px; color: var(--text-secondary);">支持文档、图片、压缩包等格式 (Max 50MB) / Supports docs, images, zips (Max 50MB)</div>
                             </div>
                         </div>
                         <div class="file-list" id="file-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
@@ -506,8 +511,8 @@
                 <div class="multi-select-container" id="members-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
                     <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="member-filter" placeholder="搜索成员..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
-                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选</span>
+                        <input type="text" id="member-filter" placeholder="搜索成员... / Search members..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
+                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选 / Selected</span>
                     </div>
                     
                     <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
@@ -543,11 +548,24 @@
 
             <div class="form-group" style="margin-bottom: 20px;">
                 <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">管理员 / Managers</label>
+                
+                {% if can_edit_managers is False %}
+                     <div class="read-only-list" style="padding: 12px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        {% for user in project.managers.all %}
+                            <span class="selected-tag" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #e2e8f0; color: #64748b; border: 1px solid #cbd5e1; border-radius: 16px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px;">
+                                {{ user.get_full_name|default:user.username }}
+                            </span>
+                        {% empty %}
+                            <span style="color: #94a3b8; font-size: 13px;">无管理员 / No managers</span>
+                        {% endfor %}
+                    </div>
+                    <div style="display:none;">{{ form.managers }}</div>
+                {% else %}
                 <div class="multi-select-container" id="managers-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
                     <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="manager-filter" placeholder="搜索管理员..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
-                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="manager-count">0</span> 已选</span>
+                        <input type="text" id="manager-filter" placeholder="搜索管理员... / Search managers..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
+                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="manager-count">0</span> 已选 / Selected</span>
                     </div>
                     
                     <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
@@ -578,7 +596,8 @@
                     
                     <div class="selected-tags" id="selected-managers-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
                 </div>
-                <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">项目管理员拥有管理该项目任务和成员的权限</p>
+                {% endif %}
+                <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">项目管理员拥有管理该项目任务和成员的权限 / Project managers can manage tasks and members</p>
             </div>
 
             <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
@@ -591,6 +610,99 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- API Data Fetching & Population ---
+        const projectId = "{{ project.id|default:'' }}";
+        const isEditMode = "{{ mode }}" === 'edit';
+        const apiEndpoint = isEditMode && projectId ? "{% url 'reports:api_project_detail' 0 %}".replace('0', projectId) : null;
+        
+        if (isEditMode && apiEndpoint) {
+            const form = document.querySelector('form');
+            const loadingOverlay = document.createElement('div');
+            
+            // Loading UI
+            loadingOverlay.style.cssText = `
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(255,255,255,0.8); z-index: 1000;
+                display: flex; align-items: center; justify-content: center;
+                border-radius: var(--radius-lg);
+            `;
+            loadingOverlay.innerHTML = `
+                <div style="text-align: center; color: var(--primary);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    <div style="margin-top: 8px; font-weight: 600;">Loading project data...</div>
+                </div>
+                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+            `;
+            
+            // Ensure container is relative
+            const card = document.querySelector('.form-card');
+            if (card) {
+                card.style.position = 'relative';
+                card.appendChild(loadingOverlay);
+            }
+
+            fetch(apiEndpoint)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    // Populate Standard Fields
+                    const setVal = (name, val) => {
+                        const el = document.querySelector(`[name="${name}"]`);
+                        if (el && val !== undefined && val !== null) {
+                             if (el.type === 'checkbox') el.checked = val;
+                             else el.value = val;
+                        }
+                    };
+
+                    setVal('name', data.name);
+                    setVal('code', data.code);
+                    setVal('description', data.description);
+                    setVal('start_date', data.start_date); // YYYY-MM-DD
+                    setVal('end_date', data.end_date);
+                    setVal('sla_hours', data.sla_hours);
+                    setVal('is_active', data.is_active); // Checkbox?
+                    
+                    // Handle Owner (Select)
+                    const ownerSelect = document.querySelector('[name="owner"]');
+                    if (ownerSelect && data.owner_id) {
+                         ownerSelect.value = data.owner_id;
+                    }
+
+                    // Handle Multi-selects (Members & Managers) using the MultiSelect class instance
+                    // We need to find the instances or manipulate DOM directly. 
+                    // Since MultiSelect class just manages checkboxes, we can check them.
+                    
+                    const setMulti = (name, ids) => {
+                        const checkboxes = document.querySelectorAll(`input[name="${name}"]`);
+                        checkboxes.forEach(cb => {
+                            if (ids.includes(parseInt(cb.value))) {
+                                cb.checked = true;
+                            } else {
+                                cb.checked = false;
+                            }
+                            // Trigger change to update UI tags
+                            cb.dispatchEvent(new Event('change'));
+                        });
+                    };
+
+                    if (data.member_ids) setMulti('members', data.member_ids);
+                    if (data.manager_ids) setMulti('managers', data.manager_ids);
+
+                })
+                .catch(err => {
+                    console.error('Failed to fetch project details:', err);
+                    alert('Failed to load latest project data. Using cached version.');
+                })
+                .finally(() => {
+                    if (loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay);
+                });
+        }
+
+
         // File Upload Logic
         const uploadZone = document.getElementById('file-upload-zone');
         const fileInput = document.getElementById('file-input');
