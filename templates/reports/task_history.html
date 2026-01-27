@@ -1,0 +1,403 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+
+{% block title %}任务变更历史 / Task History{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="变更历史 / History" nav_subtitle=task.title %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Project Detail) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-hover: #1e40af;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-page: #f8fafc;
+        --radius-lg: 16px;
+        --timeline-line-color: #e2e8f0;
+        --timeline-dot-color: #cbd5e1;
+        --timeline-dot-active: #3b82f6;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* Card & Header Styles */
+    .card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 32px;
+        margin-bottom: 24px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+        border-bottom: 1px dashed var(--border-color);
+        padding-bottom: 24px;
+    }
+
+    .task-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .task-id {
+        font-family: 'Space Mono', monospace;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-todo { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    .status-in-progress { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+    .status-blocked { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .status-in-review { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+    .status-done { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-closed { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; text-decoration: line-through; }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 32px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: #f8fafc;
+        color: var(--text-main);
+    }
+
+    /* Timeline Styles */
+    .timeline-container {
+        position: relative;
+        padding-left: 40px;
+        margin-top: 40px;
+    }
+
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 10px;
+        bottom: 0;
+        width: 2px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 40px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -40px;
+        top: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #cbd5e1;
+        display: grid;
+        place-items: center;
+        z-index: 2;
+        font-size: 14px;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+
+    .timeline-item:hover .timeline-marker {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: scale(1.1);
+    }
+
+    .timeline-item.active .timeline-marker {
+        border-color: var(--primary);
+        background: #eff6ff;
+        color: var(--primary);
+        box-shadow: 0 0 0 4px #dbeafe;
+    }
+
+    .timeline-content {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+
+    .timeline-item:hover .timeline-content {
+        background: white;
+        border-color: #e2e8f0;
+        box-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .change-date {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .change-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .change-type-label {
+        margin-bottom: 12px;
+        font-size: 12px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        color: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .page-container { padding: 16px; }
+        .card { padding: 20px; }
+        .header-content { flex-direction: column; gap: 16px; }
+        .timeline-container { padding-left: 24px; }
+        .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
+        .timeline-container::before { left: -25px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    
+    <div class="card">
+        <!-- Header Info -->
+        <div class="header-content">
+            <div>
+                <h1 class="task-title">
+                    {{ task.title }}
+                    <span class="task-id">TASK-{{ task.id }}</span>
+                    {% if task.status == 'todo' %}
+                        <span class="status-badge status-todo">待处理 / To Do</span>
+                    {% elif task.status == 'in_progress' %}
+                        <span class="status-badge status-in-progress">进行中 / In Progress</span>
+                    {% elif task.status == 'blocked' %}
+                        <span class="status-badge status-blocked">阻塞中 / Blocked</span>
+                    {% elif task.status == 'in_review' %}
+                        <span class="status-badge status-in-review">待评审 / In Review</span>
+                    {% elif task.status == 'done' %}
+                        <span class="status-badge status-done">已完成 / Done</span>
+                    {% elif task.status == 'closed' %}
+                        <span class="status-badge status-closed">已关闭 / Closed</span>
+                    {% else %}
+                        <span class="status-badge status-todo">{{ task.get_status_display }}</span>
+                    {% endif %}
+                </h1>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost">返回详情</a>
+            </div>
+        </div>
+
+        <!-- Meta Grid -->
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">负责人 / OWNER</span>
+                <span class="info-value">
+                    {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
+                    {{ task.user.get_full_name|default:task.user.username }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">所属项目 / PROJECT</span>
+                <span class="info-value">
+                    {{ task.project.name }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">优先级 / PRIORITY</span>
+                <span class="info-value">
+                    {% if task.priority == 'high' %}
+                        <span style="color: #ef4444; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% elif task.priority == 'medium' %}
+                        <span style="color: #f97316; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% elif task.priority == 'low' %}
+                        <span style="color: #16a34a; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">创建时间 / CREATED</span>
+                <span class="info-value">{{ task.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div style="margin-top: 48px;">
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+                <span>⏳</span> 变更历史记录 / Change History
+            </h3>
+
+            {% if logs %}
+            <div class="timeline-container">
+                {% for log in logs %}
+                <div class="timeline-item {% if forloop.first %}active{% endif %}">
+                    <div class="timeline-marker">
+                        {% if forloop.first %}●{% else %}{{ forloop.revcounter }}{% endif %}
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <div class="change-date">
+                                {{ log.timestamp|localtime|date:"Y年m月d日 H:i" }}
+                            </div>
+                            <div class="change-user">
+                                <div style="width: 20px; height: 20px; background: #f1f5f9; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: #64748b; font-weight: 700;">
+                                    {{ log.user.first_name|first|default:log.user.username|first|upper }}
+                                </div>
+                                {{ log.user.get_full_name|default:log.user.username }}
+                            </div>
+                        </div>
+                        
+                        {% if log.type == 'create' %}
+                            <div class="change-type-label">
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                                创建任务 / Task Created
+                            </div>
+                            <div style="background: #ecfdf5; color: #047857; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500;">
+                                ✨ 任务已创建
+                            </div>
+                        {% else %}
+                            <div class="change-type-label">
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+                                字段更新 / Field Update
+                            </div>
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                <table style="width: 100%; font-size: 13px; text-align: left; border-collapse: collapse;">
+                                    <thead style="background: #f8fafc; color: #64748b;">
+                                        <tr>
+                                            <th style="padding: 8px 12px; font-weight: 600; width: 30%;">字段 / Field</th>
+                                            <th style="padding: 8px 12px; font-weight: 600; width: 35%;">旧值 / Old</th>
+                                            <th style="padding: 8px 12px; font-weight: 600; width: 35%;">新值 / New</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for field, change in log.data.details.diff.items %}
+                                        <tr style="border-top: 1px solid #e2e8f0;">
+                                            <td style="padding: 10px 12px; font-family: monospace; color: #475569;">{{ field }}</td>
+                                            <td style="padding: 10px 12px; color: #ef4444; background: #fef2f2;">{{ change.old|default:"-"|truncatechars:30 }}</td>
+                                            <td style="padding: 10px 12px; color: #10b981; background: #f0fdf4;">{{ change.new|default:"-"|truncatechars:30 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🕰️</div>
+                <p>暂无变更记录</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

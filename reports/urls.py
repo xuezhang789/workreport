@@ -23,6 +23,7 @@ urlpatterns = [
     path('tasks/export/selected/', views.task_export_selected, name='task_export_selected'),
     path('tasks/<int:pk>/complete/', views.task_complete, name='task_complete'),
     path('tasks/<int:pk>/view/', views.task_view, name='task_view'),
+    path('tasks/<int:pk>/history/', views.task_history, name='task_history'),
     path('tasks/admin/', views.admin_task_list, name='admin_task_list'),
     path('tasks/admin/bulk/', views.admin_task_bulk_action, name='admin_task_bulk_action'),
     path('tasks/admin/new/', views.admin_task_create, name='admin_task_create'),
