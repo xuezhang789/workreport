@@ -309,12 +309,12 @@ class AuditLog(models.Model):
 
 class Task(models.Model):
     STATUS_CHOICES = [
-        ('pending', '未开始 / Pending'),
+        ('todo', '待处理 / To Do'),
         ('in_progress', '进行中 / In Progress'),
-        ('on_hold', '挂起 / On Hold'),
-        ('completed', '已完成 / Completed'),
-        ('overdue', '逾期 / Overdue'),
-        ('reopened', '重新打开 / Reopened'),
+        ('blocked', '阻塞中 / Blocked'),
+        ('in_review', '待评审 / In Review'),
+        ('done', '已完成 / Done'),
+        ('closed', '已关闭 / Closed'),
     ]
 
     PRIORITY_CHOICES = [
@@ -329,7 +329,7 @@ class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks', verbose_name="主负责人")
     collaborators = models.ManyToManyField(User, related_name='collaborated_tasks', blank=True, verbose_name="协作人")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks', verbose_name="项目")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="状态")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo', verbose_name="状态")
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="优先级")
     due_at = models.DateTimeField(null=True, blank=True, verbose_name="截止时间")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="完成时间")

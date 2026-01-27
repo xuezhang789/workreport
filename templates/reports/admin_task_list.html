@@ -246,12 +246,12 @@
         letter-spacing: 0.02em;
     }
 
-    .badge-status-pending { background: #f1f5f9; color: #64748b; }
+    .badge-status-todo { background: #f1f5f9; color: #64748b; }
     .badge-status-in_progress { background: #eff6ff; color: #2563eb; }
-    .badge-status-completed { background: #dcfce7; color: #16a34a; }
-    .badge-status-on_hold { background: #f3f4f6; color: #4b5563; }
-    .badge-status-overdue { background: #fee2e2; color: #ef4444; }
-    .badge-status-reopened { background: #e0e7ff; color: #4338ca; }
+    .badge-status-blocked { background: #fee2e2; color: #b91c1c; }
+    .badge-status-in_review { background: #fef9c3; color: #ca8a04; }
+    .badge-status-done { background: #dcfce7; color: #16a34a; }
+    .badge-status-closed { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }
 
     .badge-priority-high { background: #fee2e2; color: #ef4444; }
     .badge-priority-medium { background: #ffedd5; color: #f97316; }
@@ -538,19 +538,22 @@
                                 </div>
                             </td>
                             <td class="col-project" data-label="项目 / Project">
-                                <span class="badge" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-color);">
-                                    {{ t.project.code }}
-                                </span>
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <span style="font-weight: 500; color: var(--text-main);">{{ t.project.name }}</span>
+                                    <span class="badge" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-color); align-self: flex-start;">
+                                        {{ t.project.code }}
+                                    </span>
+                                </div>
                             </td>
                             <td class="col-user" data-label="负责人 / Owner">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid var(--primary-light); z-index: 2;">
-                                        {{ t.user.username|slice:":1"|upper }}
+                                        {{ t.user.first_name|first|default:t.user.username|first|upper }}
                                     </div>
                                     {% for c in t.collaborators.all %}
                                         {% if forloop.counter <= 3 %}
                                         <div style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: var(--text-secondary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: -12px; border: 1px solid white; z-index: 1;">
-                                            {{ c.username|slice:":1"|upper }}
+                                            {{ c.first_name|first|default:c.username|first|upper }}
                                         </div>
                                         {% endif %}
                                     {% endfor %}
@@ -559,11 +562,21 @@
                                             +{{ t.collaborators.count|add:"-3" }}
                                         </div>
                                     {% endif %}
-                                    <span style="font-size: 13px; margin-left: 4px;">{{ t.user.username }}</span>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span style="font-size: 13px; font-weight: 500;">{{ t.user.get_full_name|default:t.user.username }}</span>
+                                        <span style="font-size: 11px; color: var(--text-secondary);">Owner</span>
+                                    </div>
                                 </div>
                             </td>
                             <td class="col-status" data-label="状态 / Status">
-                                <span class="badge badge-status-{{ t.status }}">
+                                <span class="badge 
+                                    {% if t.status == 'done' %}badge-status-done
+                                    {% elif t.status == 'closed' %}badge-status-closed
+                                    {% elif t.status == 'in_progress' %}badge-status-in_progress
+                                    {% elif t.status == 'todo' %}badge-status-todo
+                                    {% elif t.status == 'blocked' %}badge-status-blocked
+                                    {% elif t.status == 'in_review' %}badge-status-in_review
+                                    {% else %}badge-default{% endif %}">
                                     {{ t.get_status_display }}
                                 </span>
                             </td>

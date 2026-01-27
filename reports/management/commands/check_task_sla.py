@@ -14,7 +14,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         now = timezone.now()
         tasks = Task.objects.select_related('project', 'user', 'sla_timer').filter(
-            status__in=['pending', 'in_progress', 'on_hold', 'reopened']
+            status__in=['todo', 'in_progress', 'blocked', 'in_review']
         )
         overdue_count = 0
         notified_count = 0
@@ -29,7 +29,7 @@ class Command(BaseCommand):
                 timer = TaskSlaTimer.objects.create(task=task)
 
             paused_seconds = timer.total_paused_seconds
-            if task.status == 'on_hold' and timer.paused_at:
+            if task.status == 'blocked' and timer.paused_at:
                 paused_seconds += int((now - timer.paused_at).total_seconds())
 
             # 判定逾期：1) 明确截止时间；2) 项目 SLA 小时
@@ -52,24 +52,12 @@ class Command(BaseCommand):
                 remaining_hours = round((task.due_at - now).total_seconds() / 3600, 1)
                 deadline_display = task.due_at
 
-            if is_overdue and task.status != 'overdue':
-                old_status = task.status
-                task.status = 'overdue'
-                task.save(update_fields=['status'])
-                TaskHistory.objects.create(
-                    task=task,
-                    user=None,
-                    field='status',
-                    old_value=old_status,
-                    new_value='overdue',
-                )
-                overdue_count += 1
-
             if is_overdue and not task.overdue_notified_at:
                 self._notify_overdue(task, deadline_display)
                 task.overdue_notified_at = now
                 task.save(update_fields=['overdue_notified_at'])
                 notified_count += 1
+                overdue_count += 1
 
             # SLA 升级提醒（未逾期且仅提醒一次）
             if not is_overdue and remaining_hours is not None:
