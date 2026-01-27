@@ -322,6 +322,18 @@
 
         <div class="info-grid">
             <div class="info-item">
+                <span class="info-label">优先级 / Priority</span>
+                <span class="info-value">
+                    {% if task.priority == 'high' %}
+                        <span style="color: #ef4444; background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% elif task.priority == 'medium' %}
+                        <span style="color: #f97316; background: #ffedd5; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% elif task.priority == 'low' %}
+                        <span style="color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
                 <span class="info-label">项目 / Project</span>
                 <span class="info-value">{{ task.project.name }}</span>
             </div>

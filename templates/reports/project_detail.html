@@ -517,10 +517,12 @@
                 <form method="get" style="display: flex; gap: 8px;">
                     <select name="task_status" class="filter-select" onchange="this.form.submit()">
                         <option value="">状态: 全部</option>
-                        <option value="active" {% if task_status == 'active' %}selected{% endif %}>进行中</option>
-                        {% for k, v in task_status_choices %}
-                            <option value="{{ k }}" {% if task_status == k %}selected{% endif %}>{{ v }}</option>
-                        {% endfor %}
+                        <option value="todo" {% if task_status == 'todo' %}selected{% endif %}>待处理</option>
+                        <option value="in_progress" {% if task_status == 'in_progress' %}selected{% endif %}>进行中</option>
+                        <option value="blocked" {% if task_status == 'blocked' %}selected{% endif %}>阻塞中</option>
+                        <option value="in_review" {% if task_status == 'in_review' %}selected{% endif %}>待评审</option>
+                        <option value="done" {% if task_status == 'done' %}selected{% endif %}>已完成</option>
+                        <option value="closed" {% if task_status == 'closed' %}selected{% endif %}>已关闭</option>
                     </select>
                 </form>
                 {% if can_manage %}
@@ -535,6 +537,7 @@
                     <thead>
                         <tr>
                             <th>任务标题</th>
+                            <th>优先级</th>
                             <th>负责人</th>
                             <th>截止日期</th>
                             <th>状态</th>
@@ -549,6 +552,15 @@
                                         <a href="{% url 'reports:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
                                         {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接</a>{% endif %}
                                     </div>
+                                </td>
+                                <td>
+                                    {% if task.priority == 'high' %}
+                                        <span style="color: #ef4444; background: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                                    {% elif task.priority == 'medium' %}
+                                        <span style="color: #f97316; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                                    {% elif task.priority == 'low' %}
+                                        <span style="color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if task.user %}
@@ -569,12 +581,15 @@
                                 </td>
                                 <td>
                                     <span class="status-badge 
-                                        {% if task.status == 'completed' %}badge-completed
-                                        {% elif task.status == 'overdue' %}badge-overdue
-                                        {% elif task.status == 'in_progress' %}badge-active
-                                        {% else %}badge-default{% endif %}">
-                                        {{ task.get_status_display }}
-                                    </span>
+                                {% if task.status == 'done' %}badge-completed
+                                {% elif task.status == 'closed' %}badge-default
+                                {% elif task.status == 'in_progress' %}badge-active
+                                {% elif task.status == 'todo' %}badge-default
+                                {% elif task.status == 'blocked' %}badge-overdue
+                                {% elif task.status == 'in_review' %}badge-active
+                                {% else %}badge-default{% endif %}">
+                                {{ task.get_status_display }}
+                            </span>
                                 </td>
                                 <td style="text-align: right;">
                                     <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>

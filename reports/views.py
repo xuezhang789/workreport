@@ -1617,6 +1617,7 @@ def task_list(request):
     project_id = request.GET.get('project')
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
+    priority = (request.GET.get('priority') or '').strip()
 
     # 优化查询，使用select_related和prefetch_related减少数据库查询
     tasks_qs = Task.objects.select_related(
@@ -1661,6 +1662,8 @@ def task_list(request):
         tasks_qs = tasks_qs.filter(project_id=project_id)
     if q:
         tasks_qs = tasks_qs.filter(title__icontains=q)
+    if priority in dict(Task.PRIORITY_CHOICES):
+        tasks_qs = tasks_qs.filter(priority=priority)
 
     if hot:  # 显示即将到期的任务
         tasks_qs = tasks_qs.filter(id__in=due_soon_ids)
@@ -1689,6 +1692,8 @@ def task_list(request):
         'selected_project_id': int(project_id) if project_id and project_id.isdigit() else None,
         'q': q,
         'hot': hot,
+        'priority': priority,
+        'priorities': Task.PRIORITY_CHOICES,
         'due_soon_count': len(due_soon_ids),
     })
 
@@ -1783,7 +1788,7 @@ def task_export_selected(request):
         return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
     tasks = Task.objects.select_related('project').filter(user=request.user, id__in=ids)
-    _mark_overdue_tasks(tasks)
+    # _mark_overdue_tasks(tasks) - Deprecated logic
     if not tasks.exists():
         return HttpResponse("请选择任务后导出", status=400)
     rows = (
@@ -1860,8 +1865,8 @@ def task_complete(request, pk: int):
     # 完成任务
     try:
         with transaction.atomic():
-            _add_history(task, request.user, 'status', task.status, 'completed')
-            task.status = 'completed'
+            _add_history(task, request.user, 'status', task.status, 'done')
+            task.status = 'done'
             task.completed_at = timezone.now()
             timer = _get_sla_timer_readonly(task)
             if timer and timer.paused_at:
@@ -3010,7 +3015,8 @@ def admin_task_create(request):
         content = (request.POST.get('content') or '').strip()
         project_id = request.POST.get('project')
         user_id = request.POST.get('user')
-        status = request.POST.get('status') or 'pending'
+        status = request.POST.get('status') or 'todo'
+        priority = request.POST.get('priority') or 'medium'
         due_at_str = request.POST.get('due_at')
 
         errors = []
@@ -3020,6 +3026,8 @@ def admin_task_create(request):
             errors.append("任务内容需填写：请选择 URL 或填写文本内容")
         if status not in dict(Task.STATUS_CHOICES):
             errors.append("请选择有效的状态")
+        if priority not in dict(Task.PRIORITY_CHOICES):
+            errors.append("请选择有效的优先级")
         project = None
         target_user = None
         if project_id and project_id.isdigit():
@@ -3066,8 +3074,9 @@ def admin_task_create(request):
                 'projects': projects,
                 'users': collaborators,
                 'task_status_choices': Task.STATUS_CHOICES,
+                'task_priority_choices': Task.PRIORITY_CHOICES,
                 'existing_urls': existing_urls,
-                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
+                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'priority': priority, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
             })
 
         task = Task.objects.create(
@@ -3077,6 +3086,7 @@ def admin_task_create(request):
             project=project,
             user=target_user,
             status=status,
+            priority=priority,
             due_at=due_at,
         )
         
@@ -3098,6 +3108,7 @@ def admin_task_create(request):
         'projects': projects,
         'users': [],
         'task_status_choices': Task.STATUS_CHOICES,
+        'task_priority_choices': Task.PRIORITY_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
             'project_id': request.GET.get('project_id'),
@@ -3257,7 +3268,8 @@ def admin_task_edit(request, pk):
         old_due = task.due_at
         old_user = task.user
         
-        status = request.POST.get('status') or 'pending'
+        status = request.POST.get('status') or 'todo'
+        priority = request.POST.get('priority') or 'medium'
         errors = []
         
         if is_collaborator_only:
@@ -3268,6 +3280,9 @@ def admin_task_edit(request, pk):
             project = task.project
             target_user = task.user
             due_at = task.due_at
+            # Note: Collaborators might be allowed to change priority? 
+            # Current logic: they can only change status. So keep priority as is.
+            priority = task.priority
             # Collaborators: keep existing (set later)
             collaborators = list(task.collaborators.all())
         else:
@@ -3314,6 +3329,8 @@ def admin_task_edit(request, pk):
 
         if status not in dict(Task.STATUS_CHOICES):
             errors.append("请选择有效的状态")
+        if not is_collaborator_only and priority not in dict(Task.PRIORITY_CHOICES):
+            errors.append("请选择有效的优先级")
 
         if errors:
             return render(request, 'reports/admin_task_form.html', {
@@ -3323,6 +3340,7 @@ def admin_task_edit(request, pk):
                 'projects': projects,
                 'users': collaborators if not is_collaborator_only else task.collaborators.all(),
                 'task_status_choices': Task.STATUS_CHOICES,
+                'task_priority_choices': Task.PRIORITY_CHOICES,
                 'existing_urls': existing_urls,
                 'form_values': {
                     'title': title, 
@@ -3331,6 +3349,7 @@ def admin_task_edit(request, pk):
                     'project_id': project.id if project else '', 
                     'user_id': target_user.id if target_user else '', 
                     'status': status, 
+                    'priority': priority,
                     'due_at': due_at.isoformat() if due_at else '', 
                     'collaborator_ids': [c.id for c in collaborators]
                 },
@@ -3348,6 +3367,7 @@ def admin_task_edit(request, pk):
         task.project = project
         task.user = target_user
         task.status = status
+        task.priority = priority
         task.due_at = due_at
         task.save()
         
@@ -3371,6 +3391,7 @@ def admin_task_edit(request, pk):
         'projects': projects,
         'users': task.collaborators.all(),
         'task_status_choices': Task.STATUS_CHOICES,
+        'task_priority_choices': Task.PRIORITY_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
             'title': task.title,
@@ -3379,6 +3400,7 @@ def admin_task_edit(request, pk):
             'project_id': task.project_id,
             'user_id': task.user_id,
             'status': task.status,
+            'priority': task.priority,
             'due_at': task.due_at.isoformat() if task.due_at else '',
             'collaborator_ids': list(task.collaborators.values_list('id', flat=True))
         },
