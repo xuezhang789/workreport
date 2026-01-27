@@ -265,6 +265,7 @@
     .bg-slate { background: #f1f5f9; color: #475569; }
     .bg-red { background: #fee2e2; color: #991b1b; }
     .bg-orange { background: #ffedd5; color: #9a3412; }
+    .bg-yellow { background: #fef9c3; color: #a16207; }
 
     /* Empty States */
     .empty-state {
@@ -366,7 +367,14 @@
                                 <span>{{ t.project.name }}</span>
                             </div>
                         </div>
-                        <span class="status-badge {% if t.status == 'completed' %}bg-green{% elif t.status == 'in_progress' %}bg-blue{% elif t.status == 'overdue' %}bg-red{% else %}bg-slate{% endif %}">
+                        <span class="status-badge 
+                            {% if t.status == 'done' %}bg-green
+                            {% elif t.status == 'closed' %}bg-slate
+                            {% elif t.status == 'in_progress' %}bg-blue
+                            {% elif t.status == 'todo' %}bg-slate
+                            {% elif t.status == 'blocked' %}bg-red
+                            {% elif t.status == 'in_review' %}bg-yellow
+                            {% else %}bg-slate{% endif %}">
                             {{ t.get_status_display }}
                         </span>
                     </div>

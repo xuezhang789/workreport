@@ -116,11 +116,12 @@
         width: 100%;
     }
 
-    .card-status-bar.status-completed { background: var(--success); }
+    .card-status-bar.status-todo { background: var(--text-muted); }
     .card-status-bar.status-in_progress { background: var(--primary); }
-    .card-status-bar.status-overdue { background: var(--danger); }
-    .card-status-bar.status-on_hold { background: var(--warning); }
-    .card-status-bar.status-pending { background: var(--text-muted); }
+    .card-status-bar.status-blocked { background: var(--danger); }
+    .card-status-bar.status-in_review { background: var(--warning); }
+    .card-status-bar.status-done { background: var(--success); }
+    .card-status-bar.status-closed { background: var(--text-secondary); }
 
     .card-body {
         padding: 20px;
@@ -512,11 +513,12 @@
                     <label class="form-label" for="status">状态 / Status</label>
                     <select id="status" name="status" class="form-select">
                         <option value="">所有状态 / All Status</option>
-                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>未开始 / Pending</option>
+                        <option value="todo" {% if status == 'todo' %}selected{% endif %}>待处理 / To Do</option>
                         <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
-                        <option value="completed" {% if status == 'completed' %}selected{% endif %}>已完成 / Completed</option>
-                        <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>挂起 / On Hold</option>
-                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>逾期 / Overdue</option>
+                        <option value="blocked" {% if status == 'blocked' %}selected{% endif %}>阻塞中 / Blocked</option>
+                        <option value="in_review" {% if status == 'in_review' %}selected{% endif %}>待评审 / In Review</option>
+                        <option value="done" {% if status == 'done' %}selected{% endif %}>已完成 / Done</option>
+                        <option value="closed" {% if status == 'closed' %}selected{% endif %}>已关闭 / Closed</option>
                     </select>
                 </div>
                 
@@ -648,7 +650,7 @@
                          <span style="margin-left: 4px;">{{ task.user.username }}</span>
                     </div>
                     <div class="card-actions" style="display: flex; gap: 8px;">
-                        {% if task.status != 'completed' %}
+                        {% if task.status == 'todo' or task.status == 'in_progress' or task.status == 'blocked' or task.status == 'in_review' %}
                             <a href="{% url 'reports:task_complete' task.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary btn-sm" title="完成">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 完成

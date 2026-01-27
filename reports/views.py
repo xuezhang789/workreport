@@ -1620,9 +1620,9 @@ def task_list(request):
 
     # 优化查询，使用select_related和prefetch_related减少数据库查询
     tasks_qs = Task.objects.select_related(
-        'project', 'user', 'user__profile', 'sla_timer'
+        'project', 'user', 'sla_timer'
     ).prefetch_related(
-        'comments', 'attachments', 'collaborators'
+        'collaborators'
     )
 
     # Permission check: Show tasks from accessible projects
@@ -1649,7 +1649,7 @@ def task_list(request):
     sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
     due_soon_ids = set(tasks_qs.filter(
-        status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
+        status__in=['todo', 'in_progress', 'blocked', 'in_review'],
         due_at__gt=now,
         due_at__lte=now + timedelta(hours=sla_hours)
     ).values_list('id', flat=True))
@@ -2114,7 +2114,7 @@ def admin_task_list(request):
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').prefetch_related('collaborators').order_by('-created_at')
+    tasks_qs = Task.objects.select_related('project', 'user', 'sla_timer').prefetch_related('collaborators').order_by('-created_at')
     
     # Pre-fetch SLA settings once
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -2266,7 +2266,7 @@ def admin_task_bulk_action(request):
                 user=request.user, 
                 field='status', 
                 old_value=t.status, 
-                new_value='completed'
+                new_value='done'
             ))
             audit_batch.append(AuditLog(
                 user=request.user,
@@ -2274,14 +2274,14 @@ def admin_task_bulk_action(request):
                 action='update',
                 entity_type='Task',
                 entity_id=str(t.id),
-                changes={'status': {'old': t.status, 'new': 'completed'}},
+                changes={'status': {'old': t.status, 'new': 'done'}},
                 project=t.project,
                 task=t,
                 ip=ip
             ))
         TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status='completed', completed_at=now)
+        tasks.update(status='done', completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}", entity_type='AccessLog', entity_id='0')
     elif action == 'reopen':
@@ -2294,7 +2294,7 @@ def admin_task_bulk_action(request):
                 user=request.user, 
                 field='status', 
                 old_value=t.status, 
-                new_value='reopened'
+                new_value='todo'
             ))
             audit_batch.append(AuditLog(
                 user=request.user,
@@ -2302,14 +2302,14 @@ def admin_task_bulk_action(request):
                 action='update',
                 entity_type='Task',
                 entity_id=str(t.id),
-                changes={'status': {'old': t.status, 'new': 'reopened'}},
+                changes={'status': {'old': t.status, 'new': 'todo'}},
                 project=t.project,
                 task=t,
                 ip=ip
             ))
         TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status='reopened', completed_at=None)
+        tasks.update(status='todo', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}", entity_type='AccessLog', entity_id='0')
     elif action == 'overdue':
@@ -2602,8 +2602,11 @@ def admin_task_stats(request):
 
     # --- 1. Task Metrics ---
     total = tasks_qs.count()
-    completed = tasks_qs.filter(status='completed').count()
-    overdue = tasks_qs.filter(status='overdue').count()
+    completed = tasks_qs.filter(status__in=['done', 'closed']).count()
+    overdue = tasks_qs.filter(
+        status__in=['todo', 'in_progress', 'blocked', 'in_review'], 
+        due_at__lt=timezone.now()
+    ).count()
     completion_rate = (completed / total * 100) if total else 0
     overdue_rate = (overdue / total * 100) if total else 0
 
@@ -2694,7 +2697,7 @@ def admin_task_stats(request):
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
 
     urgent_tasks = []
-    candidates = tasks_qs.filter(status__in=['pending', 'in_progress'], due_at__isnull=False)
+    candidates = tasks_qs.filter(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__isnull=False)
     # Limit candidates to avoid performance hit
     candidates = candidates.order_by('due_at')[:50] 
     
@@ -2736,14 +2739,20 @@ def admin_task_stats(request):
     # --- 6. Stats Tables (Project/User) ---
     project_stats_qs = tasks_qs.values('project__id', 'project__name').annotate(
         total=models.Count('id'),
-        completed=models.Count('id', filter=models.Q(status='completed')),
-        overdue=models.Count('id', filter=models.Q(status='overdue'))
+        completed=models.Count('id', filter=models.Q(status__in=['done', 'closed'])),
+        overdue=models.Count('id', filter=models.Q(
+            status__in=['todo', 'in_progress', 'blocked', 'in_review'], 
+            due_at__lt=timezone.now()
+        ))
     ).order_by('project__name')
     
     user_stats_qs = tasks_qs.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
         total=models.Count('id'),
-        completed=models.Count('id', filter=models.Q(status='completed')),
-        overdue=models.Count('id', filter=models.Q(status='overdue'))
+        completed=models.Count('id', filter=models.Q(status__in=['done', 'closed'])),
+        overdue=models.Count('id', filter=models.Q(
+            status__in=['todo', 'in_progress', 'blocked', 'in_review'], 
+            due_at__lt=timezone.now()
+        ))
     ).order_by('user__username')
 
     # --- 1.1 Task Status Distribution ---
