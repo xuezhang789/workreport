@@ -257,36 +257,41 @@ class RoleTemplate(models.Model):
 
 class AuditLog(models.Model):
     ACTION_CHOICES = [
-        ('export', '导出'),
-        ('delete', '删除'),
-        ('create', '创建'),
-        ('update', '更新'),
-        ('access', '访问'),
-        ('other', '其他'),
+        ('login', '登录 / Login'),
+        ('logout', '登出 / Logout'),
+        ('create', '创建 / Create'),
+        ('update', '更新 / Update'),
+        ('delete', '删除 / Delete'),
+        ('access', '访问 / Access'),
+        ('export', '导出 / Export'),
+        ('upload', '上传 / Upload'),
+        ('other', '其他 / Other'),
     ]
+    
+    RESULT_CHOICES = [
+        ('success', '成功 / Success'),
+        ('failure', '失败 / Failure'),
+    ]
+
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="用户")
     operator_name = models.CharField(max_length=150, blank=True, verbose_name="操作人姓名")
     action = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name="动作")
-    path = models.CharField(max_length=255, verbose_name="路径", blank=True)
-    method = models.CharField(max_length=10, verbose_name="方法", blank=True)
+    result = models.CharField(max_length=10, choices=RESULT_CHOICES, default='success', verbose_name="结果")
+    
     ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP地址")
     
-    # Core Entity Info
-    entity_type = models.CharField(max_length=100, blank=True, verbose_name="实体类型")
-    entity_id = models.CharField(max_length=100, blank=True, verbose_name="实体ID")
+    # Target Entity Info
+    target_type = models.CharField(max_length=100, blank=True, verbose_name="对象类型") # e.g. Task, Project
+    target_id = models.CharField(max_length=100, blank=True, verbose_name="对象ID")
+    target_label = models.CharField(max_length=255, blank=True, verbose_name="对象名称") # Snapshot of title/name
     
-    # Detailed Changes
-    changes = models.JSONField(default=dict, blank=True, verbose_name="变更详情")
+    # Detailed Info
+    summary = models.TextField(blank=True, verbose_name="摘要") # Readable summary
+    details = models.JSONField(default=dict, blank=True, verbose_name="详情") # Stores diff, context, ua, path, etc.
     
-    # Project Context
+    # Context
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="关联项目")
-    
-    # Task Context
     task = models.ForeignKey('Task', null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_logs', verbose_name="关联任务")
-
-    extra = models.TextField(blank=True, verbose_name="额外信息")
-    remarks = models.TextField(blank=True, verbose_name="备注")
-    data = models.JSONField(default=dict, blank=True, verbose_name="数据快照")
     
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="记录时间")
 
@@ -295,8 +300,9 @@ class AuditLog(models.Model):
         verbose_name = "审计日志"
         verbose_name_plural = "审计日志"
         indexes = [
-            models.Index(fields=['entity_type', 'entity_id']),
+            models.Index(fields=['target_type', 'target_id']),
             models.Index(fields=['action']),
+            models.Index(fields=['result']),
             models.Index(fields=['created_at']),
             models.Index(fields=['project']),
             models.Index(fields=['task']),
@@ -304,7 +310,7 @@ class AuditLog(models.Model):
 
     def __str__(self):
         who = self.operator_name or (self.user.username if self.user else 'anonymous')
-        return f"{self.action} {self.entity_type}#{self.entity_id} by {who} at {self.created_at:%Y-%m-%d %H:%M:%S}"
+        return f"[{self.result.upper()}] {self.action} {self.target_type}#{self.target_id} by {who}"
 
 
 class Task(models.Model):
