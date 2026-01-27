@@ -2046,10 +2046,6 @@ def task_view(request, pk: int):
          
     can_edit = is_manager or is_owner or is_collab
 
-    # 到期未完成自动标记逾期
-    if task.due_at and task.status in ('pending', 'reopened') and task.due_at < timezone.now():
-        task.status = 'overdue'
-        task.save(update_fields=['status'])
 
     if request.method == 'POST' and 'action' in request.POST:
         if request.POST.get('action') == 'add_comment':
@@ -2066,10 +2062,10 @@ def task_view(request, pk: int):
                         _notify(request, mention_users, f"任务 {task.id} 评论提及")
                 TaskComment.objects.create(task=task, user=request.user, content=comment_text, mentions=mentions)
                 log_action(request, 'create', f"task_comment {task.id}")
-        elif request.POST.get('action') == 'reopen' and task.status == 'completed':
+        elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
             # 已完成任务支持重新打开
-            _add_history(task, request.user, 'status', task.status, 'reopened')
-            task.status = 'reopened'
+            _add_history(task, request.user, 'status', task.status, 'todo')
+            task.status = 'todo'
             task.completed_at = None
             task.save(update_fields=['status', 'completed_at'])
             log_action(request, 'update', f"task_reopen {task.id}")
@@ -2078,9 +2074,9 @@ def task_view(request, pk: int):
             if not timer.paused_at:
                 timer.paused_at = timezone.now()
                 timer.save(update_fields=['paused_at'])
-                if task.status != 'on_hold':
-                    _add_history(task, request.user, 'status', task.status, 'on_hold')
-                    task.status = 'on_hold'
+                if task.status != 'blocked':
+                    _add_history(task, request.user, 'status', task.status, 'blocked')
+                    task.status = 'blocked'
                     task.save(update_fields=['status'])
                 messages.success(request, "计时已暂停")
                 log_action(request, 'update', f"task_pause {task.id}")
@@ -2090,7 +2086,7 @@ def task_view(request, pk: int):
                 timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
                 timer.paused_at = None
                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
-                if task.status == 'on_hold':
+                if task.status == 'blocked':
                     _add_history(task, request.user, 'status', task.status, 'in_progress')
                     task.status = 'in_progress'
                     task.save(update_fields=['status'])
@@ -2124,8 +2120,8 @@ def task_view(request, pk: int):
                 try:
                     with transaction.atomic():
                         _add_history(task, request.user, 'status', task.status, new_status)
-                        if new_status == 'completed':
-                            task.status = 'completed'
+                        if new_status in ('done', 'closed'):
+                            task.status = new_status
                             task.completed_at = timezone.now()
                             timer = _get_sla_timer_readonly(task)
                             if timer and timer.paused_at:
@@ -2841,12 +2837,12 @@ def admin_task_stats(request):
     for i in range(13, -1, -1):
         d = today - timedelta(days=i)
         task_trend_labels.append(d.strftime('%m-%d'))
-        c = tasks_qs.filter(completed_at__date=d, status='completed').count()
+        c = tasks_qs.filter(completed_at__date=d, status__in=['done', 'closed']).count()
         task_trend_data.append(c)
     task_trend = {'labels': task_trend_labels, 'data': task_trend_data}
     
     # --- Pre-calculate Lead Times ---
-    completed_tasks_data = tasks_qs.filter(status='completed', completed_at__isnull=False).values('project_id', 'user_id', 'created_at', 'completed_at')
+    completed_tasks_data = tasks_qs.filter(status__in=['done', 'closed'], completed_at__isnull=False).values('project_id', 'user_id', 'created_at', 'completed_at')
     project_durations = defaultdict(list)
     user_durations = defaultdict(list)
     for t in completed_tasks_data:
@@ -4260,10 +4256,10 @@ def project_detail(request, pk: int):
     recent_reports = project.reports.select_related('user').order_by('-date')[:5]
     tasks_qs = Task.objects.filter(project=project)
     total = tasks_qs.count()
-    completed = tasks_qs.filter(status='completed').count()
-    overdue = tasks_qs.filter(status='overdue').count()
+    completed = tasks_qs.filter(status__in=['done', 'closed']).count()
+    overdue = tasks_qs.filter(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now()).count()
     within_sla = tasks_qs.filter(
-        status='completed',
+        status__in=['done', 'closed'],
         due_at__isnull=False,
         completed_at__isnull=False,
         completed_at__lte=models.F('due_at')
@@ -4277,7 +4273,7 @@ def project_detail(request, pk: int):
     if task_status in dict(Task.STATUS_CHOICES):
         tasks_qs = tasks_qs.filter(status=task_status)
     elif task_status == 'active':
-        tasks_qs = tasks_qs.exclude(status__in=['completed', 'reopened']) # Assuming reopened is active? Or maybe just exclude completed
+        tasks_qs = tasks_qs.exclude(status__in=['done', 'closed'])
     
     task_sort = request.GET.get('task_sort')
     if task_sort == 'due_at':

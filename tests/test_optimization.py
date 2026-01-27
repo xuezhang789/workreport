@@ -16,8 +16,8 @@ class OptimizationTest(TestCase):
         self.project = Project.objects.create(name='Test Project', code='TP', owner=self.user, current_phase=self.phase)
         
         # Create Tasks
-        self.task1 = Task.objects.create(title='T1', project=self.project, user=self.user, status='pending')
-        self.task2 = Task.objects.create(title='T2', project=self.project, user=self.user, status='completed', due_at=timezone.now(), completed_at=timezone.now())
+        self.task1 = Task.objects.create(title='T1', project=self.project, user=self.user, status='todo')
+        self.task2 = Task.objects.create(title='T2', project=self.project, user=self.user, status='done', due_at=timezone.now(), completed_at=timezone.now())
         
         # Create Report
         self.report = DailyReport.objects.create(user=self.user, date=timezone.now().date(), status='submitted')

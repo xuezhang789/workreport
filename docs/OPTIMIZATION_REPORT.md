@@ -8,6 +8,7 @@
 1.  **逻辑错误**: 
     -   修复了 `admin_task_create` 视图中的 `NameError`。
     -   修复了 `admin_task_list`、`admin_task_bulk_action` 和 `workbench` 中的状态过滤逻辑（`todo`/`done` 替代旧状态）。
+    -   **全面清理遗留状态**: 在 `views.py`, `services/stats.py`, `services/sla.py` 中彻底替换了 `pending`/`completed`/`overdue` 等旧状态字符串，统一使用标准状态。
     -   修正了批量操作中的 `completed` 状态判断，确保正确设置完成时间。
     -   修复了工作台 (`workbench`) 中的任务统计与燃尽图逻辑，使其适配新的任务状态定义。
 2.  **查询缺陷**: 
@@ -20,7 +21,7 @@
 
 ### ✅ 测试修复
 1.  **权限适配**: 更新了测试用例以适配最新的“严格权限策略”。现在测试用户会被正确设置为 Superuser 或 Project Owner，以通过视图层的权限校验。
-2.  **状态标准化**: 将测试中的过时任务状态（`pending`/`completed`）更新为标准状态（`todo`/`done`）。
+2.  **状态标准化**: 将 `tests/` 目录下所有测试用例中的过时任务状态（`pending`/`completed`）更新为标准状态（`todo`/`done`），确保测试逻辑与业务逻辑一致。
 3.  **数据可见性**: 修正了 `task_export` 相关测试的数据准备逻辑，确保测试数据对当前用户可见，从而正确验证导出限制功能。
 
 ---

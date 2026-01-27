@@ -190,10 +190,10 @@ class CacheAndTemplateTests(TestCase):
         cache.clear()
         now = timezone.now()
         # 先创建，再回写时间字段
-        t1 = Task.objects.create(title='t1', user=self.admin, project=self.project, status='completed', due_at=now)
+        t1 = Task.objects.create(title='t1', user=self.admin, project=self.project, status='done', due_at=now)
         Task.objects.filter(id=t1.id).update(created_at=now - timedelta(hours=2), completed_at=now - timedelta(hours=1))
         t1.refresh_from_db()
-        t2 = Task.objects.create(title='t2', user=self.admin, project=self.project, status='completed', due_at=now - timedelta(hours=1))
+        t2 = Task.objects.create(title='t2', user=self.admin, project=self.project, status='done', due_at=now - timedelta(hours=1))
         Task.objects.filter(id=t2.id).update(created_at=now - timedelta(hours=4), completed_at=now)
         t2.refresh_from_db()
         stats = report_views._performance_stats()

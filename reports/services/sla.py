@@ -97,7 +97,7 @@ def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_
     level = 'green'
     sort_order = 3
     
-    if task.status == 'completed':
+    if task.status in ('done', 'closed'):
         # If completed, check if it was done on time
         # We compare completed_at with adjusted_due
         done_at = task.completed_at or as_of # fallback
