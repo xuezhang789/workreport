@@ -25,11 +25,25 @@ class OptimizationTest(TestCase):
 
     def test_workbench_queries(self):
         self.client.force_login(self.user)
-        # Check that workbench loads without error and logic is correct
-        # Reduced from 16 to 12 after optimization
-        # The project burndown query (Query 10 in logs) is now aggregated.
-        with self.assertNumQueries(12): 
-             response = self.client.get('/reports/workbench/')
+        # Login triggers session/user updates
+        
+        # Workbench:
+        # 1. Session
+        # 2. User
+        # 3. Stats (counts)
+        # 4. Due today count
+        # 5. Due soon count
+        # 6. Streak
+        # 7. Today report
+        # 8. Projects list (aggregated)
+        # 9. Profile (for role/position)
+        # 10. RoleTemplate
+        # 11. Project Managers (permission)
+        # 12. UserPreference
+        # 13. Managed projects
+        # 14. Recent reports
+        with self.assertNumQueries(14):
+            response = self.client.get('/reports/workbench/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Test Project')
         

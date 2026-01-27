@@ -7,7 +7,8 @@ class UIRenderingTests(TestCase):
     def setUp(self):
         # Create a user and log in
         self.user = User.objects.create_user(username='testuser', password='password')
-        self.user.is_staff = True # Ensure staff for admin stats
+        self.user.is_staff = True 
+        self.user.is_superuser = True # Ensure superuser for teams list
         self.user.save()
         Profile.objects.create(user=self.user, position='dev')
         

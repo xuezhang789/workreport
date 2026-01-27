@@ -1,4 +1,4 @@
-from django.db.models.signals import pre_save, post_save, post_delete
+from django.db.models.signals import pre_save, post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -14,9 +14,11 @@ def _invalidate_stats_cache(sender=None, **kwargs):
     Invalidate statistics cache. Can be used as a signal receiver or helper.
     """
     try:
+        # Attempt to use pattern deletion (e.g., django-redis)
         cache.delete_pattern("stats_*")
-    except Exception:
-        pass
+    except (AttributeError, Exception):
+        # Fallback for backends without delete_pattern (e.g., LocMemCache in tests)
+        cache.clear()
 
 @receiver(pre_save)
 def audit_pre_save(sender, instance, **kwargs):
@@ -145,3 +147,9 @@ def notify_comment_mention(sender, instance, created, **kwargs):
             notification_type='task_updated',
             data={'task_id': instance.task.id, 'comment_id': instance.id}
         )
+
+@receiver(m2m_changed)
+def audit_m2m_changed(sender, instance, action, **kwargs):
+    # Handle DailyReport.projects changes
+    if isinstance(instance, DailyReport) and action in ["post_add", "post_remove", "post_clear"]:
+        _invalidate_stats_cache()
