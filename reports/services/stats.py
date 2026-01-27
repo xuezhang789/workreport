@@ -41,7 +41,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
     # --- Pre-calculate Lead Times (Optimization) ---
-    completed_tasks_iter = tasks.filter(status='completed', completed_at__isnull=False).select_related('project', 'user__profile')
+    completed_tasks_iter = tasks.filter(status__in=['done', 'closed'], completed_at__isnull=False).select_related('project', 'user__profile')
     
     project_durations = defaultdict(list)
     role_durations = defaultdict(list)
@@ -61,8 +61,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     project_stats = []
     project_metrics = tasks.values('project__name').annotate(
         total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue')),
+        completed=Count('id', filter=Q(status__in=['done', 'closed'])),
+        overdue=Count('id', filter=Q(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now())),
         # lead_time=Avg(F('completed_at') - F('created_at'), filter=Q(status='completed')) # SQLite limitation for Avg Duration
     ).order_by('-total')
 
@@ -98,8 +98,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     role_stats = []
     role_metrics = tasks.values('user__profile__position').annotate(
         total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue'))
+        completed=Count('id', filter=Q(status__in=['done', 'closed'])),
+        overdue=Count('id', filter=Q(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now()))
     ).order_by('-total')
     
     role_map = dict(Profile.ROLE_CHOICES)
@@ -134,8 +134,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     user_stats = []
     user_metrics = tasks.values('user__username', 'user__first_name', 'user__last_name').annotate(
         total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue'))
+        completed=Count('id', filter=Q(status__in=['done', 'closed'])),
+        overdue=Count('id', filter=Q(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now()))
     ).order_by('-total')[:50] # Top 50 users
 
     for u in user_metrics:
@@ -169,9 +169,9 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
 
     # --- 5. Overall Stats ---
     overall_total = tasks.count()
-    overall_overdue = tasks.filter(status='overdue').count()
+    overall_overdue = tasks.filter(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now()).count()
     
-    completed_qs = tasks.filter(status='completed')
+    completed_qs = tasks.filter(status__in=['done', 'closed'])
     completed_count = completed_qs.count()
     
     if completed_count > 0:
@@ -233,7 +233,7 @@ def get_advanced_report_data(project_id=None):
         if end < start:
             end = start + timezone.timedelta(hours=1)
             
-        progress = 100 if t.status == 'completed' else (50 if t.status == 'in_progress' else 0)
+        progress = 100 if t.status in ('done', 'closed') else (50 if t.status == 'in_progress' else 0)
         
         gantt_data.append({
             'id': str(t.id),
@@ -281,7 +281,7 @@ def get_advanced_report_data(project_id=None):
             burndown_data['ideal'].append(round(ideal_val, 1))
             
             # Actual: Total - Completed by date d
-            completed_count = tasks.filter(status='completed', completed_at__date__lte=d).count()
+            completed_count = tasks.filter(status__in=['done', 'closed'], completed_at__date__lte=d).count()
             actual_remaining = total_tasks_count - completed_count
             burndown_data['actual'].append(actual_remaining)
 
@@ -314,7 +314,7 @@ def get_advanced_report_data(project_id=None):
         for d in date_range:
             # Snapshot at end of day d
             # Completed
-            comp = tasks.filter(status='completed', completed_at__date__lte=d).count()
+            comp = tasks.filter(status__in=['done', 'closed'], completed_at__date__lte=d).count()
             completed_data.append(comp)
             
             # Todo: Created by d - Completed
