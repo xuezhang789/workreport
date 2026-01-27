@@ -14,9 +14,9 @@ from reports.services.sla import calculate_sla_info, _ensure_sla_timer
 class CacheAndTemplateTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.admin = User.objects.create_user(username='admin', password='pass', is_staff=True)
+        self.admin = User.objects.create_user(username='admin', password='pass', is_staff=True, is_superuser=True)
         self.client.login(username='admin', password='pass')
-        self.project = Project.objects.create(name='P1', code='P1')
+        self.project = Project.objects.create(name='P1', code='P1', owner=self.admin)
 
     def test_sla_thresholds_configurable(self):
         resp = self.client.post(reverse('reports:sla_settings'), {

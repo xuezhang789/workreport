@@ -4,7 +4,8 @@ from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db import models, transaction
-from django.db.models import Q, Count, Subquery, OuterRef
+from django.db.models import Q, Count, Subquery, OuterRef, Value, F
+from django.db.models.functions import Coalesce
 import os
 import logging
 
@@ -160,7 +161,22 @@ def _notify(request, users, message, category="info"):
 def _add_history(task: Task, user, field: str, old: str, new: str):
     if str(old) == str(new):
         return
+    # Legacy: Keep TaskHistory for admin reference if needed
     TaskHistory.objects.create(task=task, user=user if user and user.is_authenticated else None, field=field, old_value=str(old or ''), new_value=str(new or ''))
+    
+    # Modern: Create AuditLog
+    AuditLog.objects.create(
+        user=user if user and user.is_authenticated else None,
+        operator_name=user.get_full_name() if user and user.is_authenticated else 'System',
+        action='update',
+        target_type='Task',
+        target_id=str(task.id),
+        target_label=str(task)[:255],
+        details={'diff': {field: {'old': str(old or ''), 'new': str(new or '')}}},
+        project=task.project,
+        task=task,
+        result='success'
+    )
 
 
 def _mask_email(email: str) -> str:
@@ -485,10 +501,10 @@ def workbench(request):
     
     stats = tasks.aggregate(
         total=Count('id'),
-        completed=Count('id', filter=Q(status='completed')),
-        overdue=Count('id', filter=Q(status='overdue')),
+        completed=Count('id', filter=Q(status__in=['done', 'closed'])),
+        overdue=Count('id', filter=Q(status__in=['todo', 'in_progress', 'blocked', 'in_review'], due_at__lt=timezone.now())),
         in_progress=Count('id', filter=Q(status='in_progress')),
-        pending=Count('id', filter=Q(status='pending'))
+        pending=Count('id', filter=Q(status='todo'))
     )
     
     total = stats['total']
@@ -502,11 +518,11 @@ def workbench(request):
 
     # 获取今日任务和即将到期任务数量
     today = timezone.now()
-    today_tasks_count = tasks.filter(due_at__date=today.date()).exclude(status='completed').count()
+    today_tasks_count = tasks.filter(due_at__date=today.date()).exclude(status__in=['done', 'closed']).count()
     upcoming_tasks_count = tasks.filter(
         due_at__date__gt=today.date(),
         due_at__date__lte=today.date() + timedelta(days=3)
-    ).exclude(status='completed').count()
+    ).exclude(status__in=['done', 'closed']).count()
 
     # daily report streak and today's report status
     today_date = timezone.localdate()
@@ -525,8 +541,8 @@ def workbench(request):
     # project burndown with enhanced data
     projects = Project.objects.filter(is_active=True, tasks__user=request.user).distinct().annotate(
         total_p=Count('tasks', filter=Q(tasks__user=request.user)),
-        completed_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='completed')),
-        overdue_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='overdue')),
+        completed_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status__in=['done', 'closed'])),
+        overdue_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status__in=['todo', 'in_progress', 'blocked', 'in_review'], tasks__due_at__lt=timezone.now())),
         in_progress_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status='in_progress'))
     )
     
@@ -689,14 +705,16 @@ def template_center(request):
     sort = (request.GET.get('sort') or 'version').strip()  # version|updated|usage
 
     def _latest_versions(model_class, qs):
-        # 使用 Subquery 获取每个分组（name, project, role）的最新版本 ID
-        latest_version_sq = model_class.objects.filter(
+        # Use Subquery to get latest version for each (name, project, role) group
+        # Use Coalesce to handle NULL project (Global templates) correctly
+        latest_version_sq = model_class.objects.annotate(
+            proj_id=Coalesce('project', Value(-1))
+        ).filter(
             name=OuterRef('name'),
-            project=OuterRef('project'),
-            role=OuterRef('role')
+            role=OuterRef('role'),
+            proj_id=Coalesce(OuterRef('project'), Value(-1))
         ).order_by('-version').values('version')[:1]
         
-        # 筛选出版本号等于最新版本的记录
         return qs.filter(version=Subquery(latest_version_sq))
 
     report_qs = ReportTemplateVersion.objects.select_related('project', 'created_by').all()
@@ -1903,30 +1921,58 @@ def task_bulk_action(request):
     if action == 'complete':
         now = timezone.now()
         history_batch = []
+        audit_batch = []
         for t in tasks:
             history_batch.append(TaskHistory(
                 task=t, 
                 user=request.user, 
                 field='status', 
                 old_value=t.status, 
-                new_value='completed'
+                new_value='done'
+            ))
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='update',
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'diff': {'status': {'old': t.status, 'new': 'done'}}},
+                project=t.project,
+                task=t,
+                result='success'
             ))
         TaskHistory.objects.bulk_create(history_batch)
-        tasks.update(status='completed', completed_at=now)
+        AuditLog.objects.bulk_create(audit_batch)
+        tasks.update(status='done', completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
         history_batch = []
+        audit_batch = []
         for t in tasks:
             history_batch.append(TaskHistory(
                 task=t, 
                 user=request.user, 
                 field='status', 
                 old_value=t.status, 
-                new_value='reopened'
+                new_value='todo'
+            ))
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='update',
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'diff': {'status': {'old': t.status, 'new': 'todo'}}},
+                project=t.project,
+                task=t,
+                result='success'
             ))
         TaskHistory.objects.bulk_create(history_batch)
-        tasks.update(status='reopened', completed_at=None)
+        AuditLog.objects.bulk_create(audit_batch)
+        tasks.update(status='todo', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
     elif action == 'update':
@@ -1948,7 +1994,7 @@ def task_bulk_action(request):
             if valid_status and status_value != t.status:
                 _add_history(t, request.user, 'status', t.status, status_value)
                 t.status = status_value
-                if status_value == 'completed':
+                if status_value in ('done', 'closed'):
                     t.completed_at = now
                     update_fields.append('completed_at')
                 else:
@@ -2181,7 +2227,7 @@ def admin_task_list(request):
     default_sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
     due_soon_ids = set(tasks_qs.filter(
-        status__in=['pending', 'in_progress', 'on_hold', 'reopened'],
+        status__in=['todo', 'in_progress', 'blocked', 'in_review'],
         due_at__gt=now,
         due_at__lte=now + timedelta(hours=default_sla_hours)
     ).values_list('id', flat=True))
@@ -2221,7 +2267,7 @@ def admin_task_list(request):
         # Handling null due_at is complex in DB if we need fallback to created_at + SLA.
         # For safety, we filter where due_at IS NOT NULL for this optimization, or accept that null due_at tasks won't show in hot.
         
-        hot_qs = tasks_qs.exclude(status='completed').filter(due_at__isnull=False).annotate(
+        hot_qs = tasks_qs.exclude(status__in=['done', 'closed']).filter(due_at__isnull=False).annotate(
             paused_sec=Coalesce('sla_timer__total_paused_seconds', 0),
             adjusted_due=ExpressionWrapper(
                 F('due_at') + F('paused_sec') * timedelta(seconds=1),
@@ -2369,36 +2415,6 @@ def admin_task_bulk_action(request):
         tasks.update(status='todo', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
-    elif action == 'overdue':
-        history_batch = []
-        audit_batch = []
-        ip = request.META.get('REMOTE_ADDR')
-        for t in tasks:
-            history_batch.append(TaskHistory(
-                task=t, 
-                user=request.user, 
-                field='status', 
-                old_value=t.status, 
-                new_value='overdue'
-            ))
-            audit_batch.append(AuditLog(
-                user=request.user,
-                operator_name=request.user.get_full_name(),
-                action='update',
-                target_type='Task',
-                target_id=str(t.id),
-                target_label=str(t)[:255],
-                details={'diff': {'status': {'old': t.status, 'new': 'overdue'}}},
-                project=t.project,
-                task=t,
-                ip=ip,
-                result='success'
-            ))
-        TaskHistory.objects.bulk_create(history_batch)
-        AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status='overdue')
-        updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
     elif action == 'update' or action in ('assign', 'change_status'): # Support separate actions or merged update
         # Map frontend params to backend logic
         status_value = (request.POST.get('target_status') or request.POST.get('status_value') or '').strip()
@@ -2440,7 +2456,7 @@ def admin_task_bulk_action(request):
             if valid_status and status_value != t.status:
                 _add_history(t, request.user, 'status', t.status, status_value)
                 t.status = status_value
-                if status_value == 'completed':
+                if status_value in ('done', 'closed'):
                     t.completed_at = now
                     update_fields.append('completed_at')
                 else:
@@ -3032,38 +3048,6 @@ def admin_task_create(request):
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
-        # Enforce Collaborator-only Restrictions
-        if is_collaborator_only:
-            # Title
-            req_title = (request.POST.get('title') or '').strip()
-            if req_title != task.title:
-                return _admin_forbidden(request, "权限不足：协作人无法修改任务标题 / Collaborators cannot change title")
-            
-            # Project
-            req_project = request.POST.get('project')
-            if req_project and int(req_project) != task.project.id:
-                return _admin_forbidden(request, "权限不足：协作人无法移动项目 / Collaborators cannot change project")
-                
-            # Owner
-            req_user = request.POST.get('user')
-            if req_user and int(req_user) != task.user.id:
-                return _admin_forbidden(request, "权限不足：协作人无法转让负责人 / Collaborators cannot change owner")
-            
-            # Collaborators
-            req_collabs = set(map(int, filter(None, request.POST.getlist('collaborators'))))
-            cur_collabs = set(task.collaborators.values_list('id', flat=True))
-            if req_collabs != cur_collabs:
-                return _admin_forbidden(request, "权限不足：协作人无法修改协作人列表 / Collaborators cannot change collaborators")
-
-            # URL & Content (Simple Check)
-            req_url = (request.POST.get('url') or '').strip()
-            if req_url != task.url:
-                 return _admin_forbidden(request, "权限不足：协作人无法修改 URL / Collaborators cannot change URL")
-                 
-            # Note: We allow Due Date to pass if it's not in POST (disabled input), 
-            # but if it IS in POST and changed, we should block.
-            # However, simpler to rely on frontend disable + above core checks for now.
-
         title = (request.POST.get('title') or '').strip()
         url = (request.POST.get('url') or '').strip()
         content = (request.POST.get('content') or '').strip()
@@ -4579,7 +4563,7 @@ def project_update_phase(request, project_id):
             )
             
             # Send notification
-            # _send_phase_change_notification(project, old_phase, new_phase, request.user) # Legacy placeholder?
+            _send_phase_change_notification(project, old_phase, new_phase, request.user)
             
             # Notify all project members
             from reports.services.notification_service import send_notification
