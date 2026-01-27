@@ -2100,16 +2100,58 @@ def task_view(request, pk: int):
     log_action(request, 'access', f"task_view {task.id}")
     comments = task.comments.select_related('user').all()
     attachments = task.attachments.select_related('user').all()
-    histories = task.histories.select_related('user').all()
+    
+    # Unified History (AuditLogs for Task) removed from here, moved to separate view
+    
     sla_ref_time = task.completed_at if task.completed_at else None
     return render(request, 'reports/task_detail.html', {
         'task': task,
         'comments': comments,
         'attachments': attachments,
-        'histories': histories,
         'sla': calculate_sla_info(task, as_of=sla_ref_time),
         'can_edit': can_edit,
     })
+
+
+@login_required
+def task_history(request, pk: int):
+    task = get_object_or_404(Task, pk=pk)
+    
+    # Permission check (same as task_view)
+    can_view = (
+        request.user.is_superuser or 
+        request.user == task.user or 
+        task.project.members.filter(id=request.user.id).exists() or
+        task.project.managers.filter(id=request.user.id).exists() or
+        task.project.owner == request.user or
+        task.collaborators.filter(id=request.user.id).exists()
+    )
+    
+    if not can_view:
+        return _friendly_forbidden(request, "无权查看该任务历史 / No permission to view task history")
+
+    # Unified History (AuditLogs for Task)
+    audit_logs = AuditLog.objects.filter(
+        target_type='Task', 
+        target_id=str(task.id)
+    ).select_related('user')
+    
+    # Process history
+    timeline = []
+    for log in audit_logs:
+        # Only include logs that have actual diff details or create
+        if log.action == 'create' or (log.details and 'diff' in log.details):
+            timeline.append({
+                'type': 'field' if log.action == 'update' else 'create',
+                'timestamp': log.created_at,
+                'user': log.user,
+                'data': log
+            })
+            
+    # Sort desc
+    timeline.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return render(request, 'reports/task_history.html', {'task': task, 'logs': timeline})
 
 
 @login_required
