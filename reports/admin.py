@@ -44,9 +44,9 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ('action', 'user', 'path', 'method', 'created_at')
-    list_filter = ('action', 'method', 'created_at')
-    search_fields = ('path', 'extra', 'user__username')
+    list_display = ('action', 'user', 'target_type', 'target_id', 'result', 'created_at')
+    list_filter = ('action', 'result', 'created_at')
+    search_fields = ('summary', 'user__username', 'target_label', 'target_id')
 
 
 @admin.register(Task)

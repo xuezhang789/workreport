@@ -4,27 +4,29 @@ from reports.models import AuditLog
 
 class AuditService:
     @staticmethod
-    def log_change(user, action, instance, old_instance=None, ip=None, remarks='', path='', method='', changes=None):
+    def log_change(user, action, instance, old_instance=None, ip=None, remarks='', path='', method='', changes=None, result='success'):
         """
         Log a change to the audit log.
         """
-        entity_type = instance.__class__.__name__
-        entity_id = str(instance.pk)
+        target_type = instance.__class__.__name__
+        target_id = str(instance.pk)
+        target_label = str(instance)[:255]
+        
         operator_name = user.get_full_name() or user.username if user and user.is_authenticated else 'System/Anonymous'
         
         # Determine Project & Task Context
         project = None
         task = None
         
-        if entity_type == 'Task':
+        if target_type == 'Task':
             task = instance
             project = instance.project
-        elif entity_type == 'Project':
+        elif target_type == 'Project':
             project = instance
-        elif entity_type == 'TaskComment':
+        elif target_type == 'TaskComment':
             task = instance.task
             project = instance.task.project
-        elif entity_type == 'TaskAttachment':
+        elif target_type == 'TaskAttachment':
             task = instance.task
             project = instance.task.project
         elif hasattr(instance, 'project') and instance.project and hasattr(instance.project, 'pk'): # Check if project is a FK model instance
@@ -36,26 +38,31 @@ class AuditService:
         # But log_change is usually for one instance. 
         # For now, we leave project=None for DailyReport unless we want to log multiple entries (too complex here).
 
+        details = {}
         if changes is None:
-            changes = {}
             if action == 'update' and old_instance:
-                changes = AuditService._calculate_diff(old_instance, instance)
+                details['diff'] = AuditService._calculate_diff(old_instance, instance)
             elif action == 'create':
-                changes = {'_all': 'Created'} # Or dump full dict
+                details['diff'] = {'_all': 'Created'}
+        else:
+            details['diff'] = changes
+            
+        if path or method:
+            details['context'] = {'path': path, 'method': method}
             
         AuditLog.objects.create(
             user=user if user and user.is_authenticated else None,
             operator_name=operator_name,
             action=action,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            changes=changes,
+            result=result,
+            target_type=target_type,
+            target_id=target_id,
+            target_label=target_label,
+            details=details,
             project=project,
             task=task,
             ip=ip,
-            remarks=remarks,
-            path=path,
-            method=method
+            summary=remarks,
         )
 
     @staticmethod

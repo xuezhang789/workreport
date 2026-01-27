@@ -90,21 +90,27 @@ def log_action(request, action: str, extra: str = "", data=None):
     user = request.user if request.user.is_authenticated else None
     operator_name = user.get_full_name() or user.username if user else 'System/Anonymous'
     
+    details = {
+        'context': {
+            'path': request.path[:255],
+            'method': request.method,
+            'ua': ua,
+            'elapsed_ms': elapsed_ms
+        },
+        'data': data or {}
+    }
+
     AuditLog.objects.create(
         user=user,
         operator_name=operator_name,
         action=action,
-        path=request.path[:255],
-        method=request.method,
         ip=ip,
-        extra=extra[:2000],
-        data={
-            **(data or {}),
-            'ua': ua,
-            **({'elapsed_ms': elapsed_ms} if elapsed_ms is not None else {}),
-        },
-        entity_type='AccessLog', # Mark manual logs distinct from Data Changes
-        entity_id='0',
+        summary=extra[:2000],
+        details=details,
+        target_type='AccessLog', # Mark manual logs distinct from Data Changes
+        target_id='0',
+        target_label='System Access',
+        result='success'
     )
 
 
@@ -2277,18 +2283,20 @@ def admin_task_bulk_action(request):
                 user=request.user,
                 operator_name=request.user.get_full_name(),
                 action='update',
-                entity_type='Task',
-                entity_id=str(t.id),
-                changes={'status': {'old': t.status, 'new': 'done'}},
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'diff': {'status': {'old': t.status, 'new': 'done'}}},
                 project=t.project,
                 task=t,
-                ip=ip
+                ip=ip,
+                result='success'
             ))
         TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='done', completed_at=now)
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}", entity_type='AccessLog', entity_id='0')
+        log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
         history_batch = []
         audit_batch = []
@@ -2305,18 +2313,20 @@ def admin_task_bulk_action(request):
                 user=request.user,
                 operator_name=request.user.get_full_name(),
                 action='update',
-                entity_type='Task',
-                entity_id=str(t.id),
-                changes={'status': {'old': t.status, 'new': 'todo'}},
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'diff': {'status': {'old': t.status, 'new': 'todo'}}},
                 project=t.project,
                 task=t,
-                ip=ip
+                ip=ip,
+                result='success'
             ))
         TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='todo', completed_at=None)
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}", entity_type='AccessLog', entity_id='0')
+        log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
     elif action == 'overdue':
         history_batch = []
         audit_batch = []
@@ -2333,18 +2343,20 @@ def admin_task_bulk_action(request):
                 user=request.user,
                 operator_name=request.user.get_full_name(),
                 action='update',
-                entity_type='Task',
-                entity_id=str(t.id),
-                changes={'status': {'old': t.status, 'new': 'overdue'}},
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'diff': {'status': {'old': t.status, 'new': 'overdue'}}},
                 project=t.project,
                 task=t,
-                ip=ip
+                ip=ip,
+                result='success'
             ))
         TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='overdue')
         updated = total_selected
-        log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}", entity_type='AccessLog', entity_id='0')
+        log_action(request, 'update', f"admin_task_bulk_overdue count={tasks.count()}")
     elif action == 'update' or action in ('assign', 'change_status'): # Support separate actions or merged update
         # Map frontend params to backend logic
         status_value = (request.POST.get('target_status') or request.POST.get('status_value') or '').strip()
@@ -4028,13 +4040,12 @@ def audit_logs(request):
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
     action = (request.GET.get('action') or '').strip()
-    method = (request.GET.get('method') or '').strip()
+    result = (request.GET.get('result') or '').strip()
     user_q = (request.GET.get('user') or '').strip()
-    path_q = (request.GET.get('path') or '').strip()
     
     # New filters
-    entity_type = (request.GET.get('entity_type') or '').strip()
-    entity_id = (request.GET.get('entity_id') or '').strip()
+    target_type = (request.GET.get('target_type') or '').strip()
+    target_id = (request.GET.get('target_id') or '').strip()
     project_id = (request.GET.get('project_id') or '').strip()
     task_id = (request.GET.get('task_id') or '').strip()
 
@@ -4045,8 +4056,8 @@ def audit_logs(request):
         qs = qs.filter(created_at__date__lte=end_date)
     if action:
         qs = qs.filter(action=action)
-    if method:
-        qs = qs.filter(method__iexact=method)
+    if result:
+        qs = qs.filter(result=result)
     if user_q:
         qs = qs.filter(
             Q(user__username__icontains=user_q) | 
@@ -4054,12 +4065,10 @@ def audit_logs(request):
             Q(user__last_name__icontains=user_q) |
             Q(operator_name__icontains=user_q)
         )
-    if path_q:
-        qs = qs.filter(path__icontains=path_q)
-    if entity_type:
-        qs = qs.filter(entity_type__icontains=entity_type)
-    if entity_id:
-        qs = qs.filter(entity_id=entity_id)
+    if target_type:
+        qs = qs.filter(target_type__icontains=target_type)
+    if target_id:
+        qs = qs.filter(target_id=target_id)
     if project_id:
         qs = qs.filter(project_id=project_id)
     if task_id:
@@ -4072,12 +4081,10 @@ def audit_logs(request):
     projects = Project.objects.filter(is_active=True).values('id', 'name', 'code')
     
     # Get relevant tasks if project is selected, otherwise top recent tasks or empty
-    # For performance, maybe better to use an AJAX autocomplete, but let's just list recent active tasks if project selected
     tasks = []
     if project_id:
-        tasks = Task.objects.filter(project_id=project_id).exclude(status='completed').values('id', 'title')[:50]
+        tasks = Task.objects.filter(project_id=project_id).exclude(status='done').values('id', 'title')[:50]
     elif task_id:
-        # If task is selected but no project, ensure we show that task in dropdown
         tasks = Task.objects.filter(id=task_id).values('id', 'title')
 
     context = {
@@ -4086,16 +4093,16 @@ def audit_logs(request):
         'start_date': start_date,
         'end_date': end_date,
         'action': action,
-        'method': method,
+        'result': result,
         'user_q': user_q,
-        'path_q': path_q,
-        'entity_type': entity_type,
-        'entity_id': entity_id,
+        'target_type': target_type,
+        'target_id': target_id,
         'project_id': project_id,
         'task_id': task_id,
         'projects': projects,
         'tasks': tasks,
         'actions': AuditLog.ACTION_CHOICES,
+        'results': AuditLog.RESULT_CHOICES,
     }
     return render(request, 'reports/audit_logs.html', context)
 
@@ -4108,9 +4115,9 @@ def audit_logs_export(request):
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
     action = (request.GET.get('action') or '').strip()
-    method = (request.GET.get('method') or '').strip()
+    result = (request.GET.get('result') or '').strip()
     user_q = (request.GET.get('user') or '').strip()
-    path_q = (request.GET.get('path') or '').strip()
+    target_type = (request.GET.get('target_type') or '').strip()
 
     qs = AuditLog.objects.select_related('user').order_by('-created_at')
     if start_date:
@@ -4119,12 +4126,12 @@ def audit_logs_export(request):
         qs = qs.filter(created_at__date__lte=end_date)
     if action:
         qs = qs.filter(action=action)
-    if method:
-        qs = qs.filter(method__iexact=method)
+    if result:
+        qs = qs.filter(result=result)
     if user_q:
         qs = qs.filter(Q(user__username__icontains=user_q) | Q(user__first_name__icontains=user_q) | Q(user__last_name__icontains=user_q))
-    if path_q:
-        qs = qs.filter(path__icontains=path_q)
+    if target_type:
+        qs = qs.filter(target_type__icontains=target_type)
 
     if not (start_date and end_date):
         return HttpResponse("请提供开始和结束日期后再导出。", status=400)
@@ -4136,18 +4143,20 @@ def audit_logs_export(request):
             log.created_at.astimezone(timezone.get_current_timezone()).strftime("%Y-%m-%d %H:%M:%S"),
             log.operator_name or (log.user.username if log.user else "System"),
             log.get_action_display(),
-            log.entity_type,
-            log.entity_id,
-            json.dumps(log.changes, ensure_ascii=False) if log.changes else "",
+            log.get_result_display(),
+            log.target_type,
+            log.target_id,
+            log.target_label,
+            json.dumps(log.details, ensure_ascii=False) if log.details else "",
             log.ip or "",
-            log.remarks or log.extra or "",
+            log.summary or "",
         ]
         for log in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE)
     )
-    header = ["时间", "操作人", "动作", "实体类型", "实体ID", "变更详情", "IP", "备注"]
+    header = ["时间", "操作人", "动作", "结果", "对象类型", "对象ID", "对象名称", "详情", "IP", "摘要"]
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="audit_logs.csv"'
-    log_action(request, 'export', f"audit_logs count={qs.count()} action={action} method={method}")
+    log_action(request, 'export', f"audit_logs count={qs.count()} action={action}")
     return response
 
 @login_required
@@ -4161,8 +4170,8 @@ def api_audit_logs(request):
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
     action = (request.GET.get('action') or '').strip()
-    entity_type = (request.GET.get('entity_type') or '').strip()
-    entity_id = (request.GET.get('entity_id') or '').strip()
+    target_type = (request.GET.get('target_type') or '').strip()
+    target_id = (request.GET.get('target_id') or '').strip()
     user_q = (request.GET.get('user') or '').strip()
     project_id = (request.GET.get('project_id') or '').strip()
     task_id = (request.GET.get('task_id') or '').strip()
