@@ -4577,9 +4577,40 @@ def project_phase_history(request, project_id):
         if not accessible.filter(id=project.id).exists():
              raise Http404
 
-    logs = project.phase_logs.all().select_related('old_phase', 'new_phase', 'changed_by')
+    # 1. Phase Logs
+    phase_logs = project.phase_logs.all().select_related('old_phase', 'new_phase', 'changed_by')
     
-    return render(request, 'reports/project_stage_history.html', {'project': project, 'logs': logs})
+    # 2. Audit Logs (Field Changes)
+    audit_logs = AuditLog.objects.filter(
+        target_type='Project', 
+        target_id=str(project.id)
+    ).select_related('user')
+    
+    # 3. Combine
+    timeline = []
+    
+    for log in phase_logs:
+        timeline.append({
+            'type': 'phase',
+            'timestamp': log.changed_at,
+            'user': log.changed_by,
+            'data': log
+        })
+        
+    for log in audit_logs:
+        # Only include logs that have actual diff details
+        if log.details and 'diff' in log.details:
+            timeline.append({
+                'type': 'field',
+                'timestamp': log.created_at,
+                'user': log.user,
+                'data': log
+            })
+        
+    # Sort desc
+    timeline.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return render(request, 'reports/project_stage_history.html', {'project': project, 'logs': timeline})
 
 @login_required
 def daily_report_batch_create(request):

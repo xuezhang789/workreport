@@ -1,7 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
 
-{% block title %}阶段变更历史 / Phase History{% endblock %}
+{% block title %}项目变更历史 / Project History{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="变更历史 / History" nav_subtitle=project.name %}{% endblock %}
 
 {% block extra_styles %}
@@ -375,21 +375,26 @@
                     <div class="timeline-content">
                         <div class="timeline-header">
                             <div class="change-date">
-                                {{ log.changed_at|localtime|date:"Y年m月d日 H:i" }}
+                                {{ log.timestamp|localtime|date:"Y年m月d日 H:i" }}
                             </div>
                             <div class="change-user">
                                 <div style="width: 20px; height: 20px; background: #f1f5f9; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: #64748b; font-weight: 700;">
-                                    {{ log.changed_by.first_name|first|default:log.changed_by.username|first|upper }}
+                                    {{ log.user.first_name|first|default:log.user.username|first|upper }}
                                 </div>
-                                {{ log.changed_by.get_full_name|default:log.changed_by.username }}
+                                {{ log.user.get_full_name|default:log.user.username }}
                             </div>
                         </div>
                         
+                        {% if log.type == 'phase' %}
+                        <div class="change-type-label" style="margin-bottom: 12px; font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                            阶段变更 / Phase Change
+                        </div>
                         <div class="phase-flow">
-                            {% if log.old_phase %}
+                            {% if log.data.old_phase %}
                                 <div class="phase-pill phase-old">
-                                    {{ log.old_phase.phase_name }}
-                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.old_phase.progress_percentage }}%</span>
+                                    {{ log.data.old_phase.phase_name }}
+                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.data.old_phase.progress_percentage }}%</span>
                                 </div>
                             {% else %}
                                 <div class="phase-pill phase-old" style="text-decoration: none;">初始创建 / Initial</div>
@@ -397,15 +402,41 @@
 
                             <span class="flow-arrow">➜</span>
 
-                            {% if log.new_phase %}
+                            {% if log.data.new_phase %}
                                 <div class="phase-pill phase-new">
-                                    {{ log.new_phase.phase_name }}
-                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.new_phase.progress_percentage }}%</span>
+                                    {{ log.data.new_phase.phase_name }}
+                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.data.new_phase.progress_percentage }}%</span>
                                 </div>
                             {% else %}
                                 <span style="color: var(--text-secondary);">未知 / Unknown</span>
                             {% endif %}
                         </div>
+                        {% else %}
+                        <div class="change-type-label" style="margin-bottom: 12px; font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+                            字段更新 / Field Update
+                        </div>
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <table style="width: 100%; font-size: 13px; text-align: left; border-collapse: collapse;">
+                                <thead style="background: #f8fafc; color: #64748b;">
+                                    <tr>
+                                        <th style="padding: 8px 12px; font-weight: 600; width: 30%;">字段 / Field</th>
+                                        <th style="padding: 8px 12px; font-weight: 600; width: 35%;">旧值 / Old</th>
+                                        <th style="padding: 8px 12px; font-weight: 600; width: 35%;">新值 / New</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for field, change in log.data.details.diff.items %}
+                                    <tr style="border-top: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px 12px; font-family: monospace; color: #475569;">{{ field }}</td>
+                                        <td style="padding: 10px 12px; color: #ef4444; background: #fef2f2;">{{ change.old|default:"-"|truncatechars:30 }}</td>
+                                        <td style="padding: 10px 12px; color: #10b981; background: #f0fdf4;">{{ change.new|default:"-"|truncatechars:30 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
