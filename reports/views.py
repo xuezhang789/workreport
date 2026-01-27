@@ -2553,7 +2553,7 @@ def admin_task_stats(request):
     end_date = parse_date(end_str) if end_str else None
 
     # Base QuerySets
-    tasks_qs = Task.objects.select_related('project', 'user')
+    tasks_qs = Task.objects.select_related('project', 'user', 'sla_timer')
     reports_qs = DailyReport.objects.select_related('user').prefetch_related('projects')
 
     # Apply permissions
@@ -4814,4 +4814,52 @@ def api_task_detail(request, pk: int):
         'priority': task.priority,
         'due_at': task.due_at.isoformat() if task.due_at else '',
         'collaborator_ids': list(task.collaborators.values_list('id', flat=True)),
+    })
+
+@login_required
+def global_search(request):
+    query = (request.GET.get('q') or '').strip()
+    
+    projects = []
+    tasks = []
+    reports = []
+    
+    if query:
+        # Projects
+        project_qs = get_accessible_projects(request.user)
+        projects = project_qs.filter(
+            Q(name__icontains=query) | 
+            Q(code__icontains=query) | 
+            Q(description__icontains=query)
+        ).distinct()[:10]
+        
+        # Tasks
+        task_qs = get_accessible_tasks(request.user)
+        # Support searching by Task ID if numeric
+        task_q = Q(title__icontains=query) | Q(content__icontains=query)
+        if query.isdigit():
+            task_q |= Q(id=query)
+            
+        tasks = task_qs.filter(task_q).select_related('project', 'user').distinct()[:10]
+        
+        # Reports
+        report_qs = get_accessible_reports(request.user)
+        # Search across various text fields in DailyReport since 'content' does not exist
+        reports = report_qs.filter(
+            Q(today_work__icontains=query) |
+            Q(tomorrow_plan__icontains=query) |
+            Q(progress_issues__icontains=query) |
+            Q(bug_summary__icontains=query) |
+            Q(testing_scope__icontains=query) |
+            Q(ui_feedback__icontains=query) |
+            Q(product_coordination__icontains=query) |
+            Q(mgr_risks__icontains=query)
+        ).select_related('user').distinct()[:10]
+
+    return render(request, 'reports/global_search.html', {
+        'query': query,
+        'projects': projects,
+        'tasks': tasks,
+        'reports': reports,
+        'results_count': len(projects) + len(tasks) + len(reports)
     })
