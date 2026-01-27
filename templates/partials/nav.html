@@ -51,6 +51,14 @@
         
         <!-- 用户操作 -->
         {% if request.user.is_authenticated %}
+            <!-- Global Search Input -->
+            <form action="{% url 'reports:global_search' %}" method="get" style="margin-right: 8px;">
+                <input type="text" name="q" placeholder="🔍 搜索 / Search..." 
+                       style="padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(59,130,246,0.2); background: rgba(255,255,255,0.6); font-size: 13px; width: 180px; transition: all 0.2s; outline: none;"
+                       onfocus="this.style.width='240px'; this.style.background='#fff'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.1)'"
+                       onblur="this.style.width='180px'; this.style.background='rgba(255,255,255,0.6)'; this.style.boxShadow='none'">
+            </form>
+
             {% include "components/notification_center.html" %}
             <a class="user-center {% if request.resolver_match and request.resolver_match.url_name == 'account_settings' %}active{% endif %}" href="{% url 'account_settings' %}">
                 <div class="user-avatar">

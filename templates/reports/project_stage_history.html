@@ -2,57 +2,422 @@
 {% load tz %}
 
 {% block title %}阶段变更历史 / Phase History{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="变更历史 / History" nav_subtitle=project.name %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Project Detail) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-hover: #1e40af;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-page: #f8fafc;
+        --radius-lg: 16px;
+        --timeline-line-color: #e2e8f0;
+        --timeline-dot-color: #cbd5e1;
+        --timeline-dot-active: #3b82f6;
+    }
+
+    .page-container {
+        max-width: 1200px; /* Reduced width for better reading experience on history page */
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* Card & Header Styles */
+    .card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 32px; /* More padding for cleaner look */
+        margin-bottom: 24px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+        border-bottom: 1px dashed var(--border-color);
+        padding-bottom: 24px;
+    }
+
+    .project-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .project-code {
+        font-family: 'Space Mono', monospace;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .badge-active { background: #dbeafe; color: #1e40af; }
+    .badge-archived { background: #f1f5f9; color: #475569; }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 32px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: #f8fafc;
+        color: var(--text-main);
+    }
+
+    /* Timeline Styles */
+    .timeline-container {
+        position: relative;
+        padding-left: 40px;
+        margin-top: 40px;
+    }
+
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 10px;
+        bottom: 0;
+        width: 2px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 40px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -40px;
+        top: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #cbd5e1;
+        display: grid;
+        place-items: center;
+        z-index: 2;
+        font-size: 14px;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+
+    .timeline-item:hover .timeline-marker {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: scale(1.1);
+    }
+
+    .timeline-item.active .timeline-marker {
+        border-color: var(--primary);
+        background: #eff6ff;
+        color: var(--primary);
+        box-shadow: 0 0 0 4px #dbeafe;
+    }
+
+    .timeline-content {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+
+    .timeline-item:hover .timeline-content {
+        background: white;
+        border-color: #e2e8f0;
+        box-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .change-date {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .change-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .phase-flow {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .phase-pill {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .phase-old {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px dashed #cbd5e1;
+        text-decoration: line-through;
+        opacity: 0.8;
+    }
+
+    .phase-new {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #6ee7b7;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+    }
+
+    .flow-arrow {
+        color: #94a3b8;
+        font-size: 18px;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        color: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .page-container { padding: 16px; }
+        .card { padding: 20px; }
+        .header-content { flex-direction: column; gap: 16px; }
+        .timeline-container { padding-left: 24px; }
+        .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
+        .timeline-container::before { left: -25px; }
+        .phase-flow { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .flow-arrow { transform: rotate(90deg); margin-left: 20px; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="hero">
-    <div>
-        <p class="eyebrow"><a href="{% url 'reports:project_detail' project.pk %}" style="color: inherit; text-decoration: none;">{{ project.name }}</a></p>
-        <h1>阶段变更历史 / Phase History</h1>
-        <p class="lede">查看项目的阶段变更记录 / View project phase change logs.</p>
-    </div>
-    <div style="text-align: right;">
-        <a class="btn btn-secondary" href="{% url 'reports:project_detail' project.pk %}">返回项目 / Back to Project</a>
-    </div>
-</div>
+<div class="page-container">
+    
+    <div class="card">
+        <!-- Project Header Info -->
+        <div class="header-content">
+            <div>
+                <h1 class="project-title">
+                    {{ project.name }}
+                    <span class="project-code">{{ project.code }}</span>
+                    {% if project.is_active %}
+                        <span class="status-badge badge-active">进行中 / ACTIVE</span>
+                    {% else %}
+                        <span class="status-badge badge-archived">已归档 / ARCHIVED</span>
+                    {% endif %}
+                </h1>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <a href="{% url 'reports:project_detail' project.pk %}" class="btn btn-ghost">返回列表</a>
+                {% if can_manage %}
+                    <a href="{% url 'reports:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                {% endif %}
+            </div>
+        </div>
 
-<section class="card">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>时间 / Time</th>
-                <th>原阶段 / Old Phase</th>
-                <th>新阶段 / New Phase</th>
-                <th>操作人 / Changed By</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for log in logs %}
-            <tr>
-                <td>{{ log.changed_at|localtime|date:"Y-m-d H:i:s" }}</td>
-                <td>
-                    {% if log.old_phase %}
-                    {{ log.old_phase.phase_name }} ({{ log.old_phase.progress_percentage }}%)
+        <!-- Project Meta Grid -->
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">负责人 / OWNER</span>
+                <span class="info-value">
+                    {% if project.owner %}
+                        <div style="width: 24px; height: 24px; background: #eff6ff; color: #2563eb; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700;">
+                            {{ project.owner.first_name|first|default:project.owner.username|first|upper }}
+                        </div>
+                        {{ project.owner.get_full_name|default:project.owner.username }}
                     {% else %}
-                    -
+                        <span style="color: var(--text-secondary);">--</span>
                     {% endif %}
-                </td>
-                <td>
-                    {% if log.new_phase %}
-                    <span style="color: var(--primary); font-weight: 600;">
-                        {{ log.new_phase.phase_name }} ({{ log.new_phase.progress_percentage }}%)
-                    </span>
-                    {% else %}
-                    -
-                    {% endif %}
-                </td>
-                <td>{{ log.changed_by.get_full_name|default:log.changed_by.username }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted);">暂无变更记录 / No change history</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">时间周期 / DURATION</span>
+                <span class="info-value">
+                    {{ project.start_date|default:"--" }} 
+                    <span style="color: var(--text-secondary); margin: 0 4px;">→</span> 
+                    {{ project.end_date|default:"--" }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">成员 / MEMBERS</span>
+                <span class="info-value">{{ project.members.count }} 人</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">SLA 配置</span>
+                <span class="info-value">{% if project.sla_hours %}{{ project.sla_hours }}h{% else %}全局配置{% endif %}</span>
+            </div>
+        </div>
+
+        {% if project.description %}
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px dashed var(--border-color);">
+                <span class="info-label" style="display: block; margin-bottom: 12px;">项目描述 / DESCRIPTION</span>
+                <p style="margin: 0; font-size: 14px; color: var(--text-main); line-height: 1.6;">{{ project.description }}</p>
+            </div>
+        {% endif %}
+
+        <!-- Timeline Section -->
+        <div style="margin-top: 48px;">
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+                <span>⏳</span> 变更历史记录 / Change History
+            </h3>
+
+            {% if logs %}
+            <div class="timeline-container">
+                {% for log in logs %}
+                <div class="timeline-item {% if forloop.first %}active{% endif %}">
+                    <div class="timeline-marker">
+                        {% if forloop.first %}●{% else %}{{ forloop.revcounter }}{% endif %}
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <div class="change-date">
+                                {{ log.changed_at|localtime|date:"Y年m月d日 H:i" }}
+                            </div>
+                            <div class="change-user">
+                                <div style="width: 20px; height: 20px; background: #f1f5f9; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: #64748b; font-weight: 700;">
+                                    {{ log.changed_by.first_name|first|default:log.changed_by.username|first|upper }}
+                                </div>
+                                {{ log.changed_by.get_full_name|default:log.changed_by.username }}
+                            </div>
+                        </div>
+                        
+                        <div class="phase-flow">
+                            {% if log.old_phase %}
+                                <div class="phase-pill phase-old">
+                                    {{ log.old_phase.phase_name }}
+                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.old_phase.progress_percentage }}%</span>
+                                </div>
+                            {% else %}
+                                <div class="phase-pill phase-old" style="text-decoration: none;">初始创建 / Initial</div>
+                            {% endif %}
+
+                            <span class="flow-arrow">➜</span>
+
+                            {% if log.new_phase %}
+                                <div class="phase-pill phase-new">
+                                    {{ log.new_phase.phase_name }}
+                                    <span style="font-size: 12px; margin-left: 4px;">{{ log.new_phase.progress_percentage }}%</span>
+                                </div>
+                            {% else %}
+                                <span style="color: var(--text-secondary);">未知 / Unknown</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🕰️</div>
+                <p>暂无变更记录</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
 {% endblock %}

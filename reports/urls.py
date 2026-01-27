@@ -89,4 +89,7 @@ urlpatterns = [
     # Task Attachments
     path('tasks/<int:task_id>/upload-attachment/', views.task_upload_attachment, name='task_upload_attachment'),
     path('tasks/attachments/<int:attachment_id>/delete/', views.task_delete_attachment, name='task_delete_attachment'),
+    
+    # Global Search
+    path('search/', views.global_search, name='global_search'),
 ]
