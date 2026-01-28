@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from .models import UserPreference
+from core.models import UserPreference
 
 
 @login_required

@@ -345,9 +345,9 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">返回列表</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表</a>
                 {% if can_manage %}
-                    <a href="{% url 'reports:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
                 {% endif %}
             </div>
         </div>
@@ -423,7 +423,7 @@
                     <div class="attachment-actions">
                         <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载</a>
                         {% if can_manage or user == attachment.uploaded_by %}
-                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'reports:project_delete_attachment' attachment.id %}')">删除</button>
+                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除</button>
                         {% endif %}
                     </div>
                 </div>
@@ -441,7 +441,7 @@
             <div class="card-title">
                 <span>🚩</span> 阶段与进度 / Phase & Progress
             </div>
-            <a href="{% url 'reports:project_phase_history' project.pk %}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;">变更记录</a>
+            <a href="{% url 'projects:project_phase_history' project.pk %}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;">变更记录</a>
         </div>
         
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
@@ -526,7 +526,7 @@
                     </select>
                 </form>
                 {% if can_manage %}
-                    <a href="{% url 'reports:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务</a>
+                    <a href="{% url 'tasks:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务</a>
                 {% endif %}
             </div>
         </div>
@@ -549,7 +549,7 @@
                             <tr>
                                 <td>
                                     <div style="display: flex; flex-direction: column; gap: 2px;">
-                                        <a href="{% url 'reports:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
+                                        <a href="{% url 'tasks:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
                                         {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接</a>{% endif %}
                                     </div>
                                 </td>
@@ -592,7 +592,7 @@
                             </span>
                                 </td>
                                 <td style="text-align: right;">
-                                    <a href="{% url 'reports:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
+                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -677,7 +677,7 @@
             addAttachmentBtn.disabled = true;
             addAttachmentBtn.textContent = 'Uploading...';
             
-            fetch("{% url 'reports:project_upload_attachment' project.pk %}", {
+            fetch("{% url 'projects:project_upload_attachment' project.pk %}", {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}'
@@ -744,7 +744,7 @@
             btn.disabled = true;
             btn.textContent = 'Updating...';
             
-            fetch("{% url 'reports:project_update_phase' project.pk %}", {
+            fetch("{% url 'projects:project_update_phase' project.pk %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

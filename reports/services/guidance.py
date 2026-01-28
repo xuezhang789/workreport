@@ -47,7 +47,7 @@ def generate_workbench_guidance(total, completed, overdue, in_progress, pending,
         guidance['status'] = 'warning'
         guidance['actions'].append({
             'text': '查看逾期任务 / View Overdue Tasks',
-            'url': 'reports:task_list',
+            'url': 'tasks:task_list',
             'priority': 'high'
         })
     
@@ -57,7 +57,7 @@ def generate_workbench_guidance(total, completed, overdue, in_progress, pending,
         guidance['status'] = 'normal'
         guidance['actions'].append({
             'text': '查看今日任务 / View Today\'s Tasks',
-            'url': 'reports:task_list',
+            'url': 'tasks:task_list',
             'priority': 'medium'
         })
     
@@ -77,7 +77,7 @@ def generate_workbench_guidance(total, completed, overdue, in_progress, pending,
         guidance['status'] = 'info'
         guidance['actions'].append({
             'text': '查看所有项目 / View All Projects',
-            'url': 'reports:project_list',
+            'url': 'projects:project_list',
             'priority': 'low'
         })
     

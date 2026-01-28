@@ -42,7 +42,7 @@ class TaskEditPermissionTest(TestCase):
     def test_collaborator_view_permission(self):
         """Test that collaborator sees the correct restricted UI"""
         self.client.login(username='collaborator', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
@@ -52,7 +52,7 @@ class TaskEditPermissionTest(TestCase):
     def test_collaborator_update_status_allowed(self):
         """Test that collaborator can update status"""
         self.client.login(username='collaborator', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         
         # Post data with ONLY status changed (and other fields as they are, or omitted/ignored)
         # Note: In our implementation, if is_collaborator_only, other fields are ignored if they match existing.
@@ -72,7 +72,7 @@ class TaskEditPermissionTest(TestCase):
     def test_collaborator_update_title_forbidden(self):
         """Test that collaborator cannot update title"""
         self.client.login(username='collaborator', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         
         response = self.client.post(url, {
             'title': 'Hacked Title',
@@ -86,7 +86,7 @@ class TaskEditPermissionTest(TestCase):
     def test_collaborator_update_project_forbidden(self):
         """Test that collaborator cannot move project"""
         self.client.login(username='collaborator', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         
         # Create another project
         other_project = Project.objects.create(name="Other", code="OP", owner=self.owner)
@@ -101,7 +101,7 @@ class TaskEditPermissionTest(TestCase):
     def test_collaborator_update_assignee_forbidden(self):
         """Test that collaborator cannot change assignee"""
         self.client.login(username='collaborator', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         
         response = self.client.post(url, {
             'user': self.other.id,
@@ -113,7 +113,7 @@ class TaskEditPermissionTest(TestCase):
     def test_owner_full_access(self):
         """Test that owner has full access"""
         self.client.login(username='owner', password='password')
-        url = reverse('reports:admin_task_edit', args=[self.task.id])
+        url = reverse('tasks:admin_task_edit', args=[self.task.id])
         
         response = self.client.get(url)
         self.assertFalse(response.context['is_collaborator_only'])

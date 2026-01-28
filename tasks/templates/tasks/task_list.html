@@ -1,0 +1,902 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+{% load core_tags %}
+
+{% block title %}我的任务 / My Tasks{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的任务 / My Tasks" nav_subtitle="查看、筛选与更新您的日常任务 / View, filter & update your daily tasks" %}{% endblock %}
+
+{% block content %}
+<style>
+    /* --- Page Layout --- */
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding-bottom: 80px; /* Space for bulk bar */
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .form-control {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+        height: 42px;
+        color: var(--text-main);
+        appearance: none;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    select.form-control {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 40px;
+    }
+
+    .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        cursor: pointer;
+        user-select: none;
+        padding: 0 4px;
+    }
+
+    .checkbox-input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
+
+    .checkbox-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    /* --- Task Grid --- */
+    .task-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    /* --- Task Card --- */
+    .task-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        height: 100%;
+    }
+
+    .task-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: #cbd5e1;
+    }
+    
+    .task-card:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .card-status-bar {
+        height: 4px;
+        width: 100%;
+    }
+    /* Status Colors */
+    .status-todo { background: var(--text-muted); }
+    .status-in_progress { background: var(--primary); }
+    .status-blocked { background: var(--danger); }
+    .status-in_review { background: var(--warning); }
+    .status-done { background: var(--success); }
+    .status-closed { background: var(--text-secondary); }
+
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Selection Checkbox */
+    .task-checkbox-container {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 10;
+        background: white;
+        border-radius: 4px;
+        padding: 2px;
+    }
+
+    /* Badges */
+    .badge-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        line-height: 1.4;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .badge-project {
+        background: var(--bg-page);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .badge-priority-high { background: #fee2e2; color: #ef4444; }
+    .badge-priority-medium { background: #ffedd5; color: #f97316; }
+    .badge-priority-low { background: #dcfce7; color: #16a34a; }
+
+    .badge-sla-red { background: #fee2e2; color: #ef4444; }
+    .badge-sla-amber { background: #ffedd5; color: #f97316; }
+
+    .task-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.5;
+        color: var(--text-main);
+    }
+    
+    .task-title a {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .task-title a:hover {
+        color: var(--primary);
+    }
+    
+    .task-title a:focus {
+        outline: none;
+        text-decoration: underline;
+        color: var(--primary);
+    }
+
+    .task-content {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin: 0;
+    }
+
+    .card-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid #f1f5f9;
+        margin-top: auto;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .meta-icon {
+        color: var(--text-muted);
+        width: 14px;
+        height: 14px;
+    }
+
+    .card-footer {
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Avatar Stack */
+    .avatar-stack {
+        display: flex;
+        align-items: center;
+    }
+
+    .avatar-item {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--bg-card);
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        margin-left: -8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .avatar-item:first-child { margin-left: 0; z-index: 5; }
+    .avatar-item:nth-child(2) { z-index: 4; }
+    .avatar-item:nth-child(3) { z-index: 3; }
+    .avatar-item:nth-child(4) { z-index: 2; }
+
+    .avatar-primary {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: white;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        white-space: nowrap;
+        justify-content: center;
+    }
+
+    .btn:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-secondary {
+        background: white;
+        border-color: var(--border-color);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .btn-icon {
+        padding: 6px;
+        border-radius: 6px;
+        color: var(--text-secondary);
+    }
+    
+    .btn-icon:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+
+    /* --- Pagination --- */
+    .pagination-container {
+        margin-top: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .pagination-info {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 6px;
+        background: white;
+        padding: 4px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 6px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .page-link:hover:not(.disabled):not(.active) {
+        background: var(--bg-page);
+        border-color: var(--border-color);
+    }
+
+    .page-link.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    }
+
+    .page-link.disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 80px 24px;
+        color: var(--text-secondary);
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 1px dashed var(--border-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .empty-icon {
+        width: 64px;
+        height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    /* --- Bulk Actions Bar --- */
+    .bulk-actions-bar {
+        position: fixed;
+        bottom: 32px;
+        left: 50%;
+        transform: translateX(-50%) translateY(150%);
+        background: #1e293b;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 100px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        z-index: 1000;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .bulk-actions-bar.visible {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .bulk-count {
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .bulk-divider {
+        height: 20px;
+        width: 1px;
+        background: rgba(255,255,255,0.2);
+    }
+
+    .bulk-btn {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .bulk-btn:hover {
+        background: white;
+        color: #1e293b;
+    }
+    
+    .bulk-btn:focus-visible {
+        outline: 2px solid white;
+        outline-offset: 2px;
+    }
+
+    /* --- Loading Overlay --- */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(2px);
+        z-index: 2000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .loading-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--primary-light);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        .form-group[style*="flex: 2"] { grid-column: auto; }
+        .pagination-container { flex-direction: column; gap: 16px; }
+        .bulk-actions-bar {
+            width: 90%;
+            border-radius: 16px;
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+            align-items: stretch;
+        }
+        .bulk-divider { display: none; }
+        .bulk-btn { justify-content: center; }
+    }
+</style>
+
+<div class="page-container">
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">我的任务 / My Tasks</h1>
+            <p class="page-subtitle">管理您的日常工作与待办事项 / Manage your daily tasks and todos</p>
+        </div>
+        <!-- Note: "Create Task" is typically for Admin, but if Staff/Manager, could show here. 
+             Assuming standard users view tasks assigned to them. -->
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm" onsubmit="showLoading()">
+            <div class="filter-grid">
+                <!-- Search -->
+                <div class="form-group" style="flex: 2; min-width: 240px; grid-column: 1 / -1;">
+                    <label class="form-label" for="q">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        搜索 / Search
+                    </label>
+                    <input type="text" id="q" name="q" class="form-control" value="{{ q }}" placeholder="输入任务标题或内容关键字..." aria-label="搜索任务">
+                </div>
+                
+                <!-- Project -->
+                <div class="form-group">
+                    <label class="form-label" for="project">项目 / Project</label>
+                    <select id="project" name="project" class="form-control" onchange="this.form.submit(); showLoading();">
+                        <option value="">全部项目 / All Projects</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}" {% if selected_project_id == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label class="form-label" for="status">状态 / Status</label>
+                    <select id="status" name="status" class="form-control" onchange="this.form.submit(); showLoading();">
+                        <option value="">全部状态 / All Status</option>
+                        <option value="todo" {% if selected_status == 'todo' %}selected{% endif %}>待处理 / To Do</option>
+                        <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
+                        <option value="blocked" {% if selected_status == 'blocked' %}selected{% endif %}>阻塞中 / Blocked</option>
+                        <option value="in_review" {% if selected_status == 'in_review' %}selected{% endif %}>待评审 / In Review</option>
+                        <option value="done" {% if selected_status == 'done' %}selected{% endif %}>已完成 / Done</option>
+                        <option value="closed" {% if selected_status == 'closed' %}selected{% endif %}>已关闭 / Closed</option>
+                    </select>
+                </div>
+                
+                <!-- Priority -->
+                <div class="form-group">
+                    <label class="form-label" for="priority">优先级 / Priority</label>
+                    <select id="priority" name="priority" class="form-control" onchange="this.form.submit(); showLoading();">
+                        <option value="">全部优先级 / All Priorities</option>
+                        {% for p_val, p_label in priorities %}
+                        <option value="{{ p_val }}" {% if priority == p_val %}selected{% endif %}>{{ p_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sort By (New) -->
+                <div class="form-group">
+                    <label class="form-label" for="sort">排序 / Sort By</label>
+                    <select id="sort" name="sort" class="form-control" onchange="this.form.submit(); showLoading();">
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
+                        <option value="-priority" {% if sort_by == '-priority' %}selected{% endif %}>优先级 (高→低)</option>
+                        <option value="priority" {% if sort_by == 'priority' %}selected{% endif %}>优先级 (低→高)</option>
+                        <option value="due_at" {% if sort_by == 'due_at' %}selected{% endif %}>截止时间 (近→远)</option>
+                        <option value="-due_at" {% if sort_by == '-due_at' %}selected{% endif %}>截止时间 (远→近)</option>
+                    </select>
+                </div>
+
+                <!-- Checkbox Filters -->
+                <div class="form-group" style="flex: 0 0 auto; align-self: flex-end; padding-bottom: 2px;">
+                     <label class="checkbox-wrapper">
+                        <input type="checkbox" name="hot" value="1" class="checkbox-input" {% if hot %}checked{% endif %} onchange="this.form.submit(); showLoading();">
+                        <span class="checkbox-label">仅显示紧急 / Urgent Only</span>
+                     </label>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'tasks:task_list' %}" class="btn btn-ghost" onclick="showLoading()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    重置筛选
+                </a>
+                <a href="{% url 'tasks:task_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    导出当前列表
+                </a>
+                <button type="submit" class="btn btn-primary" style="min-width: 100px;">
+                    筛选 / Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Task Grid -->
+    <form id="bulkForm" method="post" action="{% url 'tasks:task_bulk_action' %}">
+        {% csrf_token %}
+        <input type="hidden" name="bulk_action" id="bulkActionInput">
+        <input type="hidden" name="redirect_to" value="{{ request.get_full_path }}">
+
+        {% if tasks %}
+        <div class="task-grid">
+            {% for task in tasks %}
+            <article class="task-card">
+                <div class="card-status-bar status-{{ task.status }}"></div>
+                
+                <!-- Selection Checkbox -->
+                <div class="task-checkbox-container">
+                    <input type="checkbox" name="task_ids" value="{{ task.id }}" class="task-checkbox checkbox-input" aria-label="选择任务 {{ task.title }}">
+                </div>
+
+                <div class="card-body">
+                    <div class="badge-group">
+                        <span class="badge badge-project">{{ task.project.code }}</span>
+                        {% if task.priority == 'high' %}
+                            <span class="badge badge-priority-high">{{ task.get_priority_display }}</span>
+                        {% elif task.priority == 'medium' %}
+                            <span class="badge badge-priority-medium">{{ task.get_priority_display }}</span>
+                        {% elif task.priority == 'low' %}
+                            <span class="badge badge-priority-low">{{ task.get_priority_display }}</span>
+                        {% endif %}
+                        
+                        {% if task.sla_info.level == 'red' %}
+                            <span class="badge badge-sla-red">紧急 / Urgent</span>
+                        {% elif task.sla_info.level == 'amber' %}
+                            <span class="badge badge-sla-amber">关注 / Warning</span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="task-title">
+                        <a href="{% url 'tasks:task_view' task.id %}">{{ task.title }}</a>
+                    </h3>
+
+                    <p class="task-content">
+                        {{ task.content|striptags|default:"无详细内容 / No details" }}
+                    </p>
+
+                    <div class="card-meta-grid">
+                        <div class="meta-item">
+                            <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="{% if task.sla_info.level == 'red' %}text-danger fw-bold{% endif %}">
+                                {% if task.due_at %}{{ task.due_at|date:"m-d H:i" }}{% else %}--{% endif %}
+                            </span>
+                        </div>
+                        <div class="meta-item">
+                            <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>{{ task.get_status_display }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <!-- Avatar Stack -->
+                    <div class="avatar-stack">
+                        <div class="avatar-item avatar-primary" title="负责人: {{ task.user.get_full_name|default:task.user.username }}">
+                            {{ task.user.username|slice:":1"|upper }}
+                        </div>
+                        {% for c in task.collaborators.all %}
+                            {% if forloop.counter <= 3 %}
+                            <div class="avatar-item" title="协作人: {{ c.get_full_name|default:c.username }}">
+                                {{ c.username|slice:":1"|upper }}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if task.collaborators.count > 3 %}
+                            <div class="avatar-item" style="font-size: 9px; background: #f1f5f9; border-color: #e2e8f0;">
+                                +{{ task.collaborators.count|add:"-3" }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        {% if task.status == 'todo' or task.status == 'in_progress' or task.status == 'blocked' or task.status == 'in_review' %}
+                            <a href="{% url 'tasks:task_complete' task.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary btn-sm" title="标记完成" onclick="showLoading()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                完成
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'tasks:task_view' task.id %}" class="btn btn-primary btn-sm">详情</a>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到任务 / No tasks found</h3>
+            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者检查其他项目。</p>
+            <a href="{% url 'tasks:task_list' %}" class="btn btn-secondary" onclick="showLoading()">清除筛选 / Clear Filters</a>
+        </div>
+        {% endif %}
+    </form>
+
+    <!-- Pagination -->
+    {% if tasks.paginator.num_pages > 1 %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            显示第 <span style="font-weight: 600; color: var(--text-main);">{{ tasks.start_index }}-{{ tasks.end_index }}</span> 条，
+            共 <span style="font-weight: 600; color: var(--text-main);">{{ tasks.paginator.count }}</span> 条
+        </div>
+        
+        <div class="pagination-controls">
+            {% if tasks.has_previous %}
+                <a href="?page={{ tasks.previous_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-link" aria-label="上一页" onclick="showLoading()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </a>
+            {% else %}
+                <span class="page-link disabled" aria-disabled="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </span>
+            {% endif %}
+
+            {% for i in tasks.paginator.page_range %}
+                {% if tasks.number == i %}
+                    <span class="page-link active" aria-current="page">{{ i }}</span>
+                {% elif i > tasks.number|add:'-3' and i < tasks.number|add:'3' %}
+                    <a href="?page={{ i }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-link" onclick="showLoading()">{{ i }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if tasks.has_next %}
+                <a href="?page={{ tasks.next_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-link" aria-label="下一页" onclick="showLoading()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+            {% else %}
+                <span class="page-link disabled" aria-disabled="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bulk Actions Bar -->
+    <div id="bulkActionsBar" class="bulk-actions-bar">
+        <div class="bulk-count">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            已选择 <span id="selectedCount">0</span> 项
+        </div>
+        <div class="bulk-divider"></div>
+        <button type="button" class="bulk-btn" onclick="submitBulkAction('complete')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            标记完成
+        </button>
+        <button type="button" class="bulk-btn" onclick="submitBulkAction('reopen')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+            重新打开
+        </button>
+    </div>
+
+</div>
+
+<script>
+    function showLoading() {
+        document.getElementById('loadingOverlay').classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.task-checkbox');
+        const bulkBar = document.getElementById('bulkActionsBar');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const bulkForm = document.getElementById('bulkForm');
+
+        function updateBulkBar() {
+            const checkedBoxes = document.querySelectorAll('.task-checkbox:checked');
+            const count = checkedBoxes.length;
+            
+            if (count > 0) {
+                bulkBar.classList.add('visible');
+                selectedCountSpan.textContent = count;
+            } else {
+                bulkBar.classList.remove('visible');
+            }
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBulkBar);
+        });
+
+        window.submitBulkAction = function(actionType) {
+            const count = document.querySelectorAll('.task-checkbox:checked').length;
+            if (count === 0) return;
+            
+            if (confirm(`确定要对选中的 ${count} 个任务执行此操作吗？`)) {
+                showLoading();
+                document.getElementById('bulkActionInput').value = actionType;
+                bulkForm.submit();
+            }
+        };
+        
+        // Hide loading if page is loaded from cache (bfcache)
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

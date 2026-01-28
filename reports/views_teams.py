@@ -6,7 +6,8 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from reports.models import Profile, Project
 from reports.services import teams as team_service
-from reports.views import has_manage_permission, _admin_forbidden, log_action
+from core.utils import has_manage_permission, _admin_forbidden
+from audit.utils import log_action
 
 @login_required
 def teams_list(request):

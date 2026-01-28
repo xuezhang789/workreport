@@ -312,9 +312,9 @@
                 </h1>
             </div>
             <div style="display: flex; gap: 12px;">
-                <a href="{% url 'reports:project_detail' project.pk %}" class="btn btn-ghost">返回列表</a>
+                <a href="{% url 'projects:project_detail' project.pk %}" class="btn btn-ghost">返回列表</a>
                 {% if can_manage %}
-                    <a href="{% url 'reports:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
                 {% endif %}
             </div>
         </div>

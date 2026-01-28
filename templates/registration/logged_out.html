@@ -248,12 +248,12 @@
             </div>
 
             <div class="actions-grid">
-                <a href="{% url 'login' %}" class="action-card" id="login-link">
+                <a href="{% url 'core:login' %}" class="action-card" id="login-link">
                     <div class="action-icon">🔐</div>
                     <div class="action-title">重新登录 / Login Again</div>
                     <div class="action-desc">返回登录页面继续工作</div>
                 </a>
-                <a href="{% url 'register' %}" class="action-card">
+                <a href="{% url 'core:register' %}" class="action-card">
                     <div class="action-icon">👤</div>
                     <div class="action-title">注册新账号 / New Account</div>
                     <div class="action-desc">创建新的团队账户</div>
@@ -272,7 +272,7 @@
                 </div>
             </div>
 
-            <a href="{% url 'login' %}" class="btn btn-primary">立即登录 / Login Now</a>
+            <a href="{% url 'core:login' %}" class="btn btn-primary">立即登录 / Login Now</a>
 
             <div class="footer-text">
                 感谢你今天的辛勤工作，期待明天继续协作

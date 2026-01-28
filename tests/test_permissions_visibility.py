@@ -45,37 +45,37 @@ class PermissionVisibilityTests(TestCase):
     def test_project_list_visibility(self):
         # Member 1 should see P1, not P2
         self.client.force_login(self.u_member1)
-        resp = self.client.get('/reports/projects/')
+        resp = self.client.get('/projects/')
         self.assertContains(resp, 'Project 1')
         self.assertNotContains(resp, 'Project 2')
         
         # Outsider see nothing
         self.client.force_login(self.u_outsider)
-        resp = self.client.get('/reports/projects/')
+        resp = self.client.get('/projects/')
         self.assertNotContains(resp, 'Project 1')
         self.assertNotContains(resp, 'Project 2')
 
     def test_task_list_visibility(self):
         # Member 1 should see T1 (in P1), not T2 (in P2)
         self.client.force_login(self.u_member1)
-        resp = self.client.get('/reports/tasks/')
+        resp = self.client.get('/tasks/')
         self.assertContains(resp, 'T1')
         self.assertNotContains(resp, 'T2')
 
     def test_project_detail_permission(self):
         self.client.force_login(self.u_member1)
         # Can see P1
-        resp = self.client.get(f'/reports/projects/{self.p1.id}/')
+        resp = self.client.get(f'/projects/{self.p1.id}/')
         self.assertEqual(resp.status_code, 200)
         
         # Cannot see P2
-        resp = self.client.get(f'/reports/projects/{self.p2.id}/')
+        resp = self.client.get(f'/projects/{self.p2.id}/')
         self.assertEqual(resp.status_code, 403)
 
     def test_task_create_permission_validation(self):
         self.client.force_login(self.u_member1)
         # Try to create task in P2 (Forbidden)
-        resp = self.client.post('/reports/tasks/admin/new/', {
+        resp = self.client.post('/tasks/admin/new/', {
             'title': 'Hack Task',
             'project': self.p2.id,
             'user': self.u_member1.id
@@ -84,7 +84,7 @@ class PermissionVisibilityTests(TestCase):
         self.assertContains(resp, '没有权限')
         
         # Try to create task in P1 (Now Forbidden because member is not manager/owner)
-        resp = self.client.post('/reports/tasks/admin/new/', {
+        resp = self.client.post('/tasks/admin/new/', {
             'title': 'Valid Task',
             'project': self.p1.id,
             'user': self.u_member1.id,
@@ -103,7 +103,7 @@ class PermissionVisibilityTests(TestCase):
     def test_admin_task_list_visibility(self):
         # Member 1 should access admin_task_list (now unified) but only see P1 tasks
         self.client.force_login(self.u_member1)
-        resp = self.client.get('/reports/tasks/admin/')
+        resp = self.client.get('/tasks/admin/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'T1')
         self.assertNotContains(resp, 'T2')
@@ -121,7 +121,7 @@ class PermissionVisibilityTests(TestCase):
         session.save()
 
         self.client.force_login(self.u_member1)
-        resp = self.client.get('/reports/api/users/', {'q': 'member2'})
+        resp = self.client.get('/accounts/api/users/', {'q': 'member2'})
         if resp.status_code == 302:
              print("Redirected to:", resp.url)
         self.assertEqual(resp.status_code, 200)
@@ -144,7 +144,7 @@ class PermissionVisibilityTests(TestCase):
         self.client = Client()
         self.client.force_login(self.u_member1)
         
-        resp = self.client.get('/reports/api/users/', {'q': 'outsider'})
+        resp = self.client.get('/accounts/api/users/', {'q': 'outsider'})
         # Should be 200 OK but empty result, NOT 302
         if resp.status_code == 302:
              print("Redirected to:", resp.url)
@@ -153,7 +153,7 @@ class PermissionVisibilityTests(TestCase):
         
         # Outsider (no projects) should get 403 on user search
         self.client.force_login(self.u_outsider)
-        resp = self.client.get('/reports/api/users/')
+        resp = self.client.get('/accounts/api/users/')
         self.assertEqual(resp.status_code, 403)
 
     def test_super_admin_visibility(self):
@@ -162,12 +162,12 @@ class PermissionVisibilityTests(TestCase):
         self.client.force_login(admin)
         
         # Projects
-        resp = self.client.get('/reports/projects/')
+        resp = self.client.get('/projects/')
         self.assertContains(resp, 'Project 1')
         self.assertContains(resp, 'Project 2')
         
         # Tasks
-        resp = self.client.get('/reports/tasks/admin/')
+        resp = self.client.get('/tasks/admin/')
         self.assertContains(resp, 'T1')
         self.assertContains(resp, 'T2')
 
@@ -183,7 +183,7 @@ class PermissionVisibilityTests(TestCase):
         self.client.force_login(u_mgr2)
         
         # Should see P1
-        resp = self.client.get('/reports/projects/')
+        resp = self.client.get('/projects/')
         self.assertContains(resp, 'Project 1')
         
         # Should NOT see P2 (even though is manager role, but not superuser and not in P2)
@@ -192,12 +192,12 @@ class PermissionVisibilityTests(TestCase):
     def test_project_edit_permission(self):
         # Member (u_member1) in P1. Should NOT be able to edit.
         self.client.force_login(self.u_member1)
-        resp = self.client.get(f'/reports/projects/{self.p1.id}/edit/')
+        resp = self.client.get(f'/projects/{self.p1.id}/edit/')
         self.assertEqual(resp.status_code, 403) # Forbidden
         
         # Owner (u_owner) should be able to edit
         self.client.force_login(self.u_owner)
-        resp = self.client.get(f'/reports/projects/{self.p1.id}/edit/')
+        resp = self.client.get(f'/projects/{self.p1.id}/edit/')
         self.assertEqual(resp.status_code, 200)
 
     def test_task_creation_by_member(self):
@@ -207,7 +207,7 @@ class PermissionVisibilityTests(TestCase):
         # Or at least via project detail link?
         
         self.client.force_login(self.u_member1)
-        resp = self.client.post('/reports/tasks/admin/new/', {
+        resp = self.client.post('/tasks/admin/new/', {
             'title': 'Member Task',
             'project': self.p1.id,
             'user': self.u_member1.id,
@@ -220,7 +220,7 @@ class PermissionVisibilityTests(TestCase):
         
         # Owner should be allowed
         self.client.force_login(self.u_owner)
-        resp = self.client.post('/reports/tasks/admin/new/', {
+        resp = self.client.post('/tasks/admin/new/', {
             'title': 'Owner Task',
             'project': self.p1.id,
             'user': self.u_owner.id,
@@ -237,16 +237,16 @@ class PermissionVisibilityTests(TestCase):
         # Let's test T1 (owned by Member1)
         
         self.client.force_login(self.u_member1)
-        # Correct URL is /reports/tasks/<pk>/edit/ based on urls.py
-        resp = self.client.get(f'/reports/tasks/{self.t1.id}/edit/')
+        # Correct URL is /tasks/<pk>/edit/ based on urls.py
+        resp = self.client.get(f'/tasks/{self.t1.id}/edit/')
         self.assertEqual(resp.status_code, 200) # Task owner can edit
         
         # Member1 editing T2 (P2, Owner). Member1 has no access to P2.
-        resp = self.client.get(f'/reports/tasks/{self.t2.id}/edit/')
+        resp = self.client.get(f'/tasks/{self.t2.id}/edit/')
         self.assertEqual(resp.status_code, 404) # Not found (because hidden)
 
         # What if Member1 tries to move T1 to P2? (He owns T1, but has no rights on P2)
-        resp = self.client.post(f'/reports/tasks/{self.t1.id}/edit/', {
+        resp = self.client.post(f'/tasks/{self.t1.id}/edit/', {
             'title': 'Moved Task',
             'project': self.p2.id, # Target P2
             'user': self.u_member1.id,

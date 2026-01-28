@@ -1,4 +1,5 @@
 {% extends "base_topbar.html" %}
+{% load core_tags %}
 {% block title %}项目列表 / Projects{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表 / Projects" nav_subtitle="浏览、筛选与管理项目 / Browse, filter & manage projects" %}{% endblock %}
 
@@ -460,7 +461,7 @@
             <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 个项目 / Total {{ total_count }} projects</p>
         </div>
         {% if request.user.is_staff %}
-            <a href="{% url 'reports:project_create' %}" class="btn btn-primary">
+            <a href="{% url 'projects:project_create' %}" class="btn btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -513,9 +514,9 @@
             </div>
 
             <div class="filter-actions">
-                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost">重置 / Reset</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">重置 / Reset</a>
                 {% if request.user.is_staff %}
-                    <a href="{% url 'reports:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
+                    <a href="{% url 'projects:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
@@ -559,7 +560,7 @@
     {% if projects %}
         <div class="project-grid">
             {% for p in projects %}
-                <article class="project-card" onclick="location.href='{% url 'reports:project_detail' p.pk %}'" style="cursor: pointer;">
+                <article class="project-card" onclick="location.href='{% url 'projects:project_detail' p.pk %}'" style="cursor: pointer;">
                     <div class="card-status-bar {% if p.is_active %}active{% else %}inactive{% endif %}"></div>
                     
                     <div class="card-body">
@@ -608,10 +609,6 @@
                                 <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 <span>{{ p.report_count }} 日报 / Reports</span>
                             </div>
-                            <div class="meta-item" title="最后更新 / Last Updated">
-                                <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <span>最近活跃 / Recently Active</span>
-                            </div>
                         </div>
                     </div>
 
@@ -622,9 +619,9 @@
                         </div>
                         <div class="card-actions">
                             {% if p.id in manageable_ids %}
-                                <a href="{% url 'reports:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑 / Edit</a>
+                                <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑 / Edit</a>
                             {% endif %}
-                            <a href="{% url 'reports:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入 / Enter</a>
+                            <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入 / Enter</a>
                         </div>
                     </div>
                 </article>
@@ -648,7 +645,7 @@
             {% if page_obj.has_other_pages %}
                 <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="上一页 / Previous">
+                        <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
@@ -665,12 +662,12 @@
                         {% if page_obj.number == i %}
                             <span class="page-btn active">{{ i }}</span>
                         {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                            <a href="?page={{ i }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn">{{ i }}</a>
+                            <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&phase={{ phase_id|default:'' }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" class="page-btn" title="下一页 / Next">
+                        <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
@@ -702,9 +699,9 @@
             <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目 / No projects found</h3>
             <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。<br>Try adjusting filters or create a new project.</p>
             {% if request.user.is_staff %}
-                <a href="{% url 'reports:project_create' %}" class="btn btn-primary">新建项目 / New Project</a>
+                <a href="{% url 'projects:project_create' %}" class="btn btn-primary">新建项目 / New Project</a>
             {% else %}
-                <a href="{% url 'reports:project_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
             {% endif %}
         </div>
     {% endif %}

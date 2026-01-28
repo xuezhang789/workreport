@@ -31,9 +31,9 @@ class UIRenderingTests(TestCase):
 
     def test_task_stats_page_renders(self):
         """Test that the task stats page renders correctly with the new structure."""
-        response = self.client.get(reverse('reports:admin_task_stats'))
+        response = self.client.get(reverse('tasks:admin_task_stats'))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'reports/admin_task_stats.html')
+        self.assertTemplateUsed(response, 'tasks/admin_task_stats.html')
         # Check for new CSS classes
         self.assertContains(response, 'summary-grid') # Updated from dashboard-grid
         self.assertContains(response, 'summary-card') # Updated from kpi-card

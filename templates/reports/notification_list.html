@@ -27,7 +27,7 @@
                     </div>
                     <div style="color: #64748b; font-size: 14px; margin-bottom: 8px;">{{ n.message }}</div>
                     {% if n.data.task_id %}
-                        <a href="{% url 'reports:task_view' n.data.task_id %}" class="btn btn-sm btn-ghost">查看详情 / View Details</a>
+                        <a href="{% url 'tasks:task_view' n.data.task_id %}" class="btn btn-sm btn-ghost">查看详情 / View Details</a>
                     {% endif %}
                 </div>
             </div>

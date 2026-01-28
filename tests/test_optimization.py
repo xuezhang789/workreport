@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.utils import timezone
 from reports.models import Project, Task, DailyReport, SystemSetting, ProjectPhaseConfig
-from reports.services.sla import calculate_sla_info
+from tasks.services.sla import calculate_sla_info
 
 class OptimizationTest(TestCase):
     def setUp(self):
@@ -50,7 +50,7 @@ class OptimizationTest(TestCase):
     def test_stats_queries(self):
         self.client.force_login(self.admin)
         # Check stats view
-        response = self.client.get('/reports/tasks/admin/stats/')
+        response = self.client.get('/tasks/admin/stats/')
         self.assertEqual(response.status_code, 200)
         # The view might not contain 'Test Project' if it renders a chart or specific data
         # But let's check status code first.
@@ -59,12 +59,12 @@ class OptimizationTest(TestCase):
     def test_task_list_optimization(self):
         self.client.force_login(self.user)
         # Ensure cached settings are used (mocking would be better but simple run is fine)
-        response = self.client.get('/reports/tasks/')
+        response = self.client.get('/tasks/')
         self.assertEqual(response.status_code, 200)
         
     def test_admin_task_list(self):
         self.client.force_login(self.admin)
-        response = self.client.get('/reports/tasks/admin/')
+        response = self.client.get('/tasks/admin/')
         self.assertEqual(response.status_code, 200)
 
     def test_project_names_property(self):

@@ -1,4 +1,5 @@
 {% extends "base_topbar.html" %}
+{% load core_tags %}
 {% block title %}我的日报 / My Reports{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="我的日报 / My Reports" nav_subtitle="浏览、筛选与管理您的日常工作 / Manage your daily work" %}{% endblock %}
 
@@ -516,7 +517,7 @@
             {% if page_obj.has_other_pages %}
                 <div class="pagination-controls">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="上一页 / Previous">
+                        <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
@@ -533,12 +534,12 @@
                         {% if page_obj.number == i %}
                             <span class="page-btn active">{{ i }}</span>
                         {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                            <a href="?page={{ i }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn">{{ i }}</a>
+                            <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&project={{ project_id }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&per_page={{ per_page }}" class="page-btn" title="下一页 / Next">
+                        <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>

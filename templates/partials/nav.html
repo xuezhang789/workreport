@@ -14,11 +14,11 @@
         
         <!-- 核心功能 - 日常工作 -->
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'daily_report_create' %}active{% endif %}" href="{% url 'reports:daily_report_create' %}">填写日报 / New Report</a>
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}" href="{% url 'reports:task_list' %}">我的任务 / My Tasks</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}" href="{% url 'tasks:task_list' %}">我的任务 / My Tasks</a>
         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'my_reports' %}active{% endif %}" href="{% url 'reports:my_reports' %}">我的日报 / My Reports</a>
         
         <!-- 项目管理 -->
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'project_list' %}active{% endif %}" href="{% url 'reports:project_list' %}">项目列表 / Projects</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'project_list' %}active{% endif %}" href="{% url 'projects:project_list' %}">项目列表 / Projects</a>
         
         <!-- 管理功能 - 管理员专用（下拉合并） -->
         {% if request.user.is_authenticated %}
@@ -31,9 +31,9 @@
                     </button>
                     <div class="admin-menu" id="admin-menu">
                         {% if can_view_admin_project %}
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'reports:admin_task_list' %}">任务管理 / Tasks Admin</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_list' %}active{% endif %}" href="{% url 'tasks:admin_task_list' %}">任务管理 / Tasks Admin</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">日报管理 / Reports Admin</a>
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'reports:admin_task_stats' %}">任务统计 / Task Stats</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'tasks:admin_task_stats' %}">任务统计 / Task Stats</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'advanced_reporting' %}active{% endif %}" href="{% url 'reports:advanced_reporting' %}">高级报表 / Advanced Reports</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
                         {% endif %}
@@ -42,7 +42,7 @@
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'template_center' %}active{% endif %}" href="{% url 'reports:template_center' %}">模板中心 / Template Center</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'role_template_manage' %}active{% endif %}" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'audit_logs' %}active{% endif %}" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>
-                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'reports:sla_settings' %}">SLA 配置 / SLA Settings</a>
+                            <a class="{% if request.resolver_match and request.resolver_match.url_name == 'sla_settings' %}active{% endif %}" href="{% url 'tasks:sla_settings' %}">SLA 配置 / SLA Settings</a>
                         {% endif %}
                     </div>
                 </div>
@@ -60,7 +60,7 @@
             </form>
 
             {% include "components/notification_center.html" %}
-            <a class="user-center {% if request.resolver_match and request.resolver_match.url_name == 'account_settings' %}active{% endif %}" href="{% url 'account_settings' %}">
+            <a class="user-center {% if request.resolver_match and request.resolver_match.url_name == 'core:account_settings' %}active{% endif %}" href="{% url 'core:account_settings' %}">
                 <div class="user-avatar">
                     {% with avatar_url=request.user|get_avatar_url %}
                         {% if avatar_url %}
@@ -76,7 +76,7 @@
                 </div>
                 <span class="user-chevron" aria-hidden="true">→</span>
             </a>
-            <a class="pill" href="{% url 'logout' %}">退出登录 / Logout</a>
+            <a class="pill" href="{% url 'core:logout' %}">退出登录 / Logout</a>
         {% endif %}
     </div>
 </header>

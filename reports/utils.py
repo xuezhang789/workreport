@@ -1,5 +1,7 @@
 from django.db.models import Q
-from .models import Project, Task, DailyReport
+from projects.models import Project
+from tasks.models import Task
+from work_logs.models import DailyReport
 
 def get_accessible_projects(user):
     """
