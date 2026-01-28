@@ -10,3 +10,4 @@ virtualenv==20.35.4
 channels==4.0.0
 daphne==4.0.0
 channels_redis==4.1.0
+python-dotenv==1.0.1

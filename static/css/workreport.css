@@ -763,3 +763,19 @@ th[onclick]:hover .sort-icon { color: var(--primary); }
     min-width: 16px;
     text-align: center;
 }
+
+/* --- Admin Task List Badges --- */
+.badge-status-todo { background: #f1f5f9; color: #64748b; }
+.badge-status-in_progress { background: #eff6ff; color: #2563eb; }
+.badge-status-blocked { background: #fee2e2; color: #b91c1c; }
+.badge-status-in_review { background: #fef9c3; color: #ca8a04; }
+.badge-status-done { background: #dcfce7; color: #16a34a; }
+.badge-status-closed { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }
+
+.badge-priority-high { background: #fee2e2; color: #ef4444; }
+.badge-priority-medium { background: #ffedd5; color: #f97316; }
+.badge-priority-low { background: #dcfce7; color: #16a34a; }
+
+.badge-sla-red { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
+.badge-sla-amber { background: #ffedd5; color: #f97316; border: 1px solid #fdba74; }
+.badge-sla-green { background: #dcfce7; color: #16a34a; border: 1px solid #86efac; }

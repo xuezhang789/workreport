@@ -15,7 +15,7 @@ class FileUploadTests(TestCase):
     def test_upload_valid_file_project(self):
         f = SimpleUploadedFile("test.txt", b"content", content_type="text/plain")
         response = self.client.post(
-            reverse('reports:project_upload_attachment', args=[self.project.id]),
+            reverse('projects:project_upload_attachment', args=[self.project.id]),
             {'files': [f]}
         )
         self.assertEqual(response.status_code, 200)
@@ -24,7 +24,7 @@ class FileUploadTests(TestCase):
     def test_upload_invalid_extension_project(self):
         f = SimpleUploadedFile("malware.exe", b"content", content_type="application/x-msdownload")
         response = self.client.post(
-            reverse('reports:project_upload_attachment', args=[self.project.id]),
+            reverse('projects:project_upload_attachment', args=[self.project.id]),
             {'files': [f]}
         )
         self.assertEqual(response.status_code, 400)
@@ -33,7 +33,7 @@ class FileUploadTests(TestCase):
     def test_upload_valid_file_task(self):
         f = SimpleUploadedFile("test.pdf", b"content", content_type="application/pdf")
         response = self.client.post(
-            reverse('reports:task_upload_attachment', args=[self.task.id]),
+            reverse('tasks:task_upload_attachment', args=[self.task.id]),
             {'files': [f]}
         )
         self.assertEqual(response.status_code, 200)
@@ -41,7 +41,7 @@ class FileUploadTests(TestCase):
     def test_upload_invalid_extension_task(self):
         f = SimpleUploadedFile("script.py", b"print('hack')", content_type="text/x-python")
         response = self.client.post(
-            reverse('reports:task_upload_attachment', args=[self.task.id]),
+            reverse('tasks:task_upload_attachment', args=[self.task.id]),
             {'files': [f]}
         )
         self.assertEqual(response.status_code, 400)

@@ -1,6 +1,6 @@
 <div class="kanban-card" data-id="{{ task.id }}">
     <div class="kanban-card-title">
-        <a href="{% url 'reports:task_view' task.id %}" style="text-decoration:none; color:inherit;">
+        <a href="{% url 'tasks:task_view' task.id %}" style="text-decoration:none; color:inherit;">
             {{ task.title }}
         </a>
     </div>

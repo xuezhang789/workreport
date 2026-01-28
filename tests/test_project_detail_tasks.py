@@ -37,7 +37,7 @@ class ProjectDetailTaskTest(TestCase):
 
     def test_project_detail_shows_tasks(self):
         self.client.force_login(self.user)
-        response = self.client.get(f'/reports/projects/{self.project.id}/')
+        response = self.client.get(f'/projects/{self.project.id}/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '关联任务 / Tasks')
         self.assertContains(response, 'Task 1')
@@ -46,7 +46,7 @@ class ProjectDetailTaskTest(TestCase):
     def test_task_filtering(self):
         self.client.force_login(self.user)
         # Filter done
-        response = self.client.get(f'/reports/projects/{self.project.id}/?task_status=done')
+        response = self.client.get(f'/projects/{self.project.id}/?task_status=done')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Task 2')
         self.assertNotContains(response, 'Task 1') # Task 1 is todo
@@ -56,7 +56,7 @@ class ProjectDetailTaskTest(TestCase):
         # In current logic, owner has manage permission?
         # Let's check permissions. Usually owner has manage permission.
         self.client.force_login(self.user)
-        response = self.client.get(f'/reports/projects/{self.project.id}/')
+        response = self.client.get(f'/projects/{self.project.id}/')
         # If user is owner, they can manage.
         self.assertContains(response, '+ 新建')
         
@@ -64,7 +64,7 @@ class ProjectDetailTaskTest(TestCase):
         other_user = User.objects.create_user('other', 'other@example.com', 'password')
         self.project.members.add(other_user) # Add as member so they can view project
         self.client.force_login(other_user)
-        response = self.client.get(f'/reports/projects/{self.project.id}/')
+        response = self.client.get(f'/projects/{self.project.id}/')
         self.assertEqual(response.status_code, 200)
         # Other user can view but not manage
         self.assertNotContains(response, '+ 新建')

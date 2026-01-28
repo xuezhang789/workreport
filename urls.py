@@ -9,14 +9,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/login/', auth_views.LoginView.as_view(
-        template_name='registration/login.html'
-    ), name='login'),
-    path('accounts/register/', report_views.register, name='register'),
-    path('accounts/settings/', report_views.account_settings, name='account_settings'),
-    path('accounts/api/username-check/', report_views.username_check_api, name='username_check_api'),
-    path('accounts/api/email-code/', report_views.send_email_code_api, name='send_email_code_api'),
-    path('accounts/logout/', report_views.logout_view, name='logout'),
+    path('accounts/', include('core.urls')),
+    path('projects/', include('projects.urls')),
+    path('tasks/', include('tasks.urls')),
     path('reports/', include('reports.urls')),
     path('', RedirectView.as_view(pattern_name='reports:workbench', permanent=False)),
 ]

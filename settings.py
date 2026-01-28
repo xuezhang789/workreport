@@ -8,6 +8,8 @@ SECRET_KEY = 'replace-this-with-a-random-secret-key'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
+
+# Trigger reload for new templatetags
 INSTALLED_APPS = [
     'daphne', # Must be first
     'django.contrib.admin',
@@ -18,6 +20,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'channels',
     'reports',
+    'core',
+    'projects',
+    'tasks',
+    'work_logs',
+    'audit',
 ]
 
 MIDDLEWARE = [
@@ -126,9 +133,9 @@ if not env_use_ssl and not env_use_tls:
         EMAIL_USE_SSL = True
         EMAIL_USE_TLS = False
 
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'xuezhang789@gmail.com')  # 发信账号（可用环境变量覆盖）
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'aztv daib ajno ozhw')  # 授权码/密码（可用环境变量覆盖）
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or '')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')  # 发信账号
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # 授权码/密码
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
 EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[WorkReport] ')
 

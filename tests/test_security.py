@@ -12,12 +12,12 @@ class SecurityTests(TestCase):
     def test_username_check_api_permissions(self):
         # Normal user -> 403
         self.client.login(username='user', password='password')
-        response = self.client.get(reverse('reports:username_check_api'), {'username': 'test'})
+        response = self.client.get(reverse('core:username_check_api'), {'username': 'test'})
         self.assertEqual(response.status_code, 403)
 
         # Admin -> 200
         self.client.login(username='admin', password='password')
-        response = self.client.get(reverse('reports:username_check_api'), {'username': 'test'})
+        response = self.client.get(reverse('core:username_check_api'), {'username': 'test'})
         self.assertEqual(response.status_code, 200)
 
     def test_mask_email_filter(self):

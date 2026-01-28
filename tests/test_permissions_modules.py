@@ -54,12 +54,12 @@ class ModulePermissionTests(TestCase):
     def test_sla_settings_permission(self):
         # Superuser -> 200
         self.client.force_login(self.superuser)
-        resp = self.client.get('/reports/sla/settings/')
+        resp = self.client.get('/tasks/sla/settings/')
         self.assertEqual(resp.status_code, 200)
         
         # Owner -> 403
         self.client.force_login(self.u_owner)
-        resp = self.client.get('/reports/sla/settings/')
+        resp = self.client.get('/tasks/sla/settings/')
         self.assertNotEqual(resp.status_code, 200)
         
     def test_audit_logs_permission(self):
@@ -93,10 +93,10 @@ class ModulePermissionTests(TestCase):
     def test_phase_config_permission(self):
         # Superuser -> 200
         self.client.force_login(self.superuser)
-        resp = self.client.get('/reports/admin/phases/')
+        resp = self.client.get('/projects/phases/')
         self.assertEqual(resp.status_code, 200)
         
         # Owner -> 403
         self.client.force_login(self.u_owner)
-        resp = self.client.get('/reports/admin/phases/')
+        resp = self.client.get('/projects/phases/')
         self.assertNotEqual(resp.status_code, 200)

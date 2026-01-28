@@ -2,6 +2,7 @@
 {% load static %}
 {% load tz %}
 {% load reports_filters %}
+{% load core_tags %}
 
 {% block title %}审计日志 / Audit Logs{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="审计日志 / Audit Logs" nav_subtitle="查看与导出系统的操作审计记录 / View & export system audit logs" %}{% endblock %}
@@ -590,7 +591,7 @@
                         </td>
                         <td>
                             {% if log.project %}
-                                <a href="{% url 'reports:project_detail' log.project.id %}" style="text-decoration: none; color: var(--primary); font-weight: 500;">
+                                <a href="{% url 'projects:project_detail' log.project.id %}" style="text-decoration: none; color: var(--primary); font-weight: 500;">
                                     {{ log.project.name }}
                                 </a>
                             {% else %}
@@ -636,7 +637,7 @@
 
             <div class="pagination-controls">
                 {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="上一页">
+                    <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
@@ -653,12 +654,12 @@
                     {% if page_obj.number == i %}
                         <span class="page-btn active">{{ i }}</span>
                     {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                        <a href="?page={{ i }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn">{{ i }}</a>
+                        <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" title="下一页">
+                    <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>

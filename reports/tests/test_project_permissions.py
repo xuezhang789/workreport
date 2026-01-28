@@ -24,7 +24,7 @@ class ProjectEditPermissionTest(TestCase):
         self.project.members.add(self.member)
 
         self.client = Client()
-        self.url = reverse('reports:project_edit', args=[self.project.id])
+        self.url = reverse('projects:project_edit', args=[self.project.id])
 
     def test_superuser_full_access(self):
         self.client.force_login(self.superuser)

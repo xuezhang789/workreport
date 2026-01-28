@@ -461,7 +461,7 @@
                     </a>
                     {% endif %}
                     
-                    <a href="{% url 'reports:admin_task_stats' %}?date={{ today }}" class="action-card">
+                    <a href="{% url 'tasks:admin_task_stats' %}?date={{ today }}" class="action-card">
                         <div class="action-icon-box">⏰</div>
                         <div class="action-info">
                             <div class="action-name">缺报列表</div>
@@ -469,7 +469,7 @@
                         </div>
                     </a>
 
-                    <a href="{% url 'reports:task_list' %}" class="action-card">
+                    <a href="{% url 'tasks:task_list' %}" class="action-card">
                         <div class="action-icon-box">📋</div>
                         <div class="action-info">
                             <div class="action-name">我的任务</div>
@@ -478,7 +478,7 @@
                     </a>
 
                     {% if request.user.is_staff or request.user.managed_projects.all %}
-                    <a href="{% url 'reports:admin_task_create' %}" class="action-card">
+                    <a href="{% url 'tasks:admin_task_create' %}" class="action-card">
                         <div class="action-icon-box">➕</div>
                         <div class="action-info">
                             <div class="action-name">创建任务</div>
@@ -487,7 +487,7 @@
                     </a>
                     {% endif %}
 
-                    <a href="{% url 'reports:project_list' %}" class="action-card">
+                    <a href="{% url 'projects:project_list' %}" class="action-card">
                         <div class="action-icon-box">🚀</div>
                         <div class="action-info">
                             <div class="action-name">项目概览</div>

@@ -333,7 +333,7 @@
             </div>
             <div class="result-grid">
                 {% for p in projects %}
-                <a href="{% url 'reports:project_detail' p.id %}" class="result-card">
+                <a href="{% url 'projects:project_detail' p.id %}" class="result-card">
                     <div class="card-top">
                         <div>
                             <div class="card-title">{{ p.name }}</div>
@@ -357,7 +357,7 @@
             </div>
             <div class="result-grid">
                 {% for t in tasks %}
-                <a href="{% url 'reports:task_view' t.id %}" class="result-card">
+                <a href="{% url 'tasks:task_view' t.id %}" class="result-card">
                     <div class="card-top">
                         <div style="flex:1;">
                             <div class="card-title">{{ t.title }}</div>

@@ -8,7 +8,8 @@ from django.core.cache import cache
 
 from reports.models import Project, DailyReport, Task, SystemSetting, ReportTemplateVersion
 from reports import views as report_views
-from reports.services.sla import calculate_sla_info, _ensure_sla_timer
+from tasks import views as task_views
+from tasks.services.sla import calculate_sla_info, _ensure_sla_timer
 
 
 class CacheAndTemplateTests(TestCase):
@@ -19,7 +20,7 @@ class CacheAndTemplateTests(TestCase):
         self.project = Project.objects.create(name='P1', code='P1', owner=self.admin)
 
     def test_sla_thresholds_configurable(self):
-        resp = self.client.post(reverse('reports:sla_settings'), {
+        resp = self.client.post(reverse('tasks:sla_settings'), {
             'sla_hours': '24',
             'sla_amber': '6',
             'sla_red': '2',
@@ -77,23 +78,24 @@ class CacheAndTemplateTests(TestCase):
         self.assertIsNone(cache.get(cache_key))
 
     def test_export_limit_message(self):
-        original = report_views.MAX_EXPORT_ROWS
-        report_views.MAX_EXPORT_ROWS = 1
+        original = task_views.MAX_EXPORT_ROWS
+        task_views.MAX_EXPORT_ROWS = 1
         try:
             # 创建两个任务，导出触发限额
             Task.objects.create(title='t1', user=self.admin, project=self.project)
             Task.objects.create(title='t2', user=self.admin, project=self.project)
-            resp = self.client.get(reverse('reports:task_export'))
+            resp = self.client.get(reverse('tasks:task_export'))
             self.assertEqual(resp.status_code, 400)
             content = resp.content.decode()
             self.assertIn("数据量过大", content)
             self.assertIn("Data too large", content)
         finally:
-            report_views.MAX_EXPORT_ROWS = original
+            task_views.MAX_EXPORT_ROWS = original
 
     def test_admin_reports_export_limit(self):
-        original = report_views.MAX_EXPORT_ROWS
-        report_views.MAX_EXPORT_ROWS = 1
+        from reports import export_views
+        original = export_views.MAX_EXPORT_ROWS
+        export_views.MAX_EXPORT_ROWS = 1
         try:
             today = timezone.localdate()
             DailyReport.objects.create(user=self.admin, date=today, role='dev', status='submitted')
@@ -108,21 +110,21 @@ class CacheAndTemplateTests(TestCase):
             self.assertIn("数据量过大", content)
             self.assertIn("Data too large", content)
         finally:
-            report_views.MAX_EXPORT_ROWS = original
+            export_views.MAX_EXPORT_ROWS = original
 
     def test_admin_task_export_limit(self):
-        original = report_views.MAX_EXPORT_ROWS
-        report_views.MAX_EXPORT_ROWS = 1
+        original = task_views.MAX_EXPORT_ROWS
+        task_views.MAX_EXPORT_ROWS = 1
         try:
             Task.objects.create(title='t1', user=self.admin, project=self.project)
             Task.objects.create(title='t2', user=self.admin, project=self.project)
-            resp = self.client.get(reverse('reports:admin_task_export'))
+            resp = self.client.get(reverse('tasks:admin_task_export'))
             self.assertEqual(resp.status_code, 400)
             content = resp.content.decode()
             self.assertIn("数据量过大", content)
             self.assertIn("Data too large", content)
         finally:
-            report_views.MAX_EXPORT_ROWS = original
+            task_views.MAX_EXPORT_ROWS = original
 
     def test_template_center_pagination(self):
         # 创建超过一页的模板
@@ -144,7 +146,7 @@ class CacheAndTemplateTests(TestCase):
         self.assertEqual(resp_sort.context['sort'], 'updated')
 
     def test_post_only_endpoint_forbidden(self):
-        resp = self.client.get(reverse('reports:task_bulk_action'))
+        resp = self.client.get(reverse('tasks:task_bulk_action'))
         self.assertEqual(resp.status_code, 403)
         self.assertIn("POST only".lower(), resp.content.decode().lower())
 
@@ -152,7 +154,7 @@ class CacheAndTemplateTests(TestCase):
         # 创建即将超时的任务以触发 SLA 提示
         t = Task.objects.create(title='t1', user=self.admin, project=self.project)
         Task.objects.filter(id=t.id).update(created_at=timezone.now() - timedelta(hours=23))
-        resp = self.client.get(reverse('reports:task_list'))
+        resp = self.client.get(reverse('tasks:task_list'))
         self.assertContains(resp, "SLA 阈值")
 
     def test_sla_threshold_display_in_performance_board(self):

@@ -1,4 +1,6 @@
 {% extends "base_topbar.html" %}
+{% load reports_filters %}
+{% load core_tags %}
 {% block title %}团队管理 / Team Management{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="团队管理 / Team Management" nav_subtitle="管理所有成员、角色分配与项目归属 / Manage members, roles and project assignments" %}{% endblock %}
 
@@ -585,7 +587,7 @@
 
         <div class="pagination-controls">
             {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&role={{ role }}" class="page-btn" title="上一页 / Previous">
+            <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
@@ -602,12 +604,12 @@
                 {% if page_obj.number == i %}
                 <span class="page-btn active">{{ i }}</span>
                 {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                <a href="?page={{ i }}&q={{ q }}&role={{ role }}" class="page-btn">{{ i }}</a>
+                <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
                 {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&role={{ role }}" class="page-btn" title="下一页 / Next">
+            <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>

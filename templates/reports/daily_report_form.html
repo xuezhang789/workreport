@@ -360,7 +360,7 @@
                             </select>
                         </div>
                         
-                        <div class="form-group full-width">
+                        <div class="form-group">
                             <label class="form-label" for="projects">项目 / Projects</label>
                             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                                 <input id="project-filter" type="text" class="form-input" placeholder="🔍 过滤列表 / Filter list">
@@ -547,7 +547,7 @@
     const sampleBtn = document.getElementById('apply-sample');
     let templateSample = '';
     const templateApi = "{% url 'reports:role_template_api' %}";
-    const projectApi = "{% url 'reports:project_search_api' %}";
+    const projectApi = "{% url 'projects:project_search_api' %}";
     
     // preload initial report content when editing
     (function preloadReport() {
@@ -740,6 +740,7 @@
         projectOptions.innerHTML = '';
         try {
             const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
+            if (res.status === 429) return;
             if (!res.ok) return;
             const data = await res.json();
             (data.results || []).forEach(item => {
@@ -772,9 +773,13 @@
         projectTypeahead.value = '';
     }
     if (projectTypeahead) {
+        let projDebounce;
         projectTypeahead.addEventListener('input', (e) => {
             const q = e.target.value;
-            if (q && q.length >= 1) fetchProjects(q);
+            clearTimeout(projDebounce);
+            if (q && q.length >= 1) {
+                projDebounce = setTimeout(() => fetchProjects(q), 500);
+            }
         });
         projectTypeahead.addEventListener('change', addProjectFromTypeahead);
     }

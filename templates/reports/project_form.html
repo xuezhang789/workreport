@@ -623,7 +623,7 @@
             </div>
 
             <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
-                <a href="{% url 'reports:project_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
                 <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
             </div>
         </form>
@@ -635,7 +635,7 @@
         // --- API Data Fetching & Population ---
         const projectId = "{{ project.id|default:'' }}";
         const isEditMode = "{{ mode }}" === 'edit';
-        const apiEndpoint = isEditMode && projectId ? "{% url 'reports:api_project_detail' 0 %}".replace('0', projectId) : null;
+        const apiEndpoint = isEditMode && projectId ? "{% url 'projects:api_project_detail' 0 %}".replace('0', projectId) : null;
         
         if (isEditMode && apiEndpoint) {
             const form = document.querySelector('form');

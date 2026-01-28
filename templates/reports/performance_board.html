@@ -1,6 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load static %}
 {% load tz %}
+{% load core_tags %}
 
 {% block title %}绩效看板 / Performance Board{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="绩效与统计看板 / Performance & Stats" nav_subtitle="项目与角色完成率、逾期率、连签趋势 / Completion, overdue, streak insights" %}{% endblock %}
@@ -415,7 +416,7 @@
             </p>
         </div>
         <div>
-            <a href="?{{ request.GET.urlencode }}&send_weekly=1" class="btn btn-primary">
+            <a href="?{% url_replace send_weekly=1 %}" class="btn btn-primary">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                     <polyline points="22,6 12,13 2,6"></polyline>
@@ -719,10 +720,10 @@
                 </span>
                 <div style="display: flex; gap: 8px;">
                     {% if user_stats_page.has_previous %}
-                        <a href="?upage={{ user_stats_page.previous_page_number }}&{{ request.GET.urlencode|cut:'upage=' }}" class="page-link">上一页</a>
+                        <a href="?{% url_replace upage=user_stats_page.previous_page_number %}" class="page-link">上一页</a>
                     {% endif %}
                     {% if user_stats_page.has_next %}
-                        <a href="?upage={{ user_stats_page.next_page_number }}&{{ request.GET.urlencode|cut:'upage=' }}" class="page-link">下一页</a>
+                        <a href="?{% url_replace upage=user_stats_page.next_page_number %}" class="page-link">下一页</a>
                     {% endif %}
                 </div>
             </div>
@@ -758,7 +759,7 @@
                     {% for task in sla_urgent_tasks %}
                     <tr>
                         <td>
-                            <a href="{% url 'reports:task_view' task.id %}" style="font-weight: 600; color: var(--text-main); text-decoration: none;">{{ task.title }}</a>
+                            <a href="{% url 'tasks:task_view' task.id %}" style="font-weight: 600; color: var(--text-main); text-decoration: none;">{{ task.title }}</a>
                         </td>
                         <td>
                             <span class="badge" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-color);">
@@ -775,7 +776,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'reports:task_view' task.id %}" class="btn btn-ghost btn-sm">查看</a>
+                            <a href="{% url 'tasks:task_view' task.id %}" class="btn btn-ghost btn-sm">查看</a>
                         </td>
                     </tr>
                     {% endfor %}

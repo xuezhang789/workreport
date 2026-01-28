@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from reports.models import Project, ProjectPhaseConfig, ProjectPhaseChangeLog
-from reports.views import _send_phase_change_notification
+from projects.views import _send_phase_change_notification
 from django.core import mail
 
 class PhaseManagementTest(TestCase):
@@ -25,11 +25,11 @@ class PhaseManagementTest(TestCase):
 
     def test_phase_config_crud(self):
         # List
-        response = self.client.get('/reports/admin/phases/')
+        response = self.client.get('/projects/phases/')
         self.assertEqual(response.status_code, 200)
         
         # Create
-        response = self.client.post('/reports/admin/phases/new/', {
+        response = self.client.post('/projects/phases/new/', {
             'phase_name': 'New Phase',
             'progress_percentage': 99,
             'order_index': 10,
@@ -40,7 +40,7 @@ class PhaseManagementTest(TestCase):
         
         # Update
         new_phase = ProjectPhaseConfig.objects.get(phase_name='New Phase')
-        response = self.client.post(f'/reports/admin/phases/{new_phase.id}/edit/', {
+        response = self.client.post(f'/projects/phases/{new_phase.id}/edit/', {
             'phase_name': 'Updated Phase',
             'progress_percentage': 100,
             'order_index': 10,
@@ -51,13 +51,13 @@ class PhaseManagementTest(TestCase):
         self.assertEqual(new_phase.phase_name, 'Updated Phase')
         
         # Delete
-        response = self.client.post(f'/reports/admin/phases/{new_phase.id}/delete/')
+        response = self.client.post(f'/projects/phases/{new_phase.id}/delete/')
         self.assertEqual(response.status_code, 302)
         self.assertFalse(ProjectPhaseConfig.objects.filter(id=new_phase.id).exists())
 
     def test_project_phase_update(self):
         # Update phase
-        response = self.client.post(f'/reports/projects/{self.project.id}/update-phase/', {
+        response = self.client.post(f'/projects/{self.project.id}/update-phase/', {
             'phase_id': self.phase2.id
         })
         self.assertEqual(response.status_code, 200)
@@ -77,11 +77,11 @@ class PhaseManagementTest(TestCase):
         self.client.force_login(self.user) # Non-admin
         
         # Admin pages
-        response = self.client.get('/reports/admin/phases/')
+        response = self.client.get('/projects/phases/')
         self.assertEqual(response.status_code, 403)
         
         # Project update (user is owner, should be allowed)
-        response = self.client.post(f'/reports/projects/{self.project.id}/update-phase/', {
+        response = self.client.post(f'/projects/{self.project.id}/update-phase/', {
             'phase_id': self.phase2.id
         })
         self.assertEqual(response.status_code, 200)
@@ -89,7 +89,7 @@ class PhaseManagementTest(TestCase):
         # Create another user and try to update
         other_user = User.objects.create_user('other', 'other@example.com', 'password')
         self.client.force_login(other_user)
-        response = self.client.post(f'/reports/projects/{self.project.id}/update-phase/', {
+        response = self.client.post(f'/projects/{self.project.id}/update-phase/', {
             'phase_id': self.phase1.id
         })
         self.assertEqual(response.status_code, 403)
