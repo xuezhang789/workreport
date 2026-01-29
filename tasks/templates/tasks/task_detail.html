@@ -367,14 +367,6 @@
                     {% else %}
                         <div style="display: flex; gap: 8px;">
                             <form method="post">{% csrf_token %}
-                                {% if sla.paused %}
-                                    <button type="submit" name="action" value="resume_timer" class="btn btn-primary">恢复计时</button>
-                                {% else %}
-                                    <button type="submit" name="action" value="pause_timer" class="btn btn-secondary">暂停计时</button>
-                                {% endif %}
-                            </form>
-                            
-                            <form method="post">{% csrf_token %}
                                 <select name="status_value" class="filter-select" onchange="this.form.submit()">
                                     <option value="" disabled {% if task.status == 'todo' %}selected{% endif %}>更新状态...</option>
                                     <option value="todo" {% if task.status == 'todo' %}selected{% endif %}>待处理 / To Do</option>

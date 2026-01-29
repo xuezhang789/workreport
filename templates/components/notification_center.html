@@ -49,6 +49,14 @@
         text-align: center;
         border: 2px solid #fff;
     }
+    .badge.pulse {
+        animation: pulse-animation 1s infinite;
+    }
+    @keyframes pulse-animation {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
     .notification-dropdown {
         position: absolute;
         top: 110%;
@@ -217,6 +225,9 @@
             if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count;
                 badge.style.display = 'block';
+                // Add pulse animation
+                badge.classList.add('pulse');
+                setTimeout(() => badge.classList.remove('pulse'), 1000);
             } else {
                 badge.style.display = 'none';
             }

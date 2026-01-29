@@ -10,15 +10,14 @@
     <button class="nav-toggle" id="nav-toggle" aria-label="切换菜单 / Toggle menu">☰ 菜单 / Menu</button>
     <div class="actions" id="nav-actions">
         <!-- 个人工作台 - 首页概览 -->
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'workbench' %}active{% endif %}" href="{% url 'reports:workbench' %}">个人工作台 / Workbench</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'workbench' %}active{% endif %}" href="{% url 'reports:workbench' %}">工作台 / Workbench</a>
         
         <!-- 核心功能 - 日常工作 -->
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'daily_report_create' %}active{% endif %}" href="{% url 'reports:daily_report_create' %}">填写日报 / New Report</a>
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}" href="{% url 'tasks:task_list' %}">我的任务 / My Tasks</a>
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'my_reports' %}active{% endif %}" href="{% url 'reports:my_reports' %}">我的日报 / My Reports</a>
-        
+         <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'my_reports' %}active{% endif %}" href="{% url 'reports:my_reports' %}">日报 / My Reports</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'daily_report_create' %}active{% endif %}" href="{% url 'reports:daily_report_create' %}">写日报 / New Report</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'task_list' %}active{% endif %}" href="{% url 'tasks:task_list' %}">任务 / My Tasks</a>
         <!-- 项目管理 -->
-        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'project_list' %}active{% endif %}" href="{% url 'projects:project_list' %}">项目列表 / Projects</a>
+        <a class="ghost-link {% if request.resolver_match and request.resolver_match.url_name == 'project_list' %}active{% endif %}" href="{% url 'projects:project_list' %}">项目 / Projects</a>
         
         <!-- 管理功能 - 管理员专用（下拉合并） -->
         {% if request.user.is_authenticated %}

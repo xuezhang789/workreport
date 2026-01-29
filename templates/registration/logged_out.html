@@ -291,7 +291,7 @@
                 countdownEl.innerText = `${countdownTime}s 后跳转到登录页 / Redirecting in ${countdownTime}s`;
                 if (countdownTime <= 0) {
                     clearInterval(interval);
-                    window.location.href = '{% url "login" %}';
+                    window.location.href = '{% url "core:login" %}';
                 }
                 countdownTime--;
             }
