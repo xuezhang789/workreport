@@ -77,9 +77,66 @@
     }
 
     .form-textarea {
-        min-height: 120px;
+        min-height: 240px;
         resize: vertical;
         line-height: 1.6;
+        font-size: 15px;
+    }
+
+    .char-counter {
+        text-align: right;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .role-card {
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    
+    .role-card:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .role-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .role-header.manager {
+        background: linear-gradient(to right, #eff6ff, #fff);
+        border-left: 4px solid var(--primary);
+    }
+
+    .role-header.member {
+        background: linear-gradient(to right, #f0fdf4, #fff);
+        border-left: 4px solid #10b981;
+    }
+
+    .role-title {
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .role-title.manager { color: #1e40af; }
+    .role-title.member { color: #065f46; }
+
+    .role-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
     }
 
     .help-text {
@@ -399,6 +456,83 @@
     .status-uploading { color: var(--primary); }
     .status-success { color: #166534; }
     .status-error { color: #991b1b; }
+
+    /* Attachments (Synced with Task Detail) */
+    .attachment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .attachment-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .attachment-card:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .attachment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attachment-icon {
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .attachment-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .attachment-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .btn-xs {
+        padding: 4px 8px;
+        font-size: 11px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        display: inline-block;
+        text-align: center;
+        border: none;
+    }
+
+    .btn-delete {
+        background: #fef2f2;
+        color: #991b1b;
+        width: 100%;
+    }
+    
+    .btn-delete:hover {
+        background: #fee2e2;
+    }
 </style>
 {% endblock %}
 
@@ -421,205 +555,231 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
-                <!-- Left Column -->
-                <div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.name.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">项目名称 / Name <span style="color:red">*</span></label>
+            <div style="display: flex; flex-direction: column; gap: 32px; margin-bottom: 32px;">
+                
+                <!-- 1. Project Essentials -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="{{ form.name.id_for_label }}">项目名称 / Name <span style="color:red">*</span></label>
                         {{ form.name }}
                         {% if form.name.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.name.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.code.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">项目代码 / Code <span style="color:red">*</span></label>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="{{ form.code.id_for_label }}">项目代码 / Code <span style="color:red">*</span></label>
                         {{ form.code }}
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">唯一标识符，建议使用大写字母 (e.g. PRJ-001) / Unique ID, uppercase recommended</p>
+                        <p class="help-text">唯一标识符，建议使用大写字母 (e.g. PRJ-001)</p>
                         {% if form.code.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.code.errors.0 }}</div>{% endif %}
                     </div>
-
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.owner.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">负责人 / Owner</label>
-                        <div class="owner-select-container" style="position: relative;">
-                            {% if can_edit_owner is False %}
-                                <input type="text" class="form-input" value="{{ project.owner.get_full_name|default:project.owner.username }}" disabled style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
-                                <div style="display:none;">{{ form.owner }}</div>
-                            {% else %}
-                                <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人... / Search owner..." style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
-                                {{ form.owner }}
-                            {% endif %}
-                        </div>
-                        {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="form-group" style="margin-bottom: 20px;">
-                            <label class="form-label" for="{{ form.start_date.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">开始日期 / Start</label>
-                            {{ form.start_date }}
-                        </div>
-                        <div class="form-group" style="margin-bottom: 20px;">
-                            <label class="form-label" for="{{ form.end_date.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">结束日期 / End</label>
-                            {{ form.end_date }}
-                        </div>
-                    </div>
                 </div>
 
-                <!-- Right Column -->
-                <div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.sla_hours.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">SLA 提醒 (小时) / SLA Hours</label>
-                        {{ form.sla_hours }}
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">留空则使用系统默认全局配置 / Leave empty for system default</p>
-                        {% if form.sla_hours.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.sla_hours.errors.0 }}</div>{% endif %}
-                    </div>
+                <!-- 2. Description (Enhanced) -->
+                <div class="form-group" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                    <label class="form-label" for="{{ form.description.id_for_label }}" style="font-size: 16px; margin-bottom: 12px;">项目描述 / Description</label>
+                    {{ form.description }}
+                    <div class="char-counter" id="desc-counter">0 chars</div>
+                    <p class="help-text">请详细描述项目目标、范围及关键交付物，支持 Markdown 格式。</p>
+                </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.is_active.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">状态 / Status</label>
-                        <div style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc;">
-                            {{ form.is_active }}
-                            <span style="font-size: 14px; font-weight: 500;">启用项目 / Active</span>
+                <!-- 3. Details & Configuration -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px;">
+                    <!-- Left: Operations -->
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label" for="{{ form.owner.id_for_label }}">负责人 / Owner</label>
+                            <div class="owner-select-container">
+                                {% if can_edit_owner is False %}
+                                    <input type="text" class="form-input" value="{{ project.owner.get_full_name|default:project.owner.username }}" disabled style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
+                                    <div style="display:none;">{{ form.owner }}</div>
+                                {% else %}
+                                    <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人..." style="margin-bottom: 8px;">
+                                    {{ form.owner }}
+                                {% endif %}
+                            </div>
+                            {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
                         </div>
-                    </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" for="{{ form.description.id_for_label }}" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">描述 / Description</label>
-                        {{ form.description }}
-                    </div>
-                    
-                    {% if mode == 'create' %}
-                    <!-- File Upload Section for Create Mode -->
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">附件上传 / Attachments</label> </label>
-                        <div class="file-upload-container" id="file-upload-zone" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;">
-                            <input type="file" id="file-input" name="files" multiple style="display: none;">
-                            <div class="upload-placeholder">
-                                <div class="upload-icon" style="color: var(--primary); margin-bottom: 12px;">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                </div>
-                                <div class="upload-text" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽文件到此处上传 / Click or Drag files here</div>
-                                <div class="upload-hint" style="font-size: 12px; color: var(--text-secondary);">支持文档、图片、压缩包等格式 (Max 50MB) / Supports docs, images, zips (Max 50MB)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label" for="{{ form.start_date.id_for_label }}">开始日期 / Start</label>
+                                {{ form.start_date }}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="{{ form.end_date.id_for_label }}">结束日期 / End</label>
+                                {{ form.end_date }}
                             </div>
                         </div>
-                        <div class="file-list" id="file-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     </div>
-                    {% endif %}
-                </div>
-            </div>
 
-            <!-- Full Width Sections -->
-            
-            <!-- 1. Managers Section (Moved to Top) -->
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">管理员 / Managers</label>
-                
-                {% if can_edit_managers is False %}
-                     <div class="read-only-list" style="padding: 12px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        {% for user in project.managers.all %}
-                            <span class="selected-tag" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #e2e8f0; color: #64748b; border: 1px solid #cbd5e1; border-radius: 16px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px;">
-                                {{ user.get_full_name|default:user.username }}
-                            </span>
-                        {% empty %}
-                            <span style="color: #94a3b8; font-size: 13px;">无管理员 / No managers</span>
-                        {% endfor %}
-                    </div>
-                    <div style="display:none;">{{ form.managers }}</div>
-                {% else %}
-                <div class="multi-select-container" id="managers-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
-                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="manager-filter" placeholder="搜索管理员... / Search managers..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
-                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="manager-count">0</span> 已选 / Selected</span>
-                    </div>
-                    
-                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
-                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
-                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                <input type="checkbox" id="select-all-managers" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                <span>全选 / Select All</span>
-                            </label>
+                    <!-- Right: Settings & Files -->
+                    <div>
+                         <div class="form-group">
+                            <label class="form-label" for="{{ form.sla_hours.id_for_label }}">SLA 配置 / SLA Config</label>
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1;">
+                                    {{ form.sla_hours }}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
+                                    {{ form.is_active }}
+                                    <span style="font-size: 14px; font-weight: 500;">启用 / Active</span>
+                                </div>
+                            </div>
+                            <p class="help-text">SLA 提醒周期（小时），留空使用系统默认。</p>
                         </div>
-                        <div class="options-container">
-                            {% for user in form.managers.field.queryset %}
-                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
-                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                        <input type="checkbox" name="managers" value="{{ user.pk }}" 
-                                               {% if form.managers.value %}{% if user.pk|stringformat:"s" in form.managers.value|stringformat:"s" %}checked{% endif %}{% endif %}
-                                               class="manager-checkbox"
-                                               data-name="{{ user.get_full_name|default:user.username }}"
-                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
-                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
-                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label class="form-label">附件 / Attachments</label>
+                            
+                            <!-- Upload Zone (Shared for Create & Edit) -->
+                            <div class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px;">
+                                <input type="file" id="file-input" name="files" multiple style="display: none;">
+                                <div class="upload-placeholder">
+                                    <div class="upload-text">点击或拖拽文件上传 / Click or Drag</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Attachment List -->
+                            <div class="attachment-grid" id="file-list">
+                                <!-- Existing Attachments (Edit Mode) -->
+                                {% if mode == 'edit' %}
+                                    {% for attachment in project.attachments.all %}
+                                        <div class="attachment-card" id="attachment-{{ attachment.id }}">
+                                            <div class="attachment-header">
+                                                <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                                <span class="attachment-name" title="{{ attachment.original_filename }}">{{ attachment.original_filename }}</span>
+                                            </div>
+                                            <div class="attachment-meta">
+                                                <span>{{ attachment.file_size|filesizeformat }}</span>
+                                                <span>{{ attachment.created_at|date:"Y-m-d" }}</span>
+                                            </div>
+                                            <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                                <span>Up:</span>
+                                                <span style="font-weight: 500;">{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
+                                            </div>
+                                            <div class="attachment-actions">
+                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载</a>
+                                                <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Remove</button>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Team Management (New Style) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; margin-top: 12px;">
+                    
+                    <!-- Managers Module -->
+                    <div class="role-card">
+                        <div class="role-header manager">
+                            <div>
+                                <div class="role-title manager">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                    管理员 / Managers
+                                </div>
+                                <div class="role-desc">拥有项目完全控制权</div>
+                            </div>
+                            <div class="selected-count" style="background: #eff6ff; color: var(--primary);">
+                                <span id="manager-count">0</span>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 20px;">
+                            {% if can_edit_managers is False %}
+                                <div class="read-only-list" style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+                                    {% for user in project.managers.all %}
+                                        <span class="selected-tag">{{ user.get_full_name|default:user.username }}</span>
+                                    {% empty %}
+                                        <span style="color: #94a3b8; font-size: 13px;">无管理员</span>
+                                    {% endfor %}
+                                </div>
+                                <div style="display:none;">{{ form.managers }}</div>
+                            {% else %}
+                                <div class="multi-select-container" id="managers-container" style="border: none; background: transparent;">
+                                    <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                                        <input type="text" id="manager-filter" placeholder="搜索..." class="search-input">
+                                    </div>
+                                    
+                                    <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
+                                        <div class="select-all-container">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="select-all-managers">
+                                                <span>全选</span>
+                                            </label>
+                                        </div>
+                                        <div class="options-container">
+                                            {% for user in form.managers.field.queryset %}
+                                                <label class="option-item">
+                                                    <div class="checkbox-label">
+                                                        <input type="checkbox" name="managers" value="{{ user.pk }}" class="manager-checkbox" data-name="{{ user.get_full_name|default:user.username }}">
+                                                        <div class="user-info">
+                                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                                            <span class="user-username">@{{ user.username }}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            {% endfor %}
                                         </div>
                                     </div>
-                                </label>
-                            {% endfor %}
+                                    <div class="selected-tags" id="selected-managers-tags" style="border: none; padding: 12px 0;"></div>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
-                    
-                    <div class="selected-tags" id="selected-managers-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
-                </div>
-                {% endif %}
-                
-                <!-- Permission Info Box for Managers -->
-                <div style="margin-top: 12px; padding: 12px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; display: flex; gap: 10px;">
-                    <div style="color: var(--primary); font-size: 16px;">🛡️</div>
-                    <div style="font-size: 13px; color: #1e40af; line-height: 1.5;">
-                        <strong style="display: block; margin-bottom: 2px;">管理员权限 / Manager Permissions</strong>
-                        可以修改项目设置、添加/移除成员、管理所有任务及查看高级报表。<br>
-                        <span style="opacity: 0.8;">Can edit project settings, manage members & tasks, and access advanced reports.</span>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 2. Members Section (Moved Below) -->
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">成员管理 / Members</label>
-                <div class="multi-select-container" id="members-container" style="border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; transition: all 0.2s;">
-                    <div class="search-header" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f1f5f9; border-bottom: 1px solid var(--border-color);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                        <input type="text" id="member-filter" placeholder="搜索成员... / Search members..." class="search-input" style="border: none; background: transparent; font-size: 14px; flex: 1; outline: none; color: var(--text-main);">
-                        <span class="selected-count" style="font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(37, 99, 235, 0.1); padding: 4px 8px; border-radius: 12px;"><span id="member-count">0</span> 已选 / Selected</span>
-                    </div>
-                    
-                    <div class="multi-select-dropdown" style="max-height: 240px; overflow-y: auto; background: #fff;">
-                        <div class="select-all-container" style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600;">
-                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                <input type="checkbox" id="select-all-members" style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                <span>全选 / Select All</span>
-                            </label>
+                    <!-- Members Module -->
+                    <div class="role-card">
+                        <div class="role-header member">
+                            <div>
+                                <div class="role-title member">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    成员 / Members
+                                </div>
+                                <div class="role-desc">负责任务执行与协作</div>
+                            </div>
+                            <div class="selected-count" style="background: #f0fdf4; color: #166534;">
+                                <span id="member-count">0</span>
+                            </div>
                         </div>
-                        <div class="options-container">
-                            {% for user in form.members.field.queryset %}
-                                <label class="option-item" style="display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9;">
-                                    <div class="checkbox-label" style="display: flex; align-items: center; gap: 12px; width: 100%; cursor: pointer;">
-                                        <input type="checkbox" name="members" value="{{ user.pk }}" 
-                                               {% if form.members.value %}{% if user.pk|stringformat:"s" in form.members.value|stringformat:"s" %}checked{% endif %}{% endif %}
-                                               class="member-checkbox"
-                                               data-name="{{ user.get_full_name|default:user.username }}"
-                                               style="width: 18px; height: 18px; border-radius: 4px; border: 2px solid #cbd5e1; appearance: none; cursor: pointer; position: relative; transition: all 0.2s;">
-                                        <div class="user-info" style="display: flex; flex-direction: column; gap: 2px;">
-                                            <span class="user-name" style="font-size: 14px; font-weight: 500; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</span>
-                                            <span class="user-username" style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</span>
-                                        </div>
+
+                        <div style="padding: 20px;">
+                            <div class="multi-select-container" id="members-container" style="border: none; background: transparent;">
+                                <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                                    <input type="text" id="member-filter" placeholder="搜索..." class="search-input">
+                                </div>
+                                
+                                <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
+                                    <div class="select-all-container">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="select-all-members">
+                                            <span>全选</span>
+                                        </label>
                                     </div>
-                                </label>
-                            {% endfor %}
+                                    <div class="options-container">
+                                        {% for user in form.members.field.queryset %}
+                                            <label class="option-item">
+                                                <div class="checkbox-label">
+                                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }}">
+                                                    <div class="user-info">
+                                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                                        <span class="user-username">@{{ user.username }}</span>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="selected-tags" id="selected-members-tags" style="border: none; padding: 12px 0;"></div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="selected-tags" id="selected-members-tags" style="padding: 12px; background: #fff; border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: 8px; min-height: 46px;"></div>
-                    <!-- Hidden select for form submission if needed, though checkboxes handle name="members" -->
+
                 </div>
-                
-                <!-- Permission Info Box for Members -->
-                <div style="margin-top: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; gap: 10px;">
-                    <div style="color: var(--text-secondary); font-size: 16px;">👥</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
-                        <strong style="display: block; margin-bottom: 2px; color: var(--text-main);">成员权限 / Member Permissions</strong>
-                        可以查看项目详情、被分配任务、参与讨论及上传附件。无法修改项目设置或管理其他成员。<br>
-                        <span style="opacity: 0.8;">Can view project details, be assigned tasks, participate in discussions, and upload files. Cannot edit settings.</span>
-                    </div>
-                </div>
+
             </div>
 
             <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
@@ -632,12 +792,23 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Description Character Counter
+        const descInput = document.getElementById('{{ form.description.id_for_label }}');
+        const descCounter = document.getElementById('desc-counter');
+        if (descInput && descCounter) {
+            const updateCount = () => {
+                descCounter.textContent = `${descInput.value.length} chars`;
+            };
+            descInput.addEventListener('input', updateCount);
+            updateCount();
+        }
+
         // --- API Data Fetching & Population ---
         const projectId = "{{ project.id|default:'' }}";
-        const isEditMode = "{{ mode }}" === 'edit';
-        const apiEndpoint = isEditMode && projectId ? "{% url 'projects:api_project_detail' 0 %}".replace('0', projectId) : null;
+        const pageMode = "{{ mode }}"; // Renamed to avoid conflict
+        const apiEndpoint = pageMode === 'edit' && projectId ? "{% url 'projects:api_project_detail' 0 %}".replace('0', projectId) : null;
         
-        if (isEditMode && apiEndpoint) {
+        if (pageMode === 'edit' && apiEndpoint) {
             const form = document.querySelector('form');
             const loadingOverlay = document.createElement('div');
             
@@ -729,10 +900,15 @@
         const uploadZone = document.getElementById('file-upload-zone');
         const fileInput = document.getElementById('file-input');
         const fileList = document.getElementById('file-list');
-
+        
+        // Robust File Handling with DataTransfer to allow multiple adds
+        let globalDataTransfer = new DataTransfer();
+        const isEditMode = "{{ mode }}" === 'edit';
+        
         if (uploadZone && fileInput) {
+            // Common Event Listeners (Click & Drag Visuals)
             uploadZone.addEventListener('click', () => fileInput.click());
-
+            
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.classList.add('drag-over');
@@ -742,99 +918,144 @@
                 uploadZone.classList.remove('drag-over');
             });
 
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('drag-over');
-                handleFiles(e.dataTransfer.files);
-            });
+             // Handle Edit Mode: Direct AJAX Upload
+             if (isEditMode) {
+                 fileInput.addEventListener('change', function(e) {
+                    if (this.files.length === 0) return;
+                    
+                    const formData = new FormData();
+                    Array.from(this.files).forEach(file => {
+                        formData.append('files', file);
+                    });
+                    
+                    // Indicate loading (optional UI enhancement)
+                    const placeholder = document.querySelector('.upload-text');
+                    const originalText = placeholder.textContent;
+                    placeholder.textContent = 'Uploading...';
+                    
+                    const projectId = "{{ project.id|default:'' }}";
+                    const uploadUrl = "{% url 'projects:project_upload_attachment' 0 %}".replace('0', projectId);
 
-            fileInput.addEventListener('change', (e) => {
-                handleFiles(e.target.files);
-            });
+                    fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        placeholder.textContent = originalText;
+                        if (data.status === 'success') {
+                            // Reload to show new files (simplest way to ensure consistency)
+                            window.location.reload();
+                        } else {
+                            alert('Upload failed: ' + (data.message || 'Unknown error'));
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        placeholder.textContent = originalText;
+                        alert('Upload failed: Network error');
+                    });
+                 });
+                 
+                 // Drag & Drop for Edit Mode
+                 uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('drag-over');
+                    
+                    // Create a fake input change event for consistency
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                 });
 
-            function handleFiles(files) {
-                const dt = new DataTransfer();
-                // Merge existing files if input allows multiple (standard input replaces files)
-                // For simplicity here, we append new files to UI and try to sync with input if possible
-                // Note: Standard file input syncing is tricky. We'll rely on form submission 
-                // but we can at least show what's selected.
-                // A better approach for "Create" is just to use the input normally but show UI.
-                
-                // Clear existing UI for this simple implementation or append?
-                // Standard behavior: selecting new files replaces old selection in input.
-                fileList.innerHTML = ''; 
-                
-                // Add new files to DataTransfer to possibly set input.files (if appending was desired)
-                // For now, let's just show what's currently in the input (standard behavior)
-                // If we want drag & drop to APPEND, we need to manage a DataTransfer object manually.
-                
-                // Let's implement APPEND logic using DataTransfer
-                const currentFiles = fileInput.files;
-                for (let i = 0; i < currentFiles.length; i++) {
-                     // If we are handling drop, fileInput.files might not be updated yet
-                }
-
-                // Actually, let's stick to the simplest reliable method:
-                // If dropped, set input.files. If selected, it's already set.
-                // To support "adding" files, we need a global DataTransfer object.
-            }
-        }
-        
-        // Robust File Handling with DataTransfer to allow multiple adds
-        let globalDataTransfer = new DataTransfer();
-        
-        if (uploadZone && fileInput) {
-             function updateFileList() {
-                fileList.innerHTML = '';
-                Array.from(globalDataTransfer.files).forEach((file, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'file-item';
-                    item.innerHTML = `
-                        <div class="file-info">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                            <div>
-                                <div class="file-name" title="${file.name}">${file.name}</div>
-                                <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+             } else {
+                 // Handle Create Mode: Accumulate in DataTransfer
+                 function updateFileList() {
+                    // Only clear dynamic items, not the whole container if we want to support mixed content?
+                    // Actually for Create mode, list is empty initially.
+                    fileList.innerHTML = '';
+                    const dateStr = new Date().toISOString().slice(0, 10);
+    
+                    Array.from(globalDataTransfer.files).forEach((file, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'attachment-card';
+                        
+                        const sizeKB = file.size / 1024;
+                        const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB.toFixed(1) + ' KB';
+    
+                        item.innerHTML = `
+                            <div class="attachment-header">
+                                <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                <span class="attachment-name" title="${file.name}">${file.name}</span>
                             </div>
-                        </div>
-                        <button type="button" class="remove-btn" onclick="removeFile(${index})">×</button>
-                    `;
-                    fileList.appendChild(item);
+                            <div class="attachment-meta">
+                                <span>${sizeStr}</span>
+                                <span>${dateStr}</span>
+                            </div>
+                            <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                <span>Up:</span>
+                                <span style="font-weight: 500;">Me</span>
+                            </div>
+                            <div class="attachment-actions">
+                                <button type="button" class="btn-xs btn-delete" onclick="removeFile(${index})">删除 / Remove</button>
+                            </div>
+                        `;
+                        fileList.appendChild(item);
+                    });
+                    
+                    // Sync to input
+                    fileInput.files = globalDataTransfer.files;
+                }
+    
+                window.removeFile = function(index) {
+                    const newDataTransfer = new DataTransfer();
+                    Array.from(globalDataTransfer.files).forEach((file, i) => {
+                        if (i !== index) newDataTransfer.items.add(file);
+                    });
+                    globalDataTransfer = newDataTransfer;
+                    updateFileList();
+                };
+    
+                uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('drag-over');
+                    Array.from(e.dataTransfer.files).forEach(file => globalDataTransfer.items.add(file));
+                    updateFileList();
                 });
-                
-                // Sync to input
-                fileInput.files = globalDataTransfer.files;
-            }
-
-            window.removeFile = function(index) {
-                const newDataTransfer = new DataTransfer();
-                Array.from(globalDataTransfer.files).forEach((file, i) => {
-                    if (i !== index) newDataTransfer.items.add(file);
+    
+                fileInput.addEventListener('change', (e) => {
+                    Array.from(e.target.files).forEach(file => globalDataTransfer.items.add(file));
+                    updateFileList();
                 });
-                globalDataTransfer = newDataTransfer;
-                updateFileList();
-            };
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('drag-over');
-                Array.from(e.dataTransfer.files).forEach(file => globalDataTransfer.items.add(file));
-                updateFileList();
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                // When clicking input, it replaces files. We want to ADD.
-                // But the browser UI for file input usually implies replacement.
-                // To support "Add", we should prevent default if possible or just merge.
-                // However, fileInput is hidden.
-                Array.from(e.target.files).forEach(file => globalDataTransfer.items.add(file));
-                updateFileList();
-            });
-            
-            // Prevent replacing: Since input is hidden and triggered by JS, 
-            // the 'change' event contains only newly selected files.
-            // We add them to globalDataTransfer.
+             }
         }
+        
+        // Delete Existing Attachment (Edit Mode)
+        window.deleteExistingAttachment = function(id, url) {
+            if (!confirm('确定删除该附件吗？')) return;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const el = document.getElementById(`attachment-${id}`);
+                    if (el) el.remove();
+                } else {
+                    alert('Delete failed: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Delete failed');
+            });
+        };
 
         // Add classes to Django rendered fields
         const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');

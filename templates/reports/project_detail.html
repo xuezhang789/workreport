@@ -261,33 +261,40 @@
     }
 
     /* Members */
+    .member-section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
     .member-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 16px;
+        margin-bottom: 24px;
     }
 
     .member-card {
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 12px;
         background: #fff;
         display: flex;
         align-items: center;
         gap: 12px;
+        transition: all 0.2s;
     }
     
-    .member-avatar {
-        width: 40px;
-        height: 40px;
-        background: #f1f5f9;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-secondary);
+    .member-card:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+    
+    .member-avatar-wrapper {
         flex-shrink: 0;
     }
     
@@ -300,13 +307,11 @@
     
     .member-name {
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-main);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        display: flex;
-        align-items: center;
     }
     
     .member-role {
@@ -318,8 +323,8 @@
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 4px;
-        margin-left: 6px;
         font-weight: 600;
+        margin-left: auto;
     }
     
     .role-owner { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
@@ -367,6 +372,23 @@
                 </span>
             </div>
             <div class="info-item">
+                <span class="info-label">管理员 / Managers</span>
+                <span class="info-value">
+                    {% if project.managers.exists %}
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            {% for manager in project.managers.all %}
+                                <div style="display: flex; align-items: center; gap: 6px; background: #eff6ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; color: #1d4ed8;">
+                                    {% include "partials/user_avatar.html" with user=manager size="16px" font_size="8px" %}
+                                    {{ manager.get_full_name|default:manager.username }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-size: 13px;">无管理员 / None</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
                 <span class="info-label">时间周期 / Duration</span>
                 <span class="info-value">
                     {{ project.start_date|default:"--" }} 
@@ -379,15 +401,26 @@
                 <span class="info-value">{{ project.members.count }} 人</span>
             </div>
             <div class="info-item">
-                <span class="info-label">SLA 配置</span>
-                <span class="info-value">{% if project.sla_hours %}{{ project.sla_hours }}h{% else %}全局配置{% endif %}</span>
+                <span class="info-label">SLA 配置 / SLA Config</span>
+                <span class="info-value">
+                    {% if project.sla_hours %}
+                        {{ project.sla_hours }}h
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-weight: 400;">系统默认 / System Default (48h)</span>
+                    {% endif %}
+                </span>
             </div>
         </div>
         
         {% if project.description %}
             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
                 <span class="info-label" style="display: block; margin-bottom: 8px;">项目描述 / Description</span>
-                <p style="margin: 0; font-size: 14px; color: var(--text-main); line-height: 1.6;">{{ project.description }}</p>
+                <p style="margin: 0; font-size: 14px; color: var(--text-main); line-height: 1.6;">{{ project.description|linebreaksbr }}</p>
+            </div>
+        {% else %}
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                <span class="info-label" style="display: block; margin-bottom: 8px;">项目描述 / Description</span>
+                <p style="margin: 0; font-size: 14px; color: var(--text-secondary); font-style: italic;">暂无描述 / No description provided.</p>
             </div>
         {% endif %}
     </div>
@@ -441,7 +474,10 @@
             <div class="card-title">
                 <span>🚩</span> 阶段与进度 / Phase & Progress
             </div>
-            <a href="{% url 'projects:project_phase_history' project.pk %}" class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;">变更记录</a>
+            <a href="{% url 'projects:project_phase_history' project.pk %}" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                变更记录 / History
+            </a>
         </div>
         
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
@@ -479,29 +515,66 @@
             <span style="font-size: 13px; color: var(--text-secondary);">Total: {{ project.members.count }}</span>
         </div>
         
+        <!-- Management Team -->
+        {% if project.owner or project.managers.exists %}
+            <div class="member-section-title">管理团队 / Management Team</div>
+            <div class="member-grid">
+                {% if project.owner %}
+                    <div class="member-card" style="border-color: #ffedd5; background: #fffaf0;">
+                        <div class="member-avatar-wrapper">
+                            {% include "partials/user_avatar.html" with user=project.owner size="40px" font_size="16px" %}
+                        </div>
+                        <div class="member-info">
+                            <div class="member-name">
+                                {{ project.owner.get_full_name|default:project.owner.username }}
+                                <span class="badge-role role-owner">Owner</span>
+                            </div>
+                            <div class="member-role">{{ project.owner.profile.get_position_display|default:"项目负责人" }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% for manager in project.managers.all %}
+                    {% if manager != project.owner %}
+                        <div class="member-card" style="border-color: #dbeafe; background: #eff6ff;">
+                            <div class="member-avatar-wrapper">
+                                {% include "partials/user_avatar.html" with user=manager size="40px" font_size="16px" %}
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">
+                                    {{ manager.get_full_name|default:manager.username }}
+                                    <span class="badge-role role-mgr">Mgr</span>
+                                </div>
+                                <div class="member-role">{{ manager.profile.get_position_display|default:"管理员" }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Regular Members -->
+        <div class="member-section-title">项目成员 / Project Members</div>
         <div class="member-grid">
             {% for member in project.members.all %}
-                <div class="member-card">
-                    <div class="member-avatar-wrapper">
-                        {% include "partials/user_avatar.html" with user=member size="40px" font_size="16px" %}
-                    </div>
-                    <div class="member-info">
-                        <div class="member-name">
-                            {{ member.get_full_name|default:member.username }}
-                            {% if member == project.owner %}
-                                <span class="badge-role role-owner">Owner</span>
-                            {% elif member in project.managers.all %}
-                                <span class="badge-role role-mgr">Mgr</span>
-                            {% endif %}
+                {% if member != project.owner and member not in project.managers.all %}
+                    <div class="member-card">
+                        <div class="member-avatar-wrapper">
+                            {% include "partials/user_avatar.html" with user=member size="40px" font_size="16px" %}
                         </div>
-                        <div class="member-role">
-                            {{ member.profile.get_position_display|default:"成员" }}
+                        <div class="member-info">
+                            <div class="member-name">
+                                {{ member.get_full_name|default:member.username }}
+                            </div>
+                            <div class="member-role">
+                                {{ member.profile.get_position_display|default:"成员" }}
+                            </div>
                         </div>
                     </div>
-                </div>
+                {% endif %}
             {% empty %}
                 <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
-                    暂无成员
+                    暂无普通成员
                 </div>
             {% endfor %}
         </div>

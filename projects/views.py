@@ -236,6 +236,20 @@ def project_create(request):
         form = ProjectForm(request.POST)
         if form.is_valid():
             project = form.save()
+            
+            # Handle file uploads if any (for Create mode)
+            if request.FILES.getlist('files'):
+                for file in request.FILES.getlist('files'):
+                    is_valid, error_msg = _validate_file(file)
+                    if is_valid:
+                        ProjectAttachment.objects.create(
+                            project=project,
+                            uploaded_by=request.user,
+                            file=file,
+                            original_filename=file.name,
+                            file_size=file.size
+                        )
+                        
             log_action(request, 'create', f"project {project.id} {project.code}")
             return redirect('projects:project_detail', pk=project.pk)
     else:
