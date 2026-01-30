@@ -626,7 +626,7 @@
                     </div>
 
                     <div class="card-footer">
-                        <div class="avatar-circle" title="负责人: {{ task.user.get_full_name|default:task.user.username }}">
+                        <div class="avatar-circle" title="负责人: {{ task.user.get_full_name|default:task.user.username }} @{{ task.user.username }}">
                             {{ task.user.username|slice:":1"|upper }}
                         </div>
 

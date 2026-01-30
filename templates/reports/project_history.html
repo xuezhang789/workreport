@@ -275,7 +275,7 @@
                     <option value="">全部 / All</option>
                     {% for u in users %}
                         <option value="{{ u.id }}" {% if filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>
-                            {{ u.get_full_name|default:u.username }}
+                            {{ u.get_full_name|default:u.username }} @{{ u.username }}
                         </option>
                     {% endfor %}
                 </select>
@@ -346,7 +346,7 @@
                             <div style="width: 16px; height: 16px; background: #cbd5e1; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: white;">
                                 {{ log.operator_name|first|upper }}
                             </div>
-                            {{ log.operator_name }}
+                            {{ log.operator_name }} {% if log.user %}@{{ log.user.username }}{% endif %}
                         </span>
                     </div>
                     

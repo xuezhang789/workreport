@@ -69,7 +69,7 @@
                     {% endwith %}
                 </div>
                 <div class="user-meta">
-                    <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                    <div class="user-name">{{ request.user.get_full_name|default:request.user.username }} @{{ request.user.username }}</div>
                     <div class="user-sub">个人中心 · Settings</div>
                 </div>
                 <span class="user-chevron" aria-hidden="true">→</span>

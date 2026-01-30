@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
-MENTION_PATTERN = re.compile(r'@([\\w.@+-]+)')
+MENTION_PATTERN = re.compile(r'@([\w.@+-]+)')
 MANAGER_ROLES = {'mgr', 'pm'}
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
@@ -57,13 +57,6 @@ def has_manage_permission(user):
     # Deprecated: Use can_manage_project(user, project) for granular control.
     # Keeping for legacy compatibility if strictly needed, but returning False to force explicit checks.
     return False
-
-def _notify(request, users, message, category="info"):
-    """
-    简易通知闭环：写入审计日志，并可扩展为邮件/Webhook。
-    """
-    usernames = [u.username for u in users]
-    log_action(request, 'update', f"notify[{category}] {message}", data={'users': usernames})
 
 def _add_history(task: Task, user, field: str, old: str, new: str):
     # Deprecated: Signals in audit/signals.py handle AuditLog creation automatically via pre_save/post_save.
@@ -1816,8 +1809,6 @@ def task_view(request, pk: int):
                     User = get_user_model()
                     mention_users = list(User.objects.filter(username__in=usernames))
                     mentions = [u.username for u in mention_users]
-                    if mention_users:
-                        _notify(request, mention_users, f"任务 {task.id} 评论提及")
                 TaskComment.objects.create(task=task, user=request.user, content=comment_text, mentions=mentions)
                 log_action(request, 'create', f"task_comment {task.id}")
         elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
@@ -1895,28 +1886,21 @@ def task_view(request, pk: int):
                     # Notifications for BUG states
                     if task.category == TaskCategory.BUG:
                         if new_status == TaskStatus.VERIFYING:
-                            # Notify Tester (Project QAs + Creator)
+                            # Notify Tester (Project QAs)
+                            # Note: Task Owner is already notified by generic 'notify_task_assignment' signal
                             qas = list(task.project.members.filter(profile__position='qa'))
-                            recipients = set(qas)
-                            if task.created_at: # task doesn't have creator field explicitly? Wait, audit log has it.
-                                # Task model doesn't have created_by?
-                                # Check Task model again.
-                                pass
-                            # Task doesn't store creator! It stores 'user' (Assignee).
-                            # 'created_at' is datetime.
-                            # Usually creator is tracked in AuditLog 'create'.
-                            # Or I assume Assignee is the responsible one.
-                            # But requirement says "notify Creator AND Assignee".
-                            # If I don't have Creator field, I can't notify Creator unless I look up audit log.
-                            # Looking up audit log is expensive.
-                            # I will stick to notifying Project QAs and Assignee.
-                            # If no QAs, maybe just Assignee.
-                            recipients.add(task.user)
-                            _notify(request, list(recipients), f"缺陷 {task.id} 已修复，请验证 / Bug fixed, verifying needed", category="task_updated")
+                            for qa_user in qas:
+                                if qa_user != request.user and qa_user != task.user:
+                                    send_notification(
+                                        user=qa_user,
+                                        title="缺陷待验证 / Bug Ready for Verification",
+                                        message=f"缺陷 {task.title} 已修复，请进行验证",
+                                        notification_type='task_updated',
+                                        priority='high',
+                                        data={'task_id': task.id, 'project_id': task.project.id}
+                                    )
                             
-                        elif new_status == TaskStatus.CLOSED:
-                            # Notify Assignee (and Creator if I knew who)
-                            _notify(request, [task.user], f"缺陷 {task.id} 已关闭 / Bug closed", category="task_updated")
+                        # CLOSED status notification is handled by generic signal to Owner/Collaborators
 
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
                     messages.success(request, "状态已更新 / Status updated.")

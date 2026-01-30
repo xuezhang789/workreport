@@ -39,11 +39,14 @@ def can_manage_project(user, project):
         return False
     if user.is_superuser:
         return True
-    if project.owner == user:
+    if project.owner_id == user.id:
         return True
-    if project.managers.filter(id=user.id).exists():
-        return True
-    return False
+    
+    # Optimization: Use prefetch cache if available to avoid N+1 queries in loops
+    if getattr(project, '_prefetched_objects_cache', None) and 'managers' in project._prefetched_objects_cache:
+        return user in project.managers.all()
+        
+    return project.managers.filter(id=user.id).exists()
 
 def get_manageable_projects(user):
     """
