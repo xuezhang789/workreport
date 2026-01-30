@@ -3,7 +3,7 @@
 {% block nav_header %}{% include "partials/nav.html" with nav_title=task|yesno:"编辑任务 / Edit Task,发布任务 / New Task" nav_subtitle="仅管理员或相关人员可操作 / Restricted Access" %}{% endblock %}
 {% block extra_styles %}
 <style>
-    /* --- Design System (Consistent with Admin Pages) --- */
+    /* --- Design System (Synced with Project Form) --- */
     .page-container {
         max-width: 1600px;
         margin: 0 auto;
@@ -34,49 +34,34 @@
         margin: 0;
     }
 
-    .template-bar {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 24px;
-        background: #f8fafc;
-        padding: 16px;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        flex-wrap: wrap;
-    }
-
     .form-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 24px;
         margin-bottom: 24px;
     }
 
     .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
         margin-bottom: 20px;
     }
 
     .form-label {
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--text-main);
         display: block;
-        margin-bottom: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
     }
 
     .form-input, .form-select, .form-textarea {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
         font-size: 14px;
+        transition: all 0.2s ease-in-out;
+        background-color: #f8fafc;
         color: var(--text-main);
-        transition: border-color 0.2s, box-shadow 0.2s;
-        background-color: #fff;
     }
 
     .form-input:hover, .form-select:hover, .form-textarea:hover {
@@ -85,37 +70,44 @@
     }
 
     .form-input:focus, .form-select:focus, .form-textarea:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         background-color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+
+    .form-textarea {
+        min-height: 150px;
+        resize: vertical;
+        line-height: 1.6;
+        font-size: 15px;
     }
 
     .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: 1px solid transparent;
-        line-height: 1;
         gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
         text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
     }
 
     .btn-primary {
-        background-color: var(--primary);
+        background: var(--primary);
         color: white;
     }
 
     .btn-primary:hover {
-        background-color: var(--primary-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        background-color: #1e40af;
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
     }
 
     .btn-secondary {
@@ -128,8 +120,6 @@
         background-color: #f8fafc;
         border-color: #cbd5e1;
         color: var(--text-main);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .btn-ghost {
@@ -142,16 +132,13 @@
         color: var(--text-main);
     }
     
-    .btn-sm {
-        padding: 8px 16px;
-        font-size: 13px;
-        border-radius: 6px;
-    }
-
-    .form-textarea {
-        min-height: 150px;
-        resize: vertical;
-        line-height: 1.6;
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
     }
 
     .help-text {
@@ -176,20 +163,78 @@
         border: 1px solid #fecaca;
     }
 
-    .btn-toolbar {
+    /* Template Bar */
+    .template-bar {
         display: flex;
-        justify-content: flex-end;
         gap: 12px;
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid var(--border-color);
+        align-items: center;
+        margin-bottom: 24px;
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        flex-wrap: wrap;
     }
 
-    /* File Upload Styles (Synced with Project Form) */
-    .file-upload-container {
-        border: 2px dashed var(--border-color);
+    /* Role Card (Synced with Project Form) */
+    .role-card {
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        margin-bottom: 24px;
+    }
+    
+    .role-card:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .role-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .role-header.member {
+        background: linear-gradient(to right, #f0fdf4, #fff);
+        border-left: 4px solid #10b981;
+    }
+
+    .role-title {
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .role-title.member { color: #065f46; }
+
+    .role-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .selected-count {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary);
+        background: rgba(37, 99, 235, 0.1);
+        padding: 4px 8px;
         border-radius: 12px;
-        padding: 32px;
+    }
+
+    /* File Upload Styles */
+    .file-upload-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
         text-align: center;
         background: #f8fafc;
         cursor: pointer;
@@ -199,64 +244,132 @@
 
     .file-upload-container:hover, .file-upload-container.drag-over {
         border-color: var(--primary);
-        background: rgba(37, 99, 235, 0.05);
-    }
-
-    .upload-icon {
-        color: var(--primary);
-        margin-bottom: 12px;
+        background: #eff6ff;
     }
 
     .upload-text {
         font-size: 14px;
         font-weight: 600;
         color: var(--text-main);
-        margin-bottom: 4px;
     }
 
-    .upload-hint {
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
-
-    .file-list {
+    .attachment-grid {
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
 
-    .file-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+    /* Attachment Card - Synced with Project Form */
+    .attachment-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
         padding: 12px;
         background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s;
     }
 
-    .file-info {
+    .attachment-card:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .attachment-header {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
+    }
+    
+    .attachment-icon {
+        color: var(--primary);
+        flex-shrink: 0;
     }
 
-    .file-name {
+    .attachment-name {
+        font-size: 13px;
         font-weight: 500;
         color: var(--text-main);
-        max-width: 200px;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
+        flex: 1;
     }
 
-    .file-size {
+    .attachment-meta {
+        font-size: 11px;
         color: var(--text-secondary);
-        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .attachment-uploader {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: var(--text-secondary);
     }
 
-    .remove-btn {
+    .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    
+    .btn-download {
+        background: #eff6ff;
+        color: var(--primary);
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        width: 100%;
+        border: none;
+    }
+    .btn-download:hover {
+        background: #dbeafe;
+    }
+
+    .btn-xs {
+        padding: 4px 8px;
+        font-size: 11px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: none;
+    }
+
+    .btn-delete {
+        background: #fef2f2;
+        color: #991b1b;
+        width: 100%;
+    }
+    
+    .btn-delete:hover {
+        background: #fee2e2;
+    }
+
+    /* Tags */
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .selected-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #eff6ff;
+        color: var(--primary);
+        border: 1px solid #dbeafe;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .remove-tag-btn {
         width: 16px;
         height: 16px;
         border-radius: 50%;
@@ -270,54 +383,21 @@
         font-size: 10px;
         padding: 0;
     }
-
-    .remove-btn:hover {
+    .remove-tag-btn:hover {
         background: rgba(37, 99, 235, 0.2);
-    }
-
-    /* Collaborator Tags */
-    .tag-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 8px;
-    }
-    .user-tag {
-        background: #e0f2fe;
-        color: #0369a1;
-        padding: 4px 10px;
-        border-radius: 16px;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        border: 1px solid #bae6fd;
-    }
-    .user-tag-remove {
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: rgba(3, 105, 161, 0.1);
-    }
-    .user-tag-remove:hover {
-        background: rgba(3, 105, 161, 0.2);
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
-    <div class="form-card" style="padding: 32px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: #ffffff; box-shadow: var(--shadow-sm);">
-        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-            <h2 class="section-title" style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0;">{% if task %}编辑任务 / Edit Task{% else %}发布新任务 / Create New Task{% endif %}</h2>
+    <div class="form-card">
+        <div class="section-header">
+            <h2 class="section-title">{% if task %}编辑任务 / Edit Task{% else %}发布新任务 / Create New Task{% endif %}</h2>
         </div>
 
         {% if errors %}
-            <div class="alert alert-error" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+            <div class="alert alert-error">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 <div>
                     {% for e in errors %}<div>{{ e }}</div>{% endfor %}
@@ -326,30 +406,30 @@
         {% endif %}
 
         {% if is_collaborator_only %}
-            <div class="alert" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+            <div class="alert" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                 <div>
-                    <strong>权限提示 / Permission Hint:</strong> 您作为协作人仅能修改任务状态。核心属性（标题、项目、负责人等）已锁定。 / As a collaborator, you can only update the status. Core attributes are locked.
+                    <strong>权限提示 / Permission Hint:</strong> 您作为协作人仅能修改任务状态。核心属性已锁定。
                 </div>
             </div>
         {% endif %}
 
         <!-- Template Selection Bar -->
         {% if not is_collaborator_only %}
-        <div class="template-bar" style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); flex-wrap: wrap;">
+        <div class="template-bar">
             <div style="flex: 1; min-width: 200px;">
-                <label class="form-label" style="font-size: 12px; margin-bottom: 4px; display: block; font-weight: 600; color: var(--text-main);">智能模板推荐 / Smart Template</label>
-                <select id="task-tpl-recommend" class="form-select" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background-color: #fff; transition: all 0.2s ease-in-out;">
+                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">智能模板推荐 / Smart Template</label>
+                <select id="task-tpl-recommend" class="form-select" style="padding: 8px 12px; font-size: 13px; background: white;">
                     <option value="">加载中... / Loading...</option>
                 </select>
             </div>
             <div style="flex: 1; min-width: 200px;">
-                <label class="form-label" style="font-size: 12px; margin-bottom: 4px; display: block; font-weight: 600; color: var(--text-main);">手动输入模板名 / Manual Template Name</label>
-                <input type="text" id="task-tpl-name" class="form-input" placeholder="输入名称回车应用 / Enter name & Enter" style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background-color: #fff; transition: all 0.2s ease-in-out;">
+                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">手动输入模板名 / Manual Template Name</label>
+                <input type="text" id="task-tpl-name" class="form-input" placeholder="输入名称..." style="padding: 8px 12px; font-size: 13px; background: white;">
             </div>
             <div style="display: flex; gap: 8px; align-items: flex-end;">
-                <button type="button" class="btn btn-secondary" id="apply-task-template" title="替换当前内容 / Replace Content" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: white; border-color: var(--border-color); color: var(--text-main);">应用 / Apply</button>
-                <button type="button" class="btn btn-ghost" id="append-task-template" title="追加到当前内容后 / Append Content" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">追加 / Append</button>
+                <button type="button" class="btn btn-secondary" id="apply-task-template" style="padding: 8px 16px; font-size: 13px;">应用 / Apply</button>
+                <button type="button" class="btn btn-ghost" id="append-task-template" style="padding: 8px 16px; font-size: 13px;">追加 / Append</button>
             </div>
         </div>
         {% endif %}
@@ -357,135 +437,185 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
-                <!-- Left Column -->
-                <div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">任务标题 / Task Title <span style="color:red">*</span></label>
-                        <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled readonly{% endif %}>
+            <div style="display: flex; flex-direction: column; gap: 32px; margin-bottom: 32px;">
+                
+                <!-- 1. Task Essentials -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">任务标题 / Task Title <span style="color:red">*</span></label>
+                        <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">所属项目 / Project <span style="color:red">*</span></label>
-                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索..." style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled readonly{% endif %}>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">所属项目 / Project <span style="color:red">*</span></label>
+                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索..." style="margin-bottom: 8px;" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                         <datalist id="project-options"></datalist>
-                        <select name="project" id="project-select" class="form-select" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled{% endif %}>
+                        <select name="project" id="project-select" class="form-select" required {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                             <option value="">请选择项目 / Select Project</option>
                             {% for p in projects %}
                                 <option value="{{ p.id }}" {% if form_values.project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">主负责人 / Primary Owner <span style="color:red">*</span></label>
-                        <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" style="margin-bottom: 8px; width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" value="{% if task %}{{ task.user.get_full_name|default:task.user.username }}{% endif %}" {% if is_collaborator_only %}disabled readonly{% endif %}>
-                        <select name="user" id="user-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto;">
-                        </select>
-                        <input type="hidden" name="user" id="user-hidden-input" required value="{{ form_values.user_id|default:'' }}">
-                        <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); {% if not form_values.user_id %}display: none;{% endif %}">
-                            {% if task %}已选择: {{ task.user.get_full_name|default:task.user.username }}{% endif %}
-                        </div>
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">输入关键词自动搜索，点击列表选择用户</p>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">协作人 / Collaborators</label>
-                        <div style="position: relative;">
-                            <input type="text" id="collab-typeahead" class="form-input" placeholder="搜索添加协作人..." autocomplete="off" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled readonly{% endif %}>
-                            <select id="collab-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; top: 100%; left: 0;">
-                            </select>
-                        </div>
-                        <div id="collab-tags" class="tag-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                            {% for u in users %}
-                                {% if u.id in form_values.collaborator_ids or u.id|stringformat:"s" in form_values.collaborator_ids %}
-                                     <div class="user-tag" id="collab-tag-{{ u.id }}" style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid #bae6fd;">
-                                         {{ u.get_full_name|default:u.username }}
-                                         <span class="user-tag-remove" {% if not is_collaborator_only %}onclick="removeCollaborator('{{ u.id }}')"{% else %}style="display:none"{% endif %}>{% if not is_collaborator_only %}×{% endif %}</span>
-                                         <input type="hidden" name="collaborators" value="{{ u.id }}">
-                                     </div>
-                                {% endif %}
-                            {% endfor %}
-                            {% if task %}
-                                {% for c in task.collaborators.all %}
-                                    {% if c.id not in form_values.collaborator_ids and c.id|stringformat:"s" not in form_values.collaborator_ids %}
-                                        <div class="user-tag" id="collab-tag-{{ c.id }}" style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid #bae6fd;">
-                                             {{ c.get_full_name|default:c.username }}
-                                             <span class="user-tag-remove" {% if not is_collaborator_only %}onclick="removeCollaborator('{{ c.id }}')"{% else %}style="display:none"{% endif %}>{% if not is_collaborator_only %}×{% endif %}</span>
-                                             <input type="hidden" name="collaborators" value="{{ c.id }}">
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                    </div>
                 </div>
 
-                <!-- Right Column -->
-                <div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">任务 URL / Link (Optional)</label>
-                        <input list="url_options" type="url" name="url" class="form-input" value="{{ form_values.url|default:'' }}" placeholder="https://..." style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled readonly{% endif %}>
-                        <datalist id="url_options">
-                            {% for u in existing_urls %}
-                                <option value="{{ u }}">{{ u }}</option>
-                            {% endfor %}
-                        </datalist>
-                    </div>
+                <!-- 2. Description (Enhanced Style) -->
+                <div class="form-group" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                    <label class="form-label" style="font-size: 16px; margin-bottom: 12px;">任务描述 / Description</label>
+                    <textarea name="content" class="form-textarea" placeholder="支持 Markdown 格式...&#10;- 任务详情&#10;- 验收标准" style="background: white;" {% if is_collaborator_only %}disabled readonly{% endif %}>{{ form_values.content|default:'' }}</textarea>
+                </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">附件 / Attachments</label>
-                        {% if not is_collaborator_only %}
-                        <div class="file-upload-container" id="file-upload-zone" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;">
-                            <input type="file" id="file-input" name="attachments" multiple style="display: none;">
-                            <div class="upload-placeholder">
-                                <div class="upload-icon" style="color: var(--primary); margin-bottom: 12px;">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                </div>
-                                <div class="upload-text" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽文件到此处上传</div>
-                                <div class="upload-hint" style="font-size: 12px; color: var(--text-secondary);">支持文档、图片、压缩包等格式 (Max 50MB)</div>
+                <!-- 3. Details & Configuration -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px;">
+                    <!-- Left: People & Status -->
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">主负责人 / Primary Owner <span style="color:red">*</span></label>
+                            <div style="position: relative;">
+                                <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" value="{% if task %}{{ task.user.get_full_name|default:task.user.username }}{% endif %}" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                                <select name="user" id="user-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; background: white; box-shadow: var(--shadow-lg);">
+                                </select>
+                            </div>
+                            <input type="hidden" name="user" id="user-hidden-input" required value="{{ form_values.user_id|default:'' }}">
+                            <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); font-size: 13px; {% if not form_values.user_id %}display: none;{% endif %}">
+                                {% if task %}已选择: {{ task.user.get_full_name|default:task.user.username }}{% endif %}
                             </div>
                         </div>
-                        {% else %}
-                        <p class="help-text" style="color: var(--text-muted);">协作人无法上传附件 / Upload disabled for collaborators</p>
-                        {% endif %}
-                        <div class="file-list" id="file-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+                        <!-- Collaborators Role Card -->
+                        <div class="role-card">
+                            <div class="role-header member">
+                                <div>
+                                    <div class="role-title member">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                        协作人 / Collaborators
+                                    </div>
+                                    <div class="role-desc">参与任务执行与讨论</div>
+                                </div>
+                                <div class="selected-count" style="background: #f0fdf4; color: #166534;">
+                                    <span id="collab-count">0</span>
+                                </div>
+                            </div>
+                            <div style="padding: 20px;">
+                                <div style="position: relative;">
+                                    <input type="text" id="collab-typeahead" class="form-input" placeholder="搜索添加协作人..." autocomplete="off" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                                    <select id="collab-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; top: 100%; left: 0; background: white; box-shadow: var(--shadow-lg);">
+                                    </select>
+                                </div>
+                                <div id="collab-tags" class="tag-container" style="margin-top: 12px;">
+                                    {% for u in users %}
+                                        {% if u.id in form_values.collaborator_ids or u.id|stringformat:"s" in form_values.collaborator_ids %}
+                                             <div class="selected-tag" id="collab-tag-{{ u.id }}">
+                                                 {{ u.get_full_name|default:u.username }}
+                                                 <span class="remove-tag-btn" {% if not is_collaborator_only %}onclick="removeCollaborator('{{ u.id }}')"{% else %}style="display:none"{% endif %}>×</span>
+                                                 <input type="hidden" name="collaborators" value="{{ u.id }}">
+                                             </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if task %}
+                                        {% for c in task.collaborators.all %}
+                                            {% if c.id not in form_values.collaborator_ids and c.id|stringformat:"s" not in form_values.collaborator_ids %}
+                                                <div class="selected-tag" id="collab-tag-{{ c.id }}">
+                                                     {{ c.get_full_name|default:c.username }}
+                                                     <span class="remove-tag-btn" {% if not is_collaborator_only %}onclick="removeCollaborator('{{ c.id }}')"{% else %}style="display:none"{% endif %}>×</span>
+                                                     <input type="hidden" name="collaborators" value="{{ c.id }}">
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">状态 / Status</label>
+                                <select name="status" class="form-select">
+                                    {% for val,label in task_status_choices %}
+                                        <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">优先级 / Priority</label>
+                                <select name="priority" class="form-select" {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                                    {% for val,label in task_priority_choices %}
+                                        <option value="{{ val }}" {% if form_values.priority == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">截止时间 / Due Date</label>
-                        <input type="datetime-local" name="due_at" class="form-input" value="{{ form_values.due_at|default:'' }}" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled readonly{% endif %}>
-                        <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">留空则按项目 SLA 自动计算 / Leave empty for auto SLA</p>
-                    </div>
+                    <!-- Right: Dates & Files -->
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">截止时间 / Due Date</label>
+                            <input type="datetime-local" name="due_at" class="form-input" value="{{ form_values.due_at|default:'' }}" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                            <p class="help-text">留空则按项目 SLA 自动计算 / Leave empty for auto SLA</p>
+                        </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">初始状态 / Status</label>
-                        <select name="status" class="form-select" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
-                            {% for val,label in task_status_choices %}
-                                <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label class="form-label">任务 URL / Link</label>
+                            <input list="url_options" type="url" name="url" class="form-input" value="{{ form_values.url|default:'' }}" placeholder="https://..." {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                            <datalist id="url_options">
+                                {% for u in existing_urls %}
+                                    <option value="{{ u }}">{{ u }}</option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">优先级 / Priority</label>
-                        <select name="priority" class="form-select" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main);" {% if is_collaborator_only %}disabled{% endif %}>
-                            {% for val,label in task_priority_choices %}
-                                <option value="{{ val }}" {% if form_values.priority == val %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label class="form-label">附件 / Attachments</label>
+                            
+                            {% if not is_collaborator_only %}
+                            <div class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px;">
+                                <input type="file" id="file-input" name="attachments" multiple style="display: none;">
+                                <div class="upload-placeholder">
+                                    <div class="upload-text">点击或拖拽文件上传 / Click or Drag</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="help-text" style="color: var(--text-muted);">协作人无法上传附件 / Upload disabled</p>
+                            {% endif %}
+                            
+                            <div class="attachment-grid" id="file-list">
+                                <!-- Create Mode: populated by JS -->
+                                <!-- Edit Mode: Existing attachments -->
+                                {% if task %}
+                                    {% for attachment in task.attachments.all %}
+                                        <div class="attachment-card" id="attachment-{{ attachment.id }}">
+                                            <div class="attachment-header">
+                                                <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                                <span class="attachment-name" title="{{ attachment.file.name }}">{{ attachment.file.name }}</span>
+                                            </div>
+                                            <div class="attachment-meta">
+                                                <span>{{ attachment.file.size|filesizeformat }}</span>
+                                                <span>{{ attachment.created_at|date:"Y-m-d H:i" }}</span>
+                                            </div>
+                                            <div class="attachment-uploader">
+                                                <span>Up:</span>
+                                                <span style="font-weight: 500;">{{ attachment.user.get_full_name|default:attachment.user.username }}</span>
+                                            </div>
+                                            <div class="attachment-actions">
+                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
+                                                {% if not is_collaborator_only %}
+                                                <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'tasks:task_delete_attachment' attachment.id %}')">删除 / Remove</button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">任务描述 / Description</label>
-                <textarea name="content" class="form-textarea" placeholder="支持 Markdown 格式...&#10;- 任务详情&#10;- 验收标准" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: {% if is_collaborator_only %}#f1f5f9{% else %}#f8fafc{% endif %}; color: var(--text-main); min-height: 150px; resize: vertical; line-height: 1.6;" {% if is_collaborator_only %}disabled readonly{% endif %}>{{ form_values.content|default:'' }}</textarea>
-            </div>
-
-            <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
-                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
-                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">发布任务 / Create Task</button>
+            <div class="btn-toolbar">
+                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost">取消 / Cancel</a>
+                <button type="submit" class="btn btn-primary">{% if task %}保存更改 / Save Changes{% else %}发布任务 / Create Task{% endif %}</button>
             </div>
         </form>
     </div>
@@ -529,21 +659,18 @@
                     return res.json();
                 })
                 .then(data => {
-                    // Populate Standard Fields
                     const setVal = (name, val) => {
                         const el = document.querySelector(`[name="${name}"]`);
-                        if (el && val !== undefined && val !== null) {
-                            el.value = val;
-                        }
+                        if (el && val !== undefined && val !== null) el.value = val;
                     };
 
                     setVal('title', data.title);
                     setVal('url', data.url);
                     setVal('content', data.content);
                     setVal('status', data.status);
-                    setVal('due_at', data.due_at ? data.due_at.slice(0, 16) : ''); // Format for datetime-local (YYYY-MM-DDTHH:mm)
+                    setVal('priority', data.priority);
+                    setVal('due_at', data.due_at ? data.due_at.slice(0, 16) : '');
 
-                    // Project Select & Hidden User
                     const projectSelect = document.getElementById('project-select');
                     if (projectSelect && data.project_id) {
                          projectSelect.value = data.project_id;
@@ -552,21 +679,7 @@
                     const userHidden = document.getElementById('user-hidden-input');
                     if (userHidden && data.user_id) {
                         userHidden.value = data.user_id;
-                        // Note: We might want to fetch user text for display, but server-side rendering handles initial display
                     }
-
-                    // Collaborators (Tags)
-                    // We need to trigger logic to add tags if they are missing
-                    // But standard logic relies on user action. 
-                    // However, server side rendering ALREADY puts them in DOM.
-                    // The API fetch is mostly to ensure freshness or handle SPA-like transitions.
-                    // If we strictly want to populate from API, we should clear and re-add.
-                    // But clearing requires user names which we might not have in API unless we expand API.
-                    // For now, let's assume server-side rendering for collaborators is sufficient 
-                    // or we would need `api_task_detail` to return full user objects.
-                    // Given the user instructions "populate... collaborators", but API only returns IDs?
-                    // Let's stick to simple fields for now to avoid clearing valid server-rendered tags.
-                    
                 })
                 .catch(err => {
                     console.error('Failed to fetch task details:', err);
@@ -584,11 +697,10 @@
 
         async function fetchProjects(q) {
             if (!projectOptions) return;
-            // Clear current options but maybe keep old ones? No, typeahead needs clean list.
             projectOptions.innerHTML = ''; 
             try {
                 const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
-                if (res.status === 429) return; // Ignore throttled requests
+                if (res.status === 429) return; 
                 if (!res.ok) return;
                 const data = await res.json();
                 (data.results || []).forEach(item => {
@@ -615,7 +727,6 @@
                 projectSelect.appendChild(opt);
             }
             projectSelect.value = pid;
-            // Trigger template reload
             loadTaskRecommendations();
         }
 
@@ -631,45 +742,29 @@
             projectTypeahead.addEventListener('change', applySelectedProject);
         }
 
-        // --- User Search (Real-time & Debounced) ---
+        // --- User Search ---
         const userTypeahead = document.getElementById('user-typeahead');
-        const userSelect = document.getElementById('user-select'); // Used as dropdown container
+        const userSelect = document.getElementById('user-select'); 
         const userHiddenInput = document.getElementById('user-hidden-input');
         const selectedUserDisplay = document.getElementById('selected-user-display');
         const userApi = "{% url 'core:user_search_api' %}";
         let debounceTimer;
 
-        // Position the dropdown relatively
-        if (userTypeahead && userSelect) {
-            userTypeahead.parentElement.style.position = 'relative';
-            userSelect.style.top = '100%';
-            userSelect.style.left = '0';
-        }
-
         async function fetchUsers(q) {
             if (!userSelect) return;
-            
-            // Show loading state if needed, or just clear
-            userSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
+            userSelect.innerHTML = '<option disabled>搜索中...</option>';
             userSelect.style.display = 'block';
 
             try {
                 const res = await fetch(`${userApi}?q=${encodeURIComponent(q)}`);
-                
-                if (res.status === 429) {
-                    userSelect.innerHTML = '<option disabled>搜索过于频繁，请稍候...</option>';
-                    return;
-                }
-                if (!res.ok) throw new Error('Network response was not ok');
-                
+                if (!res.ok) throw new Error('Network error');
                 const data = await res.json();
-                
-                userSelect.innerHTML = ''; // Clear loading
+                userSelect.innerHTML = '';
                 
                 if (!data.results || data.results.length === 0) {
                      const opt = document.createElement('option');
                      opt.disabled = true;
-                     opt.textContent = '未找到相关用户 / No users found';
+                     opt.textContent = '未找到用户';
                      userSelect.appendChild(opt);
                 } else {
                     data.results.forEach(item => {
@@ -681,50 +776,38 @@
                     });
                 }
             } catch (e) { 
-                console.error(e);
-                userSelect.innerHTML = '<option disabled>搜索出错 / Error</option>';
+                userSelect.innerHTML = '<option disabled>Error</option>';
             }
         }
 
         if (userTypeahead) {
-            // Debounced Input
             userTypeahead.addEventListener('input', (e) => {
                 const q = e.target.value.trim();
                 clearTimeout(debounceTimer);
-                
                 if (q.length < 1) {
                     userSelect.style.display = 'none';
                     return;
                 }
-
-                debounceTimer = setTimeout(() => {
-                    fetchUsers(q);
-                }, 500); // 500ms debounce
+                debounceTimer = setTimeout(() => fetchUsers(q), 500);
             });
 
-            // Focus: Show popular/recent or just hint
             userTypeahead.addEventListener('focus', () => {
-                if (userTypeahead.value.trim().length >= 1) {
-                    userSelect.style.display = 'block';
-                }
+                if (userTypeahead.value.trim().length >= 1) userSelect.style.display = 'block';
             });
             
-            // Selection Handler
             userSelect.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 if (selectedOption && !selectedOption.disabled) {
                     const uid = selectedOption.value;
                     const label = selectedOption.textContent;
-                    
                     userHiddenInput.value = uid;
-                    userTypeahead.value = ''; // Clear input for next search
+                    userTypeahead.value = ''; 
                     selectedUserDisplay.textContent = `已选择: ${label}`;
                     selectedUserDisplay.style.display = 'block';
                     userSelect.style.display = 'none';
                 }
             });
 
-            // Click outside to close
             document.addEventListener('click', function(e) {
                 if (!userTypeahead.contains(e.target) && !userSelect.contains(e.target)) {
                     userSelect.style.display = 'none';
@@ -736,33 +819,31 @@
         const collabTypeahead = document.getElementById('collab-typeahead');
         const collabSelect = document.getElementById('collab-select');
         const collabTags = document.getElementById('collab-tags');
+        const collabCount = document.getElementById('collab-count');
         let collabDebounceTimer;
+        
+        // Initial Count
+        updateCollabCount();
 
         async function fetchCollaborators(q) {
             if (!collabSelect) return;
-            collabSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
+            collabSelect.innerHTML = '<option disabled>搜索中...</option>';
             collabSelect.style.display = 'block';
 
             try {
                 const res = await fetch(`${userApi}?q=${encodeURIComponent(q)}`);
-                if (res.status === 429) {
-                     collabSelect.innerHTML = '<option disabled>操作过快...</option>';
-                     return;
-                }
                 if (!res.ok) throw new Error('Network error');
-                
                 const data = await res.json();
                 collabSelect.innerHTML = '';
                 
                 if (!data.results || data.results.length === 0) {
                      const opt = document.createElement('option');
                      opt.disabled = true;
-                     opt.textContent = '未找到相关用户';
+                     opt.textContent = '未找到用户';
                      collabSelect.appendChild(opt);
                 } else {
                     const primaryOwnerId = document.getElementById('user-hidden-input').value;
                     data.results.forEach(item => {
-                        // Skip if already selected or is primary owner
                         if (document.getElementById(`collab-tag-${item.id}`)) return;
                         if (item.id == primaryOwnerId) return;
 
@@ -775,8 +856,7 @@
                     });
                 }
             } catch (e) { 
-                console.error(e);
-                collabSelect.innerHTML = '<option disabled>搜索出错</option>';
+                collabSelect.innerHTML = '<option disabled>Error</option>';
             }
         }
 
@@ -796,16 +876,12 @@
                 if (selectedOption && !selectedOption.disabled) {
                     const uid = selectedOption.value;
                     const name = selectedOption.dataset.name;
-                    const username = selectedOption.dataset.username || '';
-                    
-                    addCollaboratorTag(uid, name, username);
-                    
+                    addCollaboratorTag(uid, name);
                     collabTypeahead.value = '';
                     collabSelect.style.display = 'none';
                 }
             });
 
-            // Click outside
             document.addEventListener('click', function(e) {
                 if (!collabTypeahead.contains(e.target) && !collabSelect.contains(e.target)) {
                     collabSelect.style.display = 'none';
@@ -813,26 +889,34 @@
             });
         }
 
-        function addCollaboratorTag(id, name, username) {
+        function addCollaboratorTag(id, name) {
             if (document.getElementById(`collab-tag-${id}`)) return;
-            
             const div = document.createElement('div');
-            div.className = 'user-tag';
+            div.className = 'selected-tag';
             div.id = `collab-tag-${id}`;
             div.innerHTML = `
-                ${name} ${username ? `(${username})` : ''}
-                <span class="user-tag-remove" onclick="removeCollaborator('${id}')">×</span>
+                ${name}
+                <span class="remove-tag-btn" onclick="removeCollaborator('${id}')">×</span>
                 <input type="hidden" name="collaborators" value="${id}">
             `;
             collabTags.appendChild(div);
+            updateCollabCount();
         }
 
         window.removeCollaborator = function(id) {
             const el = document.getElementById(`collab-tag-${id}`);
             if (el) el.remove();
+            updateCollabCount();
         };
+        
+        function updateCollabCount() {
+            if (collabCount) {
+                const count = document.querySelectorAll('#collab-tags .selected-tag').length;
+                collabCount.textContent = count;
+            }
+        }
 
-        // Prevent Enter Key Submission globally for the form
+        // Form Submit Validation
         const form = document.querySelector('form');
         if (form) {
             form.addEventListener('keydown', function(e) {
@@ -845,7 +929,7 @@
             form.addEventListener('submit', function(e) {
                 const title = form.querySelector('input[name="title"]').value;
                 const projectVal = projectSelect ? projectSelect.value : '';
-                const userVal = userHiddenInput ? userHiddenInput.value : ''; // Use hidden input
+                const userVal = userHiddenInput ? userHiddenInput.value : ''; 
                 const url = form.querySelector('input[name="url"]').value;
                 const content = form.querySelector('textarea[name="content"]').value;
 
@@ -871,7 +955,6 @@
             if (!tplRecommend) return;
             const params = new URLSearchParams({type: 'task'});
             const projectVal = projectSelect ? projectSelect.value : '';
-            // Pass current user role for context, though admin is creating
             const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
             
             if (roleVal) params.append('role', roleVal);
@@ -881,16 +964,14 @@
                 const res = await fetch(`${recApi}?${params.toString()}`);
                 const data = await res.json();
                 tplRecommend.innerHTML = '<option value="">智能推荐 / Smart suggestions</option>';
-                (data.results || []).forEach(item => {
-                    const label = `${item.name} · ${item.project_name || '全局'} · v${item.version}`;
+                (data.templates || []).forEach(item => {
+                    const label = `${item.name} · ${item.project__name || '全局'} · v${item.version}`;
                     const opt = document.createElement('option');
                     opt.value = item.name;
                     opt.textContent = label;
                     tplRecommend.appendChild(opt);
                 });
-            } catch (e) {
-                console.warn('Template load failed', e);
-            }
+            } catch (e) { console.warn(e); }
         }
 
         async function applyTaskTemplate(mode = 'replace') {
@@ -906,11 +987,7 @@
             try {
                 const res = await fetch(`${tplApi}?${params.toString()}`);
                 const data = await res.json();
-                
-                if (!res.ok) { 
-                    alert((data.error || '未找到模板') + ' · 请尝试其他名称或清空筛选'); 
-                    return; 
-                }
+                if (!res.ok) { alert(data.error || '未找到模板'); return; }
 
                 if (titleInput && data.title) {
                     titleInput.value = (mode === 'append' && titleInput.value) 
@@ -927,25 +1004,16 @@
                 if (urlInput && data.url) urlInput.value = data.url;
 
                 if (data.project && projectSelect) {
-                    // Try to select the project if it exists in the list
-                    // Note: Since list might be filtered, this might not always work if option missing
-                    // Ideally we should add the option dynamically if missing, but for now basic selection:
                     let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
                     if (opt) projectSelect.value = String(data.project);
                 }
 
-                alert(data.fallback ? '已应用默认模板 (Fallback)' : '模板已应用 (Applied)');
-                
-            } catch (e) {
-                alert('操作失败，请重试');
-            }
+                alert(data.fallback ? '已应用默认模板 (Fallback)' : '模板已应用');
+            } catch (e) { alert('操作失败'); }
         }
 
         if (tplRecommend) {
-            tplRecommend.addEventListener('change', (e) => {
-                if (tplName) tplName.value = e.target.value;
-            });
-            // Initial load
+            tplRecommend.addEventListener('change', (e) => { if (tplName) tplName.value = e.target.value; });
             loadTaskRecommendations();
             if (projectSelect) projectSelect.addEventListener('change', loadTaskRecommendations);
         }
@@ -953,15 +1021,15 @@
         if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));
         if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyTaskTemplate('append'));
 
-        // --- File Upload Logic (Synced with Project Form) ---
+        // --- File Upload Logic ---
         const uploadZone = document.getElementById('file-upload-zone');
         const fileInput = document.getElementById('file-input');
         const fileList = document.getElementById('file-list');
         let globalDataTransfer = new DataTransfer();
-
+        
         if (uploadZone && fileInput) {
             uploadZone.addEventListener('click', () => fileInput.click());
-
+            
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.classList.add('drag-over');
@@ -984,22 +1052,43 @@
             });
 
             function updateFileList() {
-                fileList.innerHTML = '';
+                // Clear only dynamic items (if separating existing vs new)
+                // For simplicity, we just rebuild new files list. 
+                // Existing files are server-rendered.
+                
+                // Clear previous *new* file elements
+                const newItems = fileList.querySelectorAll('.new-file-item');
+                newItems.forEach(el => el.remove());
+
+                const dateStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
                 Array.from(globalDataTransfer.files).forEach((file, index) => {
                     const item = document.createElement('div');
-                    item.className = 'file-item';
+                    item.className = 'attachment-card new-file-item';
+                    
+                    const sizeKB = file.size / 1024;
+                    const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB.toFixed(1) + ' KB';
+
                     item.innerHTML = `
-                        <div class="file-info">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                            <div>
-                                <div class="file-name" title="${file.name}">${file.name}</div>
-                                <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
-                            </div>
+                        <div class="attachment-header">
+                            <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                            <span class="attachment-name" title="${file.name}">${file.name}</span>
                         </div>
-                        <button type="button" class="remove-btn" onclick="removeFile(${index})">×</button>
+                        <div class="attachment-meta">
+                            <span>${sizeStr}</span>
+                            <span>${dateStr}</span>
+                        </div>
+                        <div class="attachment-uploader">
+                            <span>Up:</span>
+                            <span style="font-weight: 500;">Me (Pending)</span>
+                        </div>
+                        <div class="attachment-actions">
+                            <button type="button" class="btn-xs btn-delete" style="width: 100%;" onclick="removeFile(${index})">删除 / Remove</button>
+                        </div>
                     `;
                     fileList.appendChild(item);
                 });
+                
                 fileInput.files = globalDataTransfer.files;
             }
 
@@ -1012,6 +1101,24 @@
                 updateFileList();
             };
         }
+        
+        window.deleteExistingAttachment = function(id, url) {
+            if (!confirm('确定删除该附件吗？')) return;
+            fetch(url, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const el = document.getElementById(`attachment-${id}`);
+                    if (el) el.remove();
+                } else {
+                    alert('Delete failed: ' + data.message);
+                }
+            })
+            .catch(err => alert('Delete failed'));
+        };
 
     })();
 </script>

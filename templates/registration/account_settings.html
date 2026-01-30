@@ -251,13 +251,35 @@
 
     /* --- Helpers --- */
     .badge {
+        display: inline-flex;
+        align-items: center;
         padding: 4px 10px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
+        line-height: 1.5;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 0;
+    }
+    .badge-container {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        min-width: 0;
     }
     .badge-success { background: #dcfce7; color: #16a34a; }
     .badge-warning { background: #ffedd5; color: #f97316; }
+
+    /* Responsive text truncation for very small screens */
+    @media (max-width: 375px) {
+        .badge {
+            max-width: 140px; /* Ensure 2 badges can stack or 1 badge fits */
+        }
+    }
 
     .alert {
         padding: 12px 16px;
@@ -351,15 +373,15 @@
                         {{ user.username|slice:":1"|upper }}
                         {% endif %}
                     </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main);">{{ user.get_full_name|default:user.username }}</h3>
-                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">{{ user.email }}</div>
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);">角色: {{ user.profile.get_position_display|default:"-" }}</span>
+                    <div style="flex: 1; min-width: 0;">
+                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }}</h3>
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</div>
+                        <div class="badge-container">
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色: {{ user.profile.get_position_display|default:'-' }}">角色: {{ user.profile.get_position_display|default:"-" }}</span>
                             {% if user.profile.email_verified %}
-                            <span class="badge badge-success">已验证 / Verified</span>
+                            <span class="badge badge-success" title="已验证 / Verified">已验证 / Verified</span>
                             {% else %}
-                            <span class="badge badge-warning">未验证 / Unverified</span>
+                            <span class="badge badge-warning" title="未验证 / Unverified">未验证 / Unverified</span>
                             {% endif %}
                         </div>
                     </div>

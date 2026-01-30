@@ -276,14 +276,36 @@ def template_apply_api(request):
     elif tpl_type == 'task':
         if tpl_id:
             match = get_object_or_404(TaskTemplateVersion, id=tpl_id)
-    
+        elif 'name' in data:
+            # Try to find by name + context
+            name = data.get('name')
+            qs = TaskTemplateVersion.objects.filter(name=name)
+            if project_id:
+                match = qs.filter(project_id=project_id).order_by('-version').first()
+            if not match:
+                # Try global shared
+                match = qs.filter(project__isnull=True, is_shared=True).order_by('-version').first()
+            if not match:
+                # Try just name match if unique? Or loose match?
+                # For now strict name match on latest version
+                match = qs.order_by('-version').first()
+
     if match:
-        return JsonResponse({
+        response_data = {
             'success': True, 
             'content': match.content,
             'placeholders': getattr(match, 'placeholders', {}),
             'fallback': True if not tpl_id else False
-        })
+        }
+        
+        if tpl_type == 'task':
+            response_data.update({
+                'title': match.title,
+                'url': match.url,
+                'project': match.project_id
+            })
+            
+        return JsonResponse(response_data)
     else:
         # No template found, return empty or default
         return JsonResponse({'success': False, 'message': 'No template found', 'content': {}})
@@ -302,11 +324,11 @@ def template_recommend_api(request):
         if q:
             qs = qs.filter(name__icontains=q)
         # Simple recommendation: return top 5 latest
-        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description'))
+        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description', 'version', 'project__name'))
     else:
         qs = TaskTemplateVersion.objects.filter()
         if q:
             qs = qs.filter(name__icontains=q)
-        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description'))
+        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description', 'version', 'project__name'))
         
     return JsonResponse({'success': True, 'templates': data})

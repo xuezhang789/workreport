@@ -460,7 +460,7 @@
             <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">项目总览 / Projects</h1>
             <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 个项目 / Total {{ total_count }} projects</p>
         </div>
-        {% if request.user.is_staff %}
+        {% if request.user.is_superuser %}
             <a href="{% url 'projects:project_create' %}" class="btn btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -515,16 +515,14 @@
 
             <div class="filter-actions">
                 <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">重置 / Reset</a>
-                {% if request.user.is_staff %}
-                    <a href="{% url 'projects:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        导出 / Export
-                    </a>
-                {% endif %}
+                <a href="{% url 'projects:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出 / Export
+                </a>
                 <button type="submit" class="btn btn-secondary" id="filterBtn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>

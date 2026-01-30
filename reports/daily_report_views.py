@@ -577,6 +577,26 @@ def daily_report_batch_create(request):
             except (Profile.DoesNotExist, AttributeError):
                 role = 'dev'
 
+            # Pre-fetch existing reports to avoid N+1 queries
+            dates_to_check = []
+            for item in reports_data:
+                d_str = item.get('date')
+                if d_str:
+                    try:
+                        dates_to_check.append(parse_date(d_str))
+                    except (ValueError, TypeError):
+                        pass
+            
+            existing_dates = set()
+            if dates_to_check:
+                existing_dates = set(
+                    DailyReport.objects.filter(
+                        user=request.user, 
+                        role=role, 
+                        date__in=[d for d in dates_to_check if d]
+                    ).values_list('date', flat=True)
+                )
+
             for index, item in enumerate(reports_data):
                 date_str = item.get('date')
                 project_ids = item.get('projects', [])
@@ -595,7 +615,7 @@ def daily_report_batch_create(request):
                     errors.append(f"第 {index + 1} 行：日期格式无效")
                     continue
 
-                if DailyReport.objects.filter(user=request.user, date=report_date, role=role).exists():
+                if report_date in existing_dates:
                      errors.append(f"第 {index + 1} 行：{date_str} 的日报已存在")
                      continue
                 

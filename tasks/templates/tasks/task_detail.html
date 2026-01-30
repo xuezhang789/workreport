@@ -436,7 +436,11 @@
                     {% if sla.deadline %}
                         <span class="sla-badge {% if sla.status != 'normal' %}{{ sla.status }}{% endif %} {% if sla.paused %}paused{% endif %}">
                             {% if task.completed_at %}
-                                完结
+                                {% if sla.status == 'completed_late' %}
+                                    逾期交付 / Late
+                                {% else %}
+                                    按时交付 / On Time
+                                {% endif %}
                             {% else %}
                                 剩余: {% if sla.remaining_hours != None %}{{ sla.remaining_hours }}h{% else %}--{% endif %}
                             {% endif %}

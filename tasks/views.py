@@ -22,6 +22,7 @@ from tasks.models import Task, TaskAttachment, TaskComment
 from core.constants import TaskStatus
 from audit.utils import log_action
 from audit.models import AuditLog, TaskHistory
+from audit.services import AuditLogService
 from core.models import Profile, SystemSetting, ExportJob
 from work_logs.models import DailyReport
 from core.utils import (
@@ -51,14 +52,9 @@ MANAGER_ROLES = {'mgr', 'pm'}
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
 def has_manage_permission(user):
-    if not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    try:
-        return user.profile.position in MANAGER_ROLES
-    except Profile.DoesNotExist:
-        return False
+    # Deprecated: Use can_manage_project(user, project) for granular control.
+    # Keeping for legacy compatibility if strictly needed, but returning False to force explicit checks.
+    return False
 
 def _notify(request, users, message, category="info"):
     """
@@ -68,24 +64,8 @@ def _notify(request, users, message, category="info"):
     log_action(request, 'update', f"notify[{category}] {message}", data={'users': usernames})
 
 def _add_history(task: Task, user, field: str, old: str, new: str):
-    if str(old) == str(new):
-        return
-    # Legacy: Keep TaskHistory for admin reference if needed
-    TaskHistory.objects.create(task=task, user=user if user and user.is_authenticated else None, field=field, old_value=str(old or ''), new_value=str(new or ''))
-    
-    # Modern: Create AuditLog
-    AuditLog.objects.create(
-        user=user if user and user.is_authenticated else None,
-        operator_name=user.get_full_name() if user and user.is_authenticated else 'System',
-        action='update',
-        target_type='Task',
-        target_id=str(task.id),
-        target_label=str(task)[:255],
-        details={'diff': {field: {'old': str(old or ''), 'new': str(new or '')}}},
-        project=task.project,
-        task=task,
-        result='success'
-    )
+    # Deprecated: Signals in audit/signals.py handle AuditLog creation automatically via pre_save/post_save.
+    pass
 
 @login_required
 def admin_task_list(request):
@@ -234,7 +214,7 @@ def admin_task_list(request):
 @login_required
 def admin_task_bulk_action(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
-    is_admin = has_manage_permission(request.user)
+    is_admin = request.user.is_superuser
     if not is_admin and not manageable_project_ids:
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
     if request.method != 'POST':
@@ -258,17 +238,9 @@ def admin_task_bulk_action(request):
     updated = 0
     if action == 'complete':
         now = timezone.now()
-        history_batch = []
         audit_batch = []
         ip = request.META.get('REMOTE_ADDR')
         for t in tasks:
-            history_batch.append(TaskHistory(
-                task=t, 
-                user=request.user, 
-                field='status', 
-                old_value=t.status, 
-                new_value=TaskStatus.DONE
-            ))
             audit_batch.append(AuditLog(
                 user=request.user,
                 operator_name=request.user.get_full_name(),
@@ -282,23 +254,14 @@ def admin_task_bulk_action(request):
                 ip=ip,
                 result='success'
             ))
-        TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status=TaskStatus.DONE, completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
-        history_batch = []
         audit_batch = []
         ip = request.META.get('REMOTE_ADDR')
         for t in tasks:
-            history_batch.append(TaskHistory(
-                task=t, 
-                user=request.user, 
-                field='status', 
-                old_value=t.status, 
-                new_value=TaskStatus.TODO
-            ))
             audit_batch.append(AuditLog(
                 user=request.user,
                 operator_name=request.user.get_full_name(),
@@ -312,7 +275,6 @@ def admin_task_bulk_action(request):
                 ip=ip,
                 result='success'
             ))
-        TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status=TaskStatus.TODO, completed_at=None)
         updated = total_selected
@@ -408,7 +370,7 @@ def admin_task_bulk_action(request):
 @login_required
 def admin_task_export(request):
     manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
-    is_admin = has_manage_permission(request.user)
+    is_admin = request.user.is_superuser
     if not is_admin and not manageable_project_ids:
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
@@ -1661,7 +1623,11 @@ def export_job_download(request, job_id: int):
 @login_required
 def task_complete(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
-    if not (task.user == request.user or task.collaborators.filter(pk=request.user.pk).exists() or has_manage_permission(request.user)):
+    
+    # Check permission: User Owner, Collaborator, or Project Manager
+    if not (task.user == request.user or 
+            task.collaborators.filter(pk=request.user.pk).exists() or 
+            can_manage_project(request.user, task.project)):
         return _friendly_forbidden(request, "无权限完成该任务 / No permission to complete this task")
 
     if request.method != 'POST':
@@ -1682,6 +1648,10 @@ def task_complete(request, pk: int):
         messages.success(request, "任务已标记完成 / Task marked as completed.")
     except Exception as exc:
         messages.error(request, f"任务完成失败，请重试 / Failed to complete task: {exc}")
+    
+    next_url = request.GET.get('next') or request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
     return redirect('tasks:task_list')
 
 
@@ -1694,24 +1664,23 @@ def task_bulk_action(request):
     redirect_to = request.POST.get('redirect_to')
     if redirect_to and not url_has_allowed_host_and_scheme(url=redirect_to, allowed_hosts={request.get_host()}):
         redirect_to = None
+        
+    # Permission: Owner, Collaborator, or Project Manager
+    manageable_projects = get_manageable_projects(request.user)
+    
     tasks = Task.objects.filter(
-        Q(user=request.user) | Q(collaborators=request.user)
+        Q(user=request.user) | 
+        Q(collaborators=request.user) |
+        Q(project__in=manageable_projects)
     ).filter(id__in=ids).distinct()
+    
     skipped_perm = max(0, len(ids) - tasks.count())
     total_selected = tasks.count()
     updated = 0
     if action == 'complete':
         now = timezone.now()
-        history_batch = []
         audit_batch = []
         for t in tasks:
-            history_batch.append(TaskHistory(
-                task=t, 
-                user=request.user, 
-                field='status', 
-                old_value=t.status, 
-                new_value='done'
-            ))
             audit_batch.append(AuditLog(
                 user=request.user,
                 operator_name=request.user.get_full_name(),
@@ -1724,22 +1693,13 @@ def task_bulk_action(request):
                 task=t,
                 result='success'
             ))
-        TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='done', completed_at=now)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
-        history_batch = []
         audit_batch = []
         for t in tasks:
-            history_batch.append(TaskHistory(
-                task=t, 
-                user=request.user, 
-                field='status', 
-                old_value=t.status, 
-                new_value='todo'
-            ))
             audit_batch.append(AuditLog(
                 user=request.user,
                 operator_name=request.user.get_full_name(),
@@ -1752,11 +1712,34 @@ def task_bulk_action(request):
                 task=t,
                 result='success'
             ))
-        TaskHistory.objects.bulk_create(history_batch)
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='todo', completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
+    elif action == 'delete':
+        if not request.user.is_superuser:
+            return _admin_forbidden(request, "仅超级管理员可批量删除 / Superuser only")
+        count = tasks.count()
+        
+        # Audit Log for deletion
+        audit_batch = []
+        for t in tasks:
+            audit_batch.append(AuditLog(
+                user=request.user,
+                operator_name=request.user.get_full_name(),
+                action='delete',
+                target_type='Task',
+                target_id=str(t.id),
+                target_label=str(t)[:255],
+                details={'reason': 'bulk_delete'},
+                project=t.project,
+                result='success'
+            ))
+        AuditLog.objects.bulk_create(audit_batch)
+        
+        tasks.delete()
+        updated = count
+        log_action(request, 'delete', f"task_bulk_delete count={count}")
     elif action == 'update':
         status_value = (request.POST.get('status_value') or '').strip()
         due_at_str = (request.POST.get('due_at') or '').strip()
@@ -1819,14 +1802,16 @@ def task_view(request, pk: int):
     task = get_object_or_404(Task.objects.select_related('project', 'user').prefetch_related('collaborators'), pk=pk)
     
     # Permission Check
-    is_manager = has_manage_permission(request.user)
+    can_manage = can_manage_project(request.user, task.project)
     is_owner = task.user == request.user
     is_collab = task.collaborators.filter(pk=request.user.pk).exists()
+    is_member = task.project.members.filter(pk=request.user.pk).exists()
     
-    if not (is_manager or is_owner or is_collab):
+    # Visibility: Managers (inc Superuser), Owner, Collabs, and Project Members
+    if not (can_manage or is_owner or is_collab or is_member):
          return _friendly_forbidden(request, "无权限查看此任务 / No permission to view this task")
          
-    can_edit = is_manager or is_owner or is_collab
+    can_edit = can_manage or is_owner or is_collab
 
 
     if request.method == 'POST' and 'action' in request.POST:
@@ -1948,25 +1933,67 @@ def task_history(request, pk: int):
     if not can_view:
         return _friendly_forbidden(request, "无权查看该任务历史 / No permission to view task history")
 
-    # Unified History (AuditLogs for Task)
-    audit_logs = AuditLog.objects.filter(
-        target_type='Task', 
-        target_id=str(task.id)
-    ).select_related('user')
+    # Filters
+    filters = {
+        'user_id': request.GET.get('user'),
+        'start_date': request.GET.get('start_date'),
+        'end_date': request.GET.get('end_date'),
+        'action_type': request.GET.get('action_type'), # field_change, attachment, comment
+        'field_name': request.GET.get('field'),
+    }
+
+    qs = AuditLogService.get_history(task, filters)
     
-    # Process history
+    # Pagination
+    paginator = Paginator(qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Format logs for display
     timeline = []
-    for log in audit_logs:
-        # Only include logs that have actual diff details or create
-        if log.action == 'create' or (log.details and 'diff' in log.details):
-            timeline.append({
-                'type': 'field' if log.action == 'update' else 'create',
-                'timestamp': log.created_at,
-                'user': log.user,
-                'data': log
-            })
-            
-    # Sort desc
-    timeline.sort(key=lambda x: x['timestamp'], reverse=True)
+    for log in page_obj:
+        entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
+        if entry:
+            timeline.append(entry)
     
-    return render(request, 'tasks/task_history.html', {'task': task, 'logs': timeline})
+    # Get users for filter
+    users = get_user_model().objects.filter(
+        Q(pk=task.user_id) | 
+        Q(project_memberships=task.project) | 
+        Q(collaborated_tasks=task)
+    ).distinct()
+
+    return render(request, 'tasks/task_history.html', {
+        'task': task, 
+        'logs': timeline,
+        'page_obj': page_obj,
+        'filters': filters,
+        'users': users
+    })
+    
+    # Pagination
+    paginator = Paginator(qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Format logs for display
+    timeline = []
+    for log in page_obj:
+        entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
+        if entry:
+            timeline.append(entry)
+    
+    # Get users for filter
+    users = get_user_model().objects.filter(
+        Q(pk=task.user_id) | 
+        Q(project_memberships=task.project) | 
+        Q(collaborated_tasks=task)
+    ).distinct()
+
+    return render(request, 'tasks/task_history.html', {
+        'task': task, 
+        'logs': timeline,
+        'page_obj': page_obj,
+        'filters': filters,
+        'users': users
+    })

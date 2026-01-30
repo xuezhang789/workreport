@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_export
 
 app_name = 'projects'
 
@@ -14,7 +15,8 @@ urlpatterns = [
 
     # Project Phase Actions
     path('<int:project_id>/update-phase/', views.project_update_phase, name='project_update_phase'),
-    path('<int:project_id>/phase-history/', views.project_phase_history, name='project_phase_history'),
+    path('<int:project_id>/history/', views.project_history, name='project_history'),
+    path('<int:project_id>/history/export/', views_export.project_history_export, name='project_history_export'),
 
     # Attachments
     path('<int:project_id>/upload-attachment/', views.project_upload_attachment, name='project_upload_attachment'),

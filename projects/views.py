@@ -16,6 +16,7 @@ from tasks.models import Task, TaskAttachment
 from work_logs.models import DailyReport
 from audit.models import AuditLog
 from audit.utils import log_action
+from audit.services import AuditLogService
 from core.models import Profile
 from core.constants import TaskStatus
 from core.utils import (
@@ -180,7 +181,8 @@ def project_detail(request, pk: int):
     ).count()
     sla_rate = (within_sla / completed * 100) if completed else 0
     
-    # Task List Logic
+    # Task List Logic - Simplified for Project Detail
+    # Only showing tasks for this project
     tasks_qs = Task.objects.filter(project=project).select_related('user', 'user__profile')
     
     task_status = request.GET.get('task_status')
@@ -209,10 +211,17 @@ def project_detail(request, pk: int):
 
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     
+    # New Task Creation Permission in Project Detail:
+    # 1. Superuser
+    # 2. Project Manager / Owner
+    # (Matches 'can_manage_project')
+    can_create_task = can_manage_project(request.user, project)
+    
     return render(request, 'reports/project_detail.html', {
         'project': project,
         'recent_reports': recent_reports,
         'can_manage': can_manage,
+        'can_create_task': can_create_task,
         'task_stats': {
             'total': total,
             'completed': completed,
@@ -437,28 +446,31 @@ def project_update_phase(request, project_id):
                 changed_by=request.user
             )
             
-            # Send notification
-            _send_phase_change_notification(project, old_phase, new_phase, request.user)
-            
-            # Notify all project members
-            members = set(project.members.all())
-            if project.owner:
-                members.add(project.owner)
-            for manager in project.managers.all():
-                members.add(manager)
+            # Send notification (Best Effort)
+            try:
+                _send_phase_change_notification(project, old_phase, new_phase, request.user)
                 
-            for member in members:
-                if member != request.user: # Don't notify self
-                    send_notification(
-                        user=member,
-                        title="项目阶段变更",
-                        message=f"项目 {project.name} 阶段已更新为：{new_phase.phase_name} ({new_phase.progress_percentage}%)",
-                        notification_type='project_update',
-                        data={'project_id': project.id}
-                    )
+                # Notify all project members
+                members = set(project.members.all())
+                if project.owner:
+                    members.add(project.owner)
+                for manager in project.managers.all():
+                    members.add(manager)
+                    
+                for member in members:
+                    if member != request.user: # Don't notify self
+                        send_notification(
+                            user=member,
+                            title="项目阶段变更",
+                            message=f"项目 {project.name} 阶段已更新为：{new_phase.phase_name} ({new_phase.progress_percentage}%)",
+                            notification_type='project_update',
+                            data={'project_id': project.id}
+                        )
+            except Exception as e:
+                # Log error but don't fail the request
+                print(f"Notification failed: {e}")
             
-            # Log audit
-            log_action(request, 'update', f"Project {project.code} phase changed to {new_phase.phase_name}")
+            # Note: AuditLog is automatically created via signals on project.save()
             
             return JsonResponse({
                 'status': 'success', 
@@ -469,7 +481,7 @@ def project_update_phase(request, project_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 @login_required
-def project_phase_history(request, project_id):
+def project_history(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     
     if not request.user.is_superuser:
@@ -477,40 +489,43 @@ def project_phase_history(request, project_id):
         if not accessible.filter(id=project.id).exists():
              raise Http404
 
-    # 1. Phase Logs
-    phase_logs = project.phase_logs.all().select_related('old_phase', 'new_phase', 'changed_by')
+    # Filters
+    filters = {
+        'user_id': request.GET.get('user'),
+        'start_date': request.GET.get('start_date'),
+        'end_date': request.GET.get('end_date'),
+        'action_type': request.GET.get('action_type'), # field_change, attachment, comment
+        'field_name': request.GET.get('field'),
+    }
+
+    qs = AuditLogService.get_history(project, filters)
     
-    # 2. Audit Logs (Field Changes)
-    audit_logs = AuditLog.objects.filter(
-        target_type='Project', 
-        target_id=str(project.id)
-    ).select_related('user')
+    # Pagination
+    paginator = Paginator(qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
-    # 3. Combine
+    # Format logs for display
     timeline = []
+    for log in page_obj:
+        entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
+        if entry:
+            timeline.append(entry)
     
-    for log in phase_logs:
-        timeline.append({
-            'type': 'phase',
-            'timestamp': log.changed_at,
-            'user': log.changed_by,
-            'data': log
-        })
-        
-    for log in audit_logs:
-        # Only include logs that have actual diff details
-        if log.details and 'diff' in log.details:
-            timeline.append({
-                'type': 'field',
-                'timestamp': log.created_at,
-                'user': log.user,
-                'data': log
-            })
-        
-    # Sort desc
-    timeline.sort(key=lambda x: x['timestamp'], reverse=True)
-    
-    return render(request, 'reports/project_stage_history.html', {'project': project, 'logs': timeline})
+    # Get users for filter
+    users = get_user_model().objects.filter(
+        Q(project_memberships=project) | 
+        Q(managed_projects=project) | 
+        Q(owned_projects=project)
+    ).distinct()
+
+    return render(request, 'reports/project_history.html', {
+        'project': project, 
+        'logs': timeline,
+        'page_obj': page_obj,
+        'filters': filters,
+        'users': users
+    })
 
 @login_required
 def project_upload_attachment(request, project_id):
