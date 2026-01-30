@@ -1,0 +1,145 @@
+<form method="post" class="comment-form">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="comment">评论 / Comment</label>
+        <textarea id="comment" name="comment" placeholder="输入评论或变更记录 / Enter comment or change log" rows="3"></textarea>
+    </div>
+    <div class="actions-row">
+        <button type="submit" name="action" value="add_comment" class="btn btn-primary">提交评论 / Submit Comment</button>
+    </div>
+</form>
+
+<style>
+:root {
+    --primary: #2563eb;
+    --primary-2: #3b82f6;
+    --accent: #06b6d4;
+    --card: rgba(255, 255, 255, 0.95);
+    --border: rgba(226, 232, 240, 0.8);
+    --ink: #1e293b;
+    --muted: #64748b;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    --shadow-hover: 0 8px 32px rgba(15, 23, 42, 0.12);
+}
+
+.comment-form {
+    margin-top: 12px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+    border-radius: var(--radius-md);
+    transition: all 0.3s ease;
+}
+
+.comment-form:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+    transform: translateY(-1px);
+}
+
+.comment-form .form-group {
+    margin-bottom: 12px;
+}
+
+.comment-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--ink);
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+.comment-form textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background: #fff;
+    transform: translateY(-1px);
+}
+
+.comment-form textarea::placeholder {
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.comment-form .actions-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.comment-form .btn {
+    border-radius: var(--radius-md);
+    border: none;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.comment-form .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.comment-form .btn:hover::before {
+    left: 100%;
+}
+
+.comment-form .btn:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.comment-form .btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+.comment-form .btn-primary:hover {
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 860px) {
+    .comment-form {
+        padding: 12px;
+    }
+    
+    .comment-form textarea {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+}
+</style>

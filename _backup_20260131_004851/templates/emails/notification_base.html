@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ content.email_subject }}</title>
+    <style>
+        /* Base Reset */
+        body { margin: 0; padding: 0; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        table { border-spacing: 0; border-collapse: collapse; }
+        img { border: 0; outline: none; text-decoration: none; }
+        
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #1a202c !important; color: #e2e8f0 !important; }
+            .container { background-color: #2d3748 !important; color: #e2e8f0 !important; }
+            .header { border-bottom-color: #4a5568 !important; }
+            .item-row { border-bottom-color: #4a5568 !important; }
+            .footer { color: #a0aec0 !important; }
+            .card { background-color: #2d3748 !important; border-color: #4a5568 !important; }
+            h1, h2, h3, p { color: #e2e8f0 !important; }
+            .highlight { color: #63b3ed !important; }
+            .label { color: #a0aec0 !important; }
+        }
+
+        /* Container */
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f4f6f8; padding-bottom: 40px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px; }
+        
+        /* Header */
+        .header { padding: 24px; text-align: center; border-bottom: 1px solid #edf2f7; }
+        .logo { font-size: 24px; font-weight: bold; color: #2b6cb0; text-decoration: none; }
+        
+        /* Content */
+        .content { padding: 32px 24px; }
+        .title { font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #2d3748; }
+        .subtitle { font-size: 14px; color: #718096; margin: 0 0 24px 0; }
+        .body-text { font-size: 16px; line-height: 1.6; color: #4a5568; margin-bottom: 24px; }
+        
+        /* Key-Value Items */
+        .items-table { width: 100%; margin-bottom: 24px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+        .item-row td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        .item-row:last-child td { border-bottom: none; }
+        .label { font-size: 14px; font-weight: 500; color: #718096; width: 30%; white-space: nowrap; }
+        .value { font-size: 14px; color: #2d3748; }
+        .highlight { color: #3182ce; font-weight: 500; }
+        .old-value { color: #a0aec0; text-decoration: line-through; margin-left: 8px; font-size: 12px; }
+
+        /* Actions */
+        .actions { text-align: center; margin-top: 32px; }
+        .btn { display: inline-block; padding: 12px 24px; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 16px; margin: 0 8px; }
+        .btn-primary { background-color: #3182ce; color: #ffffff; }
+        .btn-secondary { background-color: #edf2f7; color: #4a5568; }
+        .btn-danger { background-color: #e53e3e; color: #ffffff; }
+        
+        /* Footer */
+        .footer { padding: 24px; text-align: center; font-size: 12px; color: #a0aec0; background-color: #f7fafc; border-top: 1px solid #edf2f7; }
+        .footer a { color: #718096; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <a href="{{ site_url }}" class="logo">{{ site_name }}</a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="content">
+                <h1 class="title">{{ content.title }}</h1>
+                {% if content.subtitle %}
+                <p class="subtitle">{{ content.subtitle }}</p>
+                {% endif %}
+
+                <div class="body-text">
+                    {{ content.body|linebreaksbr }}
+                </div>
+
+                {% if content.items %}
+                <table class="items-table" cellspacing="0" cellpadding="0">
+                    {% for item in content.items %}
+                    <tr class="item-row">
+                        <td class="label">{{ item.label }}</td>
+                        <td class="value">
+                            <span class="{% if item.highlight %}highlight{% endif %}">{{ item.value }}</span>
+                            {% if item.old_value %}
+                            <span class="old-value">{{ item.old_value }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+
+                {% if content.actions %}
+                <div class="actions">
+                    {% for action in content.actions %}
+                    <a href="{% if 'http' not in action.url %}{{ site_url }}{% endif %}{{ action.url }}" 
+                       class="btn btn-{{ action.style|default:'primary' }}">
+                        {{ action.label }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>This notification was sent automatically by {{ site_name }}.</p>
+                <p>&copy; {{ year }} {{ site_name }}. All rights reserved.</p>
+                {% if content.meta.timestamp %}
+                <p>Generated at: {{ content.meta.timestamp }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

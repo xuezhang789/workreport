@@ -1,0 +1,865 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+{% block title %}项目详情 / Project Detail{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情 / Project Detail" nav_subtitle="查看项目基本信息与近期动态 / View basics & activities" %}{% endblock %}
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-hover: #1e40af;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-page: #f8fafc;
+        --radius-lg: 16px;
+    }
+
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* Info Card & Layout */
+    .card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+
+    /* Phase & Progress */
+    .progress-track {
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), #60a5fa);
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+
+    /* Tables */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px 16px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .table td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text-main);
+    }
+
+    .table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-active { background: #dbeafe; color: #1e40af; }
+    .badge-completed { background: #dcfce7; color: #166534; }
+    .badge-overdue { background: #fee2e2; color: #991b1b; }
+    .badge-default { background: #f1f5f9; color: #475569; }
+
+    /* Filters */
+    .filter-select {
+        padding: 6px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--text-main);
+        background-color: white;
+        outline: none;
+    }
+    
+    /* Attachments */
+    .attachment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .attachment-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .attachment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attachment-icon {
+        color: var(--primary);
+    }
+
+    .attachment-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .attachment-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .btn-xs {
+        padding: 4px 8px;
+        font-size: 11px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-download {
+        background: #eff6ff;
+        color: var(--primary);
+    }
+
+    .btn-delete {
+        background: #fef2f2;
+        color: #991b1b;
+        border: none;
+    }
+
+    /* Members */
+    .member-section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .member-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .member-card {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s;
+    }
+    
+    .member-card:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+    
+    .member-avatar-wrapper {
+        flex-shrink: 0;
+    }
+    
+    .member-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+    }
+    
+    .member-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .member-role {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .badge-role {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        margin-left: auto;
+    }
+    
+    .role-owner { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .role-mgr { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    
+    <!-- Header / Overview -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--text-main);">{{ project.name }}</h1>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                    <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--text-secondary);">{{ project.code }}</span>
+                    {% if project.is_active %}
+                        <span class="status-badge badge-active">进行中 / Active</span>
+                    {% else %}
+                        <span class="status-badge badge-default">已归档 / Archived</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表 / Back to List</a>
+                {% if can_manage %}
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目 / Edit Project</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">负责人 / Owner</span>
+                <span class="info-value">
+                    {% if project.owner %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            {% include "partials/user_avatar.html" with user=project.owner size="24px" font_size="10px" %}
+                            {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
+                        </div>
+                    {% else %}
+                        <span style="color: var(--text-secondary);">--</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">管理员 / Managers</span>
+                <span class="info-value">
+                    {% if project.managers.exists %}
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            {% for manager in project.managers.all %}
+                                <div style="display: flex; align-items: center; gap: 6px; background: #eff6ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; color: #1d4ed8;">
+                                    {% include "partials/user_avatar.html" with user=manager size="16px" font_size="8px" %}
+                                    {{ manager.get_full_name|default:manager.username }} @{{ manager.username }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-size: 13px;">无管理员 / None</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">时间周期 / Duration</span>
+                <span class="info-value">
+                    {{ project.start_date|default:"--" }} 
+                    <span style="color: var(--text-secondary); margin: 0 4px;">→</span> 
+                    {{ project.end_date|default:"--" }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">成员 / Members</span>
+                <span class="info-value">{{ project.members.count }} 人</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">SLA 配置 / SLA Config</span>
+                <span class="info-value">
+                    {% if project.sla_hours %}
+                        {{ project.sla_hours }}h
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-weight: 400;">系统默认 / System Default (48h)</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        
+        {% if project.description %}
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                <span class="info-label" style="display: block; margin-bottom: 8px;">项目描述 / Description</span>
+                <p style="margin: 0; font-size: 14px; color: var(--text-main); line-height: 1.6;">{{ project.description|linebreaksbr }}</p>
+            </div>
+        {% else %}
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                <span class="info-label" style="display: block; margin-bottom: 8px;">项目描述 / Description</span>
+                <p style="margin: 0; font-size: 14px; color: var(--text-secondary); font-style: italic;">暂无描述 / No description provided.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Attachments Module -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>📎</span> 附件 / Attachments
+            </div>
+            {% if can_manage %}
+                <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
+                <input type="file" id="attachment-upload-input" multiple style="display: none;">
+            {% endif %}
+        </div>
+
+        <div class="attachment-grid" id="attachment-list">
+            {% for attachment in project.attachments.all %}
+                <div class="attachment-card" id="attachment-{{ attachment.id }}">
+                    <div class="attachment-header">
+                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        <span class="attachment-name" title="{{ attachment.original_filename }}">{{ attachment.original_filename }}</span>
+                    </div>
+                    <div class="attachment-meta">
+                        <span>{{ attachment.file_size|filesizeformat }}</span>
+                        <span>{{ attachment.created_at|date:"Y-m-d" }}</span>
+                    </div>
+                    <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px;">
+                        <span>Up:</span>
+                        {% include "partials/user_avatar.html" with user=attachment.uploaded_by size="16px" font_size="8px" %}
+                        <span>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }} @{{ attachment.uploaded_by.username }}</span>
+                    </div>
+                    <div class="attachment-actions">
+                        <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
+                        {% if can_manage or user == attachment.uploaded_by %}
+                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Delete</button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
+                    暂无附件 / No attachments
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Phase Management -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>🚩</span> 阶段与进度 / Phase & Progress
+            </div>
+            <a href="{% url 'projects:project_history' project.pk %}" class="btn btn-ghost" style="text-decoration: none;">
+                <span>⏳</span>
+                变更历史 / Change History
+            </a>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+            <div>
+                <span style="font-size: 16px; font-weight: 600; color: var(--text-main);">{{ project.current_phase.phase_name|default:"未设置阶段 / Phase Not Set" }}</span>
+            </div>
+            <span style="font-size: 20px; font-weight: 700; color: var(--primary);">{{ project.overall_progress }}%</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width: {{ project.overall_progress }}%;"></div>
+        </div>
+
+        {% if can_manage %}
+            <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">变更阶段 / Change Phase:</span>
+                <select id="phase-select" class="filter-select" style="min-width: 200px;">
+                    {% for phase in phases %}
+                        <option value="{{ phase.id }}" {% if project.current_phase_id == phase.id %}selected{% endif %}>
+                            {{ phase.phase_name }} ({{ phase.progress_percentage }}%)
+                        </option>
+                    {% endfor %}
+                </select>
+                <button id="update-phase-btn" class="btn btn-primary">更新 / Update</button>
+                <span id="update-msg" style="font-size: 12px; margin-left: 8px;"></span>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Team Members -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>👥</span> 项目成员 / Team Members
+            </div>
+            <span style="font-size: 13px; color: var(--text-secondary);">Total: {{ project.members.count }}</span>
+        </div>
+        
+        <!-- Management Team -->
+        {% if project.owner or project.managers.exists %}
+            <div class="member-section-title">管理团队 / Management Team</div>
+            <div class="member-grid">
+                {% if project.owner %}
+                    <div class="member-card" style="border-color: #ffedd5; background: #fffaf0;">
+                        <div class="member-avatar-wrapper">
+                            {% include "partials/user_avatar.html" with user=project.owner size="40px" font_size="16px" %}
+                        </div>
+                        <div class="member-info">
+                            <div class="member-name">
+                                {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
+                                <span class="badge-role role-owner">Owner</span>
+                            </div>
+                            <div class="member-role">{{ project.owner.profile.get_position_display|default:"项目负责人" }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% for manager in project.managers.all %}
+                    {% if manager != project.owner %}
+                        <div class="member-card" style="border-color: #dbeafe; background: #eff6ff;">
+                            <div class="member-avatar-wrapper">
+                                {% include "partials/user_avatar.html" with user=manager size="40px" font_size="16px" %}
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">
+                                    {{ manager.get_full_name|default:manager.username }} @{{ manager.username }}
+                                    <span class="badge-role role-mgr">Mgr</span>
+                                </div>
+                                <div class="member-role">{{ manager.profile.get_position_display|default:"管理员" }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Regular Members -->
+        <div class="member-section-title">项目成员 / Project Members</div>
+        <div class="member-grid">
+            {% for member in project.members.all %}
+                {% if member != project.owner and member not in project.managers.all %}
+                    <div class="member-card">
+                        <div class="member-avatar-wrapper">
+                            {% include "partials/user_avatar.html" with user=member size="40px" font_size="16px" %}
+                        </div>
+                        <div class="member-info">
+                            <div class="member-name">
+                                {{ member.get_full_name|default:member.username }} @{{ member.username }}
+                            </div>
+                            <div class="member-role">
+                                {{ member.profile.get_position_display|default:"成员" }}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
+                    暂无普通成员 / No regular members
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Tasks Module -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>📋</span> 关联任务 / Tasks
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <form method="get" style="display: flex; gap: 8px;">
+                    <select name="task_status" class="filter-select" onchange="this.form.submit()">
+                        <option value="">状态: 全部</option>
+                        <option value="todo" {% if task_status == 'todo' %}selected{% endif %}>待处理</option>
+                        <option value="in_progress" {% if task_status == 'in_progress' %}selected{% endif %}>进行中</option>
+                        <option value="blocked" {% if task_status == 'blocked' %}selected{% endif %}>阻塞中</option>
+                        <option value="in_review" {% if task_status == 'in_review' %}selected{% endif %}>待评审</option>
+                        <option value="done" {% if task_status == 'done' %}selected{% endif %}>已完成</option>
+                        <option value="closed" {% if task_status == 'closed' %}selected{% endif %}>已关闭</option>
+                    </select>
+                </form>
+                {% if can_manage %}
+                    <a href="{% url 'tasks:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务 / New Task</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if tasks %}
+            <!-- Task List Table -->
+            <div class="table-container" style="border: none;">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">任务标题 / Task Title</th>
+                            <th>优先级 / Priority</th>
+                            <th>负责人 / Assignee</th>
+                            <th>截止日期 / Due Date</th>
+                            <th>状态 / Status</th>
+                            <th style="text-align: right;">操作 / Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                            <tr>
+                                <td>
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        <a href="{% url 'tasks:task_view' task.pk %}" style="color: var(--text-main); font-weight: 600; text-decoration: none; font-size: 14px;">{{ task.title }}</a>
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            <span style="font-family: monospace; font-size: 11px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; color: var(--text-secondary);">#{{ task.id }}</span>
+                                            {% if task.category == 'BUG' %}
+                                                <span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-weight: 700;">BUG</span>
+                                            {% endif %}
+                                            {% if task.url %}
+                                                <a href="{{ task.url }}" target="_blank" style="font-size: 11px; color: var(--primary); display: flex; align-items: center; gap: 2px;">
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                                    External
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if task.priority == 'high' %}
+                                        <span class="status-badge" style="background: #fee2e2; color: #ef4444;">High</span>
+                                    {% elif task.priority == 'medium' %}
+                                        <span class="status-badge" style="background: #ffedd5; color: #f97316;">Medium</span>
+                                    {% else %}
+                                        <span class="status-badge" style="background: #dcfce7; color: #16a34a;">Low</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
+                                        <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username|default:"--" }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if task.due_at %}
+                                        <span style="font-size: 13px; {% if task.sla_info.is_overdue and task.status != 'done' and task.status != 'closed' %}color: #ef4444; font-weight: 600;{% else %}color: var(--text-secondary);{% endif %}">
+                                            {{ task.due_at|date:"Y-m-d" }}
+                                        </span>
+                                    {% else %}
+                                        <span style="font-size: 13px; color: var(--text-muted);">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="status-badge 
+                                        {% if task.status == 'done' %}badge-completed
+                                        {% elif task.status == 'closed' %}badge-default
+                                        {% elif task.status == 'in_progress' %}badge-active
+                                        {% elif task.status == 'blocked' %}badge-overdue
+                                        {% elif task.status == 'in_review' %}badge-active
+                                        {% else %}badge-default{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost btn-sm">查看 / View</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if tasks.has_other_pages %}
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+                    {% if tasks.has_previous %}
+                        <a href="?page={{ tasks.previous_page_number }}" class="btn btn-ghost">&laquo; 上一页</a>
+                    {% endif %}
+                    <span class="btn btn-ghost" style="pointer-events: none;">{{ tasks.number }} / {{ tasks.paginator.num_pages }}</span>
+                    {% if tasks.has_next %}
+                        <a href="?page={{ tasks.next_page_number }}" class="btn btn-ghost">下一页 &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <p>暂无关联任务 / No associated tasks</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span>📰</span> 最近日报 / Recent Reports</div>
+        </div>
+        {% if recent_reports %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>日期 / Date</th>
+                            <th>提交人 / Submitter</th>
+                            <th>角色 / Role</th>
+                            <th style="text-align: right;">操作 / Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recent_reports %}
+                            <tr>
+                                <td>{{ r.date }}</td>
+                                <td>{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</td>
+                                <td>{{ r.get_role_display }}</td>
+                                <td style="text-align: right;">
+                                    <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 32px; color: var(--text-secondary);">暂无日报记录 / No recent reports</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    // Attachment Logic
+    const addAttachmentBtn = document.getElementById('add-attachment-btn');
+    const attachmentInput = document.getElementById('attachment-upload-input');
+    
+    if (addAttachmentBtn && attachmentInput) {
+        addAttachmentBtn.addEventListener('click', () => attachmentInput.click());
+        
+        attachmentInput.addEventListener('change', function(e) {
+            if (this.files.length === 0) return;
+            
+            const formData = new FormData();
+            Array.from(this.files).forEach(file => {
+                formData.append('files', file);
+            });
+            
+            // Show uploading state
+            const originalText = addAttachmentBtn.textContent;
+            addAttachmentBtn.disabled = true;
+            addAttachmentBtn.textContent = 'Uploading...';
+            
+            fetch("{% url 'projects:project_upload_attachment' project.pk %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Reload to show new files or append to DOM
+                    window.location.reload();
+                } else {
+                    alert('Upload failed: ' + (data.message || 'Unknown error'));
+                    addAttachmentBtn.disabled = false;
+                    addAttachmentBtn.textContent = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Upload failed: Network error');
+                addAttachmentBtn.disabled = false;
+                addAttachmentBtn.textContent = originalText;
+            });
+        });
+    }
+
+    window.deleteAttachment = function(id, url) {
+        if (!confirm('确定删除该附件吗？ / Are you sure to delete this attachment?')) return;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const el = document.getElementById(`attachment-${id}`);
+                if (el) el.remove();
+            } else {
+                alert('Delete failed: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Delete failed');
+        });
+    };
+
+    // Phase Update Logic
+    const updateBtn = document.getElementById('update-phase-btn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', function() {
+            const select = document.getElementById('phase-select');
+            const phaseId = select.value;
+            const btn = this;
+            const msg = document.getElementById('update-msg');
+            const originalText = '更新 / Update';
+            
+            if (!phaseId) return;
+            
+            if (!confirm('确认变更项目阶段？这将更新项目整体进度。 / Confirm phase change? This will update overall progress.')) return;
+            
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            msg.textContent = '';
+            
+            fetch("{% url 'projects:project_update_phase' project.pk %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'phase_id=' + phaseId
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    btn.textContent = 'Updated';
+                    msg.textContent = '更新成功 / Update Success';
+                    msg.style.color = '#166534';
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btn.disabled = false;
+                btn.textContent = originalText;
+                msg.textContent = '更新失败: ' + error.message;
+                msg.style.color = '#991b1b';
+            });
+        });
+    }
+</script>
+{% endblock %}

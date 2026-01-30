@@ -1,0 +1,1160 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+{% block title %}团队在线日报 / Daily Report{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="团队在线日报 / Daily Report" nav_subtitle="智能表单 · 多角色适配 · 实时预览 / Smart Form · Multi-role · Live Preview" %}{% endblock %}
+
+{% block extra_styles %}
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+    }
+
+    /* --- Layout --- */
+    .main-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    /* --- Card Styles --- */
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .card-subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    /* --- Form Elements --- */
+    .form-section {
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+    
+    .required { color: var(--danger); margin-left: 2px; }
+
+    .form-input, .form-select, .form-textarea {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        transition: var(--transition);
+        background-color: #fff;
+        width: 100%;
+        font-family: inherit;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    .form-textarea {
+        min-height: 120px;
+        line-height: 1.6;
+        resize: vertical;
+    }
+
+    /* --- Role Sections --- */
+    .role-section {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .role-section.active { display: block; }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .role-hints {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 12px;
+        background: var(--bg-page);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .role-hint-chip {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* --- Preview Panel --- */
+    .preview-card {
+        position: sticky;
+        top: 24px;
+    }
+
+    .preview-area {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-main);
+    }
+
+    .preview-content h2, .preview-content h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 16px 0 8px;
+        color: var(--text-main);
+    }
+    
+    .preview-content ul { padding-left: 20px; margin: 8px 0; }
+    .preview-content li { margin-bottom: 4px; }
+    .preview-content p { margin-bottom: 8px; }
+
+    .preview-status {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .status-dot {
+        width: 8px; height: 8px;
+        background: var(--success);
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        line-height: 1.2;
+    }
+    
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+    
+    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+    
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
+
+    .button-group {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* --- Toast --- */
+    .toast {
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        background: var(--text-main);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        z-index: 100;
+        box-shadow: var(--shadow-lg);
+        animation: slideUp 0.3s ease-out;
+    }
+    .toast.show { display: flex; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* --- Responsive --- */
+    @media (max-width: 1024px) {
+        .main-layout { grid-template-columns: 1fr; }
+        .preview-card { position: static; }
+        .preview-area { max-height: 400px; }
+    }
+    @media (max-width: 640px) {
+        .form-grid { grid-template-columns: 1fr; }
+        .button-group { flex-direction: column; }
+        .btn { width: 100%; }
+    }
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">
+                {% if editing %}编辑日报 / Edit Daily Report{% else %}填写日报 / Create Daily Report{% endif %}
+            </h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+                智能表单适配多角色，支持实时预览 / Smart form with multi-role support & live preview
+            </p>
+        </div>
+        <div style="text-align: right; font-size: 13px; color: var(--text-secondary);">
+            <div>{{ request.user.get_full_name|default:request.user.username }} @{{ request.user.username }}</div>
+            <div style="color: var(--text-muted);">{% get_current_timezone as CURRENT_TZ %}{{ CURRENT_TZ }}</div>
+        </div>
+    </div>
+
+    <!-- Error Messages -->
+    {% if errors %}
+    <div style="background: #fef2f2; border: 1px solid #fee2e2; color: #b91c1c; padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+        <div style="font-weight: 700; margin-bottom: 4px;">⚠️ 提交出错 / Submission Error</div>
+        {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="">
+        {% csrf_token %}
+        {% if report_id %}<input type="hidden" name="report_id" value="{{ report_id }}">{% endif %}
+
+        <div class="main-layout">
+            
+            <!-- Left Column: Form -->
+            <div class="form-column">
+                
+                <!-- Basic Info Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">基本信息 / Basic Info</h3>
+                            <div class="card-subtitle">请确认日期与角色 / Confirm date and role</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="name">姓名 / Name</label>
+                            <input type="text" id="name" class="form-input" 
+                                   value="{{ form_user.first_name }} {{ form_user.last_name }} @{{ form_user.username }}" readonly disabled
+                                   style="background-color: var(--bg-page); color: var(--text-secondary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="date">日期 / Date <span class="required">*</span></label>
+                            <input type="date" id="date" name="date" class="form-input" value="{{ date_value|default:'' }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="role">角色 / Role <span class="required">*</span></label>
+                            <select id="role" name="role" class="form-select">
+                                <option value="">请选择角色 / Select Role</option>
+                                {% with current_role=role_value|default:user_position %}
+                                    <option value="dev" {% if current_role == 'dev' %}selected{% endif %}>开发 / Developer</option>
+                                    <option value="qa" {% if current_role == 'qa' %}selected{% endif %}>测试 / QA Engineer</option>
+                                    <option value="pm" {% if current_role == 'pm' %}selected{% endif %}>产品 / Product Manager</option>
+                                    <option value="ui" {% if current_role == 'ui' %}selected{% endif %}>设计 / UI/UX Designer</option>
+                                    <option value="ops" {% if current_role == 'ops' %}selected{% endif %}>运维 / DevOps</option>
+                                    <option value="mgr" {% if current_role == 'mgr' %}selected{% endif %}>管理 / Project Manager</option>
+                                {% endwith %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="projects">项目 / Projects</label>
+                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <input id="project-filter" type="text" class="form-input" placeholder="🔍 过滤列表 / Filter list">
+                                <input id="project-typeahead" list="project-options" type="text" class="form-input" placeholder="🔍 远程搜索 / Remote search">
+                                <datalist id="project-options"></datalist>
+                            </div>
+                            <select id="projects" name="projects" multiple class="form-select" style="min-height: 120px;">
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}" {% if p.id in selected_project_ids %}selected{% endif %}>{{ p.name }} ({{ p.code }})</option>
+                                {% empty %}
+                                    <option disabled>无项目 / No projects</option>
+                                {% endfor %}
+                            </select>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                                按住 Ctrl/Cmd 可多选 / Hold Ctrl/Cmd to select multiple
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Templates -->
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color);">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button type="button" id="apply-sample" class="btn btn-ghost btn-sm">📄 套用示例 / Sample</button>
+                            <select id="tpl-recommend" class="form-select" style="width: auto; flex: 1;">
+                                <option value="">智能推荐模板 / Recommended Templates</option>
+                            </select>
+                            <input type="text" id="tpl-name" class="form-input" placeholder="模板名称 / Template Name" style="width: 140px;">
+                            <button type="button" id="apply-template" class="btn btn-secondary btn-sm">替换 / Replace</button>
+                            <button type="button" id="apply-template-append" class="btn btn-ghost btn-sm">追加 / Append</button>
+                        </div>
+                        <div id="template-hint" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;"></div>
+                    </div>
+                </div>
+
+                <!-- Role Sections -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">工作内容 / Work Content</h3>
+                            <div class="card-subtitle">请根据角色填写详细内容 / Fill in details based on role</div>
+                        </div>
+                    </div>
+
+                    <!-- DEV -->
+                    <div id="role-dev" class="role-section">
+                        <div class="form-group">
+                            <label class="form-label">1️⃣ 今日完成工作 / Work Completed Today</label>
+                            <textarea id="dev-today" name="today_work" class="form-textarea" placeholder="已交付功能、重构、优化... / Delivered features, refactoring, optimization..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">2️⃣ 今日进展 & 问题 / Progress & Issues</label>
+                            <textarea id="dev-progress" name="progress_issues" class="form-textarea" placeholder="风险、阻塞、需要协助... / Risks, blockers, assistance needed..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">3️⃣ 明日工作计划 / Plan for Tomorrow</label>
+                            <textarea id="dev-tomorrow" name="tomorrow_plan" class="form-textarea" placeholder="明日交付目标、KPI预期... / Tomorrow's goals, KPI expectations..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- QA -->
+                    <div id="role-qa" class="role-section">
+                        <div class="form-group"><label class="form-label">1️⃣ 今日测试范围 / Testing Scope</label><textarea id="qa-scope" name="testing_scope" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">2️⃣ 测试完成情况 / Progress</label><textarea id="qa-progress" name="testing_progress" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">3️⃣ Bug 统计 / Bug Summary</label><textarea id="qa-bugs" name="bug_summary" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">4️⃣ 明日测试计划 / Plan</label><textarea id="qa-tomorrow" name="testing_tomorrow" class="form-textarea"></textarea></div>
+                    </div>
+
+                    <!-- PM -->
+                    <div id="role-pm" class="role-section">
+                        <div class="form-group"><label class="form-label">1️⃣ 今日产品推进 / Product Progress</label><textarea id="pm-today" name="product_today" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">2️⃣ 协调与决策 / Coordination</label><textarea id="pm-coord" name="product_coordination" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">3️⃣ 明日计划 / Plan</label><textarea id="pm-tomorrow" name="product_tomorrow" class="form-textarea"></textarea></div>
+                    </div>
+
+                    <!-- UI -->
+                    <div id="role-ui" class="role-section">
+                        <div class="form-group"><label class="form-label">1️⃣ 今日设计完成 / Designs Completed</label><textarea id="ui-today" name="ui_today" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">2️⃣ 反馈与修改 / Feedback</label><textarea id="ui-feedback" name="ui_feedback" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">3️⃣ 明日计划 / Plan</label><textarea id="ui-tomorrow" name="ui_tomorrow" class="form-textarea"></textarea></div>
+                    </div>
+
+                    <!-- OPS -->
+                    <div id="role-ops" class="role-section">
+                        <div class="form-group"><label class="form-label">1️⃣ 今日运维工作 / Ops Tasks</label><textarea id="ops-today" name="ops_today" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">2️⃣ 监控与故障 / Monitoring</label><textarea id="ops-monitor" name="ops_monitoring" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">3️⃣ 明日计划 / Plan</label><textarea id="ops-tomorrow" name="ops_tomorrow" class="form-textarea"></textarea></div>
+                    </div>
+
+                    <!-- MGR -->
+                    <div id="role-mgr" class="role-section">
+                        <div class="form-group"><label class="form-label">1️⃣ 进度概览 / Progress Overview</label><textarea id="mgr-progress" name="mgr_progress" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">2️⃣ 风险与阻塞 / Risks</label><textarea id="mgr-risk" name="mgr_risks" class="form-textarea"></textarea></div>
+                        <div class="form-group"><label class="form-label">3️⃣ 推进重点 / Key Focus</label><textarea id="mgr-tomorrow" name="mgr_tomorrow" class="form-textarea"></textarea></div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="button-group">
+                        <button type="button" class="btn btn-ghost" id="btn-clear">重置 / Reset</button>
+                        <button type="button" class="btn btn-secondary" id="btn-sample">填入示例 / Sample</button>
+                        <button type="button" class="btn btn-primary" id="btn-generate">生成预览 / Generate</button>
+                    </div>
+                </div>
+
+                <!-- Submit Area -->
+                <div class="card" style="text-align: right;">
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="submit" name="submit_action" value="draft" class="btn btn-secondary">
+                            {% if editing %}更新草稿 / Update Draft{% else %}保存草稿 / Save Draft{% endif %}
+                        </button>
+                        <button type="submit" name="submit_action" value="submit" class="btn btn-primary">
+                            {% if editing %}更新并提交 / Update & Submit{% else %}提交日报 / Submit Report{% endif %}
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Preview -->
+            <div class="preview-column">
+                <div class="card preview-card">
+                    <div class="card-header">
+                        <h3 class="card-title">预览 / Preview</h3>
+                    </div>
+                    
+                    <div class="preview-area" id="preview">
+                        <div style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+                            <div>📋</div>
+                            <div style="margin-top: 8px;">未生成日报 / Not Generated</div>
+                            <div style="font-size: 12px; margin-top: 4px;">填写左侧表单后点击“生成预览”</div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-status">
+                        <div style="display: flex; align-items: center;">
+                            <span class="status-dot" id="status-dot" style="background: var(--text-muted);"></span>
+                            <span id="status-text">等待生成...</span>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-copy">
+                            复制 / Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+    <span id="toast-text">Success</span>
+</div>
+
+<!-- Initial Data -->
+{% if initial_values %}
+{{ initial_values|json_script:"initial-report-data" }}
+{% endif %}
+
+<!-- JavaScript Logic (Preserved & Adapted) -->
+<script>
+    // Initialize today's date
+    (function setToday() {
+        const input = document.getElementById('date');
+        if (input && !input.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            input.value = `${yyyy}-${mm}-${dd}`;
+        }
+    })();
+
+    // Global variables
+    const roleSelect = document.getElementById('role');
+    const projectFilterInput = document.getElementById('project-filter');
+    const projectTypeahead = document.getElementById('project-typeahead');
+    const projectOptions = document.getElementById('project-options');
+    const dateInput = document.getElementById('date');
+    const nameInput = document.getElementById('name');
+    const initialRoleValue = roleSelect ? roleSelect.value : '';
+    const initialDateValue = dateInput ? dateInput.value : '';
+    const initialNameValue = nameInput ? nameInput.value : '';
+    const templateHint = document.getElementById('template-hint');
+    const sampleBtn = document.getElementById('apply-sample');
+    let templateSample = '';
+    const templateApi = "{% url 'reports:role_template_api' %}";
+    const projectApi = "{% url 'projects:project_search_api' %}";
+    
+    // preload initial report content when editing
+    (function preloadReport() {
+        const dataEl = document.getElementById('initial-report-data');
+        if (!dataEl) return;
+        let data = {};
+        try { data = JSON.parse(dataEl.textContent); } catch (e) { data = {}; }
+        const fieldToId = {
+            today_work: 'dev-today',
+            progress_issues: 'dev-progress',
+            tomorrow_plan: 'dev-tomorrow',
+            testing_scope: 'qa-scope',
+            testing_progress: 'qa-progress',
+            bug_summary: 'qa-bugs',
+            testing_tomorrow: 'qa-tomorrow',
+            product_today: 'pm-today',
+            product_coordination: 'pm-coord',
+            product_tomorrow: 'pm-tomorrow',
+            ui_today: 'ui-today',
+            ui_feedback: 'ui-feedback',
+            ui_tomorrow: 'ui-tomorrow',
+            ops_today: 'ops-today',
+            ops_monitoring: 'ops-monitor',
+            ops_tomorrow: 'ops-tomorrow',
+            mgr_progress: 'mgr-progress',
+            mgr_risks: 'mgr-risk',
+            mgr_tomorrow: 'mgr-tomorrow'
+        };
+        Object.entries(fieldToId).forEach(([field, elId]) => {
+            if (data[field]) {
+                const el = document.getElementById(elId);
+                if (el) el.value = data[field];
+            }
+        });
+    })();
+    
+    // Role sections configuration
+    const roleSections = {
+        dev: document.getElementById('role-dev'),
+        qa: document.getElementById('role-qa'),
+        pm: document.getElementById('role-pm'),
+        ui: document.getElementById('role-ui'),
+        ops: document.getElementById('role-ops'),
+        mgr: document.getElementById('role-mgr'),
+    };
+    
+    const roleLabels = {
+        dev: '开发 / Developer',
+        qa: '测试 / QA Engineer',
+        pm: '产品 / Product Manager',
+        ui: '设计 / UI/UX Designer',
+        ops: '运维 / DevOps',
+        mgr: '管理 / Project Manager',
+    };
+    
+    const roleFields = {
+        dev: ['dev-today','dev-progress','dev-tomorrow'],
+        qa: ['qa-scope','qa-progress','qa-bugs','qa-tomorrow'],
+        pm: ['pm-today','pm-coord','pm-tomorrow'],
+        ui: ['ui-today','ui-feedback','ui-tomorrow'],
+        ops: ['ops-today','ops-monitor','ops-tomorrow'],
+        mgr: ['mgr-progress','mgr-risk','mgr-tomorrow'],
+    };
+    
+    // Preview elements
+    const preview = document.getElementById('preview');
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.getElementById('status-dot');
+    let previewContent = null; // Will be set after render
+    const STORAGE_KEY = "daily_report_draft_{{ request.user.username|escapejs }}";
+
+    // Helper functions
+    const getValue = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    };
+    
+    const formatDateCN = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const [y, m, d] = parts;
+            return `${y} 年 ${parseInt(m, 10)} 月 ${parseInt(d, 10)} 日`;
+        }
+        return dateStr;
+    };
+
+    // Role visibility management
+    function updateRoleVisibility() {
+        const value = roleSelect ? roleSelect.value : '';
+        Object.entries(roleSections).forEach(([key, el]) => {
+            if (!el) return;
+            if (key === value) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        });
+    }
+    
+    function applyPlaceholders(role, placeholders) {
+        const fields = roleFields[role] || [];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && placeholders[id]) {
+                el.placeholder = placeholders[id];
+            }
+        });
+    }
+    
+    async function loadRoleTemplate(role) {
+        if (!role) return;
+        try {
+            const res = await fetch(`${templateApi}?role=${encodeURIComponent(role)}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            applyPlaceholders(role, data.placeholders || {});
+            templateSample = data.sample_md || '';
+            if (sampleBtn) {
+                sampleBtn.disabled = !templateSample;
+                // sampleBtn.textContent = templateSample ? '套用示例 / Sample' : '无示例 / No sample';
+            }
+            if (templateHint) {
+                const updated = data.updated_at ? `（更新于 ${data.updated_at.substring(0,16).replace('T',' ')}）` : '';
+                templateHint.textContent = (data.hint || '使用默认提示 / Using default hints') + updated;
+            }
+        } catch (e) {
+            // ignore network errors
+        }
+    }
+    
+    // Role change handler
+    if (roleSelect) {
+        roleSelect.addEventListener('change', () => {
+            updateRoleVisibility();
+            loadRoleTemplate(roleSelect.value);
+        });
+        updateRoleVisibility();
+        loadRoleTemplate(roleSelect.value);
+    }
+
+    // Apply sample Markdown
+    if (sampleBtn) {
+        sampleBtn.addEventListener('click', () => {
+            if (!templateSample) {
+                showToast('暂无示例可用 / No sample available');
+                return;
+            }
+            const role = roleSelect ? roleSelect.value : 'dev';
+            const fields = roleFields[role] || [];
+            if (!fields.length) return;
+            fields.forEach((id, idx) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                // 仅在为空时填入，避免覆盖用户已写内容
+                if (!el.value.trim()) {
+                    el.value = idx == 0 ? templateSample : '';
+                }
+            });
+            showToast('已套用角色示例，可按需修改 / Sample applied');
+        });
+    }
+
+    // Toast notification
+    function showToast(text) {
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toast-text');
+        toastText.textContent = text;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+
+    // Project filtering
+    function filterProjects() {
+        const select = document.getElementById('projects');
+        const query = (projectFilterInput ? projectFilterInput.value : '').toLowerCase();
+        if (!select) return;
+        Array.from(select.options).forEach(opt => {
+            const text = opt.textContent.toLowerCase();
+            opt.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+    if (projectFilterInput) {
+        projectFilterInput.addEventListener('input', filterProjects);
+    }
+
+    // Project search
+    async function fetchProjects(q) {
+        if (!projectOptions) return;
+        projectOptions.innerHTML = '';
+        try {
+            const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
+            if (res.status === 429) return;
+            if (!res.ok) return;
+            const data = await res.json();
+            (data.results || []).forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = `${item.name}（${item.code}）`;
+                opt.dataset.id = item.id;
+                projectOptions.appendChild(opt);
+            });
+        } catch (e) {
+            // ignore network errors
+        }
+    }
+    
+    function addProjectFromTypeahead() {
+        if (!projectTypeahead) return;
+        const text = projectTypeahead.value;
+        const match = Array.from(projectOptions.options).find(o => o.value === text);
+        if (!match) return;
+        const projectId = match.dataset.id;
+        const select = document.getElementById('projects');
+        if (!select) return;
+        let opt = Array.from(select.options).find(o => o.value === projectId);
+        if (!opt) {
+            opt = document.createElement('option');
+            opt.value = projectId;
+            opt.textContent = text;
+            select.appendChild(opt);
+        }
+        opt.selected = true;
+        projectTypeahead.value = '';
+    }
+    if (projectTypeahead) {
+        let projDebounce;
+        projectTypeahead.addEventListener('input', (e) => {
+            const q = e.target.value;
+            clearTimeout(projDebounce);
+            if (q && q.length >= 1) {
+                projDebounce = setTimeout(() => fetchProjects(q), 500);
+            }
+        });
+        projectTypeahead.addEventListener('change', addProjectFromTypeahead);
+    }
+
+    // Form validation
+    function validateDailyForm(submitterValue) {
+        if (submitterValue === 'draft') return true; // 草稿不强制校验
+        const dateVal = dateInput ? dateInput.value : '';
+        const roleVal = roleSelect ? roleSelect.value : '';
+        if (!dateVal || !roleVal) {
+            showToast('⚠️ 请填写日期并选择角色 / Please fill date and select role');
+            return false;
+        }
+        const fields = roleFields[roleVal] || [];
+        const hasContent = fields.some(id => {
+            const el = document.getElementById(id);
+            return el && el.value.trim().length > 0;
+        });
+        if (!hasContent) {
+            showToast('⚠️ 请至少填写一个当前角色的内容字段 / Please fill at least one content field');
+            return false;
+        }
+        return true;
+    }
+
+    // Auto-save functionality
+    const formEl = document.querySelector('form');
+    
+    const saveDraft = () => {
+        if (!formEl) return;
+        const data = {};
+        formEl.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+            if (el.multiple) {
+                data[el.name] = Array.from(el.selectedOptions).map(o => o.value);
+            } else {
+                data[el.name] = el.value;
+            }
+        });
+        data._ts = Date.now();
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            // ignore storage errors
+        }
+    };
+    
+    const restoreDraft = () => {
+        if (!formEl) return;
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            formEl.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+                if (!(el.name in data)) return;
+                if (el.multiple) {
+                    const hasSelected = Array.from(el.options).some(o => o.selected);
+                    if (hasSelected) return;
+                    const target = data[el.name] || [];
+                    Array.from(el.options).forEach(o => { o.selected = target.includes(o.value); });
+                } else {
+                    if (el.value) return;
+                    el.value = data[el.name] || '';
+                }
+            });
+            updateRoleVisibility();
+        } catch (e) {
+            return;
+        }
+    };
+    
+    const debounce = (fn, delay = 400) => {
+        let t;
+        return (...args) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn(...args), delay);
+        };
+    };
+    
+    const debouncedSave = debounce(saveDraft, 400);
+    
+    if (formEl) {
+        restoreDraft();
+        formEl.addEventListener('input', debouncedSave);
+        formEl.addEventListener('change', debouncedSave);
+        formEl.addEventListener('submit', (e) => {
+            const submitValue = e.submitter ? e.submitter.value : '';
+            if (!validateDailyForm(submitValue)) {
+                e.preventDefault();
+                return;
+            }
+            localStorage.removeItem(STORAGE_KEY);
+        });
+    }
+
+    // Markdown to HTML converter
+    function markdownToHtml(text) {
+        const escape = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const lines = (text || '').split(/\n/);
+        let html = '';
+        let inList = false;
+        lines.forEach(raw => {
+            const line = raw.trimEnd();
+            if (/^\s*[-*]\s+/.test(line)) {
+                if (!inList) { html += '<ul>'; inList = true; }
+                html += `<li>${escape(line.replace(/^\s*[-*]\s+/, ''))}</li>`;
+                return;
+            }
+            if (inList) { html += '</ul>'; inList = false; }
+            if (/^#{1,3}\s+/.test(line)) {
+                const level = Math.min(line.match(/^#+/)[0].length, 3);
+                const tag = level === 1 ? 'h2' : level === 2 ? 'h3' : 'h4';
+                html += `<${tag}>${escape(line.replace(/^#{1,3}\s+/, ''))}</${tag}>`;
+            } else if (line === '') {
+                html += '<br>';
+            } else {
+                html += `<p>${escape(line)}</p>`;
+            }
+        });
+        if (inList) html += '</ul>';
+        return html || '<p>暂无内容 / No content</p>';
+    }
+
+    // Preview rendering
+    function renderPreview(text) {
+        if (!preview) return;
+        preview.innerHTML = '';
+        const content = document.createElement('div');
+        content.className = 'preview-content';
+        content.id = 'preview-content';
+        content.innerHTML = markdownToHtml(text);
+        preview.appendChild(content);
+        previewContent = content;
+    }
+
+    // Report generation
+    function generateReport() {
+        const projectSelect = document.getElementById('projects');
+        const name = (nameInput ? nameInput.value : '').trim();
+        const date = dateInput ? dateInput.value : '';
+        const role = roleSelect ? roleSelect.value : '';
+        const projectNames = Array.from(projectSelect ? projectSelect.selectedOptions : [])
+            .map(opt => opt.textContent.trim())
+            .filter(Boolean);
+        if (!name || !date || !role) {
+            showToast('⚠️ 请先填写姓名、日期和角色 / Please fill name, date and role');
+            return '';
+        }
+
+        const lines = [
+            `${name}，${formatDateCN(date)} 工作报告 / ${name}, ${date} Work Report`,
+            '',
+            '【基本信息 / Basic Information】',
+            `姓名 / Name：${name}`,
+            `日期 / Date：${date}`,
+            `角色 / Role：${roleLabels[role] || role}`,
+            `项目 / Project：${projectNames.length ? projectNames.join('，') : '未选择 / None'}`,
+            '',
+        ];
+        
+        const addSection = (title, value) => {
+            lines.push(title, value || '- （待填写 / To be filled）', '');
+        };
+
+        if (role === 'dev') {
+            addSection('一、今日完成工作（开发） / Work Completed Today (Dev)', getValue('dev-today'));
+            addSection('二、今日进展 & 问题 / Progress & Issues Today', getValue('dev-progress'));
+            addSection('三、明日工作计划 / Plan for Tomorrow', getValue('dev-tomorrow'));
+        } else if (role === 'qa') {
+            addSection('一、今日测试范围 / Today\'s Testing Scope', getValue('qa-scope'));
+            addSection('二、测试完成情况 / Testing Progress', getValue('qa-progress'));
+            addSection('三、Bug 统计 / Bug Summary', getValue('qa-bugs'));
+            addSection('四、明日测试计划 / Plan for Tomorrow', getValue('qa-tomorrow'));
+        } else if (role === 'pm') {
+            addSection('一、今日产品推进内容 / Product Progress Today', getValue('pm-today'));
+            addSection('二、今日协调 / 决策事项 / Coordination & Decisions', getValue('pm-coord'));
+            addSection('三、明日计划 / Plan for Tomorrow', getValue('pm-tomorrow'));
+        } else if (role === 'ui') {
+            addSection('一、今日完成设计 / Designs Completed Today', getValue('ui-today'));
+            addSection('二、反馈与修改 / Feedback & Revisions', getValue('ui-feedback'));
+            addSection('三、明日计划 / Plan for Tomorrow', getValue('ui-tomorrow'));
+        } else if (role === 'ops') {
+            addSection('一、今日运维工作 / Operations Tasks Today', getValue('ops-today'));
+            addSection('二、监控与故障情况 / Monitoring & Incidents', getValue('ops-monitor'));
+            addSection('三、明日计划 / Plan for Tomorrow', getValue('ops-tomorrow'));
+        } else if (role === 'mgr') {
+            addSection('一、今日项目进度概览 / Project Progress Overview', getValue('mgr-progress'));
+            addSection('二、风险与阻塞点 / Risks & Blockers', getValue('mgr-risk'));
+            addSection('三、明日推进重点 / Key Focus for Tomorrow', getValue('mgr-tomorrow'));
+        }
+
+        return lines.join('\n');
+    }
+
+    // Button handlers
+    const btnGenerate = document.getElementById('btn-generate');
+    if (btnGenerate) {
+        btnGenerate.addEventListener('click', () => {
+            const report = generateReport();
+            if (!report) return;
+            renderPreview(report);
+            if (statusText) statusText.textContent = '✅ 已生成日报，可复制 / Report generated';
+            if (statusDot) statusDot.style.background = 'var(--success)';
+        });
+    }
+
+    const btnCopy = document.getElementById('btn-copy');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', async () => {
+            const content = previewContent ? previewContent.textContent : null;
+            if (!content) {
+                showToast('⚠️ 当前没有可复制的日报内容 / No content to copy');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(content);
+                showToast('✅ 已复制到剪贴板 / Copied to clipboard');
+            } catch (e) {
+                showToast('⚠️ 复制失败 / Copy failed');
+            }
+        });
+    }
+
+    const btnClear = document.getElementById('btn-clear');
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            if (!confirm('⚠️ 确认重置表单内容？/ Confirm reset?')) return;
+            const idsToClear = [
+                'dev-today','dev-progress','dev-tomorrow',
+                'qa-scope','qa-progress','qa-bugs','qa-tomorrow',
+                'pm-today','pm-coord','pm-tomorrow',
+                'ui-today','ui-feedback','ui-tomorrow',
+                'ops-today','ops-monitor','ops-tomorrow',
+                'mgr-progress','mgr-risk','mgr-tomorrow'
+            ];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const projectSelect = document.getElementById('projects');
+            if (projectSelect) {
+                Array.from(projectSelect.options).forEach(o => o.selected = false);
+            }
+            if (roleSelect) {
+                roleSelect.value = initialRoleValue;
+                updateRoleVisibility();
+            }
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            showToast('✅ 表单已重置 / Form reset');
+        });
+    }
+
+    const btnSample = document.getElementById('btn-sample');
+    if (btnSample) {
+        btnSample.addEventListener('click', () => {
+            // (Preserving sample logic, simplified for brevity but functionally identical)
+            const role = roleSelect ? roleSelect.value : 'dev';
+            // ... [Original sample filling logic remains here] ...
+            // Since the logic is long, I am ensuring the structure is ready. 
+            // The original logic is just setting values based on role.
+            // I will re-inject the full sample logic to ensure functionality is identical.
+            
+            if (role === 'dev') {
+                document.getElementById('dev-today').value = '- 完成登录模块 Token 续期逻辑开发与自测 / Completed token renewal logic\n- 调整网关多企业路由配置 / Adjusted gateway routing';
+                document.getElementById('dev-progress').value = '- 网关灰度发布脚本仍在调试阶段 / Gateway canary script still debugging';
+                document.getElementById('dev-tomorrow').value = '- 完成网关发布脚本优化与联调 / Finish gateway script optimization';
+            } else if (role === 'qa') {
+                 document.getElementById('qa-scope').value = '新增功能用例 3 条 / Added 3 new test cases';
+                 document.getElementById('qa-progress').value = '测试进度 40% / Progress 40%';
+                 document.getElementById('qa-bugs').value = '待解决缺陷 20 条 / 20 open bugs';
+                 document.getElementById('qa-tomorrow').value = '覆盖率提升至 ≥70% / Increase coverage to ≥70%';
+            } else if (role === 'pm') {
+                document.getElementById('pm-today').value = '梳理版本需求优先级 / Prioritize version requirements';
+                document.getElementById('pm-coord').value = '与研发确认接口变更影响 / Confirm API changes with dev';
+                document.getElementById('pm-tomorrow').value = '完成告警策略需求验收 / Accept alert policy requirements';
+            } else if (role === 'ui') {
+                document.getElementById('ui-today').value = '完成告警中心高保真与切图 / Completed alert center Hi-Fi & assets';
+                document.getElementById('ui-feedback').value = '根据 PM 反馈调整交互 / Adjust interaction per PM feedback';
+                document.getElementById('ui-tomorrow').value = '输出移动端适配稿 / Output mobile adaptation drafts';
+            } else if (role === 'ops') {
+                document.getElementById('ops-today').value = '完成预发环境扩容 / Completed staging environment expansion';
+                document.getElementById('ops-monitor').value = '监控无严重告警 / No critical alerts';
+                document.getElementById('ops-tomorrow').value = '上线新告警策略 / Deploy new alert policy';
+            } else if (role === 'mgr') {
+                document.getElementById('mgr-progress').value = '本周整体进度 40% / Weekly progress 40%';
+                document.getElementById('mgr-risk').value = '延期缺陷 5 条 / 5 delayed bugs';
+                document.getElementById('mgr-tomorrow').value = '组织缺陷收敛专项 / Organize bug convergence task force';
+            }
+            
+            showToast('✅ 已填入示例 / Sample filled');
+        });
+    }
+
+    const tplBtn = document.getElementById('apply-template');
+    const tplAppendBtn = document.getElementById('apply-template-append');
+    const tplNameInput = document.getElementById('tpl-name');
+    const tplRecommend = document.getElementById('tpl-recommend');
+    
+    async function applyReportTemplate(mode = 'replace') {
+        const tplApi = "{% url 'reports:template_apply_api' %}";
+        const params = new URLSearchParams({type: 'report'});
+        const role = roleSelect ? roleSelect.value : '';
+        const projectSelect = document.getElementById('projects');
+        if (role) params.append('role', role);
+        if (tplNameInput && tplNameInput.value.trim()) params.append('name', tplNameInput.value.trim());
+        if (projectSelect) {
+            const selected = projectSelect.selectedOptions;
+            if (selected && selected.length) {
+                Array.from(selected).forEach(opt => params.append('project', opt.value));
+            }
+        }
+        try {
+            const res = await fetch(`${tplApi}?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok) {
+                showToast((data.error || '未找到模板 / Template not found') + ' · 请尝试其他条件 / Please try other criteria');
+                return;
+            }
+            const placeholders = data.placeholders || {};
+            Object.entries(placeholders).forEach(([key, val]) => {
+                const field = document.querySelector(`[name="${key}"]`);
+                if (field) {
+                    if (mode === 'append' && field.value) {
+                        field.value = field.value + "\n" + val;
+                    } else {
+                        field.value = val;
+                    }
+                }
+            });
+            showToast('✅ 模板已套用 / Template applied');
+        } catch (e) {
+            showToast('⚠️ 模板加载失败 / Failed to load template');
+        }
+    }
+    if (tplBtn) tplBtn.addEventListener('click', () => applyReportTemplate('replace'));
+    if (tplAppendBtn) tplAppendBtn.addEventListener('click', () => applyReportTemplate('append'));
+
+    async function loadTemplateRecommendations() {
+        if (!tplRecommend) return;
+        const recApi = "{% url 'reports:template_recommend_api' %}";
+        const params = new URLSearchParams({type: 'report'});
+        const role = roleSelect ? roleSelect.value : '';
+        const projectSelect = document.getElementById('projects');
+        if (role) params.append('role', role);
+        if (projectSelect) {
+            const selected = projectSelect.selectedOptions;
+            if (selected && selected.length) {
+                Array.from(selected).forEach(opt => params.append('project', opt.value));
+            }
+        }
+        try {
+            const res = await fetch(`${recApi}?${params.toString()}`);
+            const data = await res.json();
+            tplRecommend.innerHTML = '<option value=\"\">智能推荐 / Recommendations</option>';
+            (data.results || []).forEach(item => {
+                const label = `${item.name} · v${item.version}`;
+                const opt = document.createElement('option');
+                opt.value = item.name;
+                opt.textContent = label;
+                tplRecommend.appendChild(opt);
+            });
+        } catch (e) {
+            // ignore
+        }
+    }
+    if (tplRecommend) {
+        tplRecommend.addEventListener('change', (e) => {
+            if (tplNameInput) tplNameInput.value = e.target.value;
+        });
+        loadTemplateRecommendations();
+        if (roleSelect) roleSelect.addEventListener('change', loadTemplateRecommendations);
+        const projectSelect = document.getElementById('projects');
+        if (projectSelect) projectSelect.addEventListener('change', loadTemplateRecommendations);
+    }
+</script>
+{% endblock %}

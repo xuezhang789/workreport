@@ -1,0 +1,17 @@
+<div class="kanban-card" data-id="{{ task.id }}">
+    <div class="kanban-card-title">
+        <a href="{% url 'tasks:task_view' task.id %}" style="text-decoration:none; color:inherit;">
+            {{ task.title }}
+        </a>
+    </div>
+    <div class="kanban-card-meta">
+        <span class="kanban-card-project" title="{{ task.project.name }}">
+            {{ task.project.code }}
+        </span>
+        {% if task.due_at %}
+        <span class="kanban-card-due {% if task.is_overdue %}overdue{% endif %}">
+            📅 {{ task.due_at|date:"m-d" }}
+        </span>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,253 @@
+{% extends "base_topbar.html" %}
+{% load tz safe_md %}
+{% block title %}日报详情 / Daily Report Detail{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容 / View your report content" %}{% endblock %}
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+        margin-bottom: 24px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .info-value {
+        font-size: 15px;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    .content-section {
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .content-header {
+        background: #f1f5f9;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        color: var(--text-main);
+        font-size: 14px;
+    }
+
+    .content-body {
+        padding: 20px;
+        background: #fff;
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text-main);
+    }
+
+    .content-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-draft { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .status-submitted { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+    
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #1e40af;
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+
+    .empty-text {
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="form-card">
+        <div class="section-header">
+            <h2 class="section-title">
+                日报详情 / Report Detail
+                {% if report.status == 'draft' %}
+                    <span class="status-badge status-draft">草稿 / Draft</span>
+                {% else %}
+                    <span class="status-badge status-submitted">已提交 / Submitted</span>
+                {% endif %}
+            </h2>
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                创建时间 / Created at：{{ report.created_at|localtime|date:"Y-m-d H:i" }}
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">日期 / Date</span>
+                <span class="info-value">{{ report.date }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">作者 / Author</span>
+                <span class="info-value">{{ report.user.get_full_name|default:report.user.username }} @{{ report.user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">角色 / Role</span>
+                <span class="info-value">{{ report.get_role_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">项目 / Project</span>
+                <span class="info-value">{% if report.project_names %}{{ report.project_names }}{% else %}--{% endif %}</span>
+            </div>
+        </div>
+
+        {% if sections %}
+            {% for title, content in sections %}
+                <div class="content-section">
+                    <div class="content-header">{{ title }}</div>
+                    <div class="content-body">
+                        {% if content %}
+                            {{ content|safe_md }}
+                        {% else %}
+                            <span class="empty-text">（无内容 / No content）</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="content-section">
+                <div class="content-header">无内容结构 / No Structure</div>
+                <div class="content-body">
+                    <span class="empty-text">该角色模板未定义具体内容字段。 / No content fields defined for this role.</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="btn-toolbar">
+            <a class="btn btn-ghost" href="{% url 'reports:my_reports' %}">返回列表 / Back</a>
+            
+            {% if can_submit %}
+                <form method="post" action="{% url 'reports:report_submit' report.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary">提交草稿 / Submit Draft</button>
+                </form>
+            {% endif %}
+
+            {% if report.status == 'draft' or user.is_staff %}
+                <a class="btn btn-primary" href="{% url 'reports:report_edit' report.pk %}">编辑日报 / Edit Report</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
