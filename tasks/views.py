@@ -41,6 +41,7 @@ from tasks.services.sla import (
     _ensure_sla_timer,
     _get_sla_timer_readonly
 )
+from tasks.services.export import TaskExportService
 from reports.utils import get_accessible_projects, can_manage_project, get_manageable_projects
 from reports.signals import _invalidate_stats_cache
 
@@ -444,26 +445,25 @@ def admin_task_export(request):
 
     total_count = len(tasks) if isinstance(tasks, list) else tasks.count()
     if total_count > MAX_EXPORT_ROWS:
-        return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
+        if request.GET.get('queue') != '1':
+            return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters. 如需排队导出，请带 queue=1 参数 / Use queue=1 to enqueue export.", status=400)
+        
+        job = _create_export_job(request.user, 'admin_tasks')
+        try:
+            path = _generate_export_file(
+                job,
+                TaskExportService.get_header(),
+                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+            )
+            return JsonResponse({'queued': True, 'job_id': job.id})
+        except Exception as e:
+            job.status = 'failed'
+            job.message = str(e)
+            job.save(update_fields=['status', 'message', 'updated_at'])
+            return JsonResponse({'error': 'export failed'}, status=500)
 
-    rows = (
-        [
-            str(t.id),
-            t.title,
-            t.project.name,
-            t.user.get_full_name() or t.user.username,
-            ", ".join([u.get_full_name() or u.username for u in t.collaborators.all()]),
-            t.get_status_display(),
-            t.get_priority_display(),
-            t.due_at.strftime('%Y-%m-%d %H:%M:%S') if t.due_at else '',
-            t.completed_at.strftime('%Y-%m-%d %H:%M:%S') if t.completed_at else '',
-            t.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            t.url or '',
-            t.content or '',
-        ]
-        for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
-    )
-    header = ["ID", "标题", "项目", "负责人", "协作人", "状态", "优先级", "截止时间", "完成时间", "创建时间", "URL", "内容"]
+    rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+    header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename=\"tasks_admin.csv\"'
     log_action(request, 'export', f"tasks_admin count={total_count} q={q}")
@@ -1530,24 +1530,8 @@ def task_export(request):
         try:
             path = _generate_export_file(
                 job,
-                ["ID", "标题", "项目", "负责人", "协作人", "状态", "优先级", "截止时间", "完成时间", "创建时间", "URL", "内容"],
-                (
-                    [
-                        str(t.id),
-                        t.title,
-                        t.project.name,
-                        t.user.get_full_name() or t.user.username,
-                        ", ".join([u.get_full_name() or u.username for u in t.collaborators.all()]),
-                        t.get_status_display(),
-                        t.get_priority_display(),
-                        t.due_at.strftime('%Y-%m-%d %H:%M:%S') if t.due_at else '',
-                        t.completed_at.strftime('%Y-%m-%d %H:%M:%S') if t.completed_at else '',
-                        t.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                        t.url or '',
-                        t.content or '',
-                    ]
-                    for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
-                )
+                TaskExportService.get_header(),
+                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
             )
             return JsonResponse({'queued': True, 'job_id': job.id})
         except Exception as e:
@@ -1556,24 +1540,8 @@ def task_export(request):
             job.save(update_fields=['status', 'message', 'updated_at'])
             return JsonResponse({'error': 'export failed'}, status=500)
 
-    rows = (
-        [
-            str(t.id),
-            t.title,
-            t.project.name,
-            t.user.get_full_name() or t.user.username,
-            ", ".join([u.get_full_name() or u.username for u in t.collaborators.all()]),
-            t.get_status_display(),
-            t.get_priority_display(),
-            t.due_at.strftime('%Y-%m-%d %H:%M:%S') if t.due_at else '',
-            t.completed_at.strftime('%Y-%m-%d %H:%M:%S') if t.completed_at else '',
-            t.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            t.url or '',
-            t.content or '',
-        ]
-        for t in (tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
-    )
-    header = ["ID", "标题", "项目", "负责人", "协作人", "状态", "优先级", "截止时间", "完成时间", "创建时间", "URL", "内容"]
+    rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+    header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename=\"tasks.csv\"'
     log_action(request, 'export', f"tasks count={total_count} q={q}")
@@ -1590,24 +1558,8 @@ def task_export_selected(request):
     # _mark_overdue_tasks(tasks) - Deprecated logic
     if not tasks.exists():
         return HttpResponse("请选择任务后导出", status=400)
-    rows = (
-        [
-            str(t.id),
-            t.title,
-            t.project.name,
-            t.user.get_full_name() or t.user.username,
-            ", ".join([u.get_full_name() or u.username for u in t.collaborators.all()]),
-            t.get_status_display(),
-            t.get_priority_display(),
-            t.due_at.strftime('%Y-%m-%d %H:%M:%S') if t.due_at else '',
-            t.completed_at.strftime('%Y-%m-%d %H:%M:%S') if t.completed_at else '',
-            t.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            t.url or '',
-            t.content or '',
-        ]
-        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE)
-    )
-    header = ["ID", "标题", "项目", "负责人", "协作人", "状态", "优先级", "截止时间", "完成时间", "创建时间", "URL", "内容"]
+    rows = TaskExportService.get_export_rows(tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+    header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename=\"tasks_selected.csv\"'
     log_action(request, 'export', f"tasks_selected count={tasks.count()}")
