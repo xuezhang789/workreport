@@ -605,11 +605,12 @@
         </div>
 
         {% if tasks %}
-            <div class="table-container">
-                <table class="table">
+            <!-- Task List Table -->
+            <div class="table-container" style="border: none;">
+                <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>任务标题 / Task Title</th>
+                            <th style="width: 40%;">任务标题 / Task Title</th>
                             <th>优先级 / Priority</th>
                             <th>负责人 / Assignee</th>
                             <th>截止日期 / Due Date</th>
@@ -621,51 +622,59 @@
                         {% for task in tasks %}
                             <tr>
                                 <td>
-                                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                                        <a href="{% url 'tasks:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
-                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接 / External Link</a>{% endif %}
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        <a href="{% url 'tasks:task_view' task.pk %}" style="color: var(--text-main); font-weight: 600; text-decoration: none; font-size: 14px;">{{ task.title }}</a>
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            <span style="font-family: monospace; font-size: 11px; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; color: var(--text-secondary);">#{{ task.id }}</span>
+                                            {% if task.category == 'BUG' %}
+                                                <span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-weight: 700;">BUG</span>
+                                            {% endif %}
+                                            {% if task.url %}
+                                                <a href="{{ task.url }}" target="_blank" style="font-size: 11px; color: var(--primary); display: flex; align-items: center; gap: 2px;">
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                                    External
+                                                </a>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </td>
                                 <td>
                                     {% if task.priority == 'high' %}
-                                        <span style="color: #ef4444; background: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                                        <span class="status-badge" style="background: #fee2e2; color: #ef4444;">High</span>
                                     {% elif task.priority == 'medium' %}
-                                        <span style="color: #f97316; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
-                                    {% elif task.priority == 'low' %}
-                                        <span style="color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">{{ task.get_priority_display }}</span>
+                                        <span class="status-badge" style="background: #ffedd5; color: #f97316;">Medium</span>
+                                    {% else %}
+                                        <span class="status-badge" style="background: #dcfce7; color: #16a34a;">Low</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if task.user %}
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
-                                            <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username }}</span>
-                                        </div>
-                                    {% else %}
-                                        <span style="color: var(--text-secondary);">--</span>
-                                    {% endif %}
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
+                                        <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username|default:"--" }}</span>
+                                    </div>
                                 </td>
                                 <td>
                                     {% if task.due_at %}
-                                        <span {% if task.sla_info.is_overdue and task.status != 'completed' %}style="color: #ef4444; font-weight: 600;"{% endif %}>
+                                        <span style="font-size: 13px; {% if task.sla_info.is_overdue and task.status != 'done' and task.status != 'closed' %}color: #ef4444; font-weight: 600;{% else %}color: var(--text-secondary);{% endif %}">
                                             {{ task.due_at|date:"Y-m-d" }}
                                         </span>
-                                    {% else %}--{% endif %}
+                                    {% else %}
+                                        <span style="font-size: 13px; color: var(--text-muted);">--</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <span class="status-badge 
-                                {% if task.status == 'done' %}badge-completed
-                                {% elif task.status == 'closed' %}badge-default
-                                {% elif task.status == 'in_progress' %}badge-active
-                                {% elif task.status == 'todo' %}badge-default
-                                {% elif task.status == 'blocked' %}badge-overdue
-                                {% elif task.status == 'in_review' %}badge-active
-                                {% else %}badge-default{% endif %}">
-                                {{ task.get_status_display }}
-                            </span>
+                                        {% if task.status == 'done' %}badge-completed
+                                        {% elif task.status == 'closed' %}badge-default
+                                        {% elif task.status == 'in_progress' %}badge-active
+                                        {% elif task.status == 'blocked' %}badge-overdue
+                                        {% elif task.status == 'in_review' %}badge-active
+                                        {% else %}badge-default{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </span>
                                 </td>
                                 <td style="text-align: right;">
-                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
+                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost btn-sm">查看 / View</a>
                                 </td>
                             </tr>
                         {% endfor %}

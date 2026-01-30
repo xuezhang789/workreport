@@ -287,6 +287,9 @@
         z-index: 10;
         background: rgba(255,255,255,0.8);
         border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .badge-group {
@@ -551,10 +554,16 @@
             </div>
 
             <div class="filter-row-bottom">
-                <label class="chip" style="cursor: pointer;">
-                    <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %} onchange="this.form.submit()" style="accent-color: var(--primary);">
-                    <span style="margin-left: 6px; font-weight: 600;">🔥 仅显示紧急任务 / Urgent Only</span>
-                </label>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <label class="chip" style="cursor: pointer;">
+                        <input type="checkbox" name="hot" value="1" {% if hot %}checked{% endif %} onchange="this.form.submit()" style="accent-color: var(--primary);">
+                        <span style="margin-left: 6px; font-weight: 600;">🔥 仅显示紧急任务 / Urgent Only</span>
+                    </label>
+                    <label class="chip" style="cursor: pointer;">
+                        <input type="checkbox" id="selectAllCheckbox" style="accent-color: var(--primary);">
+                        <span style="margin-left: 6px;">全选本页 / Select All</span>
+                    </label>
+                </div>
                 
                 <div class="filter-actions">
                     <a href="{% url 'tasks:task_list' %}" class="btn btn-ghost" onclick="showLoading()">清除筛选 / Clear Filters</a>
@@ -608,7 +617,7 @@
                         </h3>
 
                         <p class="task-content">
-                            {{ task.content|striptags|default:"无详细内容 / No details" }}
+                            {{ task.content|striptags|truncatechars:100|default:"无详细内容 / No details" }}
                         </p>
 
                         <div class="card-meta-grid">
@@ -626,19 +635,14 @@
                     </div>
 
                     <div class="card-footer">
-                        <div class="avatar-circle" title="负责人: {{ task.user.get_full_name|default:task.user.username }} @{{ task.user.username }}">
-                            {{ task.user.username|slice:":1"|upper }}
-                        </div>
+                        {% include "partials/user_avatar.html" with user=task.user size="32px" %}
 
                         <div style="display: flex; gap: 8px;">
                             {% if task.status != 'done' and task.status != 'closed' %}
-                            <form action="{% url 'tasks:task_complete' task.id %}?next={{ request.get_full_path|urlencode }}" method="post" style="display: flex;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-secondary" onclick="showLoading()">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    完成 / Complete
-                                </button>
-                            </form>
+                            <button type="submit" name="action" value="complete" formaction="{% url 'tasks:task_complete' task.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-secondary" onclick="showLoading()">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                完成 / Complete
+                            </button>
                             {% endif %}
                             <a href="{% url 'tasks:task_view' task.id %}" class="btn btn-sm btn-ghost">详情 / Details</a>
                         </div>
@@ -773,7 +777,6 @@
             grid.style.display = 'none';
             kanban.classList.add('active');
             distributeToKanban();
-            // Optional: Hide pagination in Kanban if it looks weird, but better keep it for "Page X" context
             if (pagination) pagination.style.display = 'flex'; 
         } else {
             kanban.classList.remove('active');
@@ -811,28 +814,17 @@
             const status = task.dataset.status;
             const targetCol = colMap[status] || colMap['todo']; // Fallback
             
-            // Clone the card to avoid messing up the Grid Form (checkboxes need unique IDs? No, form submission works by value)
-            // Actually, if we clone, we duplicate inputs. 
-            // Better to MOVE elements.
-            // But if we move, switching back is hard.
-            // Let's CLONE and disable inputs in the hidden Grid? 
-            // OR just Move. Moving is cleaner for DOM.
-            // But we need to remember original order.
-            
-            // Simplified: Just clone for display. Kanban actions (drag/drop) not fully implemented in this iteration.
-            // User requested "View Switching".
-            // If I move, I break the grid order.
-            // Let's Clone, but remove "name" attributes from clones to avoid double submission?
-            // Or better: Just Move.
-            
+            // Clone the card for Kanban display
             const clone = task.cloneNode(true);
-            // Fix clone ID to avoid duplicates?
             clone.id = 'kanban-' + task.id;
             
-            // Remove checkbox from Kanban card (Keep it read-only or handle sync?)
-            // For now, let's remove checkbox to simplify. Bulk actions in Grid/List only.
+            // Remove checkbox from Kanban card (Keep it read-only)
             const cb = clone.querySelector('.task-checkbox-container');
             if(cb) cb.remove();
+            
+            // Update Card Footer for Kanban (simplify)
+            const footer = clone.querySelector('.card-footer');
+            if(footer) footer.style.padding = '8px 12px';
             
             targetCol.appendChild(clone);
             
@@ -858,6 +850,7 @@
 
         // Bulk Selection
         const checkboxes = document.querySelectorAll('.task-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
         const toolbar = document.getElementById('bulkToolbar');
         const countSpan = document.getElementById('selectedCount');
 
@@ -877,9 +870,24 @@
                 document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
             }
         }
+        
+        // Select All Logic
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                checkboxes.forEach(cb => cb.checked = isChecked);
+                updateToolbar();
+            });
+        }
 
         checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateToolbar);
+            cb.addEventListener('change', function() {
+                updateToolbar();
+                // Update Select All state
+                if (!this.checked) {
+                    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                }
+            });
         });
 
         window.submitBulk = function(action) {

@@ -2,12 +2,20 @@ from django.db.models.signals import pre_save, post_save, post_delete, m2m_chang
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from reports.models import Project, Task, DailyReport, AuditLog, TaskComment
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from projects.models import Project, ProjectPhaseConfig, ProjectPhaseChangeLog
+from tasks.models import Task, TaskComment
+from work_logs.models import DailyReport
+from audit.models import AuditLog
+from core.models import UserRole
 from reports.middleware import get_current_user, get_current_ip
 from reports.services.audit_service import AuditService
 from reports.services.notification_service import send_notification
+from core.services.notification_template import NotificationContent, NotificationItem, NotificationAction
 
-TRACKED_MODELS = [DailyReport, User]
+TRACKED_MODELS = [DailyReport, User, Project, Task]
 
 def _invalidate_stats_cache(sender=None, **kwargs):
     """
@@ -29,6 +37,7 @@ def audit_pre_save(sender, instance, **kwargs):
         try:
             old_instance = sender.objects.get(pk=instance.pk)
             instance._audit_diff = AuditService._calculate_diff(old_instance, instance)
+            instance._old_instance = old_instance # Keep reference for post_save logic
         except sender.DoesNotExist:
             instance._audit_diff = None
     else:
@@ -163,25 +172,146 @@ def notify_project_change(sender, instance, created, **kwargs):
     if hasattr(instance, '_audit_diff') and instance._audit_diff:
         diff = instance._audit_diff
         
-        # Phase Change Notification
-        if 'phase' in diff:
-            new_phase = diff['phase']['new']
-            # Notify all managers and members
-            recipients = set(instance.managers.all()) | set(instance.members.all())
-            if instance.owner:
-                recipients.add(instance.owner)
-                
-            for user in recipients:
-                if user != current_operator:
-                    phase_name = instance.current_phase.phase_name if instance.current_phase else "Unknown"
-                    send_notification(
-                        user=user,
-                        title="项目阶段变更 / Project Phase Changed",
-                        message=f"项目 {instance.name} 进入新阶段：{phase_name}",
-                        notification_type='project_update',
-                        priority='high',
-                        data={'project_id': instance.id, 'phase': new_phase}
-                    )
+        # Track Phase & Progress fields
+        monitored_fields = ['current_phase', 'overall_progress', 'start_date', 'end_date', 'progress_note']
+        if not any(field in diff for field in monitored_fields):
+            return
+
+        # Prepare Log Data
+        old_phase = None
+        new_phase = None
+        old_progress = 0
+        new_progress = 0
+        
+        # Handle Phase
+        if 'current_phase' in diff:
+            new_phase = instance.current_phase
+            if hasattr(instance, '_old_instance'):
+                old_phase = instance._old_instance.current_phase
+        else:
+            new_phase = instance.current_phase
+            old_phase = instance.current_phase
+
+        # Handle Progress
+        if 'overall_progress' in diff:
+            old_progress = diff['overall_progress']['old'] or 0
+            new_progress = diff['overall_progress']['new'] or 0
+        else:
+            new_progress = instance.overall_progress
+            old_progress = instance.overall_progress # Assume no change
+
+        # Create Change Log
+        details = {}
+        for field in monitored_fields:
+            if field in diff:
+                # Store string representation for dates/notes
+                details[field] = {
+                    'old': str(diff[field]['old']) if diff[field]['old'] is not None else None,
+                    'new': str(diff[field]['new']) if diff[field]['new'] is not None else None
+                }
+
+        ProjectPhaseChangeLog.objects.create(
+            project=instance,
+            old_phase=old_phase,
+            new_phase=new_phase,
+            old_progress=old_progress,
+            new_progress=new_progress,
+            details=details,
+            changed_by=current_operator
+        )
+
+        # Identify Recipients
+        recipients = set()
+        
+        # 1. Project Managers (Owner + Managers)
+        if instance.owner:
+            recipients.add(instance.owner)
+        recipients.update(instance.managers.all())
+        
+        # 2. Phase Responsible Person (Dynamic Role)
+        if new_phase and new_phase.related_role:
+            # Find users with this role in this project scope
+            scope = f"project:{instance.id}"
+            role_users = UserRole.objects.filter(
+                role=new_phase.related_role,
+                scope__in=[scope, None] # Project scope or Global
+            ).values_list('user_id', flat=True)
+            
+            if role_users:
+                recipients.update(User.objects.filter(id__in=role_users))
+
+        # Remove operator from recipients
+        if current_operator in recipients:
+            recipients.remove(current_operator)
+            
+        if not recipients:
+            return
+
+        # Build Unified Notification Content
+        content = NotificationContent(
+            title=f"项目进度更新 / Project Progress Updated",
+            subtitle=instance.name,
+            body=f"项目 {instance.name} 发生重要变更，请查阅以下详情。",
+            actions=[
+                NotificationAction(label="查看详情 / View Details", url=f"/projects/{instance.id}/")
+            ],
+            meta={
+                'project_id': instance.id,
+                'diff': details,
+                'timestamp': timezone.now().isoformat()
+            }
+        )
+
+        if 'current_phase' in diff:
+            p_name = new_phase.phase_name if new_phase else "None"
+            old_p_name = old_phase.phase_name if old_phase else "None"
+            content.items.append(NotificationItem(
+                label="阶段 / Phase",
+                value=p_name,
+                old_value=old_p_name,
+                highlight=True
+            ))
+            
+        if 'overall_progress' in diff:
+            content.items.append(NotificationItem(
+                label="进度 / Progress",
+                value=f"{new_progress}%",
+                old_value=f"{old_progress}%",
+                highlight=True
+            ))
+            
+        if 'start_date' in diff:
+            content.items.append(NotificationItem(
+                label="开始日期 / Start Date",
+                value=str(diff['start_date']['new']),
+                old_value=str(diff['start_date']['old'])
+            ))
+            
+        if 'end_date' in diff:
+            content.items.append(NotificationItem(
+                label="结束日期 / End Date",
+                value=str(diff['end_date']['new']),
+                old_value=str(diff['end_date']['old'])
+            ))
+
+        if 'progress_note' in diff:
+             content.items.append(NotificationItem(
+                label="备注 / Note",
+                value="已更新 / Updated",
+                old_value=None
+            ))
+
+        # Send Notifications
+        for user in recipients:
+            send_notification(
+                user=user,
+                title=f"{content.title}: {instance.name}",
+                message=content.body,
+                notification_type='project_update',
+                priority='high',
+                data={'project_id': instance.id, 'diff': details},
+                content=content
+            )
 @receiver(post_save, sender=TaskComment)
 def notify_comment_mention(sender, instance, created, **kwargs):
     """

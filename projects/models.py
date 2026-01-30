@@ -1,11 +1,12 @@
 from datetime import time
 from django.db import models
 from django.contrib.auth.models import User
-from core.models import Profile
+from core.models import Profile, Role
 
 class ProjectPhaseConfig(models.Model):
     phase_name = models.CharField(max_length=50, verbose_name="阶段名称")
     progress_percentage = models.PositiveIntegerField(help_text="0-100", verbose_name="进度百分比")
+    related_role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, help_text="该阶段的主要负责人角色（如开发、测试）", verbose_name="关联角色")
     order_index = models.PositiveIntegerField(default=0, verbose_name="排序索引")
     is_active = models.BooleanField(default=True, verbose_name="是否启用")
 
@@ -33,6 +34,7 @@ class Project(models.Model):
     # New fields for Phase Management
     current_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects', verbose_name="当前阶段")
     overall_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="总体进度(%)")
+    progress_note = models.TextField(blank=True, verbose_name="进度备注")
     
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
@@ -53,6 +55,9 @@ class ProjectPhaseChangeLog(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='phase_logs', verbose_name="项目")
     old_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='log_as_old', verbose_name="原阶段")
     new_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='log_as_new', verbose_name="新阶段")
+    old_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="原进度")
+    new_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="新进度")
+    details = models.JSONField(default=dict, blank=True, verbose_name="变更详情") # Stores start_date, end_date, note diffs
     changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects_phase_logs', verbose_name="变更人")
     changed_at = models.DateTimeField(auto_now_add=True, verbose_name="变更时间")
 
