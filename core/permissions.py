@@ -1,6 +1,4 @@
-from core.models import Profile
-
-MANAGER_ROLES = {'mgr', 'pm'}
+from core.services.rbac import RBACService
 
 def has_manage_permission(user):
     """
@@ -10,23 +8,16 @@ def has_manage_permission(user):
         return False
     if user.is_staff:
         return True
-    try:
-        return user.profile.position in MANAGER_ROLES
-    except Profile.DoesNotExist:
-        return False
+    
+    # Check for global 'project.manage' permission
+    return RBACService.has_permission(user, 'project.manage', scope=None)
 
 def has_project_manage_permission(user, project):
     """
     Check if user can manage a specific project.
     """
-    if has_manage_permission(user):
-        return True
-    if project.owner_id == user.id:
-        return True
-    # Optimization: Use prefetch cache if available to avoid N+1 queries
-    if hasattr(project, '_prefetched_objects_cache') and 'managers' in project._prefetched_objects_cache:
-        return any(m.id == user.id for m in project.managers.all())
-    return project.managers.filter(id=user.id).exists()
+    scope = f"project:{project.id}"
+    return RBACService.has_permission(user, 'project.manage', scope=scope)
 
 class ProjectAccessMixin:
     """
@@ -36,9 +27,7 @@ class ProjectAccessMixin:
         qs = super().get_queryset()
         if self.request.user.is_superuser:
             return qs
-        # Need to import here to avoid circular dependency if possible, 
-        # or rely on logic that doesn't import reports.utils
-        # For now, let's keep it abstract or use helper
+        
         from reports.utils import get_accessible_projects
         accessible = get_accessible_projects(self.request.user)
         return qs.filter(project__in=accessible)

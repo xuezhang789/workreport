@@ -1,7 +1,9 @@
-from datetime import time, timedelta
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
+
+# --- Existing Models ---
 
 class Profile(models.Model):
     ROLE_CHOICES = [
@@ -123,6 +125,10 @@ class Notification(models.Model):
 
 
 class PermissionMatrix(models.Model):
+    """
+    Deprecated: Replaced by RBAC system (Role, Permission, RolePermission).
+    Kept for migration reference.
+    """
     ROLE_CHOICES = Profile.ROLE_CHOICES
     PERMISSION_CHOICES = [
         ('view_project', '查看项目'),
@@ -148,3 +154,76 @@ class PermissionMatrix(models.Model):
 
     def __str__(self):
         return f"{self.get_role_display()} - {self.get_permission_display()}"
+
+
+# --- New RBAC Models ---
+
+class Permission(models.Model):
+    """RBAC 权限原子定义"""
+    code = models.CharField(max_length=100, unique=True, verbose_name="权限代码", help_text="e.g., project.view")
+    name = models.CharField(max_length=100, verbose_name="权限名称")
+    group = models.CharField(max_length=50, blank=True, verbose_name="权限分组", help_text="e.g., project, task")
+    description = models.CharField(max_length=255, blank=True, verbose_name="描述")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "RBAC权限"
+        verbose_name_plural = "RBAC权限"
+        ordering = ['group', 'code']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class Role(models.Model):
+    """RBAC 角色定义，支持继承"""
+    code = models.CharField(max_length=100, unique=True, verbose_name="角色代码", help_text="e.g., project_manager")
+    name = models.CharField(max_length=100, verbose_name="角色名称")
+    description = models.TextField(blank=True, verbose_name="描述")
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='children', verbose_name="父角色")
+    permissions = models.ManyToManyField(Permission, through='RolePermission', related_name='roles', verbose_name="权限集合")
+    is_system = models.BooleanField(default=False, verbose_name="系统角色", help_text="系统角色不可删除")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "RBAC角色"
+        verbose_name_plural = "RBAC角色"
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class RolePermission(models.Model):
+    """角色与权限的关联表"""
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+    permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('role', 'permission')
+        verbose_name = "RBAC角色权限关联"
+        verbose_name_plural = "RBAC角色权限关联"
+
+
+class UserRole(models.Model):
+    """用户与角色的关联，支持资源范围（Scope）"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rbac_roles', verbose_name="用户")
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='users', verbose_name="角色")
+    # scope definition: 'global' (None) or 'project:1', 'task:100', etc.
+    scope = models.CharField(max_length=100, null=True, blank=True, verbose_name="资源范围", help_text="格式: resource_type:id，为空表示全局")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # A user can have the same role in different scopes, or different roles in the same scope.
+        unique_together = ('user', 'role', 'scope')
+        indexes = [
+            models.Index(fields=['user', 'scope']),  # Fast lookup for "what roles does user have in this scope?"
+            models.Index(fields=['scope']),          # "Who has roles in this scope?"
+        ]
+        verbose_name = "RBAC用户角色"
+        verbose_name_plural = "RBAC用户角色"
+
+    def __str__(self):
+        scope_str = self.scope if self.scope else "Global"
+        return f"{self.user.username} - {self.role.name} [{scope_str}]"
