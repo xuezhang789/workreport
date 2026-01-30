@@ -374,7 +374,7 @@
                         {% endif %}
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }}</h3>
+                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }} @{{ user.username }}</h3>
                         <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</div>
                         <div class="badge-container">
                             <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ user.profile.get_position_display|default:'-' }}">角色 / Role: {{ user.profile.get_position_display|default:"-" }}</span>

@@ -15,43 +15,40 @@
 
 *   **[已修复] 任务列表 SLA 计算中的 N+1 查询**
     *   **位置**: `tasks/services/sla.py` -> `_get_sla_timer_readonly`
-    *   **问题**: 函数尝试通过 `hasattr(task, 'slatimer')` 访问反向关联对象，但模型定义的 `related_name` 为 `sla_timer`。由于属性名错误，检查始终失败，导致代码回退到 `TaskSlaTimer.objects.filter(task=task).first()`，在任务列表中触发 N+1 查询，抵消了视图层 `select_related` 的优化效果。
+    *   **问题**: 模型定义的 `related_name` 为 `sla_timer`，但代码中使用了错误的属性名 `slatimer`，导致 `hasattr` 检查失败，从而触发额外的数据库查询。
     *   **修复**: 修正属性名为 `sla_timer`，确保能正确命中 `select_related` 缓存。
 
-*   **[良好] 视图层查询优化**
-    *   审查发现 `tasks` 和 `projects` 的主要列表视图均已正确使用 `select_related` 和 `prefetch_related`，有效避免了常见的 N+1 问题。
+*   **[已修复] 项目列表权限校验中的 N+1 查询**
+    *   **位置**: `reports/utils.py` -> `can_manage_project`
+    *   **问题**: 在项目列表视图中，虽然预取了 `managers` 字段，但 `can_manage_project` 函数使用了 `project.managers.filter(...)`，这会忽略预取缓存并强制查询数据库。
+    *   **修复**: 优化了函数逻辑，检测到 `managers` 已预取时，直接在内存中检查用户是否在经理列表中，避免了循环中的数据库查询。
 
-### 2.2 安全与配置 (Security & Configuration)
+### 2.2 用户界面与体验 (UI/UX)
+*   **[已优化] 项目卡片交互体验**
+    *   **位置**: `templates/reports/project_list.html`
+    *   **问题**: 原项目卡片使用 `onclick` JavaScript 跳转，导致无法使用“在新标签页打开” (Cmd+Click) 等浏览器原生功能，且对辅助功能支持不佳。
+    *   **修复**: 移除了 `onclick` 事件，改用全覆盖的绝对定位 `<a>` 标签 (Overlay Link) 实现卡片点击，同时保留了底部按钮的独立交互性，提升了可访问性和用户体验。
+
+### 2.3 安全与配置 (Security & Configuration)
 *   **[高风险] 调试模式默认开启**
     *   **位置**: `settings.py`
-    *   **问题**: `DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'`。默认值为 `True`，在生产环境如果未正确配置环境变量，可能导致敏感信息泄露。
-    *   **建议**: 生产环境部署时必须显式设置 `DJANGO_DEBUG=False`。
-
-*   **[低风险] 弱随机数生成器**
-    *   **位置**: `core/views.py` -> `send_email_code_api`
-    *   **问题**: 使用 `random.randint` 生成 6 位验证码。虽然对于验证码场景风险可控，但建议在涉及安全凭证的场景使用 `secrets` 模块。
+    *   **问题**: `DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'`。默认值为 `True`，建议生产环境必须显式关闭。
 
 *   **[机制] CSV 注入防护**
-    *   **位置**: `core/utils.py` -> `_sanitize_csv_cell`
-    *   **评价**: 项目已包含针对 CSV 注入（Formula Injection）的防护逻辑，对以 `=`, `+`, `-`, `@` 开头的单元格进行了转义处理，安全性良好。
-
-### 2.3 代码逻辑 (Logic)
-*   **SLA 逻辑**: 任务的 SLA 计算逻辑包含“暂停”机制，这在实现上增加了复杂度，但当前代码逻辑闭环，能够正确处理 `BLOCKED` 状态下的计时暂停。
-*   **导出逻辑**: 导出功能使用了流式响应 (`StreamingHttpResponse`) 和异步任务 (`ExportJob`)，设计非常优秀，能有效处理大数据量导出而不阻塞服务器。
+    *   **位置**: `core/utils.py`
+    *   **评价**: 项目已包含针对 CSV 注入的字符转义逻辑，安全性良好。
 
 ## 3. 改进建议与技术规划
 
 ### 3.1 功能增强
 1.  **异步任务队列化**: 
-    *   目前邮件发送 (`send_mail`) 在部分视图中是同步执行的。建议全面引入 Celery 或 Django-Q，将邮件发送、大文件处理等任务异步化，提升接口响应速度。
+    *   目前邮件发送 (`send_mail`) 在部分视图中是同步执行的。建议全面引入 Celery 或 Django-Q，将邮件发送、大文件处理等任务异步化。
 2.  **API 文档**:
-    *   当前主要依赖模板渲染，但已有部分 API (`api_project_detail`, `daily_report_batch_create`)。建议引入 `drf-spectacular` 或 `swagger` 生成标准 API 文档，方便前端或第三方集成。
+    *   建议引入 `drf-spectacular` 或 `swagger` 生成标准 API 文档。
 
 ### 3.2 代码重构
 1.  **权限统一**:
-    *   建议明确 `PermissionMatrix` 的用途。如果决定启用 RBAC (基于角色的访问控制)，应重构 `can_manage_project` 等函数，使其动态读取数据库中的权限配置，而不是硬编码逻辑。
-2.  **测试覆盖**:
-    *   虽然存在 `tests/` 目录，但建议引入 `coverage` 工具定期检查核心业务逻辑（特别是 SLA 计算和权限校验）的测试覆盖率。
+    *   建议明确 `PermissionMatrix` 的用途。如果决定启用 RBAC，应重构 `can_manage_project` 等函数，使其动态读取数据库中的权限配置，而不是硬编码逻辑。
 
 ## 4. 结论
-WorkReport 是一个成熟度较高的项目，核心功能实现稳健。本次审查修复了两个关键的性能隐患（批量创建和 SLA 计算中的 N+1 问题）。建议在后续迭代中重点关注**权限系统的统一**和**异步任务体系的完善**。
+WorkReport 项目在核心功能实现上较为成熟。本次审查共修复了三个关键的 N+1 性能问题（日报批量创建、SLA计算、项目列表权限），并优化了项目列表的交互体验。系统整体代码质量较高，但在异步任务处理和权限配置的灵活性上仍有提升空间。

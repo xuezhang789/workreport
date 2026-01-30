@@ -567,7 +567,7 @@
                             {{ r.user.username|slice:":1"|upper }}
                         </div>
                         <div class="user-details">
-                            <span class="user-name">{{ r.user.get_full_name|default:r.user.username }}</span>
+                            <span class="user-name">{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</span>
                             <span class="report-role">{{ r.get_role_display }}</span>
                         </div>
                     </div>

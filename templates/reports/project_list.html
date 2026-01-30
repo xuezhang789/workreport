@@ -558,7 +558,10 @@
     {% if projects %}
         <div class="project-grid">
             {% for p in projects %}
-                <article class="project-card" onclick="location.href='{% url 'projects:project_detail' p.pk %}'" style="cursor: pointer;">
+                <article class="project-card" style="position: relative;">
+                    <!-- Full card link for better UX/Accessibility -->
+                    <a href="{% url 'projects:project_detail' p.pk %}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" aria-label="进入 {{ p.name }}"></a>
+
                     <div class="card-status-bar {% if p.is_active %}active{% else %}inactive{% endif %}"></div>
                     
                     <div class="card-body">
@@ -567,7 +570,7 @@
                                 <h3 class="project-title">{{ p.name }}</h3>
                                 <span class="project-code">{{ p.code }}</span>
                             </div>
-                            <span class="phase-badge {% if '开发' in p.current_phase.phase_name %}phase-dev{% elif '测试' in p.current_phase.phase_name %}phase-qa{% elif '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
+                            <span class="phase-badge {% if p.current_phase and '开发' in p.current_phase.phase_name %}phase-dev{% elif p.current_phase and '测试' in p.current_phase.phase_name %}phase-qa{% elif p.current_phase and '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
                                 {{ p.current_phase.phase_name|default:"未开始 / Not Started" }}
                             </span>
                         </div>
@@ -610,7 +613,7 @@
                         </div>
                     </div>
 
-                    <div class="card-footer" onclick="event.stopPropagation()">
+                    <div class="card-footer" style="position: relative; z-index: 2;">
                         <div class="footer-dates">
                             <span>开始 / Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
                             <span>结束 / End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>

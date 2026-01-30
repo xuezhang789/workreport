@@ -381,7 +381,7 @@
                                 <div style="width: 20px; height: 20px; background: #f1f5f9; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: #64748b; font-weight: 700;">
                                     {{ log.user.first_name|first|default:log.user.username|first|upper }}
                                 </div>
-                                {{ log.user.get_full_name|default:log.user.username }}
+                                {{ log.user.get_full_name|default:log.user.username }} @{{ log.user.username }}
                             </div>
                         </div>
                         

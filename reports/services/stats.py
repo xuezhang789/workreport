@@ -144,7 +144,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         completed = u['completed']
         overdue = u['overdue']
         
-        full_name = f"{u['user__first_name']} {u['user__last_name']}".strip() or u['user__username']
+        name_part = f"{u['user__first_name']} {u['user__last_name']}".strip() or u['user__username']
+        full_label = f"{name_part} @{u['user__username']}"
         
         # Lead time per user (can be expensive, limit scope if needed)
         durations = user_durations.get(u['user__username'], [])
@@ -153,7 +154,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         lead_time_p50 = statistics.median(durations) if durations else None
 
         user_stats.append({
-            'user_label': full_name,
+            'user_label': full_label,
             'total': total,
             'completed': completed,
             'overdue': overdue,

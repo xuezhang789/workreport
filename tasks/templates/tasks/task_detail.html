@@ -412,7 +412,7 @@
                 <span class="info-label">主负责人 / Primary Owner</span>
                 <span class="info-value">
                     {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
-                    {{ task.user.get_full_name|default:task.user.username }}
+                    {{ task.user.get_full_name|default:task.user.username }} @{{ task.user.username }}
                 </span>
             </div>
             <div class="info-item">
@@ -495,6 +495,33 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-title"><span>💬</span> 评论 / Comments</div>
+            </div>
+
+            <!-- Mention Guide -->
+            <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #0369a1;">
+                <div style="display: flex; align-items: start; gap: 8px;">
+                    <span style="font-size: 16px;">💡</span>
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; color: #0c4a6e;">如何使用提及功能 / How to use Mentions</strong>
+                        <ul style="margin: 0; padding-left: 16px; list-style-type: disc; line-height: 1.6;">
+                            <li>
+                                <strong>操作 / Action:</strong> 输入 <code style="background: rgba(255,255,255,0.5); padding: 0 4px; border-radius: 4px; font-family: monospace; color: #0c4a6e;">@</code> 符号后跟用户名（如 <code style="background: rgba(255,255,255,0.5); padding: 0 4px; border-radius: 4px; font-family: monospace; color: #0c4a6e;">@zhangsan</code>）。
+                                <br>
+                                <span style="opacity: 0.8;">Type <code style="background: rgba(255,255,255,0.5); padding: 0 4px; border-radius: 4px; font-family: monospace;">@</code> followed by username (e.g., <code style="background: rgba(255,255,255,0.5); padding: 0 4px; border-radius: 4px; font-family: monospace;">@john</code>).</span>
+                            </li>
+                            <li>
+                                <strong>效果 / Effect:</strong> 被提及的成员会收到高优先级通知。
+                                <br>
+                                <span style="opacity: 0.8;">Mentioned members receive a high-priority notification.</span>
+                            </li>
+                            <li>
+                                <strong>场景 / Usage:</strong> 适用于需要特定成员关注、回复或紧急处理的事项。
+                                <br>
+                                <span style="opacity: 0.8;">Best for urgent items requiring specific attention or response.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             
             <div style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">

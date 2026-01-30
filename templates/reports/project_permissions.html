@@ -24,7 +24,7 @@
                 <tbody>
                     {% for item in members_with_perms %}
                     <tr>
-                        <td>{{ item.user.get_full_name|default:item.user.username }}</td>
+                        <td>{{ item.user.get_full_name|default:item.user.username }} @{{ item.user.username }}</td>
                         <td>{{ item.user.profile.get_position_display }}</td>
                         <td>
                             {% for perm in item.permissions %}

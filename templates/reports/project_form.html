@@ -589,7 +589,10 @@
                             <label class="form-label" for="{{ form.owner.id_for_label }}">负责人 / Owner</label>
                             <div class="owner-select-container">
                                 {% if can_edit_owner is False %}
-                                    <input type="text" class="form-input" value="{{ project.owner.get_full_name|default:project.owner.username }}" disabled style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
+                                    <div class="form-input" style="display: flex; align-items: center; gap: 8px; background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
+                                        {% include "partials/user_avatar.html" with user=project.owner size="24px" font_size="10px" %}
+                                        {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
+                                    </div>
                                     <div style="display:none;">{{ form.owner }}</div>
                                 {% else %}
                                     <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人... / Search owner..." style="margin-bottom: 8px;">
@@ -763,10 +766,9 @@
                                         {% for user in form.members.field.queryset %}
                                             <label class="option-item">
                                                 <div class="checkbox-label">
-                                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }}">
+                                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }} @{{ user.username }}">
                                                     <div class="user-info">
-                                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                                        <span class="user-username">@{{ user.username }}</span>
+                                                        <span class="user-name">{{ user.get_full_name|default:user.username }} <span class="user-username">@{{ user.username }}</span></span>
                                                     </div>
                                                 </div>
                                             </label>

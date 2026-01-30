@@ -24,7 +24,7 @@
 ">
     {% if avatar_url %}
         <img src="{{ avatar_url }}" 
-             alt="{{ user.get_full_name|default:user.username }}" 
+             alt="{{ user.get_full_name|default:user.username }} @{{ user.username }}" 
              style="width: 100%; height: 100%; object-fit: cover;"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
         <span class="avatar-fallback" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">

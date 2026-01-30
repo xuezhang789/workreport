@@ -1135,9 +1135,10 @@
         const catSelect = document.getElementById('category-select');
         const statSelect = document.getElementById('status-select');
         
-        function updateStatusOptions() {
+        function updateStatusOptions(e) {
             if (!catSelect || !statSelect) return;
             const category = catSelect.value;
+            const isUserInteraction = !!e; // triggered by event
             
             const bugStatuses = ['new', 'confirmed', 'fixing', 'verifying', 'closed'];
             const taskStatuses = ['todo', 'in_progress', 'blocked', 'in_review', 'done', 'closed'];
@@ -1160,6 +1161,12 @@
                 }
             });
             
+            // Requirement: In Create Mode, switching to BUG defaults status to 'new'
+            if (!taskId && category === 'BUG' && isUserInteraction) {
+                 statSelect.value = 'new';
+                 currentValid = true;
+            }
+            
             if (!currentValid && firstVisible) {
                 statSelect.value = firstVisible;
             }
@@ -1169,6 +1176,13 @@
             catSelect.addEventListener('change', updateStatusOptions);
             // Initial run: wait for data population if needed, but safe to run now
             updateStatusOptions();
+        }
+
+        if (form) {
+            form.addEventListener('reset', () => {
+                // Wait for form reset to apply, then trigger update
+                setTimeout(() => updateStatusOptions(new Event('reset')), 0);
+            });
         }
 
     })();

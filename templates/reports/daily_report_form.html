@@ -301,7 +301,7 @@
             </p>
         </div>
         <div style="text-align: right; font-size: 13px; color: var(--text-secondary);">
-            <div>{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div>{{ request.user.get_full_name|default:request.user.username }} @{{ request.user.username }}</div>
             <div style="color: var(--text-muted);">{% get_current_timezone as CURRENT_TZ %}{{ CURRENT_TZ }}</div>
         </div>
     </div>
@@ -336,7 +336,7 @@
                         <div class="form-group">
                             <label class="form-label" for="name">姓名 / Name</label>
                             <input type="text" id="name" class="form-input" 
-                                   value="{{ form_user.first_name }} {{ form_user.last_name }} ({{ form_user.username }})" readonly disabled
+                                   value="{{ form_user.first_name }} {{ form_user.last_name }} @{{ form_user.username }}" readonly disabled
                                    style="background-color: var(--bg-page); color: var(--text-secondary);">
                         </div>
                         

@@ -200,7 +200,7 @@
             </div>
             <div class="info-item">
                 <span class="info-label">作者 / Author</span>
-                <span class="info-value">{{ report.user.get_full_name|default:report.user.username }}</span>
+                <span class="info-value">{{ report.user.get_full_name|default:report.user.username }} @{{ report.user.username }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">角色 / Role</span>

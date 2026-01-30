@@ -505,11 +505,7 @@
                         {% endwith %}
                     </div>
                     <div class="user-info">
-                        <h3 class="user-name">{{ user.get_full_name|default:user.username }}</h3>
-                        <div class="user-username">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            @{{ user.username }}
-                        </div>
+                        <h3 class="user-name">{{ user.get_full_name|default:user.username }} <span style="font-size: 0.85em; font-weight: normal; color: var(--text-secondary);">@{{ user.username }}</span></h3>
                     </div>
                     <div>
                         {% if user.profile.position == 'dev' %}

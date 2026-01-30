@@ -400,7 +400,7 @@
                                 {{ r.user.first_name|first|default:r.user.username|first|upper }}
                             </div>
                             <div>
-                                <div class="card-title" style="margin-bottom: 2px;">{{ r.user.get_full_name|default:r.user.username }}</div>
+                                <div class="card-title" style="margin-bottom: 2px;">{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</div>
                                 <div class="card-meta">{{ r.date }}</div>
                             </div>
                         </div>

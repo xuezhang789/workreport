@@ -364,7 +364,7 @@
                     {% if project.owner %}
                         <div style="display: flex; align-items: center; gap: 8px;">
                             {% include "partials/user_avatar.html" with user=project.owner size="24px" font_size="10px" %}
-                            {{ project.owner.get_full_name|default:project.owner.username }}
+                            {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
                         </div>
                     {% else %}
                         <span style="color: var(--text-secondary);">--</span>
@@ -379,7 +379,7 @@
                             {% for manager in project.managers.all %}
                                 <div style="display: flex; align-items: center; gap: 6px; background: #eff6ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; color: #1d4ed8;">
                                     {% include "partials/user_avatar.html" with user=manager size="16px" font_size="8px" %}
-                                    {{ manager.get_full_name|default:manager.username }}
+                                    {{ manager.get_full_name|default:manager.username }} @{{ manager.username }}
                                 </div>
                             {% endfor %}
                         </div>
@@ -451,7 +451,7 @@
                     <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px;">
                         <span>Up:</span>
                         {% include "partials/user_avatar.html" with user=attachment.uploaded_by size="16px" font_size="8px" %}
-                        <span>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
+                        <span>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }} @{{ attachment.uploaded_by.username }}</span>
                     </div>
                     <div class="attachment-actions">
                         <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
@@ -526,7 +526,7 @@
                         </div>
                         <div class="member-info">
                             <div class="member-name">
-                                {{ project.owner.get_full_name|default:project.owner.username }}
+                                {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
                                 <span class="badge-role role-owner">Owner</span>
                             </div>
                             <div class="member-role">{{ project.owner.profile.get_position_display|default:"项目负责人" }}</div>
@@ -542,7 +542,7 @@
                             </div>
                             <div class="member-info">
                                 <div class="member-name">
-                                    {{ manager.get_full_name|default:manager.username }}
+                                    {{ manager.get_full_name|default:manager.username }} @{{ manager.username }}
                                     <span class="badge-role role-mgr">Mgr</span>
                                 </div>
                                 <div class="member-role">{{ manager.profile.get_position_display|default:"管理员" }}</div>
@@ -564,7 +564,7 @@
                         </div>
                         <div class="member-info">
                             <div class="member-name">
-                                {{ member.get_full_name|default:member.username }}
+                                {{ member.get_full_name|default:member.username }} @{{ member.username }}
                             </div>
                             <div class="member-role">
                                 {{ member.profile.get_position_display|default:"成员" }}
@@ -712,7 +712,7 @@
                         {% for r in recent_reports %}
                             <tr>
                                 <td>{{ r.date }}</td>
-                                <td>{{ r.user.get_full_name|default:r.user.username }}</td>
+                                <td>{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</td>
                                 <td>{{ r.get_role_display }}</td>
                                 <td style="text-align: right;">
                                     <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
