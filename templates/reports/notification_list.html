@@ -111,14 +111,21 @@
         background: #e0f2fe;
     }
 
-    .notif-item.unread::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: var(--primary);
+    .notif-item.priority-high {
+        border-left: 4px solid #ef4444;
+    }
+
+    .notif-item.priority-high .notif-icon-wrapper {
+        color: #ef4444;
+        background: #fee2e2;
+    }
+
+    .notif-item.priority-normal {
+        /* Default style */
+    }
+
+    .notif-item.priority-low {
+        opacity: 0.8;
     }
 
     .notif-icon-wrapper {
@@ -261,14 +268,16 @@
         <!-- List Container -->
         <div class="notif-list" id="notification-list-container">
             {% for n in notifications %}
-                <div class="notif-item {% if not n.is_read %}unread{% endif %} type-{% if 'task' in n.notification_type %}task{% elif 'mention' in n.notification_type %}mention{% elif 'sla' in n.notification_type %}sla{% else %}system{% endif %}" 
+                <div class="notif-item {% if not n.is_read %}unread{% endif %} priority-{{ n.priority }} type-{% if 'task' in n.notification_type %}task{% elif 'mention' in n.notification_type %}mention{% elif 'sla' in n.notification_type %}sla{% else %}system{% endif %}" 
                      data-id="{{ n.id }}"
                      data-type="{{ n.notification_type }}"
                      data-read="{{ n.is_read|yesno:'true,false' }}"
                      onclick="handleItemClick(this, '{{ n.notification_type }}', '{{ n.data.task_id|default:'' }}')">
                     
                     <div class="notif-icon-wrapper">
-                        {% if 'task' in n.notification_type %}
+                        {% if n.priority == 'high' %}
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        {% elif 'task' in n.notification_type %}
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                         {% elif 'mention' in n.notification_type %}
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
@@ -281,7 +290,10 @@
                     
                     <div class="notif-content">
                         <div class="notif-header">
-                            <span class="notif-title">{{ n.title }}</span>
+                            <span class="notif-title">
+                                {% if n.priority == 'high' %}<span style="color: #ef4444; margin-right: 4px;">[紧急 / Urgent]</span>{% endif %}
+                                {{ n.title }}
+                            </span>
                             <span class="notif-time">{{ n.created_at|date:"Y-m-d H:i" }}</span>
                         </div>
                         <div class="notif-msg">{{ n.message }}</div>

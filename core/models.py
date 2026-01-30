@@ -91,10 +91,17 @@ class Notification(models.Model):
         ('report_reminder', '日报提醒'),
     ]
 
+    PRIORITY_CHOICES = [
+        ('high', '高 / High'),
+        ('normal', '普通 / Normal'),
+        ('low', '低 / Low'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', verbose_name="用户")
     title = models.CharField(max_length=200, verbose_name="标题")
     message = models.TextField(verbose_name="内容")
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, verbose_name="类型")
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal', verbose_name="优先级")
     is_read = models.BooleanField(default=False, verbose_name="是否已读")
     is_pushed = models.BooleanField(default=False, verbose_name="是否已推送")
     expires_at = models.DateTimeField(null=True, blank=True, verbose_name="过期时间")
@@ -108,6 +115,7 @@ class Notification(models.Model):
         indexes = [
             models.Index(fields=['user', 'is_read']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['priority']),
         ]
 
     def __str__(self):

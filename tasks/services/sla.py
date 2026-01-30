@@ -51,8 +51,10 @@ def _get_sla_timer_readonly(task):
     """
     Get timer without creating one (for lists).
     """
-    if hasattr(task, 'slatimer'):
-        return task.slatimer
+    # Use correct related_name 'sla_timer' (defined in models.py)
+    # hasattr triggers query if not cached, but if select_related is used, it hits cache.
+    if hasattr(task, 'sla_timer'):
+        return task.sla_timer
     return TaskSlaTimer.objects.filter(task=task).first()
 
 def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
