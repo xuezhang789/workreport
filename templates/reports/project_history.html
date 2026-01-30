@@ -1,0 +1,438 @@
+{% extends "base_topbar.html" %}
+{% load tz %}
+
+{% block title %}项目变更历史 / Project History{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="变更历史 / History" nav_subtitle=project.name %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    :root {
+        --primary: #2563eb;
+        --primary-hover: #1e40af;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-page: #f8fafc;
+        --radius-lg: 16px;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 32px;
+        margin-bottom: 24px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        border-bottom: 1px dashed var(--border-color);
+        padding-bottom: 24px;
+    }
+
+    .project-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .filter-bar {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-control {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+        min-width: 140px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+
+    /* Timeline */
+    .timeline-container {
+        position: relative;
+        padding-left: 40px;
+    }
+
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 20px;
+        bottom: 0;
+        width: 2px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 32px;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -40px;
+        top: 20px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #cbd5e1;
+        display: grid;
+        place-items: center;
+        z-index: 2;
+        font-size: 14px;
+        color: #94a3b8;
+    }
+    
+    .timeline-marker-icon {
+        width: 16px;
+        height: 16px;
+        color: #94a3b8;
+    }
+
+    .timeline-content {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 20px 20px 0 20px;
+        border-bottom: none;
+    }
+
+    .change-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+    
+    .user-badge-right {
+        background: #f1f5f9;
+        padding: 4px 10px;
+        border-radius: 20px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .change-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .change-table th {
+        text-align: left;
+        padding: 12px 16px;
+        background: #f1f5f9;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 13px;
+    }
+    
+    .change-table td {
+        padding: 16px;
+        border-top: 1px solid #f1f5f9;
+        vertical-align: top;
+    }
+    
+    .val-empty {
+        color: #ef4444;
+        background: #fef2f2;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+    
+    .val-text-old {
+        color: #ef4444;
+        background: #fef2f2;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-decoration: line-through;
+    }
+    
+    .val-text-new {
+        color: #10b981;
+        background: #f0fdf4;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    .action-label {
+        color: #3b82f6;
+        font-weight: 600;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 12px;
+        padding-left: 20px;
+    }
+    
+    .action-dot {
+        width: 8px;
+        height: 8px;
+        background: #3b82f6;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    @media (max-width: 640px) {
+        .page-container { padding: 16px; }
+        .filter-bar { flex-direction: column; align-items: stretch; }
+        .timeline-container { padding-left: 24px; }
+        .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
+        .timeline-container::before { left: -25px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    
+    <div class="card">
+        <div class="header-content">
+            <h1 class="project-title">
+                {{ project.name }}
+                <span style="font-size: 14px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; color: var(--text-secondary); font-weight: 500;">{{ project.code }}</span>
+            </h1>
+            <a href="{% url 'projects:project_detail' project.pk %}" class="btn btn-ghost">返回详情 / Back</a>
+        </div>
+
+        <!-- Filters -->
+        <form method="get" class="filter-bar">
+            <div class="filter-group">
+                <span class="filter-label">用户 / User:</span>
+                <select name="user" class="form-control">
+                    <option value="">全部 / All</option>
+                    {% for u in users %}
+                        <option value="{{ u.id }}" {% if filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>
+                            {{ u.get_full_name|default:u.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">类型 / Type:</span>
+                <select name="action_type" class="form-control">
+                    <option value="">全部 / All</option>
+                    <option value="field_change" {% if filters.action_type == 'field_change' %}selected{% endif %}>字段变更 / Field Update</option>
+                    <option value="attachment" {% if filters.action_type == 'attachment' %}selected{% endif %}>附件 / Attachment</option>
+                    <option value="comment" {% if filters.action_type == 'comment' %}selected{% endif %}>评论 / Comment</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">日期 / Date:</span>
+                <input type="date" name="start_date" value="{{ filters.start_date|default:'' }}" class="form-control" style="width: auto;">
+                <span style="color: var(--text-secondary);">-</span>
+                <input type="date" name="end_date" value="{{ filters.end_date|default:'' }}" class="form-control" style="width: auto;">
+            </div>
+
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary">筛选 / Filter</button>
+                <a href="?" class="btn btn-ghost">重置 / Reset</a>
+                <a href="{% url 'projects:project_history_export' project.pk %}?{{ request.GET.urlencode }}" class="btn btn-ghost" style="color: var(--primary);">
+                    <span>⬇️</span> 导出 / Export
+                </a>
+            </div>
+        </form>
+
+        <!-- Timeline -->
+        {% if logs %}
+        
+        <!-- Pagination Controls (Top) -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+            <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
+                {% endif %}
+                
+                <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="timeline-container">
+            {% for log in logs %}
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    <svg class="timeline-marker-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-header">
+                        <div class="change-meta">
+                            {{ log.timestamp|localtime|date:"Y年m月d日 H:i:s" }}
+                        </div>
+                        <span class="user-badge-right">
+                            <div style="width: 16px; height: 16px; background: #cbd5e1; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: white;">
+                                {{ log.operator_name|first|upper }}
+                            </div>
+                            {{ log.operator_name }}
+                        </span>
+                    </div>
+                    
+                    <div style="border-top: 1px dashed #e2e8f0; margin: 0 20px 20px 20px;"></div>
+                    
+                    <div class="action-label">
+                        <span class="action-dot"></span>
+                        信息更新 / Information Update
+                    </div>
+
+                    <div style="padding: 0 20px 20px 20px;">
+                        <table class="change-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">字段 / Field</th>
+                                    <th style="width: 37.5%;">旧值 / Old</th>
+                                    <th style="width: 37.5%;">新值 / New</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in log.items %}
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 500; color: #1e293b;">{{ item.field }}</div>
+                                    </td>
+                                    <td>
+                                        {% if item.action == 'Added' or item.action == 'Created' %}
+                                            <span class="val-empty">(Empty)</span>
+                                        {% elif item.action == 'Removed' %}
+                                            <span class="val-text-old">{{ item.old|default:"(Empty)" }}</span>
+                                        {% else %}
+                                            {% if item.old %}
+                                                <span class="val-text-old">{{ item.old }}</span>
+                                            {% else %}
+                                                <span class="val-empty">(Empty)</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.action == 'Removed' %}
+                                            <span class="val-empty">(Empty)</span>
+                                        {% elif item.action == 'Added' or item.action == 'Created' %}
+                                            <span class="val-text-new">{{ item.new|default:"(Empty)" }}</span>
+                                        {% else %}
+                                            {% if item.new %}
+                                                <span class="val-text-new">{{ item.new }}</span>
+                                            {% else %}
+                                                <span class="val-empty">(Empty)</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination Controls (Bottom) -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="display: flex; justify-content: center; margin-top: 32px;">
+            <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
+                {% endif %}
+                
+                <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div style="text-align: center; padding: 60px; color: var(--text-secondary);">
+            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">📭</div>
+            <p>没有找到符合条件的记录 / No records found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -7,7 +7,7 @@ from reports.middleware import get_current_user, get_current_ip
 from reports.services.audit_service import AuditService
 from reports.services.notification_service import send_notification
 
-TRACKED_MODELS = [Project, Task, DailyReport, User]
+TRACKED_MODELS = [DailyReport, User]
 
 def _invalidate_stats_cache(sender=None, **kwargs):
     """

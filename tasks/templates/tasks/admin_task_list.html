@@ -703,10 +703,15 @@
                                         <span style="font-size: 13px; color: var(--text-muted);">--</span>
                                     {% endif %}
                                     
-                                    {% if t.sla_info.level == 'red' %}
+                                    {% if t.sla_info.status == 'overdue' %}
                                         <span style="font-size: 11px; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 4px;">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                                             紧急 / Urgent: {{ t.sla_info.remaining_hours }}h
+                                        </span>
+                                    {% elif t.sla_info.status == 'completed_late' %}
+                                        <span style="font-size: 11px; font-weight: 600; color: #b91c1c; display: flex; align-items: center; gap: 4px;">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="12" x2="12" y2="12"></line></svg>
+                                            逾期交付 / Late
                                         </span>
                                     {% elif t.sla_info.level == 'amber' %}
                                         <span style="font-size: 11px; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 4px;">

@@ -113,7 +113,7 @@ def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_
              status = 'on_time'
              level = 'success' # or blue
         else:
-             status = 'overdue'
+             status = 'completed_late'
              level = 'red'
         remaining_hours = 0 # Meaningless for completed
         sort_order = 4

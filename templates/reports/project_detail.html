@@ -474,9 +474,9 @@
             <div class="card-title">
                 <span>🚩</span> 阶段与进度 / Phase & Progress
             </div>
-            <a href="{% url 'projects:project_phase_history' project.pk %}" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; gap: 6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                变更记录 / History
+            <a href="{% url 'projects:project_history' project.pk %}" class="btn btn-ghost" style="text-decoration: none;">
+                <span>⏳</span>
+                变更历史 / Change History
             </a>
         </div>
         
@@ -809,6 +809,7 @@
             const phaseId = select.value;
             const btn = this;
             const msg = document.getElementById('update-msg');
+            const originalText = '更新 / Update';
             
             if (!phaseId) return;
             
@@ -816,6 +817,7 @@
             
             btn.disabled = true;
             btn.textContent = 'Updating...';
+            msg.textContent = '';
             
             fetch("{% url 'projects:project_update_phase' project.pk %}", {
                 method: 'POST',
@@ -825,19 +827,28 @@
                 },
                 body: 'phase_id=' + phaseId
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
-                btn.disabled = false;
-                btn.textContent = '更新 / Update';
-                
                 if (data.status === 'success') {
+                    btn.textContent = 'Updated';
                     msg.textContent = '更新成功';
                     msg.style.color = '#166534';
-                    setTimeout(() => window.location.reload(), 1000);
+                    setTimeout(() => window.location.reload(), 500);
                 } else {
-                    msg.textContent = '更新失败';
-                    msg.style.color = '#991b1b';
+                    throw new Error(data.message || 'Unknown error');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btn.disabled = false;
+                btn.textContent = originalText;
+                msg.textContent = '更新失败: ' + error.message;
+                msg.style.color = '#991b1b';
             });
         });
     }
