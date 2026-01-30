@@ -377,7 +377,7 @@
                         <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }}</h3>
                         <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</div>
                         <div class="badge-container">
-                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色: {{ user.profile.get_position_display|default:'-' }}">角色: {{ user.profile.get_position_display|default:"-" }}</span>
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ user.profile.get_position_display|default:'-' }}">角色 / Role: {{ user.profile.get_position_display|default:"-" }}</span>
                             {% if user.profile.email_verified %}
                             <span class="badge badge-success" title="已验证 / Verified">已验证 / Verified</span>
                             {% else %}
@@ -630,11 +630,11 @@
                             .then(data => {
                                 const taken = (data.is_taken === true) || (data.available === false);
                                 if (taken) {
-                                    feedbackDiv.textContent = '用户名已被占用';
+                                    feedbackDiv.textContent = '用户名已被占用 / Username taken';
                                     feedbackDiv.className = 'help-text text-danger';
                                     usernameInput.style.borderColor = 'var(--danger)';
                                 } else {
-                                    feedbackDiv.textContent = '用户名可用';
+                                    feedbackDiv.textContent = '用户名可用 / Username available';
                                     feedbackDiv.className = 'help-text text-success';
                                     usernameInput.style.borderColor = 'var(--success)';
                                 }
@@ -661,9 +661,9 @@
                     if (/[A-Z]+/.test(password)) strength += 1;
                     if (/[0-9]+/.test(password)) strength += 1;
                     if (/[$@#&!]+/.test(password)) strength += 1;
-                    if (strength <= 2) { color = 'var(--danger)'; text = '弱'; }
-                    else if (strength <= 4) { color = 'var(--warning)'; text = '中'; }
-                    else { color = 'var(--success)'; text = '强'; }
+                    if (strength <= 2) { color = 'var(--danger)'; text = '弱 / Weak'; }
+                    else if (strength <= 4) { color = 'var(--warning)'; text = '中 / Medium'; }
+                    else { color = 'var(--success)'; text = '强 / Strong'; }
                 }
                 strengthBar.style.width = (strength * 20) + '%';
                 strengthBar.style.backgroundColor = color;
@@ -705,7 +705,7 @@
                 const img = avatarPreview.querySelector('img');
                 const dataUrl = img ? img.src : '';
                 prefSave('profile', { avatar_data_url: dataUrl }, function(resp) {
-                    alert(resp.ok ? '保存成功' : '保存失败');
+                    alert(resp.ok ? '保存成功 / Saved' : '保存失败 / Failed');
                 });
             });
         }
@@ -736,7 +736,7 @@
         });
         if (privacySave) {
             privacySave.addEventListener('click', () => {
-                prefSave('privacy', { show_email: !!privacyShowEmail.checked, show_role: !!privacyShowRole.checked }, (r) => alert(r.ok ? '已保存' : '失败'));
+                prefSave('privacy', { show_email: !!privacyShowEmail.checked, show_role: !!privacyShowRole.checked }, (r) => alert(r.ok ? '已保存 / Saved' : '失败 / Failed'));
             });
         }
 
@@ -749,7 +749,7 @@
         });
         if (notifySave) {
             notifySave.addEventListener('click', () => {
-                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => alert(r.ok ? '已保存' : '失败'));
+                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => alert(r.ok ? '已保存 / Saved' : '失败 / Failed'));
             });
         }
 
@@ -763,10 +763,10 @@
                     const hiddenEmail = document.querySelector('input[name="email"]');
                     if (hiddenEmail) email = hiddenEmail.value;
                 }
-                if (!email) { alert('请输入邮箱'); return; }
+                if (!email) { alert('请输入邮箱 / Please enter email'); return; }
                 
                 sendCodeBtn.disabled = true;
-                sendCodeBtn.innerText = '发送中...';
+                sendCodeBtn.innerText = '发送中... / Sending...';
                 fetch('{% url "core:send_email_code_api" %}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
@@ -778,17 +778,17 @@
                         sendCodeBtn.innerText = t + 's';
                         const timer = setInterval(() => {
                             t--; sendCodeBtn.innerText = t + 's';
-                            if (t <= 0) { clearInterval(timer); sendCodeBtn.disabled = false; sendCodeBtn.innerText = '重发'; }
+                            if (t <= 0) { clearInterval(timer); sendCodeBtn.disabled = false; sendCodeBtn.innerText = '重发 / Resend'; }
                         }, 1000);
                     } else {
-                        alert(data.error || '失败');
+                        alert(data.error || '失败 / Failed');
                         sendCodeBtn.disabled = false;
-                        sendCodeBtn.innerText = '重试';
+                        sendCodeBtn.innerText = '重试 / Retry';
                     }
                 }).catch(() => {
-                    alert('网络错误');
+                    alert('网络错误 / Network error');
                     sendCodeBtn.disabled = false;
-                    sendCodeBtn.innerText = '重试';
+                    sendCodeBtn.innerText = '重试 / Retry';
                 });
             });
         }

@@ -177,11 +177,11 @@
         <div style="display: flex; gap: 12px;">
             <a href="{% url 'tasks:admin_task_export' %}?project={{ selected_project_id }}" class="btn btn-outline">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                导出任务
+                导出任务 / Export Tasks
             </a>
             <button type="submit" class="btn btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                应用筛选
+                应用筛选 / Apply Filter
             </button>
         </div>
     </form>
@@ -222,7 +222,7 @@
             <line x1="9" y1="15" x2="15" y2="15"></line>
         </svg>
         <h4>暂无数据 / No Data Available</h4>
-        <p>请选择一个项目或确保该项目下有任务数据。</p>
+        <p>请选择一个项目或确保该项目下有任务数据。 / Please select a project or ensure tasks exist.</p>
     </div>
     {% endif %}
 </div>

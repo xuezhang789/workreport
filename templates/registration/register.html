@@ -320,7 +320,7 @@
                     <div style="margin-bottom: 24px;">
                         <div style="width: 48px; height: 48px; background: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 20px; margin-bottom: 16px;">IM</div>
                         <h1 class="auth-title">加入团队 / Join Team</h1>
-                        <p class="auth-subtitle">创建账户，开始高效的团队协作之旅</p>
+                        <p class="auth-subtitle">创建账户，开始高效的团队协作之旅 / Create an account and start your efficient team collaboration journey</p>
                     </div>
 
                     {% if form.non_field_errors %}
@@ -337,7 +337,7 @@
                         <div class="form-group">
                             <label for="{{ form.username.id_for_label }}" class="form-label">用户名 / Username</label>
                             {{ form.username }}
-                            <div class="label-hint">用户名将作为您的唯一标识，建议使用英文字母和数字</div>
+                            <div class="label-hint">用户名将作为您的唯一标识，建议使用英文字母和数字 / Username will be your unique ID, English letters and numbers are recommended</div>
                             {% if form.username.errors %}
                                 <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</div>
                             {% endif %}
@@ -346,7 +346,7 @@
                         <div class="form-group">
                             <label for="{{ form.full_name.id_for_label }}" class="form-label">姓名 / Your Name</label>
                             {{ form.full_name }}
-                            <div class="label-hint">用于展示和识别，可填写中文姓名</div>
+                            <div class="label-hint">用于展示和识别，可填写中文姓名 / Used for display and recognition, Chinese names are supported</div>
                             {% if form.full_name.errors %}
                                 <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.full_name.errors.0 }}</div>
                             {% endif %}
@@ -355,7 +355,7 @@
                         <div class="form-group">
                             <label for="{{ form.position.id_for_label }}" class="form-label">职位角色 / Position</label>
                             {{ form.position }}
-                            <div class="label-hint">选择您在团队中的主要角色</div>
+                            <div class="label-hint">选择您在团队中的主要角色 / Select your primary role in the team</div>
                             {% if form.position.errors %}
                                 <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.position.errors.0 }}</div>
                             {% endif %}
@@ -367,15 +367,15 @@
                             <div class="password-strength-meter">
                                 <div class="password-strength-bar" id="password-strength-bar"></div>
                             </div>
-                            <div class="strength-text" id="password-score-text">强度评分：0/6</div>
+                            <div class="strength-text" id="password-score-text">强度评分 / Strength Score: 0/6</div>
                             
                             <div class="password-requirements">
-                                <div class="requirement" id="req-length-8">8+ 字符</div>
-                                <div class="requirement" id="req-length-12">12+ 字符</div>
-                                <div class="requirement" id="req-upper">大写字母</div>
-                                <div class="requirement" id="req-lower">小写字母</div>
-                                <div class="requirement" id="req-number">数字</div>
-                                <div class="requirement" id="req-symbol">符号</div>
+                                <div class="requirement" id="req-length-8">8+ 字符 / Chars</div>
+                                <div class="requirement" id="req-length-12">12+ 字符 / Chars</div>
+                                <div class="requirement" id="req-upper">大写字母 / Uppercase</div>
+                                <div class="requirement" id="req-lower">小写字母 / Lowercase</div>
+                                <div class="requirement" id="req-number">数字 / Numbers</div>
+                                <div class="requirement" id="req-symbol">符号 / Symbols</div>
                             </div>
 
                             {% if form.password1.errors %}
@@ -395,34 +395,34 @@
                     </form>
 
                     <div class="subtext">
-                        已有账号？ <a href="{% url 'core:login' %}">返回登录 / Back to login</a>
+                        已有账号？ / Already have an account? <a href="{% url 'core:login' %}">返回登录 / Back to login</a>
                     </div>
                 </div>
             </div>
 
             <!-- Right: Info -->
             <div class="auth-info-side">
-                <h2 class="info-title">开启高效<br>协作新体验</h2>
-                <p class="info-desc">智能角色适配 · 数据可视化 · 移动端友好 · 实时通知</p>
+                <h2 class="info-title">开启高效 / Start Efficient<br>协作新体验 / Collaboration Experience</h2>
+                <p class="info-desc">智能角色适配 · 数据可视化 · 移动端友好 · 实时通知 / Smart Role Adaptation · Data Visualization · Mobile Friendly · Real-time Notifications</p>
                 
                 <div class="feature-list">
                     <div class="feature-item">
                         <div class="feature-icon">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
-                        <span>智能角色适配，提升填写效率</span>
+                        <span>智能角色适配，提升填写效率 / Smart Role Adaptation</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                         </div>
-                        <span>直观图表，掌握项目进度</span>
+                        <span>直观图表，掌握项目进度 / Intuitive Charts</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                         </div>
-                        <span>任务提醒与实时通知</span>
+                        <span>任务提醒与实时通知 / Task Alerts & Notifications</span>
                     </div>
                 </div>
             </div>
@@ -482,7 +482,7 @@
                 }
 
                 if (scoreText) {
-                    scoreText.textContent = `强度评分：${score}/6（至少 ${MIN_SCORE} 项）`;
+                    scoreText.textContent = `强度评分 / Strength Score: ${score}/6（至少 / Min ${MIN_SCORE} 项）`;
                     scoreText.style.color = score >= MIN_SCORE ? 'var(--success)' : 'var(--danger)';
                 }
 
@@ -518,7 +518,7 @@
                     
                     if (passwordStrength < MIN_SCORE) {
                         e.preventDefault();
-                        alert('密码强度不足，请参考提示补全长度、大小写、数字或符号后再提交。');
+                        alert('密码强度不足，请参考提示补全长度、大小写、数字或符号后再提交。 / Password strength insufficient, please meet requirements.');
                         return false;
                     }
 

@@ -568,7 +568,7 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label" for="{{ form.code.id_for_label }}">项目代码 / Code <span style="color:red">*</span></label>
                         {{ form.code }}
-                        <p class="help-text">唯一标识符，建议使用大写字母 (e.g. PRJ-001)</p>
+                        <p class="help-text">唯一标识符，建议使用大写字母 (e.g. PRJ-001) / Unique identifier, uppercase recommended (e.g. PRJ-001)</p>
                         {% if form.code.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.code.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
@@ -578,7 +578,7 @@
                     <label class="form-label" for="{{ form.description.id_for_label }}" style="font-size: 16px; margin-bottom: 12px;">项目描述 / Description</label>
                     {{ form.description }}
                     <div class="char-counter" id="desc-counter">0 chars</div>
-                    <p class="help-text">请详细描述项目目标、范围及关键交付物，支持 Markdown 格式。</p>
+                    <p class="help-text">请详细描述项目目标、范围及关键交付物，支持 Markdown 格式。 / Please describe project goals, scope and deliverables. Markdown supported.</p>
                 </div>
 
                 <!-- 3. Details & Configuration -->
@@ -592,7 +592,7 @@
                                     <input type="text" class="form-input" value="{{ project.owner.get_full_name|default:project.owner.username }}" disabled style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
                                     <div style="display:none;">{{ form.owner }}</div>
                                 {% else %}
-                                    <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人..." style="margin-bottom: 8px;">
+                                    <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人... / Search owner..." style="margin-bottom: 8px;">
                                     {{ form.owner }}
                                 {% endif %}
                             </div>
@@ -624,7 +624,7 @@
                                     <span style="font-size: 14px; font-weight: 500;">启用 / Active</span>
                                 </div>
                             </div>
-                            <p class="help-text">SLA 提醒周期（小时），留空使用系统默认。</p>
+                            <p class="help-text">SLA 提醒周期（小时），留空使用系统默认。 / SLA cycle (hours), leave empty for default.</p>
                         </div>
 
                         <div class="form-group" style="margin-top: 20px;">
@@ -657,7 +657,7 @@
                                                 <span style="font-weight: 500;">{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
                                             </div>
                                             <div class="attachment-actions">
-                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载</a>
+                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载 / Download</a>
                                                 <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Remove</button>
                                             </div>
                                         </div>
@@ -679,7 +679,7 @@
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                                     管理员 / Managers
                                 </div>
-                                <div class="role-desc">拥有项目完全控制权</div>
+                                <div class="role-desc">拥有项目完全控制权 / Full project control</div>
                             </div>
                             <div class="selected-count" style="background: #eff6ff; color: var(--primary);">
                                 <span id="manager-count">0</span>
@@ -692,7 +692,7 @@
                                     {% for user in project.managers.all %}
                                         <span class="selected-tag">{{ user.get_full_name|default:user.username }}</span>
                                     {% empty %}
-                                        <span style="color: #94a3b8; font-size: 13px;">无管理员</span>
+                                        <span style="color: #94a3b8; font-size: 13px;">无管理员 / No managers</span>
                                     {% endfor %}
                                 </div>
                                 <div style="display:none;">{{ form.managers }}</div>
@@ -700,14 +700,14 @@
                                 <div class="multi-select-container" id="managers-container" style="border: none; background: transparent;">
                                     <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                                        <input type="text" id="manager-filter" placeholder="搜索..." class="search-input">
+                                        <input type="text" id="manager-filter" placeholder="搜索... / Search..." class="search-input">
                                     </div>
                                     
                                     <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
                                         <div class="select-all-container">
                                             <label class="checkbox-label">
                                                 <input type="checkbox" id="select-all-managers">
-                                                <span>全选</span>
+                                                <span>全选 / Select All</span>
                                             </label>
                                         </div>
                                         <div class="options-container">
@@ -738,7 +738,7 @@
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                     成员 / Members
                                 </div>
-                                <div class="role-desc">负责任务执行与协作</div>
+                                <div class="role-desc">负责任务执行与协作 / Execute & Collaborate</div>
                             </div>
                             <div class="selected-count" style="background: #f0fdf4; color: #166534;">
                                 <span id="member-count">0</span>
@@ -888,7 +888,7 @@
                 })
                 .catch(err => {
                     console.error('Failed to fetch project details:', err);
-                    alert('Failed to load latest project data. Using cached version.');
+                    alert('加载最新项目数据失败，使用缓存版本。 / Failed to load latest project data. Using cached version.');
                 })
                 .finally(() => {
                     if (loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay);
@@ -950,13 +950,13 @@
                             // Reload to show new files (simplest way to ensure consistency)
                             window.location.reload();
                         } else {
-                            alert('Upload failed: ' + (data.message || 'Unknown error'));
+                            alert('上传失败 / Upload failed: ' + (data.message || 'Unknown error'));
                         }
                     })
                     .catch(err => {
                         console.error(err);
                         placeholder.textContent = originalText;
-                        alert('Upload failed: Network error');
+                        alert('上传失败：网络错误 / Upload failed: Network error');
                     });
                  });
                  
@@ -1048,12 +1048,12 @@
                     const el = document.getElementById(`attachment-${id}`);
                     if (el) el.remove();
                 } else {
-                    alert('Delete failed: ' + data.message);
+                    alert('删除失败 / Delete failed: ' + data.message);
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert('Delete failed');
+                alert('删除失败 / Delete failed');
             });
         };
 

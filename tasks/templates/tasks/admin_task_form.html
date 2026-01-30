@@ -409,7 +409,7 @@
             <div class="alert" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                 <div>
-                    <strong>权限提示 / Permission Hint:</strong> 您作为协作人仅能修改任务状态。核心属性已锁定。
+                    <strong>权限提示 / Permission Hint:</strong> 您作为协作人仅能修改任务状态。核心属性已锁定 / As a collaborator, you can only change task status. Core attributes are locked.
                 </div>
             </div>
         {% endif %}
@@ -443,12 +443,12 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">任务标题 / Task Title <span style="color:red">*</span></label>
-                        <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                        <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务 / Concise task description" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">所属项目 / Project <span style="color:red">*</span></label>
-                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索..." style="margin-bottom: 8px;" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索... / Search project..." style="margin-bottom: 8px;" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                         <datalist id="project-options"></datalist>
                         <select name="project" id="project-select" class="form-select" required {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                             <option value="">请选择项目 / Select Project</option>
@@ -459,10 +459,38 @@
                     </div>
                 </div>
 
+                <!-- 1.5 Classification & Status -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+                    <div class="form-group">
+                        <label class="form-label">分类 / Category</label>
+                        <select name="category" id="category-select" class="form-select" {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                            {% for val,label in task_category_choices %}
+                                <option value="{{ val }}" {% if form_values.category == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">状态 / Status</label>
+                        <select name="status" id="status-select" class="form-select">
+                            {% for val,label in task_status_choices %}
+                                <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %} data-category="{% if val in 'new,confirmed,fixing,verifying' %}BUG{% elif val in 'todo,in_progress,blocked,in_review,done' %}TASK{% else %}BOTH{% endif %}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">优先级 / Priority</label>
+                        <select name="priority" class="form-select" {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                            {% for val,label in task_priority_choices %}
+                                <option value="{{ val }}" {% if form_values.priority == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
                 <!-- 2. Description (Enhanced Style) -->
                 <div class="form-group" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
                     <label class="form-label" style="font-size: 16px; margin-bottom: 12px;">任务描述 / Description</label>
-                    <textarea name="content" class="form-textarea" placeholder="支持 Markdown 格式...&#10;- 任务详情&#10;- 验收标准" style="background: white;" {% if is_collaborator_only %}disabled readonly{% endif %}>{{ form_values.content|default:'' }}</textarea>
+                    <textarea name="content" class="form-textarea" placeholder="支持 Markdown 格式... / Markdown supported...&#10;- 任务详情 / Details&#10;- 验收标准 / Acceptance Criteria" style="background: white;" {% if is_collaborator_only %}disabled readonly{% endif %}>{{ form_values.content|default:'' }}</textarea>
                 </div>
 
                 <!-- 3. Details & Configuration -->
@@ -472,13 +500,13 @@
                         <div class="form-group">
                             <label class="form-label">主负责人 / Primary Owner <span style="color:red">*</span></label>
                             <div style="position: relative;">
-                                <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索..." autocomplete="off" value="{% if task %}{{ task.user.get_full_name|default:task.user.username }}{% endif %}" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                                <input type="text" id="user-typeahead" class="form-input" placeholder="输入姓名或用户名搜索... / Search user..." autocomplete="off" value="{% if task %}{{ task.user.get_full_name|default:task.user.username }}{% endif %}" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                                 <select name="user" id="user-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; background: white; box-shadow: var(--shadow-lg);">
                                 </select>
                             </div>
                             <input type="hidden" name="user" id="user-hidden-input" required value="{{ form_values.user_id|default:'' }}">
                             <div id="selected-user-display" style="margin-top: 8px; font-weight: 600; color: var(--primary); font-size: 13px; {% if not form_values.user_id %}display: none;{% endif %}">
-                                {% if task %}已选择: {{ task.user.get_full_name|default:task.user.username }}{% endif %}
+                                {% if task %}已选择 / Selected: {{ task.user.get_full_name|default:task.user.username }}{% endif %}
                             </div>
                         </div>
 
@@ -490,7 +518,7 @@
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                         协作人 / Collaborators
                                     </div>
-                                    <div class="role-desc">参与任务执行与讨论</div>
+                                    <div class="role-desc">参与任务执行与讨论 / Participate in execution & discussion</div>
                                 </div>
                                 <div class="selected-count" style="background: #f0fdf4; color: #166534;">
                                     <span id="collab-count">0</span>
@@ -498,7 +526,7 @@
                             </div>
                             <div style="padding: 20px;">
                                 <div style="position: relative;">
-                                    <input type="text" id="collab-typeahead" class="form-input" placeholder="搜索添加协作人..." autocomplete="off" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                                    <input type="text" id="collab-typeahead" class="form-input" placeholder="搜索添加协作人... / Search collaborators..." autocomplete="off" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                                     <select id="collab-select" class="form-select" size="5" style="display:none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; top: 100%; left: 0; background: white; box-shadow: var(--shadow-lg);">
                                     </select>
                                 </div>
@@ -527,24 +555,7 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">状态 / Status</label>
-                                <select name="status" class="form-select">
-                                    {% for val,label in task_status_choices %}
-                                        <option value="{{ val }}" {% if form_values.status == val %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">优先级 / Priority</label>
-                                <select name="priority" class="form-select" {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
-                                    {% for val,label in task_priority_choices %}
-                                        <option value="{{ val }}" {% if form_values.priority == val %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
+{% comment %} Moved to top {% endcomment %}
                     </div>
 
                     <!-- Right: Dates & Files -->
@@ -752,7 +763,7 @@
 
         async function fetchUsers(q) {
             if (!userSelect) return;
-            userSelect.innerHTML = '<option disabled>搜索中...</option>';
+            userSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
             userSelect.style.display = 'block';
 
             try {
@@ -764,7 +775,7 @@
                 if (!data.results || data.results.length === 0) {
                      const opt = document.createElement('option');
                      opt.disabled = true;
-                     opt.textContent = '未找到用户';
+                     opt.textContent = '未找到用户 / No users found';
                      userSelect.appendChild(opt);
                 } else {
                     data.results.forEach(item => {
@@ -802,7 +813,7 @@
                     const label = selectedOption.textContent;
                     userHiddenInput.value = uid;
                     userTypeahead.value = ''; 
-                    selectedUserDisplay.textContent = `已选择: ${label}`;
+                    selectedUserDisplay.textContent = `已选择 / Selected: ${label}`;
                     selectedUserDisplay.style.display = 'block';
                     userSelect.style.display = 'none';
                 }
@@ -827,7 +838,7 @@
 
         async function fetchCollaborators(q) {
             if (!collabSelect) return;
-            collabSelect.innerHTML = '<option disabled>搜索中...</option>';
+            collabSelect.innerHTML = '<option disabled>搜索中... / Searching...</option>';
             collabSelect.style.display = 'block';
 
             try {
@@ -839,7 +850,7 @@
                 if (!data.results || data.results.length === 0) {
                      const opt = document.createElement('option');
                      opt.disabled = true;
-                     opt.textContent = '未找到用户';
+                     opt.textContent = '未找到用户 / No users found';
                      collabSelect.appendChild(opt);
                 } else {
                     const primaryOwnerId = document.getElementById('user-hidden-input').value;
@@ -933,10 +944,10 @@
                 const url = form.querySelector('input[name="url"]').value;
                 const content = form.querySelector('textarea[name="content"]').value;
 
-                if (!title.trim()) { alert('请填写任务标题'); e.preventDefault(); return; }
-                if (!projectVal) { alert('请选择项目'); e.preventDefault(); return; }
-                if (!userVal) { alert('请选择目标用户'); e.preventDefault(); return; }
-                if (!url.trim() && !content.trim()) { alert('请输入 URL 或任务描述内容'); e.preventDefault(); return; }
+                if (!title.trim()) { alert('请填写任务标题 / Please enter task title'); e.preventDefault(); return; }
+                if (!projectVal) { alert('请选择项目 / Please select a project'); e.preventDefault(); return; }
+                if (!userVal) { alert('请选择主负责人 / Please select a primary owner'); e.preventDefault(); return; }
+                if (!url.trim() && !content.trim()) { alert('请输入 URL 或任务描述内容 / Please enter URL or task description'); e.preventDefault(); return; }
             });
         }
 
@@ -987,7 +998,7 @@
             try {
                 const res = await fetch(`${tplApi}?${params.toString()}`);
                 const data = await res.json();
-                if (!res.ok) { alert(data.error || '未找到模板'); return; }
+                if (!res.ok) { alert(data.error || '未找到模板 / Template not found'); return; }
 
                 if (titleInput && data.title) {
                     titleInput.value = (mode === 'append' && titleInput.value) 
@@ -1008,8 +1019,8 @@
                     if (opt) projectSelect.value = String(data.project);
                 }
 
-                alert(data.fallback ? '已应用默认模板 (Fallback)' : '模板已应用');
-            } catch (e) { alert('操作失败'); }
+                alert(data.fallback ? '已应用默认模板 (Fallback) / Applied default template' : '模板已应用 / Template applied');
+            } catch (e) { alert('操作失败 / Operation failed'); }
         }
 
         if (tplRecommend) {
@@ -1103,7 +1114,7 @@
         }
         
         window.deleteExistingAttachment = function(id, url) {
-            if (!confirm('确定删除该附件吗？')) return;
+            if (!confirm('确定删除该附件吗？ / Are you sure you want to delete this attachment?')) return;
             fetch(url, {
                 method: 'POST',
                 headers: {'X-CSRFToken': '{{ csrf_token }}'}
@@ -1119,6 +1130,46 @@
             })
             .catch(err => alert('Delete failed'));
         };
+
+        // --- Category & Status Logic ---
+        const catSelect = document.getElementById('category-select');
+        const statSelect = document.getElementById('status-select');
+        
+        function updateStatusOptions() {
+            if (!catSelect || !statSelect) return;
+            const category = catSelect.value;
+            
+            const bugStatuses = ['new', 'confirmed', 'fixing', 'verifying', 'closed'];
+            const taskStatuses = ['todo', 'in_progress', 'blocked', 'in_review', 'done', 'closed'];
+            
+            const allowed = category === 'BUG' ? bugStatuses : taskStatuses;
+            
+            let firstVisible = null;
+            let currentValid = false;
+            
+            Array.from(statSelect.options).forEach(opt => {
+                const val = opt.value;
+                if (allowed.includes(val)) {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                    if (!firstVisible) firstVisible = val;
+                    if (statSelect.value === val) currentValid = true;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            });
+            
+            if (!currentValid && firstVisible) {
+                statSelect.value = firstVisible;
+            }
+        }
+        
+        if (catSelect) {
+            catSelect.addEventListener('change', updateStatusOptions);
+            // Initial run: wait for data population if needed, but safe to run now
+            updateStatusOptions();
+        }
 
     })();
 </script>

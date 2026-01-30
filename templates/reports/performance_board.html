@@ -406,7 +406,7 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">绩效与统计看板</h1>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">绩效与统计看板 / Performance & Stats</h1>
             <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">项目与角色完成率、逾期率、连签趋势
                 {% if sla_thresholds %}
                 <span class="badge" style="margin-left: 8px; font-weight: normal; background: #f1f5f9; color: var(--text-secondary);">
@@ -421,7 +421,7 @@
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                     <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                发送周报
+                发送周报 / Send Weekly Report
             </a>
         </div>
     </div>
@@ -429,7 +429,7 @@
     <!-- Summary Cards -->
     <div class="summary-grid">
         <div class="summary-card">
-            <div class="summary-label">任务总数</div>
+            <div class="summary-label">任务总数 / Total Tasks</div>
             <div class="summary-value">{{ overall_total }}</div>
             <div class="summary-trend text-secondary">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
@@ -437,7 +437,7 @@
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">逾期任务</div>
+            <div class="summary-label">逾期任务 / Overdue</div>
             <div class="summary-value text-danger">{{ overall_overdue }}</div>
             <div class="summary-trend text-danger">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -445,7 +445,7 @@
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">SLA 准时率</div>
+            <div class="summary-label">SLA 准时率 / SLA On-time Rate</div>
             <div class="summary-value text-success">{{ overall_sla_on_time_rate|floatformat:1 }}%</div>
             <div class="summary-trend text-success">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -480,7 +480,7 @@
                         部门 / Department
                     </label>
                     <select id="role" name="role" class="form-select">
-                        <option value="">所有部门</option>
+                        <option value="">所有部门 / All Depts</option>
                         {% for r_code, r_name in report_roles %}
                         <option value="{{ r_code }}" {% if role_filter == r_code %}selected{% endif %}>{{ r_name }}</option>
                         {% endfor %}
@@ -510,10 +510,10 @@
                         关键指标 / KPI
                     </label>
                     <select id="kpi" name="kpi" class="form-select">
-                        <option value="">默认排序</option>
-                        <option value="completion_desc" {% if request.GET.kpi == 'completion_desc' %}selected{% endif %}>完成率: 高 -> 低</option>
-                        <option value="completion_asc" {% if request.GET.kpi == 'completion_asc' %}selected{% endif %}>完成率: 低 -> 高</option>
-                        <option value="overdue_desc" {% if request.GET.kpi == 'overdue_desc' %}selected{% endif %}>逾期率: 高 -> 低</option>
+                        <option value="">默认排序 / Default Sort</option>
+                        <option value="completion_desc" {% if request.GET.kpi == 'completion_desc' %}selected{% endif %}>完成率: 高 -> 低 / Completion: High -> Low</option>
+                        <option value="completion_asc" {% if request.GET.kpi == 'completion_asc' %}selected{% endif %}>完成率: 低 -> 高 / Completion: Low -> High</option>
+                        <option value="overdue_desc" {% if request.GET.kpi == 'overdue_desc' %}selected{% endif %}>逾期率: 高 -> 低 / Overdue: High -> Low</option>
                     </select>
                 </div>
                 
@@ -524,7 +524,7 @@
                         项目 / Project
                     </label>
                     <select id="project" name="project" class="form-select">
-                        <option value="">所有项目</option>
+                        <option value="">所有项目 / All Projects</option>
                         {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
                         {% endfor %}
@@ -533,7 +533,7 @@
 
                 <!-- Actions -->
                 <div class="filter-actions">
-                    <a href="{% url 'reports:performance_board' %}" class="btn btn-ghost">重置</a>
+                    <a href="{% url 'reports:performance_board' %}" class="btn btn-ghost">重置 / Reset</a>
                     <button type="submit" class="btn btn-primary" onclick="showLoading()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -546,7 +546,7 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        导出
+                        导出 / Export
                     </a>
                 </div>
             </div>
@@ -559,7 +559,7 @@
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; color: var(--primary);">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
             </svg>
-            <div style="margin-top: 12px; font-weight: 600; color: var(--text-main);">正在加载...</div>
+            <div style="margin-top: 12px; font-weight: 600; color: var(--text-main);">正在加载... / Loading...</div>
         </div>
     </div>
     <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
@@ -577,11 +577,11 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>项目</th>
-                            <th style="text-align: center;">总数</th>
-                            <th style="text-align: center;">完成</th>
-                            <th>完成率</th>
-                            <th style="text-align: center;">逾期</th>
+                            <th>项目 / Project</th>
+                            <th style="text-align: center;">总数 / Total</th>
+                            <th style="text-align: center;">完成 / Done</th>
+                            <th>完成率 / Rate</th>
+                            <th style="text-align: center;">逾期 / Overdue</th>
                             <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
@@ -610,7 +610,7 @@
                     </tbody>
                 </table>
                 {% else %}
-                <div class="empty-state">暂无项目数据</div>
+                <div class="empty-state">暂无项目数据 / No project data</div>
                 {% endif %}
             </div>
         </div>
@@ -625,11 +625,11 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>角色</th>
-                            <th style="text-align: center;">总数</th>
-                            <th style="text-align: center;">完成</th>
-                            <th>完成率</th>
-                            <th style="text-align: center;">逾期</th>
+                            <th>角色 / Role</th>
+                            <th style="text-align: center;">总数 / Total</th>
+                            <th style="text-align: center;">完成 / Done</th>
+                            <th>完成率 / Rate</th>
+                            <th style="text-align: center;">逾期 / Overdue</th>
                             <th style="text-align: center;">Lead Time (h)</th>
                         </tr>
                     </thead>
@@ -656,7 +656,7 @@
                     </tbody>
                 </table>
                 {% else %}
-                <div class="empty-state">暂无角色数据</div>
+                <div class="empty-state">暂无角色数据 / No role data</div>
                 {% endif %}
             </div>
         </div>
@@ -747,12 +747,12 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>任务标题</th>
-                        <th>项目</th>
-                        <th>负责人</th>
-                        <th>截止时间</th>
-                        <th>SLA 状态</th>
-                        <th>操作</th>
+                        <th>任务标题 / Task Title</th>
+                        <th>项目 / Project</th>
+                        <th>负责人 / Owner</th>
+                        <th>截止时间 / Due Date</th>
+                        <th>SLA 状态 / SLA Status</th>
+                        <th>操作 / Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -770,13 +770,13 @@
                         <td>{{ task.due_at|date:"Y-m-d H:i" }}</td>
                         <td>
                             {% if task.sla_info.level == 'red' %}
-                                <span class="badge badge-red">紧急: {{ task.sla_info.remaining_hours }}h</span>
+                                <span class="badge badge-red">紧急 / Urgent: {{ task.sla_info.remaining_hours }}h</span>
                             {% elif task.sla_info.level == 'orange' %}
-                                <span class="badge badge-orange">关注: {{ task.sla_info.remaining_hours }}h</span>
+                                <span class="badge badge-orange">关注 / Warning: {{ task.sla_info.remaining_hours }}h</span>
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'tasks:task_view' task.id %}" class="btn btn-ghost btn-sm">查看</a>
+                            <a href="{% url 'tasks:task_view' task.id %}" class="btn btn-ghost btn-sm">查看 / View</a>
                         </td>
                     </tr>
                     {% endfor %}

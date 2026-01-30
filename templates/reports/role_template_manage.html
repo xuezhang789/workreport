@@ -239,8 +239,8 @@
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
-            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">角色模板管理</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">配置不同角色的日报提示语与字段占位</p>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">角色模板管理 / Role Template Management</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">配置不同角色的日报提示语与字段占位 / Configure prompts & placeholders for different roles</p>
         </div>
     </div>
 
@@ -258,10 +258,10 @@
             {% if is_active %}
                 <span style="color: var(--success); display: flex; align-items: center; gap: 4px;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    当前模板已启用
+                    当前模板已启用 / Template Active
                 </span>
             {% else %}
-                <span style="color: var(--text-muted);">当前模板未启用</span>
+                <span style="color: var(--text-muted);">当前模板未启用 / Template Inactive</span>
             {% endif %}
         </div>
     </div>
@@ -353,12 +353,12 @@
                                 <code style="background: var(--bg-page); padding: 2px 6px; border-radius: 4px; color: var(--primary); font-family: monospace;">{{ field }}</code>
                             </li>
                         {% empty %}
-                            <li style="padding: 12px 24px; color: var(--text-muted);">暂无特定字段</li>
+                            <li style="padding: 12px 24px; color: var(--text-muted);">暂无特定字段 / No specific fields</li>
                         {% endfor %}
                     </ul>
                 </div>
                 <div class="card-footer" style="padding: 16px 24px; background: var(--bg-page); border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary);">
-                    * 请仅在 JSON 中配置上述字段的占位符
+                    * 请仅在 JSON 中配置上述字段的占位符 / Only configure placeholders for fields above
                 </div>
             </div>
 
@@ -369,19 +369,19 @@
                 </div>
                 <div class="card-body">
                     <div style="margin-bottom: 16px;">
-                        <div class="form-label">最近更新</div>
+                        <div class="form-label">最近更新 / Last Updated</div>
                         <div style="font-size: 13px; color: var(--text-main);">
                             {% if updated_at %}
                                 {{ updated_at|localtime|date:"Y-m-d H:i" }}
                             {% else %}
-                                尚未保存
+                                尚未保存 / Not saved
                             {% endif %}
                         </div>
                     </div>
                     <div>
-                        <div class="form-label">说明</div>
+                        <div class="form-label">说明 / Description</div>
                         <p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5;">
-                            配置的提示语将在用户鼠标悬停或聚焦输入框时显示。示例 Markdown 可供用户一键填充。
+                            配置的提示语将在用户鼠标悬停或聚焦输入框时显示。示例 Markdown 可供用户一键填充。 / Configured hints appear on hover/focus. Sample Markdown allows one-click filling.
                         </p>
                     </div>
                 </div>
@@ -392,7 +392,7 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        <span>操作成功</span>
+        <span>操作成功 / Operation Successful</span>
     </div>
 
 </div>
@@ -408,13 +408,13 @@
                 try {
                     const parsed = JSON.parse(raw);
                     if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-                        alert('请输入有效的 JSON 对象');
+                        alert('请输入有效的 JSON 对象 / Please enter valid JSON object');
                         return;
                     }
                     textarea.value = JSON.stringify(parsed, null, 4);
-                    showToast('JSON 格式化成功');
+                    showToast('JSON 格式化成功 / JSON formatted successfully');
                 } catch (e) {
-                    alert('JSON 解析失败：' + e.message);
+                    alert('JSON 解析失败：/ JSON parse failed: ' + e.message);
                 }
             });
         }

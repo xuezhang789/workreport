@@ -334,6 +334,14 @@
             <div>
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                     <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--text-secondary);">TASK-{{ task.pk }}</span>
+                    
+                    <!-- Category Badge -->
+                    {% if task.category == 'BUG' %}
+                        <span class="status-badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;">缺陷 / BUG</span>
+                    {% else %}
+                        <span class="status-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe;">任务 / TASK</span>
+                    {% endif %}
+
                     {% if task.status == 'todo' %}
                         <span class="status-badge status-todo">待处理 / To Do</span>
                     {% elif task.status == 'in_progress' %}
@@ -353,7 +361,7 @@
                 <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--text-main);">{{ task.title }}</h1>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="{% url 'tasks:task_list' %}" class="btn btn-ghost">返回列表</a>
+                <a href="{% url 'tasks:task_list' %}" class="btn btn-ghost">返回列表 / Back to List</a>
                 {% if can_edit %}
                     <a href="{% url 'tasks:admin_task_edit' task.pk %}" class="btn btn-secondary">编辑 / Edit</a>
                 {% endif %}
@@ -362,19 +370,18 @@
                 {% if request.user == task.user or request.user.is_staff %}
                     {% if task.status == 'done' or task.status == 'closed' %}
                         <form method="post" style="display: inline;">{% csrf_token %}
-                            <button type="submit" name="action" value="reopen" class="btn btn-secondary">重新打开</button>
+                            <button type="submit" name="action" value="reopen" class="btn btn-secondary">重新打开 / Reopen</button>
                         </form>
                     {% else %}
                         <div style="display: flex; gap: 8px;">
                             <form method="post">{% csrf_token %}
                                 <select name="status_value" class="filter-select" onchange="this.form.submit()">
-                                    <option value="" disabled {% if task.status == 'todo' %}selected{% endif %}>更新状态...</option>
-                                    <option value="todo" {% if task.status == 'todo' %}selected{% endif %}>待处理 / To Do</option>
-                                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>进行中 / In Progress</option>
-                                    <option value="blocked" {% if task.status == 'blocked' %}selected{% endif %}>阻塞中 / Blocked</option>
-                                    <option value="in_review" {% if task.status == 'in_review' %}selected{% endif %}>待评审 / In Review</option>
-                                    <option value="done" {% if task.status == 'done' %}selected{% endif %}>已完成 / Done</option>
-                                    <option value="closed" {% if task.status == 'closed' %}selected{% endif %}>已关闭 / Closed</option>
+                                    <option value="" disabled selected>更新状态... / Update Status</option>
+                                    {% for val,label in task_status_choices %}
+                                        {% if val in allowed_statuses %}
+                                            <option value="{{ val }}">{{ label }}</option>
+                                        {% endif %}
+                                    {% endfor %}
                                 </select>
                                 <input type="hidden" name="action" value="set_status">
                             </form>
@@ -425,13 +432,13 @@
                 <span class="info-label">时间 / Dates</span>
                 <span class="info-value">
                     <span style="font-size: 13px;">
-                        发布: {{ task.created_at|localtime|date:"m-d H:i" }}<br>
-                        {% if task.due_at %}截止: <span {% if task.sla_info.is_overdue %}style="color: #ef4444;"{% endif %}>{{ task.due_at|localtime|date:"m-d H:i" }}</span>{% endif %}
+                        发布 / Posted: {{ task.created_at|localtime|date:"m-d H:i" }}<br>
+                        {% if task.due_at %}截止 / Due: <span {% if task.sla_info.is_overdue %}style="color: #ef4444;"{% endif %}>{{ task.due_at|localtime|date:"m-d H:i" }}</span>{% endif %}
                     </span>
                 </span>
             </div>
             <div class="info-item">
-                <span class="info-label">SLA 状态</span>
+                <span class="info-label">SLA 状态 / SLA Status</span>
                 <span class="info-value">
                     {% if sla.deadline %}
                         <span class="sla-badge {% if sla.status != 'normal' %}{{ sla.status }}{% endif %} {% if sla.paused %}paused{% endif %}">
@@ -442,9 +449,9 @@
                                     按时交付 / On Time
                                 {% endif %}
                             {% else %}
-                                剩余: {% if sla.remaining_hours != None %}{{ sla.remaining_hours }}h{% else %}--{% endif %}
+                                剩余 / Remaining: {% if sla.remaining_hours != None %}{{ sla.remaining_hours }}h{% else %}--{% endif %}
                             {% endif %}
-                            {% if sla.paused %}(暂停){% endif %}
+                            {% if sla.paused %}(暂停 / Paused){% endif %}
                         </span>
                     {% else %}
                         <span style="color: var(--text-secondary);">--</span>
@@ -510,7 +517,7 @@
                         </div>
                     {% endfor %}
                 {% else %}
-                    <div style="text-align: center; color: var(--text-secondary); padding: 24px;">暂无评论</div>
+                    <div style="text-align: center; color: var(--text-secondary); padding: 24px;">暂无评论 / No comments yet</div>
                 {% endif %}
             </div>
             
@@ -527,7 +534,7 @@
                         <span>📎</span> 附件 / Attachments
                     </div>
                     {% if can_edit %}
-                        <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件</button>
+                        <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
                         <input type="file" id="attachment-upload-input" multiple style="display: none;">
                     {% endif %}
                 </div>
@@ -549,15 +556,15 @@
                                 <span>{{ attachment.user.get_full_name|default:attachment.user.username }}</span>
                             </div>
                             <div class="attachment-actions">
-                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载</a>
+                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
                                 {% if request.user.is_superuser or request.user == task.user or request.user == attachment.user %}
-                                    <button class="btn-xs btn-delete" data-url="{% url 'tasks:task_delete_attachment' attachment.id %}" onclick="deleteAttachment({{ attachment.id }}, this.dataset.url)">删除</button>
+                                    <button class="btn-xs btn-delete" data-url="{% url 'tasks:task_delete_attachment' attachment.id %}" onclick="deleteAttachment({{ attachment.id }}, this.dataset.url)">删除 / Delete</button>
                                 {% endif %}
                             </div>
                         </div>
                     {% empty %}
                         <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
-                            暂无附件
+                            暂无附件 / No attachments
                         </div>
                     {% endfor %}
                 </div>
@@ -569,7 +576,7 @@
                     <div class="card-title">⏳ 变更历史 / History</div>
                 </div>
                 <div style="padding: 16px; text-align: center;">
-                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">查看该任务的所有变更记录，包括状态流转和字段修改。</p>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">查看该任务的所有变更记录，包括状态流转和字段修改。 / View all changes, including status transitions and field updates.</p>
                     <a href="{% url 'tasks:task_history' task.id %}" class="btn btn-outline" style="width: 100%; justify-content: center;">
                         查看完整历史 / View Full History
                     </a>
@@ -632,7 +639,7 @@
     }
 
     window.deleteAttachment = function(id, url) {
-        if (!confirm('确定删除该附件吗？')) return;
+        if (!confirm('确定删除该附件吗？ / Are you sure you want to delete this attachment?')) return;
         
         fetch(url, {
             method: 'POST',
@@ -646,12 +653,12 @@
                 const el = document.getElementById(`attachment-${id}`);
                 if (el) el.remove();
             } else {
-                alert('Delete failed: ' + data.message);
+                alert('删除失败 / Delete failed: ' + data.message);
             }
         })
         .catch(err => {
             console.error(err);
-            alert('Delete failed');
+            alert('删除失败 / Delete failed');
         });
     };
 </script>

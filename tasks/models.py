@@ -1,11 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
 from core.models import Profile
-from core.constants import TaskStatus
+from core.constants import TaskStatus, TaskCategory
 from projects.models import Project
 
 class Task(models.Model):
     STATUS_CHOICES = TaskStatus.choices
+    CATEGORY_CHOICES = TaskCategory.choices
 
     PRIORITY_CHOICES = [
         ('high', '高 / High'),
@@ -19,6 +20,7 @@ class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks', verbose_name="主负责人")
     collaborators = models.ManyToManyField(User, related_name='collaborated_tasks', blank=True, verbose_name="协作人")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks', verbose_name="项目")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default=TaskCategory.TASK, verbose_name="分类")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=TaskStatus.TODO, verbose_name="状态")
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="优先级")
     due_at = models.DateTimeField(null=True, blank=True, verbose_name="截止时间")
@@ -31,6 +33,7 @@ class Task(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
+            models.Index(fields=['category']),
             models.Index(fields=['status']),
             models.Index(fields=['project', 'status']),
             models.Index(fields=['user', 'status']),
@@ -41,6 +44,12 @@ class Task(models.Model):
         ]
         verbose_name = "任务"
         verbose_name_plural = "任务"
+
+    def save(self, *args, **kwargs):
+        # Auto-correct status for BUG if it's new and stuck on TODO default
+        if not self.pk and self.category == TaskCategory.BUG and self.status == TaskStatus.TODO:
+            self.status = TaskStatus.NEW
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} -> {self.user.username}"

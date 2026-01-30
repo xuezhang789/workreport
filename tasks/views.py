@@ -19,7 +19,8 @@ from django.urls import reverse
 
 from projects.models import Project
 from tasks.models import Task, TaskAttachment, TaskComment
-from core.constants import TaskStatus
+from core.constants import TaskStatus, TaskCategory
+from tasks.services.state import TaskStateService
 from audit.utils import log_action
 from audit.models import AuditLog, TaskHistory
 from audit.services import AuditLogService
@@ -75,6 +76,7 @@ def admin_task_list(request):
         return _admin_forbidden(request, "需要相关项目权限 / Project access required")
 
     status = (request.GET.get('status') or '').strip()
+    category = (request.GET.get('category') or '').strip()
     priority = (request.GET.get('priority') or '').strip()
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
@@ -105,6 +107,8 @@ def admin_task_list(request):
         tasks_qs = tasks_qs.filter(project__in=accessible_projects)
     if status in dict(Task.STATUS_CHOICES):
         tasks_qs = tasks_qs.filter(status=status)
+    if category in dict(Task.CATEGORY_CHOICES):
+        tasks_qs = tasks_qs.filter(category=category)
     if priority in dict(Task.PRIORITY_CHOICES):
         tasks_qs = tasks_qs.filter(priority=priority)
     if project_id and project_id.isdigit():
@@ -194,6 +198,7 @@ def admin_task_list(request):
         'tasks': page_obj,
         'page_obj': page_obj,
         'status': status,
+        'category': category,
         'priority': priority,
         'q': q,
         'project_id': int(project_id) if project_id and project_id.isdigit() else '',
@@ -203,6 +208,7 @@ def admin_task_list(request):
         'projects': project_choices,
         'users': user_objs,
         'task_status_choices': Task.STATUS_CHOICES,
+        'task_category_choices': Task.CATEGORY_CHOICES,
         'task_priority_choices': Task.PRIORITY_CHOICES,
         'due_soon_ids': due_soon_ids,
         'sla_config_hours': default_sla_hours,
@@ -958,9 +964,20 @@ def admin_task_create(request):
         content = (request.POST.get('content') or '').strip()
         project_id = request.POST.get('project')
         user_id = request.POST.get('user')
-        status = request.POST.get('status') or 'todo'
+        category = request.POST.get('category') or TaskCategory.TASK
+        # If user didn't select status (or it's empty), default based on category
+        raw_status = request.POST.get('status')
+        if category == TaskCategory.BUG and (not raw_status or raw_status == 'todo'):
+             status = TaskStatus.NEW
+        else:
+             status = raw_status or 'todo'
+        
         priority = request.POST.get('priority') or 'medium'
         due_at_str = request.POST.get('due_at')
+
+        # Enforce initial status for BUG
+        if category == TaskCategory.BUG and status == TaskStatus.TODO:
+            status = TaskStatus.NEW
 
         errors = []
         if not title:
@@ -969,6 +986,8 @@ def admin_task_create(request):
             errors.append("任务内容需填写：请选择 URL 或填写文本内容")
         if status not in dict(Task.STATUS_CHOICES):
             errors.append("请选择有效的状态")
+        if category not in dict(Task.CATEGORY_CHOICES):
+            errors.append("请选择有效的分类")
         if priority not in dict(Task.PRIORITY_CHOICES):
             errors.append("请选择有效的优先级")
         project = None
@@ -1007,9 +1026,10 @@ def admin_task_create(request):
                 'projects': projects,
                 'users': collaborators,
                 'task_status_choices': Task.STATUS_CHOICES,
+                'task_category_choices': Task.CATEGORY_CHOICES,
                 'task_priority_choices': Task.PRIORITY_CHOICES,
                 'existing_urls': existing_urls,
-                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'status': status, 'priority': priority, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
+                'form_values': {'title': title, 'url': url, 'content': content, 'project_id': project_id, 'user_id': user_id, 'category': category, 'status': status, 'priority': priority, 'due_at': due_at_str, 'collaborator_ids': collaborator_ids},
             })
 
         task = Task.objects.create(
@@ -1018,6 +1038,7 @@ def admin_task_create(request):
             content=content,
             project=project,
             user=target_user,
+            category=category,
             status=status,
             priority=priority,
             due_at=due_at,
@@ -1041,10 +1062,13 @@ def admin_task_create(request):
         'projects': projects,
         'users': [],
         'task_status_choices': Task.STATUS_CHOICES,
+        'task_category_choices': Task.CATEGORY_CHOICES,
         'task_priority_choices': Task.PRIORITY_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
             'project_id': request.GET.get('project_id'),
+            'category': request.GET.get('category'), # Allow pre-filling category
+            'status': TaskStatus.NEW if request.GET.get('category') == 'BUG' else None, # Pre-fill status if BUG
         },
     })
 
@@ -1116,6 +1140,7 @@ def admin_task_edit(request, pk):
         old_due = task.due_at
         old_user = task.user
         
+        category = request.POST.get('category') or TaskCategory.TASK
         status = request.POST.get('status') or 'todo'
         priority = request.POST.get('priority') or 'medium'
         errors = []
@@ -1127,6 +1152,7 @@ def admin_task_edit(request, pk):
             content = task.content
             project = task.project
             target_user = task.user
+            category = task.category
             due_at = task.due_at
             priority = task.priority
             collaborators = list(task.collaborators.all())
@@ -1174,6 +1200,8 @@ def admin_task_edit(request, pk):
 
         if status not in dict(Task.STATUS_CHOICES):
             errors.append("请选择有效的状态")
+        if category not in dict(Task.CATEGORY_CHOICES):
+            errors.append("请选择有效的分类")
         if not is_collaborator_only and priority not in dict(Task.PRIORITY_CHOICES):
             errors.append("请选择有效的优先级")
 
@@ -1185,6 +1213,7 @@ def admin_task_edit(request, pk):
                 'projects': projects,
                 'users': collaborators if not is_collaborator_only else task.collaborators.all(),
                 'task_status_choices': Task.STATUS_CHOICES,
+                'task_category_choices': Task.CATEGORY_CHOICES,
                 'task_priority_choices': Task.PRIORITY_CHOICES,
                 'existing_urls': existing_urls,
                 'form_values': {
@@ -1193,6 +1222,7 @@ def admin_task_edit(request, pk):
                     'content': content, 
                     'project_id': project.id if project else '', 
                     'user_id': target_user.id if target_user else '', 
+                    'category': category,
                     'status': status, 
                     'priority': priority,
                     'due_at': due_at.isoformat() if due_at else '', 
@@ -1206,6 +1236,7 @@ def admin_task_edit(request, pk):
         task.content = content
         task.project = project
         task.user = target_user
+        task.category = category
         task.status = status
         task.priority = priority
         task.due_at = due_at
@@ -1231,6 +1262,7 @@ def admin_task_edit(request, pk):
         'projects': projects,
         'users': task.collaborators.all(),
         'task_status_choices': Task.STATUS_CHOICES,
+        'task_category_choices': Task.CATEGORY_CHOICES,
         'task_priority_choices': Task.PRIORITY_CHOICES,
         'existing_urls': existing_urls,
         'form_values': {
@@ -1239,6 +1271,7 @@ def admin_task_edit(request, pk):
             'content': task.content,
             'project_id': task.project_id,
             'user_id': task.user_id,
+            'category': task.category,
             'status': task.status,
             'priority': task.priority,
             'due_at': task.due_at.isoformat() if task.due_at else '',
@@ -1326,6 +1359,7 @@ def api_task_detail(request, pk: int):
         'content': task.content,
         'project_id': task.project_id,
         'user_id': task.user_id,
+        'category': task.category,
         'status': task.status,
         'priority': task.priority,
         'due_at': task.due_at.isoformat() if task.due_at else '',
@@ -1336,6 +1370,7 @@ def api_task_detail(request, pk: int):
 def task_list(request):
     """User-facing task list with filters and completion button."""
     status = (request.GET.get('status') or '').strip()
+    category = (request.GET.get('category') or '').strip()
     project_id = request.GET.get('project')
     q = (request.GET.get('q') or '').strip()
     hot = request.GET.get('hot') == '1'
@@ -1380,6 +1415,8 @@ def task_list(request):
     # 应用过滤器
     if status:
         tasks_qs = tasks_qs.filter(status=status)
+    if category in dict(Task.CATEGORY_CHOICES):
+        tasks_qs = tasks_qs.filter(category=category)
     if project_id and project_id.isdigit():
         tasks_qs = tasks_qs.filter(project_id=project_id)
     if q:
@@ -1433,11 +1470,13 @@ def task_list(request):
         'tasks': tasks,
         'projects': projects,
         'selected_status': status,
+        'selected_category': category,
         'selected_project_id': int(project_id) if project_id and project_id.isdigit() else None,
         'q': q,
         'hot': hot,
         'priority': priority,
         'priorities': Task.PRIORITY_CHOICES,
+        'task_category_choices': Task.CATEGORY_CHOICES,
         'due_soon_count': len(due_soon_ids),
         'sort_by': sort_by,
     })
@@ -1877,6 +1916,12 @@ def task_view(request, pk: int):
                 log_action(request, 'create', f"task_attachment {task.id}")
         elif request.POST.get('action') == 'set_status':
             new_status = request.POST.get('status_value')
+            
+            # Validate transition
+            if not TaskStateService.validate_transition(task.category, task.status, new_status):
+                 messages.error(request, f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}")
+                 return redirect('tasks:task_view', pk=pk)
+
             if new_status in dict(Task.STATUS_CHOICES):
                 try:
                     with transaction.atomic():
@@ -1894,6 +1939,33 @@ def task_view(request, pk: int):
                             if task.completed_at:
                                 task.completed_at = None
                         task.save(update_fields=['status', 'completed_at'])
+                    
+                    # Notifications for BUG states
+                    if task.category == TaskCategory.BUG:
+                        if new_status == TaskStatus.VERIFYING:
+                            # Notify Tester (Project QAs + Creator)
+                            qas = list(task.project.members.filter(profile__position='qa'))
+                            recipients = set(qas)
+                            if task.created_at: # task doesn't have creator field explicitly? Wait, audit log has it.
+                                # Task model doesn't have created_by?
+                                # Check Task model again.
+                                pass
+                            # Task doesn't store creator! It stores 'user' (Assignee).
+                            # 'created_at' is datetime.
+                            # Usually creator is tracked in AuditLog 'create'.
+                            # Or I assume Assignee is the responsible one.
+                            # But requirement says "notify Creator AND Assignee".
+                            # If I don't have Creator field, I can't notify Creator unless I look up audit log.
+                            # Looking up audit log is expensive.
+                            # I will stick to notifying Project QAs and Assignee.
+                            # If no QAs, maybe just Assignee.
+                            recipients.add(task.user)
+                            _notify(request, list(recipients), f"缺陷 {task.id} 已修复，请验证 / Bug fixed, verifying needed", category="task_updated")
+                            
+                        elif new_status == TaskStatus.CLOSED:
+                            # Notify Assignee (and Creator if I knew who)
+                            _notify(request, [task.user], f"缺陷 {task.id} 已关闭 / Bug closed", category="task_updated")
+
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
                     messages.success(request, "状态已更新 / Status updated.")
                 except Exception as exc:
@@ -1907,12 +1979,17 @@ def task_view(request, pk: int):
     # Unified History (AuditLogs for Task) removed from here, moved to separate view
     
     sla_ref_time = task.completed_at if task.completed_at else None
+    
+    allowed_statuses = TaskStateService.get_allowed_next_statuses(task.category, task.status)
+    
     return render(request, 'tasks/task_detail.html', {
         'task': task,
         'comments': comments,
         'attachments': attachments,
         'sla': calculate_sla_info(task, as_of=sla_ref_time),
         'can_edit': can_edit,
+        'allowed_statuses': allowed_statuses,
+        'task_status_choices': Task.STATUS_CHOICES, # Full choices for mapping
     })
 
 

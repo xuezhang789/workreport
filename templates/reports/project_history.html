@@ -315,7 +315,7 @@
         <div style="display: flex; justify-content: center; margin-bottom: 24px;">
             <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
                 {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← 上一页 / Prev</a>
                 {% endif %}
                 
                 <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
@@ -323,7 +323,7 @@
                 </span>
                 
                 {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">下一页 / Next →</a>
                 {% endif %}
             </div>
         </div>
@@ -413,7 +413,7 @@
         <div style="display: flex; justify-content: center; margin-top: 32px;">
             <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
                 {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← 上一页 / Prev</a>
                 {% endif %}
                 
                 <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
@@ -421,7 +421,7 @@
                 </span>
                 
                 {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">下一页 / Next →</a>
                 {% endif %}
             </div>
         </div>

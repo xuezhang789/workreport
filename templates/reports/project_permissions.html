@@ -1,24 +1,24 @@
 {% extends "base_topbar.html" %}
 {% load static %}
 
-{% block title %}项目权限管理 - {{ project.name }}{% endblock %}
+{% block title %}项目权限管理 / Project Permissions - {{ project.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <h2>项目权限管理 - {{ project.name }}</h2>
+    <h2>项目权限管理 / Project Permissions - {{ project.name }}</h2>
     
     <div class="card">
         <div class="card-header">
-            <h5 class="mb-0">成员权限设置</h5>
+            <h5 class="mb-0">成员权限设置 / Member Permissions</h5>
         </div>
         <div class="card-body">
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>用户名</th>
-                        <th>角色</th>
-                        <th>当前权限</th>
-                        <th>操作</th>
+                        <th>用户名 / Username</th>
+                        <th>角色 / Role</th>
+                        <th>当前权限 / Current Permissions</th>
+                        <th>操作 / Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30,14 +30,14 @@
                             {% for perm in item.permissions %}
                                 <span class="badge bg-info">{{ perm }}</span>
                             {% empty %}
-                                <span class="text-muted">无特殊权限</span>
+                                <span class="text-muted">无特殊权限 / No Special Permissions</span>
                             {% endfor %}
                         </td>
                         <td>
                             <button class="btn btn-sm btn-outline-primary edit-permissions-btn" 
                                     data-user-id="{{ item.user.id }}"
                                     data-current-perms="{{ item.permissions|join:',' }}">
-                                编辑权限
+                                编辑权限 / Edit Perms
                             </button>
                         </td>
                     </tr>
@@ -53,7 +53,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="permissionsModalLabel">编辑用户权限</h5>
+                <h5 class="modal-title" id="permissionsModalLabel">编辑用户权限 / Edit User Permissions</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="permissionsForm" method="post">
@@ -75,8 +75,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary">保存权限</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消 / Cancel</button>
+                    <button type="submit" class="btn btn-primary">保存权限 / Save Permissions</button>
                 </div>
             </form>
         </div>
