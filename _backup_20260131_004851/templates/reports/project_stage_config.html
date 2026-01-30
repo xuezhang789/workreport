@@ -1,0 +1,97 @@
+{% extends "base_topbar.html" %}
+
+{% block title %}项目阶段配置 / Phase Config{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <div>
+        <p class="eyebrow">设置 · 阶段 / Settings · Phases</p>
+        <h1>项目阶段配置 / Phase Config</h1>
+        <p class="lede">管理项目生命周期的阶段与进度百分比 / Manage project lifecycle phases and progress.</p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+    <!-- Form Section -->
+    <section class="card">
+        <h3>{% if editing %}编辑阶段 / Edit Phase{% else %}新增阶段 / New Phase{% endif %}</h3>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div style="margin-bottom: 16px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <small style="color: var(--text-secondary);">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">
+                    {{ field.errors }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <div class="actions-row">
+                <button type="submit" class="btn btn-primary">
+                    {% if editing %}更新 / Update{% else %}创建 / Create{% endif %}
+                </button>
+                {% if editing %}
+                <a href="{% url 'projects:project_phase_config_list' %}" class="btn btn-ghost">取消 / Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
+    <!-- List Section -->
+    <section class="card">
+        <h3>阶段列表 / Phase List</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>排序 / Order</th>
+                    <th>名称 / Name</th>
+                    <th>进度 / Progress</th>
+                    <th>状态 / Status</th>
+                    <th>操作 / Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for phase in phases %}
+                <tr {% if phase.id == phase_id %}style="background: rgba(59, 130, 246, 0.1);"{% endif %}>
+                    <td>{{ phase.order_index }}</td>
+                    <td>{{ phase.phase_name }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; width: 60px;">
+                                <div style="width: {{ phase.progress_percentage }}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+                            </div>
+                            <span>{{ phase.progress_percentage }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if phase.is_active %}
+                        <span class="status-badge status-completed">启用 / Active</span>
+                        {% else %}
+                        <span class="status-badge status-on-hold">停用 / Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-row" style="justify-content: flex-start; margin-top: 0;">
+                            <a href="{% url 'projects:project_phase_config_update' phase.id %}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px;">编辑 / Edit</a>
+                            <form method="post" action="{% url 'projects:project_phase_config_delete' phase.id %}" onsubmit="return confirm('确认删除？/ Are you sure?');" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px; color: var(--danger);">删除 / Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">暂无配置 / No phases configured</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

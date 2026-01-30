@@ -1,0 +1,69 @@
+{% extends "base_topbar.html" %}
+{% block title %}SLA 配置 / SLA Settings{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="SLA 配置中心 / SLA Settings" nav_subtitle="设置任务提醒窗口与阈值 / Configure SLA thresholds" %}{% endblock %}
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    /* Most styles are now inline to ensure consistency with other pages */
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">SLA 配置中心 / SLA Settings</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">设置任务提醒窗口与阈值 / Configure SLA thresholds</p>
+        </div>
+    </div>
+
+    <div class="form-card" style="padding: 32px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: #ffffff; box-shadow: var(--shadow-sm);">
+        <div class="section-header" style="border-bottom: 1px solid var(--border-color); margin-bottom: 24px; padding-bottom: 16px;">
+            <div>
+                <h2 class="section-title" style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0;">SLA 全局配置 / Global Configuration</h2>
+                <p class="section-desc" style="color: var(--text-secondary); font-size: 14px; margin-top: 8px;">配置任务到期前的提醒窗口与阈值：绿色（正常）、黄色（提醒）、红色（紧急）。 / Configure SLA thresholds: Green (Normal), Yellow (Warning), Red (Critical).</p>
+            </div>
+        </div>
+
+        <div class="alert alert-info" style="background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <div>此配置将应用于所有未单独设置 SLA 的项目。 / This configuration applies to all projects without custom SLA settings.</div>
+        </div>
+        
+        <!-- Visual Guide -->
+        <div style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); font-weight: 600;">时间轴示意图 / Timeline Visualization</div>
+        <div class="sla-visual" style="display: flex; height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 24px; background: #f1f5f9; font-size: 12px; font-weight: 600; color: white; text-align: center;">
+            <div class="sla-visual-green" style="background: #10b981; flex: 1; display: flex; align-items: center; justify-content: center;">正常 / Normal</div>
+            <div class="sla-visual-amber" style="background: #f59e0b; width: 25%; display: flex; align-items: center; justify-content: center;">黄色阈值 / Amber</div>
+            <div class="sla-visual-red" style="background: #ef4444; width: 10%; display: flex; align-items: center; justify-content: center;">红色阈值 / Red</div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="sla_hours" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">默认提醒窗口 (小时) / Default Window</label>
+                    <input type="number" min="1" name="sla_hours" id="sla_hours" class="form-input" value="{{ sla_hours }}" placeholder="例如：24" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
+                    <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">任务截止前的总监控时长 (Total monitoring window before due date)</p>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="sla_amber" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">黄色阈值 (小时) / Amber Threshold</label>
+                    <input type="number" min="1" name="sla_amber" id="sla_amber" class="form-input" value="{{ sla_amber|default:6 }}" placeholder="例如：6" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
+                    <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">当剩余时间少于此值时，状态变为“关注” (Warning level)</p>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="sla_red" style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">红色阈值 (小时) / Red Threshold</label>
+                    <input type="number" min="1" name="sla_red" id="sla_red" class="form-input" value="{{ sla_red|default:2 }}" placeholder="例如：2" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; background-color: #f8fafc; color: var(--text-main);">
+                    <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">当剩余时间少于此值时，状态变为“紧急” (Critical level)</p>
+                </div>
+            </div>
+            
+            <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">返回列表 / Cancel</a>
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">保存配置 / Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base_topbar.html" %}
+{% block title %}无权限 / Access Denied{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="无权限 / Access Denied" nav_subtitle="请联系管理员获取访问权限 / Contact admin for access" %}{% endblock %}
+{% block extra_styles %}
+        :root {
+            --primary: #2563eb;
+            --primary-2: #3b82f6;
+            --accent: #06b6d4;
+            --bg-card: rgba(255, 255, 255, 0.96);
+            --bg-glass: rgba(248, 250, 252, 0.9);
+            --border: rgba(226, 232, 240, 0.9);
+            --text: #1e293b;
+            --muted: #475569;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+        }
+        .forbidden-wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .forbidden-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-glass));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px 26px;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+        .forbidden-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+            opacity: 0.85;
+        }
+        .forbidden-title {
+            margin: 0 0 8px;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .forbidden-desc {
+            margin: 0 0 14px;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .forbidden-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+{% endblock %}
+{% block content %}
+<div class="forbidden-wrap">
+    <div class="forbidden-card">
+        <h1 class="forbidden-title">无权限访问 / Access denied</h1>
+        <p class="forbidden-desc">
+            当前账户没有访问该页面的权限。如需开通，请联系管理员。 / You don’t have permission to view this page. Contact an administrator if you need access.
+        </p>
+        {% if detail %}
+        <p class="forbidden-desc" style="margin-top:4px;color:#0f172a;font-weight:600;">
+            {{ detail }}
+        </p>
+        {% endif %}
+        <div class="forbidden-actions">
+            <a class="ghost-link" href="{% url 'reports:workbench' %}">返回工作台 / Back to workbench</a>
+            <a class="ghost-link" href="{% url 'core:account_settings' %}">个人中心 / Account settings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

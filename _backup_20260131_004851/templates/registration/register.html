@@ -1,0 +1,551 @@
+{% extends "base_topbar.html" %}
+{% block title %}注册 / Register{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="注册 / Register" nav_subtitle="加入团队协作平台 / Join team collaboration platform" %}{% endblock %}
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+        background-color: var(--bg-page);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .container-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
+
+    .auth-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        max-width: 1000px;
+        display: flex;
+        overflow: hidden;
+        min-height: 600px;
+    }
+
+    .auth-form-side {
+        flex: 1.2;
+        padding: 48px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        background: #ffffff;
+        border-right: 1px solid var(--border-color);
+    }
+    
+    .auth-form-container {
+        width: 100%;
+    }
+
+    .auth-info-side {
+        flex: 0.8;
+        background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+        padding: 48px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        color: white;
+    }
+
+    /* Typography */
+    .auth-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0 0 8px 0;
+        letter-spacing: -0.5px;
+    }
+
+    .auth-subtitle {
+        color: var(--text-secondary);
+        font-size: 15px;
+        margin: 0 0 32px 0;
+    }
+    
+    /* Info Side Content Overrides */
+    .info-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 20px;
+        line-height: 1.2;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .info-desc {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 40px;
+        font-weight: 500;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: white;
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+        box-shadow: none;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 15px;
+        transition: var(--transition);
+        background-color: #f8fafc;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    .form-input:hover {
+        border-color: #cbd5e1;
+        background-color: #fff;
+    }
+
+    .form-input:focus {
+        border-color: var(--primary);
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+
+    select.form-input {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+        appearance: none;
+    }
+
+    .label-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        width: 100%;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #1e40af; /* Darker blue for better contrast */
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* Alerts */
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        line-height: 1.5;
+        margin-bottom: 24px;
+    }
+
+    .alert-danger {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    /* Password Strength */
+    .password-strength-meter {
+        height: 4px;
+        background-color: #e2e8f0;
+        border-radius: 2px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+
+    .password-strength-bar {
+        height: 100%;
+        width: 0;
+        transition: width 0.3s ease, background-color 0.3s ease;
+    }
+
+    .strength-text {
+        font-size: 11px;
+        margin-top: 4px;
+        text-align: right;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .password-requirements {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin-top: 8px;
+    }
+
+    .requirement {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .requirement.met {
+        color: var(--success);
+        font-weight: 600;
+    }
+
+
+
+    .subtext {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .subtext a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .subtext a:hover {
+        color: #1e40af; /* Darker blue */
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .auth-card {
+            flex-direction: column;
+        }
+        .auth-info-side {
+            display: none;
+        }
+        .auth-form-side {
+            padding: 32px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-wrapper">
+        <div class="auth-card">
+            <!-- Left: Form -->
+            <div class="auth-form-side">
+                <div class="auth-form-container">
+                    <div style="margin-bottom: 24px;">
+                        <div style="width: 48px; height: 48px; background: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 20px; margin-bottom: 16px;">IM</div>
+                        <h1 class="auth-title">加入团队 / Join Team</h1>
+                        <p class="auth-subtitle">创建账户，开始高效的团队协作之旅 / Create an account and start your efficient team collaboration journey</p>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" novalidate id="register-form">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">用户名 / Username</label>
+                            {{ form.username }}
+                            <div class="label-hint">用户名将作为您的唯一标识，建议使用英文字母和数字 / Username will be your unique ID, English letters and numbers are recommended</div>
+                            {% if form.username.errors %}
+                                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.full_name.id_for_label }}" class="form-label">姓名 / Your Name</label>
+                            {{ form.full_name }}
+                            <div class="label-hint">用于展示和识别，可填写中文姓名 / Used for display and recognition, Chinese names are supported</div>
+                            {% if form.full_name.errors %}
+                                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.full_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.position.id_for_label }}" class="form-label">职位角色 / Position</label>
+                            {{ form.position }}
+                            <div class="label-hint">选择您在团队中的主要角色 / Select your primary role in the team</div>
+                            {% if form.position.errors %}
+                                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.position.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.password1.id_for_label }}" class="form-label">设置密码 / Password</label>
+                            {{ form.password1 }}
+                            <div class="password-strength-meter">
+                                <div class="password-strength-bar" id="password-strength-bar"></div>
+                            </div>
+                            <div class="strength-text" id="password-score-text">强度评分 / Strength Score: 0/6</div>
+                            
+                            <div class="password-requirements">
+                                <div class="requirement" id="req-length-8">8+ 字符 / Chars</div>
+                                <div class="requirement" id="req-length-12">12+ 字符 / Chars</div>
+                                <div class="requirement" id="req-upper">大写字母 / Uppercase</div>
+                                <div class="requirement" id="req-lower">小写字母 / Lowercase</div>
+                                <div class="requirement" id="req-number">数字 / Numbers</div>
+                                <div class="requirement" id="req-symbol">符号 / Symbols</div>
+                            </div>
+
+                            {% if form.password1.errors %}
+                                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.password1.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.password2.id_for_label }}" class="form-label">确认密码 / Confirm Password</label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}
+                                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.password2.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="register-btn">创建账户 / Create Account</button>
+                    </form>
+
+                    <div class="subtext">
+                        已有账号？ / Already have an account? <a href="{% url 'core:login' %}">返回登录 / Back to login</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Info -->
+            <div class="auth-info-side">
+                <h2 class="info-title">开启高效 / Start Efficient<br>协作新体验 / Collaboration Experience</h2>
+                <p class="info-desc">智能角色适配 · 数据可视化 · 移动端友好 · 实时通知 / Smart Role Adaptation · Data Visualization · Mobile Friendly · Real-time Notifications</p>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <span>智能角色适配，提升填写效率 / Smart Role Adaptation</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        </div>
+                        <span>直观图表，掌握项目进度 / Intuitive Charts</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </div>
+                        <span>任务提醒与实时通知 / Task Alerts & Notifications</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add styling classes
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.classList.add('form-input');
+            });
+
+            const password1Input = document.querySelector('input[name="password1"]');
+            const password2Input = document.querySelector('input[name="password2"]');
+            const strengthBar = document.getElementById('password-strength-bar');
+            const scoreText = document.getElementById('password-score-text');
+            const registerForm = document.getElementById('register-form');
+            const registerBtn = document.getElementById('register-btn');
+            const MIN_SCORE = {{ password_min_score|default:3 }};
+
+            // Password strength check
+            function checkPasswordStrength(password) {
+                const requirements = {
+                    len8: password.length >= 8,
+                    len12: password.length >= 12,
+                    upper: /[A-Z]/.test(password),
+                    lower: /[a-z]/.test(password),
+                    number: /[0-9]/.test(password),
+                    symbol: /[^A-Za-z0-9]/.test(password)
+                };
+                const ids = {
+                    len8: 'req-length-8',
+                    len12: 'req-length-12',
+                    upper: 'req-upper',
+                    lower: 'req-lower',
+                    number: 'req-number',
+                    symbol: 'req-symbol'
+                };
+                let score = 0;
+                Object.entries(requirements).forEach(([key, met]) => {
+                    const el = document.getElementById(ids[key]);
+                    if (el) el.classList.toggle('met', met);
+                    if (met) score++;
+                });
+
+                const percent = (score / 6) * 100;
+                strengthBar.style.width = percent + '%';
+                
+                if (score <= 2) {
+                    strengthBar.style.backgroundColor = 'var(--danger)';
+                } else if (score <= 4) {
+                    strengthBar.style.backgroundColor = 'var(--warning)';
+                } else {
+                    strengthBar.style.backgroundColor = 'var(--success)';
+                }
+
+                if (scoreText) {
+                    scoreText.textContent = `强度评分 / Strength Score: ${score}/6（至少 / Min ${MIN_SCORE} 项）`;
+                    scoreText.style.color = score >= MIN_SCORE ? 'var(--success)' : 'var(--danger)';
+                }
+
+                return score;
+            }
+
+            if (password1Input) {
+                password1Input.addEventListener('input', function() {
+                    checkPasswordStrength(this.value);
+                });
+            }
+
+            // Password match check
+            function checkPasswordMatch() {
+                if (password2Input.value && password1Input.value !== password2Input.value) {
+                    password2Input.setCustomValidity('密码不匹配 / Passwords do not match');
+                    password2Input.style.borderColor = 'var(--danger)';
+                } else {
+                    password2Input.setCustomValidity('');
+                    password2Input.style.borderColor = '';
+                }
+            }
+
+            if (password1Input && password2Input) {
+                password1Input.addEventListener('change', checkPasswordMatch);
+                password2Input.addEventListener('input', checkPasswordMatch);
+            }
+
+            // Form submit
+            if (registerForm) {
+                registerForm.addEventListener('submit', function(e) {
+                    const passwordStrength = checkPasswordStrength(password1Input.value);
+                    
+                    if (passwordStrength < MIN_SCORE) {
+                        e.preventDefault();
+                        alert('密码强度不足，请参考提示补全长度、大小写、数字或符号后再提交。 / Password strength insufficient, please meet requirements.');
+                        return false;
+                    }
+
+                    registerBtn.disabled = true;
+                    registerBtn.innerHTML = '创建中... / Creating...';
+                    
+                    setTimeout(() => {
+                        registerBtn.disabled = false;
+                        registerBtn.innerHTML = '创建账户 / Create Account';
+                    }, 10000);
+                });
+            }
+
+            // Username validation
+            const usernameInput = document.querySelector('input[name="username"]');
+            if (usernameInput) {
+                usernameInput.addEventListener('blur', function() {
+                    const username = this.value.trim();
+                    if (username && username.length < 3) {
+                        this.setCustomValidity('用户名至少需要3个字符');
+                    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                        this.setCustomValidity('用户名只能包含字母、数字和下划线');
+                    } else {
+                        this.setCustomValidity('');
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

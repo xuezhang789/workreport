@@ -1,0 +1,597 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+{% load tz %}
+{% load core_tags %}
+
+{% block title %}任务管理 / Tasks Admin{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="任务管理 / Tasks Admin" nav_subtitle="管理员发布、筛选与管理任务 / Admin create, filter & manage tasks" %}{% endblock %}
+
+{% block content %}
+<style>
+    /* --- Page Specific Overrides --- */
+    .page-container {
+        max-width: 1600px; /* Wider layout for data table */
+    }
+
+    /* Avatar Stack Override for overlap */
+    .avatar-stack {
+        display: flex;
+        align-items: center;
+    }
+    .avatar-stack .avatar-component {
+        margin-left: -8px;
+        border: 2px solid white;
+        transition: transform 0.2s;
+    }
+    .avatar-stack .avatar-component:first-child {
+        margin-left: 0;
+        z-index: 10;
+    }
+    .avatar-stack .avatar-component:hover {
+        transform: translateY(-2px);
+        z-index: 20;
+    }
+
+    /* Table Column Widths */
+    .col-checkbox { width: 48px; text-align: center; }
+    .col-title { min-width: 300px; max-width: 500px; white-space: normal; }
+    .col-project { width: 15%; min-width: 140px; }
+    .col-user { width: 15%; min-width: 160px; }
+    .col-status { width: 100px; }
+    .col-priority { width: 100px; }
+    .col-due { width: 160px; }
+    .col-actions { width: 120px; text-align: right; }
+
+    /* Mobile Responsive Table */
+    @media (max-width: 1024px) {
+        .col-title { min-width: 200px; }
+    }
+
+    @media (max-width: 768px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        
+        .bulk-actions-bar { flex-direction: column; align-items: stretch !important; gap: 16px; height: auto !important; }
+        .bulk-controls { flex-direction: column; align-items: stretch; width: 100%; }
+        .bulk-select { width: 100%; }
+
+        /* Card View for Mobile */
+        .table thead { display: none; }
+        .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+        
+        .table tr { 
+            margin-bottom: 16px; 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius-lg); 
+            overflow: hidden; 
+            background: white; 
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .table td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            text-align: right; 
+            padding: 12px 16px; 
+            border-bottom: 1px solid #f1f5f9; 
+        }
+        
+        .table td:last-child { border-bottom: none; background: #f8fafc; justify-content: flex-end; }
+        
+        .table td::before { 
+            content: attr(data-label); 
+            font-weight: 600; 
+            color: var(--text-secondary); 
+            font-size: 13px; 
+            margin-right: 16px; 
+            text-align: left; 
+            flex-shrink: 0;
+        }
+
+        /* Specific Cell Overrides */
+        .col-checkbox { text-align: left; background: #f8fafc; padding: 10px 16px; }
+        .col-checkbox::before { content: "选择 / Select"; }
+        
+        .col-title { display: block !important; text-align: left !important; padding-top: 16px; }
+        .col-title::before { display: none; }
+        
+        .col-project, .col-user, .col-status, .col-priority, .col-due { min-width: auto; width: 100%; }
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed; inset: 0; background: rgba(255,255,255,0.7); backdrop-filter: blur(2px);
+        z-index: 9999; display: none; place-items: center;
+    }
+    .spinner {
+        width: 40px; height: 40px; border: 4px solid var(--primary-light);
+        border-top-color: var(--primary); border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+</style>
+
+<div class="loading-overlay" id="globalLoading">
+    <div class="spinner"></div>
+</div>
+
+<div class="page-container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">任务管理 / Tasks Admin</h1>
+            <p class="page-subtitle">管理员发布、筛选与管理任务 / Admin create, filter & manage tasks</p>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'tasks:admin_task_create' %}" class="btn btn-primary shadow-sm">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                发布新任务
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get" id="filterForm" onsubmit="showLoading()">
+            <div class="filter-grid">
+                <!-- Search -->
+                <div class="form-group" style="flex: 2; min-width: 240px;">
+                    <label class="form-label" for="q">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        搜索 / Search
+                    </label>
+                    <div class="search-wrapper">
+                        <input type="text" id="q" name="q" class="form-input" value="{{ q }}" placeholder="任务标题或内容...">
+                    </div>
+                </div>
+                
+                <!-- Project -->
+                <div class="form-group">
+                    <label class="form-label" for="project">项目 / Project</label>
+                    <select id="project" name="project" class="form-select">
+                        <option value="">全部项目 / All Projects</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- User -->
+                <div class="form-group">
+                    <label class="form-label" for="user">负责人 / Assignee</label>
+                    <select id="user" name="user" class="form-select">
+                        <option value="">全部人员 / All Users</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div class="form-group">
+                    <label class="form-label" for="category">分类 / Category</label>
+                    <select id="category" name="category" class="form-select">
+                        <option value="">全部分类 / All</option>
+                        {% for val,label in task_category_choices %}
+                        <option value="{{ val }}" {% if category == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label class="form-label" for="status">状态 / Status</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">全部状态 / All</option>
+                        {% for val,label in task_status_choices %}
+                        <option value="{{ val }}" {% if status == val %}selected{% endif %} 
+                                data-category="{% if val in 'new,confirmed,fixing,verifying' %}BUG{% elif val in 'todo,in_progress,blocked,in_review,done' %}TASK{% else %}BOTH{% endif %}">
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Priority -->
+                <div class="form-group">
+                    <label class="form-label" for="priority">优先级 / Priority</label>
+                    <select id="priority" name="priority" class="form-select">
+                        <option value="">全部 / All</option>
+                        {% for val,label in task_priority_choices %}
+                        <option value="{{ val }}" {% if priority == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Hot Filter -->
+                <div class="form-group" style="flex: 0 0 auto; padding-bottom: 2px;">
+                     <label class="checkbox-wrapper" style="display: flex; align-items: center; gap: 8px; cursor: pointer; height: 42px;">
+                        <input type="checkbox" name="hot" value="1" style="width: 18px; height: 18px; accent-color: var(--primary);" 
+                               {% if hot %}checked{% endif %} onchange="showLoading(); this.form.submit()">
+                        <span style="font-size: 14px; font-weight: 500;">仅显示紧急 / Urgent Only</span>
+                     </label>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost" onclick="showLoading()">重置 / Reset</a>
+                <a href="{% url 'tasks:admin_task_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    导出 / Export
+                </a>
+                <button type="submit" class="btn btn-primary" style="min-width: 100px;">筛选 / Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Task List -->
+    {% if tasks %}
+    <form method="post" action="{% url 'tasks:admin_task_bulk_action' %}" id="bulkForm" onsubmit="return confirmBulkAction(this)">
+        {% csrf_token %}
+        <input type="hidden" name="project" value="{{ project_id }}">
+        <input type="hidden" name="user" value="{{ user_id }}">
+        <input type="hidden" name="redirect_to" value="{{ request.get_full_path }}">
+        
+        <!-- Bulk Actions Bar -->
+        <div class="card bulk-actions-bar" style="padding: 16px 24px; margin-bottom: 24px; display: flex; flex-direction: row; align-items: center; gap: 20px;">
+            <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="selectAll" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                    <span id="selectLabel">全选 / Select All</span>
+                </label>
+            </div>
+            <div class="bulk-controls" style="display: flex; gap: 12px; flex: 1; align-items: center;">
+                <select name="action" class="form-select bulk-select" style="max-width: 200px;" onchange="toggleBulkAction(this)">
+                    <option value="">批量操作 / Bulk Actions...</option>
+                    <option value="complete">✅ 标记完成 / Mark Complete</option>
+                    <option value="reopen">🔄 重新打开 / Reopen</option>
+                    <option value="delete">🗑️ 删除任务 / Delete</option>
+                    <option value="assign">👤 分配给... / Assign to...</option>
+                    <option value="change_status">🔄 更改状态... / Change Status...</option>
+                </select>
+
+                <!-- Dynamic Sub-actions -->
+                <select name="target_user" id="bulk-assign-user" class="form-select bulk-select" style="display:none; max-width: 200px;">
+                    <option value="">选择用户 / Select User...</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="target_status" id="bulk-status-select" class="form-select bulk-select" style="display:none; max-width: 200px;">
+                    <option value="">选择状态 / Select Status...</option>
+                    {% for k, v in task_status_choices %}
+                    <option value="{{ k }}">{{ v }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-primary">应用 / Apply</button>
+            </div>
+        </div>
+
+        <div class="card table-container no-padding">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="col-checkbox"></th>
+                            <th class="col-title">任务标题 / Task Title</th>
+                            <th class="col-project">项目 / Project</th>
+                            <th class="col-user">负责人 / Owner</th>
+                            <th class="col-status">
+                                <a href="?{% url_replace sort='status'|add:sort_by|yesno:'-status,status' page=1 %}" class="sort-link">
+                                    状态
+                                    <span class="sort-icon">{% if 'status' in sort_by %}⇅{% else %}↓{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="col-priority">
+                                <a href="?{% url_replace sort='priority'|add:sort_by|yesno:'-priority,priority' page=1 %}" class="sort-link">
+                                    优先级
+                                    <span class="sort-icon">{% if 'priority' in sort_by %}⇅{% else %}↓{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="col-due">
+                                <a href="?{% url_replace sort='due_at'|add:sort_by|yesno:'-due_at,due_at' page=1 %}" class="sort-link">
+                                    截止/SLA
+                                    <span class="sort-icon">{% if 'due_at' in sort_by %}⇅{% else %}↓{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="col-actions">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tasks %}
+                        <tr>
+                            <td class="col-checkbox" data-label="选择 / Select">
+                                <input type="checkbox" name="task_ids" value="{{ t.id }}" class="task-check" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                            </td>
+                            <td class="col-title" data-label="标题 / Title">
+                                <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                    {% if t.category == 'BUG' %}
+                                        <span class="badge-category bug" title="缺陷" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">BUG</span>
+                                    {% else %}
+                                        <span class="badge-category task" title="任务" style="background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">TASK</span>
+                                    {% endif %}
+                                    <div>
+                                        <a href="{% url 'tasks:task_view' t.pk %}" class="task-title-link" style="font-weight:600; color:var(--text-main); text-decoration:none; font-size:15px; display:block; margin-bottom:4px;">{{ t.title }}</a>
+                                        <div class="task-meta text-muted" style="font-size:13px; line-height:1.4;">
+                                            {{ t.content|striptags|truncatechars:60|default:"暂无描述" }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="col-project" data-label="项目 / Project">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-weight: 600; color: var(--text-main);">{{ t.project.name }}</span>
+                                    <span class="project-tag" style="margin-top: 4px; width: fit-content;">{{ t.project.code }}</span>
+                                </div>
+                            </td>
+                            <td class="col-user" data-label="负责人 / Owner">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <!-- Avatar Stack -->
+                                    <div class="avatar-stack">
+                                        {% include "partials/user_avatar.html" with user=t.user size="28px" font_size="10px" %}
+                                        {% for c in t.collaborators.all|slice:":2" %}
+                                            {% include "partials/user_avatar.html" with user=c size="28px" font_size="10px" %}
+                                        {% endfor %}
+                                        {% if t.collaborators.count > 2 %}
+                                            <div class="avatar-component" style="width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid white; margin-left: -8px;">
+                                                +{{ t.collaborators.count|add:"-2" }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
+                                            {{ t.user.get_full_name|default:t.user.username }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="col-status" data-label="状态 / Status">
+                                <span class="badge-status-{{ t.status }}" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                    {{ t.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="col-priority" data-label="优先级 / Priority">
+                                <span class="badge-priority-{{ t.priority }}" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                    {{ t.get_priority_display }}
+                                </span>
+                            </td>
+                            <td class="col-due" data-label="截止/SLA">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    {% if t.due_at %}
+                                        <span style="font-size: 13px; font-variant-numeric: tabular-nums;">{{ t.due_at|date:"Y-m-d H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-muted" style="font-size: 13px;">--</span>
+                                    {% endif %}
+                                    
+                                    {% if t.sla_info.status == 'overdue' %}
+                                        <span class="badge-sla-red" style="padding: 2px 6px; border-radius: 4px; font-size: 11px; width: fit-content; display: flex; align-items: center; gap: 4px;">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                            逾期 {{ t.sla_info.remaining_hours|abs }}h
+                                        </span>
+                                    {% elif t.sla_info.status == 'completed_late' %}
+                                        <span class="text-danger" style="font-size: 11px; font-weight: 600;">逾期交付</span>
+                                    {% elif t.sla_info.level == 'amber' %}
+                                        <span class="badge-sla-amber" style="padding: 2px 6px; border-radius: 4px; font-size: 11px; width: fit-content;">
+                                            剩余 {{ t.sla_info.remaining_hours }}h
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="col-actions" data-label="操作">
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    {% if t.status != 'done' and t.status != 'closed' %}
+                                    <button type="submit" name="task_ids" value="{{ t.id }}" formaction="{% url 'tasks:task_complete' t.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-ghost text-success" title="标记完成 / Complete" onclick="return confirm('确认标记任务“{{ t.title|escapejs }}”为完成状态？')">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    </button>
+                                    {% endif %}
+                                    <a href="{% url 'tasks:task_view' t.pk %}" class="btn btn-sm btn-ghost" title="查看详情 / Details">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-container">
+        <div style="font-size: 14px; color: var(--text-secondary);">
+            显示 <span style="font-weight: 700; color: var(--text-main);">{{ page_obj.start_index }}-{{ page_obj.end_index }}</span> 条，
+            共 <span style="font-weight: 700; color: var(--text-main);">{{ page_obj.paginator.count }}</span> 条
+        </div>
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" aria-label="上一页">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </a>
+            {% else %}
+                <span class="page-btn disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+            {% endif %}
+
+            {% for i in page_obj.paginator.page_range %}
+                {% if page_obj.number == i %}
+                    <span class="page-btn active">{{ i }}</span>
+                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                    <a href="?page={{ i }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" onclick="showLoading()">{{ i }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|cut:'page=' }}" class="page-btn" aria-label="下一页">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+            {% else %}
+                <span class="page-btn disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+        </svg>
+        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无任务 / No Tasks</h3>
+        <p style="margin-bottom: 24px;">您可以调整筛选条件，或者发布新任务。 / You can adjust filters or create a new task.</p>
+        <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-secondary" onclick="showLoading()">清除筛选 / Clear Filters</a>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    // --- UI Interactions ---
+    function showLoading() {
+        document.getElementById('globalLoading').style.display = 'grid';
+    }
+
+    // --- Filter Logic ---
+    (function() {
+        const catSelect = document.getElementById('category');
+        const statSelect = document.getElementById('status');
+        
+        function updateStatusFilter() {
+            if (!catSelect || !statSelect) return;
+            const category = catSelect.value;
+            // Define allowed statuses
+            const bugStatuses = ['new', 'confirmed', 'fixing', 'verifying', 'closed'];
+            const taskStatuses = ['todo', 'in_progress', 'blocked', 'in_review', 'done', 'closed'];
+            
+            let allowed = null;
+            if (category === 'BUG') allowed = bugStatuses;
+            else if (category === 'TASK') allowed = taskStatuses;
+            
+            Array.from(statSelect.options).forEach(opt => {
+                if (!opt.value) return; // Skip "All"
+                const val = opt.value;
+                if (allowed) {
+                    if (allowed.includes(val)) {
+                        opt.style.display = '';
+                        opt.disabled = false;
+                    } else {
+                        opt.style.display = 'none';
+                        opt.disabled = true;
+                    }
+                } else {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                }
+            });
+            
+            // If current status is hidden/disabled, reset to All
+            const currentOpt = statSelect.options[statSelect.selectedIndex];
+            if (currentOpt && (currentOpt.style.display === 'none' || currentOpt.disabled)) {
+                statSelect.value = "";
+            }
+        }
+        
+        if (catSelect) {
+            catSelect.addEventListener('change', updateStatusFilter);
+            // Run once on load
+            updateStatusFilter();
+        }
+    })();
+
+    // --- Bulk Action Logic ---
+    function toggleBulkAction(select) {
+        const val = select.value;
+        const userSelect = document.getElementById('bulk-assign-user');
+        const statusSelect = document.getElementById('bulk-status-select');
+        
+        // Reset
+        if(userSelect) {
+            userSelect.style.display = 'none';
+            userSelect.removeAttribute('required');
+        }
+        if(statusSelect) {
+            statusSelect.style.display = 'none';
+            statusSelect.removeAttribute('required');
+        }
+
+        if (val === 'assign' && userSelect) {
+            userSelect.style.display = 'inline-block';
+            userSelect.setAttribute('required', 'required');
+        } else if (val === 'change_status' && statusSelect) {
+            statusSelect.style.display = 'inline-block';
+            statusSelect.setAttribute('required', 'required');
+        }
+    }
+
+    function confirmBulkAction(form) {
+        const checkedCount = document.querySelectorAll('.task-check:checked').length;
+        if (checkedCount === 0) {
+            alert('请至少选择一个任务进行操作。 / Please select at least one task.');
+            return false;
+        }
+        
+        const actionSelect = document.querySelector('select[name="action"]');
+        if (!actionSelect || !actionSelect.value) {
+            alert('请选择要执行的操作 / Please select an action');
+            return false;
+        }
+
+        if (confirm(`确定要对选中的 ${checkedCount} 个任务执行此操作吗？ / Are you sure you want to perform this action on ${checkedCount} tasks?`)) {
+            showLoading();
+            return true;
+        }
+        return false;
+    }
+
+    // --- Selection Logic ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.task-check');
+        const selectLabel = document.getElementById('selectLabel');
+
+        function updateLabel() {
+            const checkedCount = document.querySelectorAll('.task-check:checked').length;
+            if (checkedCount > 0) {
+                selectLabel.textContent = `已选 ${checkedCount} 项`;
+                selectLabel.parentElement.style.color = 'var(--primary)';
+            } else {
+                selectLabel.textContent = '全选 / Select All';
+                selectLabel.parentElement.style.color = 'var(--text-main)';
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                checkboxes.forEach(cb => cb.checked = selectAll.checked);
+                updateLabel();
+            });
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (!cb.checked) {
+                    selectAll.checked = false;
+                } else if (document.querySelectorAll('.task-check:checked').length === checkboxes.length) {
+                    selectAll.checked = true;
+                }
+                updateLabel();
+            });
+        });
+    });
+</script>
+{% endblock %}

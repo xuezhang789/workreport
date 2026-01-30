@@ -1,0 +1,1167 @@
+{% extends "base_topbar.html" %}
+{% block title %}项目管理 / Project{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理 / Project" nav_subtitle="管理员可创建/编辑项目 / Admins can create/edit projects" %}{% endblock %}
+{% block extra_styles %}
+<style>
+    /* --- Design System (Consistent with Admin Pages) --- */
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .form-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 32px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+        background-color: #f8fafc;
+        color: var(--text-main);
+    }
+
+    .form-input:hover, .form-select:hover, .form-textarea:hover {
+        background-color: #fff;
+        border-color: #cbd5e1;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        background-color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+
+    .form-textarea {
+        min-height: 240px;
+        resize: vertical;
+        line-height: 1.6;
+        font-size: 15px;
+    }
+
+    .char-counter {
+        text-align: right;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .role-card {
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    
+    .role-card:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .role-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .role-header.manager {
+        background: linear-gradient(to right, #eff6ff, #fff);
+        border-left: 4px solid var(--primary);
+    }
+
+    .role-header.member {
+        background: linear-gradient(to right, #f0fdf4, #fff);
+        border-left: 4px solid #10b981;
+    }
+
+    .role-title {
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .role-title.manager { color: #1e40af; }
+    .role-title.member { color: #065f46; }
+
+    .role-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .alert-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .btn-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid transparent;
+        line-height: 1.5;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #1e40af;
+        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover {
+        background: rgba(0,0,0,0.05);
+        color: var(--text-main);
+    }
+
+    /* Multi-select Specific Styles */
+    .multi-select-container {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+
+    .multi-select-container:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        background: #fff;
+    }
+
+    .search-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #f1f5f9;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-input {
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        flex: 1;
+        outline: none;
+        color: var(--text-main);
+    }
+
+    .selected-count {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary);
+        background: rgba(37, 99, 235, 0.1);
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+
+    .multi-select-dropdown {
+        max-height: 240px;
+        overflow-y: auto;
+        background: #fff;
+    }
+
+    .select-all-container {
+        padding: 10px 16px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .option-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .option-item:hover {
+        background: #f8fafc;
+    }
+
+    .option-item:last-child {
+        border-bottom: none;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 2px solid #cbd5e1;
+        appearance: none;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .checkbox-label input[type="checkbox"]:checked::after {
+        content: '✓';
+        position: absolute;
+        color: white;
+        font-size: 12px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .user-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .user-username {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .selected-tags {
+        padding: 12px;
+        background: #fff;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 46px;
+    }
+    
+    .selected-tags:empty {
+        display: none;
+    }
+
+    .selected-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #eff6ff;
+        color: var(--primary);
+        border: 1px solid #dbeafe;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .remove-btn {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        padding: 0;
+    }
+
+    .remove-btn:hover {
+        background: rgba(37, 99, 235, 0.2);
+    }
+
+    /* File Upload Styles */
+    .file-upload-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 16px;
+    }
+
+    .file-upload-container:hover, .file-upload-container.drag-over {
+        border-color: var(--primary);
+        background: #eff6ff;
+    }
+
+    .upload-icon {
+        color: var(--primary);
+        margin-bottom: 12px;
+    }
+
+    .upload-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+
+    .upload-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--text-main);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .file-status {
+        font-size: 12px;
+        margin-left: 12px;
+    }
+
+    .status-uploading { color: var(--primary); }
+    .status-success { color: #166534; }
+    .status-error { color: #991b1b; }
+
+    /* Attachments (Synced with Task Detail) */
+    .attachment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .attachment-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .attachment-card:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .attachment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attachment-icon {
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .attachment-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .attachment-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .btn-xs {
+        padding: 4px 8px;
+        font-size: 11px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        display: inline-block;
+        text-align: center;
+        border: none;
+    }
+
+    .btn-delete {
+        background: #fef2f2;
+        color: #991b1b;
+        width: 100%;
+    }
+    
+    .btn-delete:hover {
+        background: #fee2e2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+    <div class="form-card" style="padding: 32px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: #ffffff; box-shadow: var(--shadow-sm);">
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+            <h2 class="section-title" style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0;">{% if mode == 'edit' %}编辑项目 / Edit Project{% else %}新建项目 / Create Project{% endif %}</h2>
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div>
+                    {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div style="display: flex; flex-direction: column; gap: 32px; margin-bottom: 32px;">
+                
+                <!-- 1. Project Essentials -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="{{ form.name.id_for_label }}">项目名称 / Name <span style="color:red">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="{{ form.code.id_for_label }}">项目代码 / Code <span style="color:red">*</span></label>
+                        {{ form.code }}
+                        <p class="help-text">唯一标识符，建议使用大写字母 (e.g. PRJ-001) / Unique identifier, uppercase recommended (e.g. PRJ-001)</p>
+                        {% if form.code.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.code.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <!-- 2. Description (Enhanced) -->
+                <div class="form-group" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                    <label class="form-label" for="{{ form.description.id_for_label }}" style="font-size: 16px; margin-bottom: 12px;">项目描述 / Description</label>
+                    {{ form.description }}
+                    <div class="char-counter" id="desc-counter">0 chars</div>
+                    <p class="help-text">请详细描述项目目标、范围及关键交付物，支持 Markdown 格式。 / Please describe project goals, scope and deliverables. Markdown supported.</p>
+                </div>
+
+                <!-- 3. Details & Configuration -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px;">
+                    <!-- Left: Operations -->
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label" for="{{ form.owner.id_for_label }}">负责人 / Owner</label>
+                            <div class="owner-select-container">
+                                {% if can_edit_owner is False %}
+                                    <div class="form-input" style="display: flex; align-items: center; gap: 8px; background-color: #f1f5f9; color: #64748b; cursor: not-allowed;">
+                                        {% include "partials/user_avatar.html" with user=project.owner size="24px" font_size="10px" %}
+                                        {{ project.owner.get_full_name|default:project.owner.username }} @{{ project.owner.username }}
+                                    </div>
+                                    <div style="display:none;">{{ form.owner }}</div>
+                                {% else %}
+                                    <input type="text" id="owner-search" class="form-input" placeholder="搜索负责人... / Search owner..." style="margin-bottom: 8px;">
+                                    {{ form.owner }}
+                                {% endif %}
+                            </div>
+                            {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label" for="{{ form.start_date.id_for_label }}">开始日期 / Start</label>
+                                {{ form.start_date }}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="{{ form.end_date.id_for_label }}">结束日期 / End</label>
+                                {{ form.end_date }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Settings & Files -->
+                    <div>
+                         <div class="form-group">
+                            <label class="form-label" for="{{ form.sla_hours.id_for_label }}">SLA 配置 / SLA Config</label>
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1;">
+                                    {{ form.sla_hours }}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
+                                    {{ form.is_active }}
+                                    <span style="font-size: 14px; font-weight: 500;">启用 / Active</span>
+                                </div>
+                            </div>
+                            <p class="help-text">SLA 提醒周期（小时），留空使用系统默认。 / SLA cycle (hours), leave empty for default.</p>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label class="form-label">附件 / Attachments</label>
+                            
+                            <!-- Upload Zone (Shared for Create & Edit) -->
+                            <div class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px;">
+                                <input type="file" id="file-input" name="files" multiple style="display: none;">
+                                <div class="upload-placeholder">
+                                    <div class="upload-text">点击或拖拽文件上传 / Click or Drag</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Attachment List -->
+                            <div class="attachment-grid" id="file-list">
+                                <!-- Existing Attachments (Edit Mode) -->
+                                {% if mode == 'edit' %}
+                                    {% for attachment in project.attachments.all %}
+                                        <div class="attachment-card" id="attachment-{{ attachment.id }}">
+                                            <div class="attachment-header">
+                                                <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                                <span class="attachment-name" title="{{ attachment.original_filename }}">{{ attachment.original_filename }}</span>
+                                            </div>
+                                            <div class="attachment-meta">
+                                                <span>{{ attachment.file_size|filesizeformat }}</span>
+                                                <span>{{ attachment.created_at|date:"Y-m-d" }}</span>
+                                            </div>
+                                            <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                                <span>Up:</span>
+                                                <span style="font-weight: 500;">{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
+                                            </div>
+                                            <div class="attachment-actions">
+                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载 / Download</a>
+                                                <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Remove</button>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Team Management (New Style) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; margin-top: 12px;">
+                    
+                    <!-- Managers Module -->
+                    <div class="role-card">
+                        <div class="role-header manager">
+                            <div>
+                                <div class="role-title manager">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                    管理员 / Managers
+                                </div>
+                                <div class="role-desc">拥有项目完全控制权 / Full project control</div>
+                            </div>
+                            <div class="selected-count" style="background: #eff6ff; color: var(--primary);">
+                                <span id="manager-count">0</span>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 20px;">
+                            {% if can_edit_managers is False %}
+                                <div class="read-only-list" style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+                                    {% for user in project.managers.all %}
+                                        <span class="selected-tag">{{ user.get_full_name|default:user.username }}</span>
+                                    {% empty %}
+                                        <span style="color: #94a3b8; font-size: 13px;">无管理员 / No managers</span>
+                                    {% endfor %}
+                                </div>
+                                <div style="display:none;">{{ form.managers }}</div>
+                            {% else %}
+                                <div class="multi-select-container" id="managers-container" style="border: none; background: transparent;">
+                                    <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                                        <input type="text" id="manager-filter" placeholder="搜索... / Search..." class="search-input">
+                                    </div>
+                                    
+                                    <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
+                                        <div class="select-all-container">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="select-all-managers">
+                                                <span>全选 / Select All</span>
+                                            </label>
+                                        </div>
+                                        <div class="options-container">
+                                            {% for user in form.managers.field.queryset %}
+                                                <label class="option-item">
+                                                    <div class="checkbox-label">
+                                                        <input type="checkbox" name="managers" value="{{ user.pk }}" class="manager-checkbox" data-name="{{ user.get_full_name|default:user.username }}">
+                                                        <div class="user-info">
+                                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                                            <span class="user-username">@{{ user.username }}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="selected-tags" id="selected-managers-tags" style="border: none; padding: 12px 0;"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Members Module -->
+                    <div class="role-card">
+                        <div class="role-header member">
+                            <div>
+                                <div class="role-title member">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    成员 / Members
+                                </div>
+                                <div class="role-desc">负责任务执行与协作 / Execute & Collaborate</div>
+                            </div>
+                            <div class="selected-count" style="background: #f0fdf4; color: #166534;">
+                                <span id="member-count">0</span>
+                            </div>
+                        </div>
+
+                        <div style="padding: 20px;">
+                            <div class="multi-select-container" id="members-container" style="border: none; background: transparent;">
+                                <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                                    <input type="text" id="member-filter" placeholder="搜索..." class="search-input">
+                                </div>
+                                
+                                <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
+                                    <div class="select-all-container">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="select-all-members">
+                                            <span>全选</span>
+                                        </label>
+                                    </div>
+                                    <div class="options-container">
+                                        {% for user in form.members.field.queryset %}
+                                            <label class="option-item">
+                                                <div class="checkbox-label">
+                                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }} @{{ user.username }}">
+                                                    <div class="user-info">
+                                                        <span class="user-name">{{ user.get_full_name|default:user.username }} <span class="user-username">@{{ user.username }}</span></span>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="selected-tags" id="selected-members-tags" style="border: none; padding: 12px 0;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Description Character Counter
+        const descInput = document.getElementById('{{ form.description.id_for_label }}');
+        const descCounter = document.getElementById('desc-counter');
+        if (descInput && descCounter) {
+            const updateCount = () => {
+                descCounter.textContent = `${descInput.value.length} chars`;
+            };
+            descInput.addEventListener('input', updateCount);
+            updateCount();
+        }
+
+        // --- API Data Fetching & Population ---
+        const projectId = "{{ project.id|default:'' }}";
+        const pageMode = "{{ mode }}"; // Renamed to avoid conflict
+        const apiEndpoint = pageMode === 'edit' && projectId ? "{% url 'projects:api_project_detail' 0 %}".replace('0', projectId) : null;
+        
+        if (pageMode === 'edit' && apiEndpoint) {
+            const form = document.querySelector('form');
+            const loadingOverlay = document.createElement('div');
+            
+            // Loading UI
+            loadingOverlay.style.cssText = `
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(255,255,255,0.8); z-index: 1000;
+                display: flex; align-items: center; justify-content: center;
+                border-radius: var(--radius-lg);
+            `;
+            loadingOverlay.innerHTML = `
+                <div style="text-align: center; color: var(--primary);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    <div style="margin-top: 8px; font-weight: 600;">Loading project data...</div>
+                </div>
+                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+            `;
+            
+            // Ensure container is relative
+            const card = document.querySelector('.form-card');
+            if (card) {
+                card.style.position = 'relative';
+                card.appendChild(loadingOverlay);
+            }
+
+            fetch(apiEndpoint)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    // Populate Standard Fields
+                    const setVal = (name, val) => {
+                        const el = document.querySelector(`[name="${name}"]`);
+                        if (el && val !== undefined && val !== null) {
+                             if (el.type === 'checkbox') el.checked = val;
+                             else el.value = val;
+                        }
+                    };
+
+                    setVal('name', data.name);
+                    setVal('code', data.code);
+                    setVal('description', data.description);
+                    setVal('start_date', data.start_date); // YYYY-MM-DD
+                    setVal('end_date', data.end_date);
+                    setVal('sla_hours', data.sla_hours);
+                    setVal('is_active', data.is_active); // Checkbox?
+                    
+                    // Handle Owner (Select)
+                    const ownerSelect = document.querySelector('[name="owner"]');
+                    if (ownerSelect && data.owner_id) {
+                         ownerSelect.value = data.owner_id;
+                    }
+
+                    // Handle Multi-selects (Members & Managers) using the MultiSelect class instance
+                    // We need to find the instances or manipulate DOM directly. 
+                    // Since MultiSelect class just manages checkboxes, we can check them.
+                    
+                    const setMulti = (name, ids) => {
+                        const checkboxes = document.querySelectorAll(`input[name="${name}"]`);
+                        checkboxes.forEach(cb => {
+                            if (ids.includes(parseInt(cb.value))) {
+                                cb.checked = true;
+                            } else {
+                                cb.checked = false;
+                            }
+                            // Trigger change to update UI tags
+                            cb.dispatchEvent(new Event('change'));
+                        });
+                    };
+
+                    if (data.member_ids) setMulti('members', data.member_ids);
+                    if (data.manager_ids) setMulti('managers', data.manager_ids);
+
+                })
+                .catch(err => {
+                    console.error('Failed to fetch project details:', err);
+                    alert('加载最新项目数据失败，使用缓存版本。 / Failed to load latest project data. Using cached version.');
+                })
+                .finally(() => {
+                    if (loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay);
+                });
+        }
+
+
+        // File Upload Logic
+        const uploadZone = document.getElementById('file-upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        
+        // Robust File Handling with DataTransfer to allow multiple adds
+        let globalDataTransfer = new DataTransfer();
+        const isEditMode = "{{ mode }}" === 'edit';
+        
+        if (uploadZone && fileInput) {
+            // Common Event Listeners (Click & Drag Visuals)
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-over');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-over');
+            });
+
+             // Handle Edit Mode: Direct AJAX Upload
+             if (isEditMode) {
+                 fileInput.addEventListener('change', function(e) {
+                    if (this.files.length === 0) return;
+                    
+                    const formData = new FormData();
+                    Array.from(this.files).forEach(file => {
+                        formData.append('files', file);
+                    });
+                    
+                    // Indicate loading (optional UI enhancement)
+                    const placeholder = document.querySelector('.upload-text');
+                    const originalText = placeholder.textContent;
+                    placeholder.textContent = 'Uploading...';
+                    
+                    const projectId = "{{ project.id|default:'' }}";
+                    const uploadUrl = "{% url 'projects:project_upload_attachment' 0 %}".replace('0', projectId);
+
+                    fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        placeholder.textContent = originalText;
+                        if (data.status === 'success') {
+                            // Reload to show new files (simplest way to ensure consistency)
+                            window.location.reload();
+                        } else {
+                            alert('上传失败 / Upload failed: ' + (data.message || 'Unknown error'));
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        placeholder.textContent = originalText;
+                        alert('上传失败：网络错误 / Upload failed: Network error');
+                    });
+                 });
+                 
+                 // Drag & Drop for Edit Mode
+                 uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('drag-over');
+                    
+                    // Create a fake input change event for consistency
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                 });
+
+             } else {
+                 // Handle Create Mode: Accumulate in DataTransfer
+                 function updateFileList() {
+                    // Only clear dynamic items, not the whole container if we want to support mixed content?
+                    // Actually for Create mode, list is empty initially.
+                    fileList.innerHTML = '';
+                    const dateStr = new Date().toISOString().slice(0, 10);
+    
+                    Array.from(globalDataTransfer.files).forEach((file, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'attachment-card';
+                        
+                        const sizeKB = file.size / 1024;
+                        const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB.toFixed(1) + ' KB';
+    
+                        item.innerHTML = `
+                            <div class="attachment-header">
+                                <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                <span class="attachment-name" title="${file.name}">${file.name}</span>
+                            </div>
+                            <div class="attachment-meta">
+                                <span>${sizeStr}</span>
+                                <span>${dateStr}</span>
+                            </div>
+                            <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                <span>Up:</span>
+                                <span style="font-weight: 500;">Me</span>
+                            </div>
+                            <div class="attachment-actions">
+                                <button type="button" class="btn-xs btn-delete" onclick="removeFile(${index})">删除 / Remove</button>
+                            </div>
+                        `;
+                        fileList.appendChild(item);
+                    });
+                    
+                    // Sync to input
+                    fileInput.files = globalDataTransfer.files;
+                }
+    
+                window.removeFile = function(index) {
+                    const newDataTransfer = new DataTransfer();
+                    Array.from(globalDataTransfer.files).forEach((file, i) => {
+                        if (i !== index) newDataTransfer.items.add(file);
+                    });
+                    globalDataTransfer = newDataTransfer;
+                    updateFileList();
+                };
+    
+                uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadZone.classList.remove('drag-over');
+                    Array.from(e.dataTransfer.files).forEach(file => globalDataTransfer.items.add(file));
+                    updateFileList();
+                });
+    
+                fileInput.addEventListener('change', (e) => {
+                    Array.from(e.target.files).forEach(file => globalDataTransfer.items.add(file));
+                    updateFileList();
+                });
+             }
+        }
+        
+        // Delete Existing Attachment (Edit Mode)
+        window.deleteExistingAttachment = function(id, url) {
+            if (!confirm('确定删除该附件吗？')) return;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const el = document.getElementById(`attachment-${id}`);
+                    if (el) el.remove();
+                } else {
+                    alert('删除失败 / Delete failed: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('删除失败 / Delete failed');
+            });
+        };
+
+        // Add classes to Django rendered fields
+        const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+        inputs.forEach(input => {
+            if (!input.classList.contains('form-input') && !input.classList.contains('search-input')) {
+                if (input.tagName === 'SELECT') input.classList.add('form-select');
+                else if (input.tagName === 'TEXTAREA') input.classList.add('form-textarea');
+                else input.classList.add('form-input');
+            }
+        });
+
+        // Multi-select Logic
+        class MultiSelect {
+            constructor(containerId, filterId, selectAllId, countId, tagsId, checkboxClass) {
+                this.container = document.getElementById(containerId);
+                this.filterInput = document.getElementById(filterId);
+                this.selectAll = document.getElementById(selectAllId);
+                this.countDisplay = document.getElementById(countId);
+                this.tagsContainer = document.getElementById(tagsId);
+                this.checkboxClass = checkboxClass;
+                this.checkboxes = Array.from(document.querySelectorAll(`.${checkboxClass}`));
+                
+                this.init();
+            }
+
+            init() {
+                if(!this.container) return;
+
+                // Filter
+                this.filterInput.addEventListener('input', (e) => this.filter(e.target.value));
+
+                // Select All
+                this.selectAll.addEventListener('change', (e) => {
+                    const visibleCheckboxes = this.checkboxes.filter(cb => cb.closest('.option-item').style.display !== 'none');
+                    visibleCheckboxes.forEach(cb => cb.checked = e.target.checked);
+                    this.updateState();
+                });
+
+                // Individual Checkboxes
+                this.checkboxes.forEach(cb => {
+                    cb.addEventListener('change', () => this.updateState());
+                });
+
+                // Initial State
+                this.updateState();
+            }
+
+            filter(query) {
+                const term = query.toLowerCase();
+                this.checkboxes.forEach(cb => {
+                    const item = cb.closest('.option-item');
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(term) ? '' : 'none';
+                });
+            }
+
+            updateState() {
+                const checked = this.checkboxes.filter(cb => cb.checked);
+                this.countDisplay.textContent = checked.length;
+                
+                // Update Tags
+                this.tagsContainer.innerHTML = '';
+                checked.forEach(cb => {
+                    const name = cb.dataset.name;
+                    const tag = document.createElement('div');
+                    tag.className = 'selected-tag';
+                    tag.innerHTML = `
+                        <span>${name}</span>
+                        <button type="button" class="remove-btn" onclick="document.querySelector('input[value=\\'${cb.value}\\'].${this.checkboxClass}').click()">×</button>
+                    `;
+                    this.tagsContainer.appendChild(tag);
+                });
+            }
+        }
+
+        new MultiSelect('members-container', 'member-filter', 'select-all-members', 'member-count', 'selected-members-tags', 'member-checkbox');
+        new MultiSelect('managers-container', 'manager-filter', 'select-all-managers', 'manager-count', 'selected-managers-tags', 'manager-checkbox');
+
+        // Owner Search Logic
+        const ownerSearch = document.getElementById('owner-search');
+        const ownerSelect = document.querySelector('select[name="owner"]');
+        
+        if (ownerSearch && ownerSelect) {
+            const originalOptions = Array.from(ownerSelect.options);
+            
+            ownerSearch.addEventListener('input', function(e) {
+                const term = e.target.value.toLowerCase();
+                
+                // Reset options
+                ownerSelect.innerHTML = '';
+                
+                // Filter and append options
+                originalOptions.forEach(opt => {
+                    if (opt.text.toLowerCase().includes(term) || opt.value === '') {
+                        ownerSelect.appendChild(opt);
+                    }
+                });
+                
+                // If the currently selected value is filtered out, select the first available option (usually placeholder)
+                if (ownerSelect.selectedIndex === -1 && ownerSelect.options.length > 0) {
+                    ownerSelect.selectedIndex = 0;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
