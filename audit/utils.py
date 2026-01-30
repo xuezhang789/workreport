@@ -27,6 +27,25 @@ def log_action(request, action: str, extra: str = "", data=None):
         'data': data or {}
     }
 
+    # Avoid logging redundant update actions if data is empty (likely covered by signals)
+    if action == 'update' and not data and not extra:
+         # Optionally skip, but 'extra' often has summary string.
+         pass
+         
+    # Fix for duplication: log_action should create 'AccessLog' type, but previous code might be creating valid Task logs?
+    # Actually, signals create logs with target_type='Task'.
+    # log_action creates logs with target_type='AccessLog'.
+    # So duplication in History View comes from View querying target_type='Task'.
+    # Wait, the failure shows TWO logs with 'diff'.
+    # Log: update - Details: {'diff': {'status': {'verbose_name': '状态', 'old': '待处理 / To Do', 'new': '进行中 / In Progress'}}}
+    # Log: update - Details: {'diff': {'status': {'old': 'todo', 'new': 'in_progress'}}}
+    
+    # One has verbose_name, one doesn't.
+    # The one with verbose_name looks like AuditService._calculate_diff?
+    # The other one looks like _add_history's replacement?
+    # I removed _add_history call in views.py.
+    # Let's check if signals.py is doing something twice or if there's another hook.
+    
     AuditLog.objects.create(
         user=user,
         operator_name=operator_name,

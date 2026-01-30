@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from core import views as core_views
 
 app_name = 'tasks'
 
@@ -9,8 +10,8 @@ urlpatterns = [
     path('bulk/', views.task_bulk_action, name='task_bulk_action'),
     path('export/', views.task_export, name='task_export'),
     path('export/selected/', views.task_export_selected, name='task_export_selected'),
-    path('export/jobs/<int:job_id>/', views.export_job_status, name='export_job_status'),
-    path('export/jobs/<int:job_id>/download/', views.export_job_download, name='export_job_download'),
+    path('export/jobs/<int:job_id>/', core_views.export_job_status, name='export_job_status'),
+    path('export/jobs/<int:job_id>/download/', core_views.export_job_download, name='export_job_download'),
     
     path('<int:pk>/complete/', views.task_complete, name='task_complete'),
     path('<int:pk>/view/', views.task_view, name='task_view'),

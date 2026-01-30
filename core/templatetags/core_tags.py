@@ -22,3 +22,10 @@ def url_replace(context, **kwargs):
             
     from urllib.parse import urlencode
     return urlencode(query)
+
+@register.filter(name='abs')
+def abs_filter(value):
+    try:
+        return abs(float(value))
+    except (ValueError, TypeError):
+        return value

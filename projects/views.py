@@ -45,7 +45,7 @@ def _filtered_projects(request):
     sort_by = request.GET.get('sort') or '-created_at'
 
     # Base QuerySet
-    qs = Project.objects.select_related('owner', 'current_phase').prefetch_related('managers').filter(is_active=True)
+    qs = Project.objects.select_related('owner', 'owner__preferences', 'current_phase').filter(is_active=True)
     
     if not request.user.is_superuser:
         # Only Super Admin sees all.
@@ -132,10 +132,17 @@ def project_list(request):
     if phase_id and phase_id.isdigit():
         projects = projects.filter(current_phase_id=int(phase_id))
         
-    projects = projects.annotate(member_count=Count('members', distinct=True), report_count=Count('reports', distinct=True))
+    projects = projects.annotate(member_count=Count('members', distinct=True))
     paginator = Paginator(projects, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
-    manageable_ids = {p.id for p in page_obj if can_manage_project(request.user, p)}
+    
+    # Optimization: Bulk fetch manageable status instead of per-project permission check
+    from reports.utils import get_manageable_projects
+    manageable_ids = set(
+        get_manageable_projects(request.user)
+        .filter(id__in=[p.id for p in page_obj])
+        .values_list('id', flat=True)
+    )
     
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     

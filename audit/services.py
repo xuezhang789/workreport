@@ -17,6 +17,10 @@ class AuditLogService:
         
         qs = AuditLog.objects.filter(target_type=target_type, target_id=target_id).select_related('user')
         
+        # Filter out manual access logs or redundant logs
+        # We only want data changes or specific actions like upload/export
+        qs = qs.exclude(target_type='AccessLog')
+        
         # Filter by User (Operator)
         if filters.get('user_id'):
             qs = qs.filter(user_id=filters.get('user_id'))

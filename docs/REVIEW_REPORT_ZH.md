@@ -48,10 +48,15 @@
 ### 3.1 架构与数据库
 1.  **数据库选型**: 
     *   鉴于 AuditLog 模块大量使用了 `JSONField` 进行历史回溯查询 (`details__diff__has_key`)，强烈建议生产环境使用 **PostgreSQL**。SQLite 对 JSON 的查询支持有限且性能较差。
-2.  **模型清理**:
-    *   `core.models.PermissionMatrix` 已被标记为废弃 (Deprecated)，建议在下一次大版本更新中编写迁移脚本将其移除，全面转向基于 `Permission/Role` 的 RBAC 体系。
+### 3.2 代码重构
+1.  **代码去重**:
+    *   **[已修复]** `tasks/views.py` 中重复定义了 `export_job_status` 和 `export_job_download` 视图，这违反了 DRY 原则。已移除重复代码，并更新 `tasks/urls.py` 复用 `core.views` 中的实现。
+2.  **权限统一**:
+    *   建议明确 `PermissionMatrix` 的用途。如果决定启用 RBAC，应重构 `can_manage_project` 等函数，使其动态读取数据库中的权限配置，而不是硬编码逻辑。
+3.  **清理废弃引用**:
+    *   **[已修复]** `reports/signals.py` 原本使用了已废弃的 `reports.models` 进行导入。已重构为直接从 `projects`, `tasks`, `work_logs`, `audit` 等应用导入模型，消除了潜在的循环依赖风险并符合新的架构规范。
 
-### 3.2 功能增强
+### 3.3 功能增强
 1.  **异步任务队列化**: 
     *   目前邮件发送 (`send_mail`) 在部分视图中是同步执行的。建议全面引入 Celery 或 Django-Q，将邮件发送、大文件处理等任务异步化。
 2.  **API 文档**:

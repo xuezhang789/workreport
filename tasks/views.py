@@ -318,7 +318,7 @@ def admin_task_bulk_action(request):
         for t in tasks:
             update_fields = []
             if valid_status and status_value != t.status:
-                _add_history(t, request.user, 'status', t.status, status_value)
+                # _add_history removed
                 t.status = status_value
                 if status_value in ('done', 'closed'):
                     t.completed_at = now
@@ -329,11 +329,11 @@ def admin_task_bulk_action(request):
                         update_fields.append('completed_at')
                 update_fields.append('status')
             if parsed_due and (t.due_at != parsed_due):
-                _add_history(t, request.user, 'due_at', t.due_at.isoformat() if t.due_at else '', parsed_due.isoformat())
+                # _add_history removed
                 t.due_at = parsed_due
                 update_fields.append('due_at')
             if assign_user and assign_user.id != t.user_id and (is_admin or t.project_id in manageable_project_ids):
-                _add_history(t, request.user, 'user', t.user.username if t.user else '', assign_user.username)
+                # _add_history removed
                 t.user = assign_user
                 update_fields.append('user')
             if update_fields:
@@ -1560,51 +1560,6 @@ def task_export_selected(request):
 
 
 @login_required
-def export_job_status(request, job_id: int):
-    job = get_object_or_404(ExportJob, id=job_id, user=request.user)
-    if job.expires_at and job.expires_at < timezone.now():
-        job.status = 'failed'
-        job.message = '导出已过期 / Export expired'
-        job.save(update_fields=['status', 'message', 'updated_at'])
-        if job.file_path and os.path.exists(job.file_path):
-            try:
-                os.remove(job.file_path)
-            except OSError:
-                pass
-    data = {
-        'job_id': job.id,
-        'status': job.status,
-        'progress': job.progress,
-        'message': job.message,
-        'download_url': reverse('tasks:export_job_download', args=[job.id]) if job.status == 'done' else '',
-    }
-    return JsonResponse(data)
-
-
-@login_required
-def export_job_download(request, job_id: int):
-    job = get_object_or_404(ExportJob, id=job_id, user=request.user, status='done')
-    if job.expires_at and job.expires_at < timezone.now():
-        return _friendly_forbidden(request, "文件已过期，请重新导出 / File expired, please export again")
-    if not job.file_path or not os.path.exists(job.file_path):
-        return _friendly_forbidden(request, "文件不存在 / File missing")
-    filename = f"{job.export_type}.csv"
-    def file_iter(path):
-        try:
-            with open(path, 'rb') as f:
-                for chunk in iter(lambda: f.read(8192), b''):
-                    yield chunk
-        finally:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-    response = StreamingHttpResponse(file_iter(job.file_path), content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response
-
-
-@login_required
 def task_complete(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
     
@@ -1619,7 +1574,7 @@ def task_complete(request, pk: int):
     # 完成任务
     try:
         with transaction.atomic():
-            _add_history(task, request.user, 'status', task.status, 'done')
+            # _add_history removed
             task.status = 'done'
             task.completed_at = timezone.now()
             timer = _get_sla_timer_readonly(task)
@@ -1741,7 +1696,7 @@ def task_bulk_action(request):
         for t in tasks:
             update_fields = []
             if valid_status and status_value != t.status:
-                _add_history(t, request.user, 'status', t.status, status_value)
+                # _add_history removed
                 t.status = status_value
                 if status_value in ('done', 'closed'):
                     t.completed_at = now
@@ -1752,7 +1707,7 @@ def task_bulk_action(request):
                         update_fields.append('completed_at')
                 update_fields.append('status')
             if parsed_due and (t.due_at != parsed_due):
-                _add_history(t, request.user, 'due_at', t.due_at.isoformat() if t.due_at else '', parsed_due.isoformat())
+                # _add_history removed
                 t.due_at = parsed_due
                 update_fields.append('due_at')
             if update_fields:
@@ -1813,7 +1768,7 @@ def task_view(request, pk: int):
                 log_action(request, 'create', f"task_comment {task.id}")
         elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
             # 已完成任务支持重新打开
-            _add_history(task, request.user, 'status', task.status, 'todo')
+            # _add_history removed
             task.status = 'todo'
             task.completed_at = None
             task.save(update_fields=['status', 'completed_at'])
@@ -1824,7 +1779,7 @@ def task_view(request, pk: int):
                 timer.paused_at = timezone.now()
                 timer.save(update_fields=['paused_at'])
                 if task.status != 'blocked':
-                    _add_history(task, request.user, 'status', task.status, 'blocked')
+                    # _add_history removed
                     task.status = 'blocked'
                     task.save(update_fields=['status'])
                 messages.success(request, "计时已暂停")
@@ -1836,7 +1791,7 @@ def task_view(request, pk: int):
                 timer.paused_at = None
                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
                 if task.status == 'blocked':
-                    _add_history(task, request.user, 'status', task.status, 'in_progress')
+                    # _add_history removed
                     task.status = 'in_progress'
                     task.save(update_fields=['status'])
                 messages.success(request, "计时已恢复")
@@ -1868,7 +1823,7 @@ def task_view(request, pk: int):
             if new_status in dict(Task.STATUS_CHOICES):
                 try:
                     with transaction.atomic():
-                        _add_history(task, request.user, 'status', task.status, new_status)
+                        # _add_history removed as AuditLog signal handles it
                         if new_status in ('done', 'closed'):
                             task.status = new_status
                             task.completed_at = timezone.now()
