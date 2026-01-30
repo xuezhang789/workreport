@@ -239,12 +239,15 @@
                 return;
             }
             list.innerHTML = notifications.map(n => `
-                <div class="notification-item ${n.is_read ? '' : 'unread'}" onclick="handleNotificationClick(${n.id}, '${n.notification_type}', '${n.data?.task_id || ''}')">
+                <div class="notification-item ${n.is_read ? '' : 'unread'} ${n.priority === 'high' ? 'priority-high' : ''}" onclick="handleNotificationClick(${n.id}, '${n.notification_type}', '${n.data?.task_id || ''}')">
                     <div class="notif-icon">
-                        ${getIcon(n.notification_type)}
+                        ${getIcon(n.notification_type, n.priority)}
                     </div>
                     <div class="notif-content">
-                        <div class="notif-title">${n.title}</div>
+                        <div class="notif-title">
+                            ${n.priority === 'high' ? '<span style="color:#ef4444;margin-right:2px;">!</span>' : ''}
+                            ${n.title}
+                        </div>
                         <div class="notif-msg">${n.message}</div>
                         <div class="notif-time">${n.time_since}</div>
                     </div>
@@ -252,7 +255,8 @@
             `).join('');
         }
 
-        function getIcon(type) {
+        function getIcon(type, priority) {
+            if (priority === 'high') return '⚠️';
             // Simple SVG icons based on type
             if (type === 'task_assigned') return '📋';
             if (type === 'task_mention') return '@';

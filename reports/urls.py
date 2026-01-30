@@ -8,6 +8,7 @@ from . import export_views
 from . import template_views
 from . import audit_views
 from . import search_views
+from . import notification_views
 
 app_name = 'reports'
 
@@ -63,7 +64,9 @@ urlpatterns = [
     path('api/notifications/list/', views_notifications.notification_list_api, name='notification_list_api'),
     path('api/notifications/mark-read/', views_notifications.mark_read_api, name='mark_all_read_api'),
     path('api/notifications/<int:pk>/mark-read/', views_notifications.mark_read_api, name='mark_read_api'),
-    path('notifications/', views_notifications.notification_full_list, name='notification_list'),
+    path('api/notifications/unread-count/', notification_views.get_unread_count, name='notification_unread_count'), # Added
+    path('notifications/', notification_views.notification_list, name='notification_list'), # Updated to new view
+
 
     # Task Attachments - Moved to tasks app
     

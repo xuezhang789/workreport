@@ -13,6 +13,7 @@ from .export_views import *
 from .template_views import *
 from .audit_views import *
 from .search_views import *
+from .notification_views import *
 
 # Explicitly export internal services used by tests
 from reports.services.stats import get_performance_stats as _performance_stats
