@@ -312,9 +312,9 @@
                 </h1>
             </div>
             <div style="display: flex; gap: 12px;">
-                <a href="{% url 'projects:project_detail' project.pk %}" class="btn btn-ghost">返回列表</a>
+                <a href="{% url 'projects:project_detail' project.pk %}" class="btn btn-ghost">返回列表 / Back to List</a>
                 {% if can_manage %}
-                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目 / Edit Project</a>
                 {% endif %}
             </div>
         </div>
@@ -347,8 +347,8 @@
                 <span class="info-value">{{ project.members.count }} 人</span>
             </div>
             <div class="info-item">
-                <span class="info-label">SLA 配置</span>
-                <span class="info-value">{% if project.sla_hours %}{{ project.sla_hours }}h{% else %}全局配置{% endif %}</span>
+                <span class="info-label">SLA 配置 / SLA Config</span>
+                <span class="info-value">{% if project.sla_hours %}{{ project.sla_hours }}h{% else %}全局配置 / Global{% endif %}</span>
             </div>
         </div>
 
@@ -444,7 +444,7 @@
             {% else %}
             <div class="empty-state">
                 <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🕰️</div>
-                <p>暂无变更记录</p>
+                <p>暂无变更记录 / No change logs</p>
             </div>
             {% endif %}
         </div>

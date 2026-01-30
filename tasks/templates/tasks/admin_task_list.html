@@ -394,6 +394,28 @@
         opacity: 0.5;
     }
 
+    /* Category Badges */
+    .badge-category {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-top: 3px;
+        flex-shrink: 0;
+    }
+    .badge-category.bug {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+    .badge-category.task {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #dbeafe;
+    }
+
     @media (max-width: 1024px) {
         .filter-grid { grid-template-columns: 1fr 1fr; }
         .form-group[style*="flex: 2"] { grid-column: span 2; }
@@ -491,7 +513,7 @@
                 <div class="form-group">
                     <label class="form-label" for="project">项目 / Project</label>
                     <select id="project" name="project" class="form-control">
-                        <option value="">全部项目</option>
+                        <option value="">全部项目 / All Projects</option>
                         {% for p in projects %}
                         <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
                         {% endfor %}
@@ -500,25 +522,34 @@
                 <div class="form-group">
                     <label class="form-label" for="user">负责人 / Assignee</label>
                     <select id="user" name="user" class="form-control">
-                        <option value="">全部人员</option>
+                        <option value="">全部人员 / All Users</option>
                         {% for u in users %}
                         <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label" for="category">分类 / Category</label>
+                    <select id="category" name="category" class="form-control">
+                        <option value="">全部分类 / All Categories</option>
+                        {% for val,label in task_category_choices %}
+                        <option value="{{ val }}" {% if category == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label" for="status">状态 / Status</label>
                     <select id="status" name="status" class="form-control">
-                        <option value="">全部状态</option>
+                        <option value="">全部状态 / All Statuses</option>
                         {% for val,label in task_status_choices %}
-                        <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
+                        <option value="{{ val }}" {% if status == val %}selected{% endif %} data-category="{% if val in 'new,confirmed,fixing,verifying' %}BUG{% elif val in 'todo,in_progress,blocked,in_review,done' %}TASK{% else %}BOTH{% endif %}">{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="priority">优先级 / Priority</label>
                     <select id="priority" name="priority" class="form-control">
-                        <option value="">全部优先级</option>
+                        <option value="">全部优先级 / All Priorities</option>
                         {% for val,label in task_priority_choices %}
                         <option value="{{ val }}" {% if priority == val %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
@@ -527,22 +558,22 @@
                 <div class="form-group" style="flex: 0 0 auto; align-self: flex-end; padding-bottom: 2px;">
                      <label class="checkbox-wrapper">
                         <input type="checkbox" name="hot" value="1" class="checkbox-input" {% if hot %}checked{% endif %} onchange="this.form.submit()">
-                        <span class="checkbox-label">仅显示紧急</span>
+                        <span class="checkbox-label">仅显示紧急 / Show Urgent Only</span>
                      </label>
                 </div>
             </div>
 
             <div class="filter-actions">
-                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost">重置筛选</a>
+                <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-ghost">重置筛选 / Reset</a>
                 <a href="{% url 'tasks:admin_task_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 2px;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    导出数据
+                    导出数据 / Export
                 </a>
-                <button type="submit" class="btn btn-primary" style="min-width: 100px;">筛选</button>
+                <button type="submit" class="btn btn-primary" style="min-width: 100px;">筛选 / Filter</button>
             </div>
         </form>
     </div>
@@ -560,7 +591,7 @@
             <div class="bulk-label">
                 <label class="checkbox-wrapper">
                     <input type="checkbox" id="selectAll" class="checkbox-input">
-                    <span id="selectLabel">全选</span>
+                    <span id="selectLabel">全选 / Select All</span>
                 </label>
             </div>
             <div class="bulk-controls">
@@ -650,9 +681,18 @@
                                 <input type="checkbox" name="task_ids" value="{{ t.id }}" class="task-check checkbox-input">
                             </td>
                             <td class="col-title" data-label="标题 / Title">
-                                <a href="{% url 'tasks:task_view' t.pk %}" class="task-title-link">{{ t.title }}</a>
-                                <div class="task-meta">
-                                    {{ t.content|striptags|truncatechars:50|default:"无详细内容" }}
+                                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                    {% if t.category == 'BUG' %}
+                                        <span class="badge-category bug" title="缺陷 / BUG">BUG</span>
+                                    {% else %}
+                                        <span class="badge-category task" title="任务 / TASK">TASK</span>
+                                    {% endif %}
+                                    <div>
+                                        <a href="{% url 'tasks:task_view' t.pk %}" class="task-title-link">{{ t.title }}</a>
+                                        <div class="task-meta">
+                                            {{ t.content|striptags|truncatechars:50|default:"无详细内容" }}
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                             <td class="col-project" data-label="项目 / Project">
@@ -723,7 +763,7 @@
                             </td>
                             <td class="col-actions" data-label="操作 / Actions">
                                 <a href="{% url 'tasks:task_view' t.pk %}" class="btn btn-ghost btn-sm" style="color: var(--primary);">
-                                    详情
+                                    详情 / Details
                                 </a>
                             </td>
                         </tr>
@@ -779,15 +819,60 @@
         <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
         </svg>
-        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无任务</h3>
-        <p style="margin-bottom: 24px;">您可以调整筛选条件，或者发布新任务。</p>
-        <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-secondary">清除筛选</a>
+        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无任务 / No Tasks</h3>
+        <p style="margin-bottom: 24px;">您可以调整筛选条件，或者发布新任务。 / You can adjust filters or create a new task.</p>
+        <a href="{% url 'tasks:admin_task_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
     </div>
     {% endif %}
 
 </div>
 
 <script>
+    (function() {
+        const catSelect = document.getElementById('category');
+        const statSelect = document.getElementById('status');
+        
+        function updateStatusFilter() {
+            if (!catSelect || !statSelect) return;
+            const category = catSelect.value;
+            // Filter logic: Only show statuses relevant to category, or all if no category
+            const bugStatuses = ['new', 'confirmed', 'fixing', 'verifying', 'closed'];
+            const taskStatuses = ['todo', 'in_progress', 'blocked', 'in_review', 'done', 'closed'];
+            
+            let allowed = null;
+            if (category === 'BUG') allowed = bugStatuses;
+            else if (category === 'TASK') allowed = taskStatuses;
+            
+            Array.from(statSelect.options).forEach(opt => {
+                if (!opt.value) return; // Skip "All"
+                const val = opt.value;
+                if (allowed) {
+                    if (allowed.includes(val)) {
+                        opt.style.display = '';
+                        opt.disabled = false;
+                    } else {
+                        opt.style.display = 'none';
+                        opt.disabled = true;
+                    }
+                } else {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                }
+            });
+            
+            // If current status is hidden, reset to All
+            const currentOpt = statSelect.options[statSelect.selectedIndex];
+            if (currentOpt && currentOpt.style.display === 'none') {
+                statSelect.value = "";
+            }
+        }
+        
+        if (catSelect) {
+            catSelect.addEventListener('change', updateStatusFilter);
+            updateStatusFilter();
+        }
+    })();
+
     function toggleBulkAction(select) {
         const val = select.value;
         const userSelect = document.getElementById('bulk-assign-user');
@@ -820,9 +905,9 @@
         function updateLabel() {
             const checkedCount = document.querySelectorAll('.task-check:checked').length;
             if (checkedCount > 0) {
-                selectLabel.textContent = `已选 ${checkedCount} 项`;
+                selectLabel.textContent = `已选 ${checkedCount} 项 / Selected ${checkedCount}`;
             } else {
-                selectLabel.textContent = '全选';
+                selectLabel.textContent = '全选 / Select All';
             }
         }
 
@@ -851,7 +936,7 @@
                 const checkedCount = document.querySelectorAll('.task-check:checked').length;
                 if (checkedCount === 0) {
                     e.preventDefault();
-                    alert('请至少选择一个任务进行操作。');
+                    alert('请至少选择一个任务进行操作。 / Please select at least one task.');
                     return;
                 }
                 
@@ -862,7 +947,7 @@
                     return;
                 }
 
-                if (!confirm(`确定要对选中的 ${checkedCount} 个任务执行此操作吗？`)) {
+                if (!confirm(`确定要对选中的 ${checkedCount} 个任务执行此操作吗？ / Are you sure you want to perform this action on ${checkedCount} tasks?`)) {
                     e.preventDefault();
                 }
             });

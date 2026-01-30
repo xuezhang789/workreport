@@ -401,12 +401,12 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
             <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">审计日志 / Audit Logs</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ page_obj.paginator.count }} 条操作记录</p>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ page_obj.paginator.count }} 条操作记录 / Total {{ page_obj.paginator.count }} records</p>
         </div>
         <div style="display: flex; gap: 12px;">
             <button class="btn btn-secondary" onclick="location.reload()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                刷新
+                刷新 / Refresh
             </button>
         </div>
     </div>
@@ -426,11 +426,11 @@
                         日期范围 / Date Range
                     </label>
                     <div class="date-group">
-                        <input type="date" name="start_date" class="date-input-clean" value="{{ start_date|date:'Y-m-d' }}" placeholder="开始日期">
+                        <input type="date" name="start_date" class="date-input-clean" value="{{ start_date|date:'Y-m-d' }}" placeholder="开始日期 / Start Date">
                         <span class="date-separator">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </span>
-                        <input type="date" name="end_date" class="date-input-clean" value="{{ end_date|date:'Y-m-d' }}" placeholder="结束日期">
+                        <input type="date" name="end_date" class="date-input-clean" value="{{ end_date|date:'Y-m-d' }}" placeholder="结束日期 / End Date">
                     </div>
                 </div>
 
@@ -482,7 +482,7 @@
 
                 <div class="form-group">
                     <label class="form-label">用户 / User</label>
-                    <input type="text" name="user" class="form-input" value="{{ user_q }}" placeholder="用户名/姓名">
+                    <input type="text" name="user" class="form-input" value="{{ user_q }}" placeholder="用户名/姓名 / Username or Name">
                 </div>
             </div>
             
@@ -549,28 +549,28 @@
                         </td>
                         <td>
                             {% if log.action == 'create' %}
-                                <span class="badge badge-green">创建</span>
+                                <span class="badge badge-green">创建 / Create</span>
                             {% elif log.action == 'update' %}
-                                <span class="badge badge-blue">更新</span>
+                                <span class="badge badge-blue">更新 / Update</span>
                             {% elif log.action == 'delete' %}
-                                <span class="badge badge-red">删除</span>
+                                <span class="badge badge-red">删除 / Delete</span>
                             {% elif log.action == 'login' %}
-                                <span class="badge badge-purple">登录</span>
+                                <span class="badge badge-purple">登录 / Login</span>
                             {% elif log.action == 'logout' %}
-                                <span class="badge badge-gray">登出</span>
+                                <span class="badge badge-gray">登出 / Logout</span>
                             {% elif log.action == 'access' %}
-                                <span class="badge badge-gray">访问</span>
+                                <span class="badge badge-gray">访问 / Access</span>
                             {% else %}
                                 <span class="badge badge-gray">{{ log.get_action_display }}</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if log.result == 'success' %}
-                                <span style="color: var(--success);" title="成功">
+                                <span style="color: var(--success);" title="成功 / Success">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 </span>
                             {% else %}
-                                <span style="color: var(--danger);" title="失败">
+                                <span style="color: var(--danger);" title="失败 / Failure">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </span>
                             {% endif %}
@@ -637,7 +637,7 @@
 
             <div class="pagination-controls">
                 {% if page_obj.has_previous %}
-                    <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页">
+                    <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
@@ -659,7 +659,7 @@
                 {% endfor %}
 
                 {% if page_obj.has_next %}
-                    <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页">
+                    <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>

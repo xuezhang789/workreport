@@ -424,14 +424,14 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
             <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">模板中心 / Template Center</h1>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">管理与共享日报及任务模板</p>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">管理与共享日报及任务模板 / Manage & share report/task templates</p>
         </div>
         <button class="btn btn-primary" onclick="toggleCreateSection()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            新建模板
+            新建模板 / Create Template
         </button>
     </div>
 
@@ -519,7 +519,7 @@
                         {{ task_form.project }}
                     </div>
                     <div class="form-group">
-                        <label class="form-label">URL 链接</label>
+                        <label class="form-label">URL 链接 / URL Link</label>
                         {{ task_form.url }}
                     </div>
                     <div class="form-group">
@@ -554,7 +554,7 @@
             <div class="filter-grid">
                 <div class="form-group" style="flex: 2; min-width: 240px;">
                     <label class="form-label">搜索 / Search</label>
-                    <input type="text" name="q" value="{{ q }}" class="form-input" placeholder="按名称或内容搜索...">
+                    <input type="text" name="q" value="{{ q }}" class="form-input" placeholder="按名称或内容搜索... / Search by name or content...">
                 </div>
                 <div class="form-group">
                     <label class="form-label">角色 / Role</label>
@@ -577,19 +577,19 @@
                 <div class="form-group">
                     <label class="form-label">排序 / Sort</label>
                     <select name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                        <option value="version" {% if sort == 'version' %}selected{% endif %}>版本 (v)</option>
-                        <option value="updated" {% if sort == 'updated' %}selected{% endif %}>更新时间</option>
-                        <option value="usage" {% if sort == 'usage' %}selected{% endif %}>使用次数</option>
+                        <option value="version" {% if sort == 'version' %}selected{% endif %}>版本 / Version</option>
+                        <option value="updated" {% if sort == 'updated' %}selected{% endif %}>更新时间 / Updated</option>
+                        <option value="usage" {% if sort == 'usage' %}selected{% endif %}>使用次数 / Usage</option>
                     </select>
                 </div>
             </div>
             <div class="filter-actions">
-                <a href="{% url 'reports:template_center' %}" class="btn btn-ghost">重置</a>
+                <a href="{% url 'reports:template_center' %}" class="btn btn-ghost">重置 / Reset</a>
                 <button type="submit" class="btn btn-secondary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
-                    筛选
+                    筛选 / Filter
                 </button>
             </div>
         </form>
@@ -597,7 +597,7 @@
 
     <!-- 1. Report Templates -->
     <h3 style="font-size: 18px; font-weight: 700; margin: 32px 0 16px; display: flex; align-items: center; gap: 8px;">
-        <span>📄 日报模板</span>
+        <span>📄 日报模板 / Report Templates</span>
         <span class="badge" style="background: var(--primary-light); color: var(--primary); border: none;">{{ report_templates.paginator.count }}</span>
     </h3>
     
@@ -610,9 +610,9 @@
                     <span class="badge">v{{ tmpl.version }}</span>
                 </div>
                 <div class="template-meta">
-                    <span>{{ tmpl.get_role_display|default:"全部角色" }}</span>
+                    <span>{{ tmpl.get_role_display|default:"全部角色 / All Roles" }}</span>
                     <span>•</span>
-                    <span>{{ tmpl.project.name|default:"全局通用" }}</span>
+                    <span>{{ tmpl.project.name|default:"全局通用 / Global" }}</span>
                 </div>
                 <div class="template-preview">
                     {{ tmpl.content|truncatechars:150 }}
@@ -622,11 +622,11 @@
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-secondary btn-xs" onclick="openPreview('{{ tmpl.name|escapejs }}', `{{ tmpl.content|escapejs }}`)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        预览
+                        预览 / Preview
                     </button>
                     <button class="btn btn-secondary btn-xs" onclick="copyContent(`{{ tmpl.content|escapejs }}`)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        复制
+                        复制 / Copy
                     </button>
                 </div>
                 <div style="text-align: right;">
@@ -653,18 +653,18 @@
     {% if report_templates.has_other_pages %}
     <div class="pagination-container">
         {% if report_templates.has_previous %}
-            <a href="?{% url_replace rpage=report_templates.previous_page_number %}" class="btn btn-secondary btn-sm">上一页</a>
+            <a href="?{% url_replace rpage=report_templates.previous_page_number %}" class="btn btn-secondary btn-sm">上一页 / Prev</a>
         {% endif %}
         <span class="btn btn-ghost btn-sm" style="pointer-events: none;">{{ report_templates.number }} / {{ report_templates.paginator.num_pages }}</span>
         {% if report_templates.has_next %}
-            <a href="?{% url_replace rpage=report_templates.next_page_number %}" class="btn btn-secondary btn-sm">下一页</a>
+            <a href="?{% url_replace rpage=report_templates.next_page_number %}" class="btn btn-secondary btn-sm">下一页 / Next</a>
         {% endif %}
     </div>
     {% endif %}
 
     <!-- 2. Task Templates -->
     <h3 style="font-size: 18px; font-weight: 700; margin: 48px 0 16px; display: flex; align-items: center; gap: 8px;">
-        <span>✅ 任务模板</span>
+        <span>✅ 任务模板 / Task Templates</span>
         <span class="badge" style="background: var(--primary-light); color: var(--primary); border: none;">{{ task_templates.paginator.count }}</span>
     </h3>
 
@@ -677,9 +677,9 @@
                     <span class="badge">v{{ tmpl.version }}</span>
                 </div>
                 <div class="template-meta">
-                    <span>{{ tmpl.get_role_display|default:"全部角色" }}</span>
+                    <span>{{ tmpl.get_role_display|default:"全部角色 / All Roles" }}</span>
                     <span>•</span>
-                    <span>{{ tmpl.project.name|default:"全局通用" }}</span>
+                    <span>{{ tmpl.project.name|default:"全局通用 / Global" }}</span>
                 </div>
                 <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">{{ tmpl.title }}</div>
                 <div class="template-preview">
@@ -707,11 +707,11 @@
     {% if task_templates.has_other_pages %}
     <div class="pagination-container">
         {% if task_templates.has_previous %}
-            <a href="?{% url_replace tpage=task_templates.previous_page_number %}" class="btn btn-secondary btn-sm">上一页</a>
+            <a href="?{% url_replace tpage=task_templates.previous_page_number %}" class="btn btn-secondary btn-sm">上一页 / Prev</a>
         {% endif %}
         <span class="btn btn-ghost btn-sm" style="pointer-events: none;">{{ task_templates.number }} / {{ task_templates.paginator.num_pages }}</span>
         {% if task_templates.has_next %}
-            <a href="?{% url_replace tpage=task_templates.next_page_number %}" class="btn btn-secondary btn-sm">下一页</a>
+            <a href="?{% url_replace tpage=task_templates.next_page_number %}" class="btn btn-secondary btn-sm">下一页 / Next</a>
         {% endif %}
     </div>
     {% endif %}
@@ -720,17 +720,17 @@
     <div id="previewModal" class="modal-backdrop" onclick="closePreview(event)">
         <div class="modal-panel">
             <div class="modal-header">
-                <h3 class="modal-title" id="previewTitle" style="margin: 0; font-size: 16px; font-weight: 700;">模板预览</h3>
+                <h3 class="modal-title" id="previewTitle" style="margin: 0; font-size: 16px; font-weight: 700;">模板预览 / Template Preview</h3>
                 <button class="btn btn-ghost btn-sm" onclick="closePreview(null, true)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <pre class="modal-body" id="previewContent"></pre>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closePreview(null, true)">关闭</button>
+                <button class="btn btn-secondary" onclick="closePreview(null, true)">关闭 / Close</button>
                 <button class="btn btn-primary" onclick="copyPreviewContent()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    复制内容
+                    复制内容 / Copy Content
                 </button>
             </div>
         </div>
@@ -739,7 +739,7 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        <span>已复制到剪贴板</span>
+        <span>已复制到剪贴板 / Copied to clipboard</span>
     </div>
 
 </div>

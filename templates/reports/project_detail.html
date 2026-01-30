@@ -350,9 +350,9 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表 / Back to List</a>
                 {% if can_manage %}
-                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目</a>
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目 / Edit Project</a>
                 {% endif %}
             </div>
         </div>
@@ -432,7 +432,7 @@
                 <span>📎</span> 附件 / Attachments
             </div>
             {% if can_manage %}
-                <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件</button>
+                <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
                 <input type="file" id="attachment-upload-input" multiple style="display: none;">
             {% endif %}
         </div>
@@ -454,15 +454,15 @@
                         <span>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
                     </div>
                     <div class="attachment-actions">
-                        <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载</a>
+                        <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
                         {% if can_manage or user == attachment.uploaded_by %}
-                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除</button>
+                            <button class="btn-xs btn-delete" onclick="deleteAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Delete</button>
                         {% endif %}
                     </div>
                 </div>
             {% empty %}
                 <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
-                    暂无附件
+                    暂无附件 / No attachments
                 </div>
             {% endfor %}
         </div>
@@ -482,7 +482,7 @@
         
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
             <div>
-                <span style="font-size: 16px; font-weight: 600; color: var(--text-main);">{{ project.current_phase.phase_name|default:"未设置阶段" }}</span>
+                <span style="font-size: 16px; font-weight: 600; color: var(--text-main);">{{ project.current_phase.phase_name|default:"未设置阶段 / Phase Not Set" }}</span>
             </div>
             <span style="font-size: 20px; font-weight: 700; color: var(--primary);">{{ project.overall_progress }}%</span>
         </div>
@@ -492,7 +492,7 @@
 
         {% if can_manage %}
             <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">变更阶段:</span>
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">变更阶段 / Change Phase:</span>
                 <select id="phase-select" class="filter-select" style="min-width: 200px;">
                     {% for phase in phases %}
                         <option value="{{ phase.id }}" {% if project.current_phase_id == phase.id %}selected{% endif %}>
@@ -574,7 +574,7 @@
                 {% endif %}
             {% empty %}
                 <div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">
-                    暂无普通成员
+                    暂无普通成员 / No regular members
                 </div>
             {% endfor %}
         </div>
@@ -599,7 +599,7 @@
                     </select>
                 </form>
                 {% if can_manage %}
-                    <a href="{% url 'tasks:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务</a>
+                    <a href="{% url 'tasks:admin_task_create' %}?project_id={{ project.id }}" class="btn btn-primary">+ 新建任务 / New Task</a>
                 {% endif %}
             </div>
         </div>
@@ -609,12 +609,12 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>任务标题</th>
-                            <th>优先级</th>
-                            <th>负责人</th>
-                            <th>截止日期</th>
-                            <th>状态</th>
-                            <th style="text-align: right;">操作</th>
+                            <th>任务标题 / Task Title</th>
+                            <th>优先级 / Priority</th>
+                            <th>负责人 / Assignee</th>
+                            <th>截止日期 / Due Date</th>
+                            <th>状态 / Status</th>
+                            <th style="text-align: right;">操作 / Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -623,7 +623,7 @@
                                 <td>
                                     <div style="display: flex; flex-direction: column; gap: 2px;">
                                         <a href="{% url 'tasks:task_view' task.pk %}" style="color: var(--text-main); font-weight: 500; text-decoration: none;">{{ task.title }}</a>
-                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接</a>{% endif %}
+                                        {% if task.url %}<a href="{{ task.url }}" target="_blank" style="font-size: 12px; color: var(--primary);">🔗 外部链接 / External Link</a>{% endif %}
                                     </div>
                                 </td>
                                 <td>
@@ -665,7 +665,7 @@
                             </span>
                                 </td>
                                 <td style="text-align: right;">
-                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
+                                    <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -687,7 +687,7 @@
             {% endif %}
         {% else %}
             <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                <p>暂无关联任务</p>
+                <p>暂无关联任务 / No associated tasks</p>
             </div>
         {% endif %}
     </div>
@@ -702,10 +702,10 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>日期</th>
-                            <th>提交人</th>
-                            <th>角色</th>
-                            <th style="text-align: right;">操作</th>
+                            <th>日期 / Date</th>
+                            <th>提交人 / Submitter</th>
+                            <th>角色 / Role</th>
+                            <th style="text-align: right;">操作 / Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -715,7 +715,7 @@
                                 <td>{{ r.user.get_full_name|default:r.user.username }}</td>
                                 <td>{{ r.get_role_display }}</td>
                                 <td style="text-align: right;">
-                                    <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看</a>
+                                    <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -723,7 +723,7 @@
                 </table>
             </div>
         {% else %}
-            <div style="text-align: center; padding: 32px; color: var(--text-secondary);">暂无日报记录</div>
+            <div style="text-align: center; padding: 32px; color: var(--text-secondary);">暂无日报记录 / No recent reports</div>
         {% endif %}
     </div>
 
@@ -778,7 +778,7 @@
     }
 
     window.deleteAttachment = function(id, url) {
-        if (!confirm('确定删除该附件吗？')) return;
+        if (!confirm('确定删除该附件吗？ / Are you sure to delete this attachment?')) return;
         
         fetch(url, {
             method: 'POST',
@@ -813,7 +813,7 @@
             
             if (!phaseId) return;
             
-            if (!confirm('确认变更项目阶段？这将更新项目整体进度。')) return;
+            if (!confirm('确认变更项目阶段？这将更新项目整体进度。 / Confirm phase change? This will update overall progress.')) return;
             
             btn.disabled = true;
             btn.textContent = 'Updating...';
@@ -836,7 +836,7 @@
             .then(data => {
                 if (data.status === 'success') {
                     btn.textContent = 'Updated';
-                    msg.textContent = '更新成功';
+                    msg.textContent = '更新成功 / Update Success';
                     msg.style.color = '#166534';
                     setTimeout(() => window.location.reload(), 500);
                 } else {

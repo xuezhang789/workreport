@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}绩效与统计看板 / Performance Dashboard{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="绩效与统计看板 / Performance Dashboard" nav_subtitle="全方位数据洞察与团队效能分析" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="绩效与统计看板 / Performance Dashboard" nav_subtitle="全方位数据洞察与团队效能分析 / Comprehensive data insights and team performance analysis" %}{% endblock %}
 
 {% block extra_styles %}
     :root {
@@ -373,18 +373,18 @@
                 <button type="button" class="period-btn {% if period == 'week' %}active{% endif %}" onclick="setPeriod('week')">本周 / Week</button>
                 <button type="button" class="period-btn {% if period == 'month' %}active{% endif %}" onclick="setPeriod('month')">本月 / Month</button>
                 <button type="button" class="period-btn {% if period == 'year' %}active{% endif %}" onclick="setPeriod('year')">今年 / Year</button>
-                <button type="button" class="period-btn {% if period == 'custom' %}active{% endif %}" onclick="toggleCustomDate()">自定义</button>
+                <button type="button" class="period-btn {% if period == 'custom' %}active{% endif %}" onclick="toggleCustomDate()">自定义 / Custom</button>
             </div>
             <input type="hidden" name="period" id="periodInput" value="{{ period }}">
         </div>
 
         <div class="filter-group" id="customDateGroup" style="{% if period != 'custom' %}display:none;{% endif %} flex-direction: row; gap: 12px; flex: 1;">
             <div style="flex: 1;">
-                <label class="filter-label">开始日期</label>
+                <label class="filter-label">开始日期 / Start Date</label>
                 <input type="date" name="start" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
             </div>
             <div style="flex: 1;">
-                <label class="filter-label">结束日期</label>
+                <label class="filter-label">结束日期 / End Date</label>
                 <input type="date" name="end" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
             </div>
         </div>
@@ -430,7 +430,7 @@
             <div class="kpi-value">{{ kpi.new }}</div>
             <div class="kpi-title">新增任务 / Created</div>
             <div class="kpi-footer text-muted">
-                对比上个周期
+                对比上个周期 / vs last period
             </div>
         </div>
 
@@ -447,7 +447,7 @@
             <div class="kpi-value">{{ kpi.done }}</div>
             <div class="kpi-title">已完成 / Completed</div>
             <div class="kpi-footer text-muted">
-                吞吐率: {{ kpi.rate|floatformat:0 }}%
+                吞吐率 / Throughput: {{ kpi.rate|floatformat:0 }}%
             </div>
         </div>
 
@@ -462,9 +462,9 @@
                 </div>
             </div>
             <div class="kpi-value">{{ kpi.on_time_rate|floatformat:0 }}%</div>
-            <div class="kpi-title">按时交付率 / On-Time</div>
+            <div class="kpi-title">按时交付率 / On-Time Rate</div>
             <div class="kpi-footer text-muted">
-                SLA 达标情况
+                SLA 达标情况 / SLA Met
             </div>
         </div>
         
@@ -481,7 +481,7 @@
             <div class="kpi-value">{{ kpi.avg_time }}<span style="font-size: 16px; font-weight: 500;">h</span></div>
             <div class="kpi-title">平均耗时 / Avg Time</div>
             <div class="kpi-footer text-muted">
-                从创建到完成
+                从创建到完成 / Create to Done
             </div>
         </div>
 
@@ -498,7 +498,7 @@
             <div class="kpi-value text-danger">{{ kpi.overdue }}</div>
             <div class="kpi-title text-danger">当前逾期 / Overdue</div>
             <div class="kpi-footer text-danger">
-                需要立即处理
+                需要立即处理 / Action Required
             </div>
         </div>
     </div>
@@ -541,7 +541,7 @@
             <div style="margin-left: auto; display: flex; align-items: center;">
                 <a href="{% url 'tasks:admin_task_stats_export' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-primary" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-weight: 500;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    导出报表 (Export)
+                    导出报表 / Export Report
                 </a>
             </div>
         </div>
@@ -553,12 +553,12 @@
                     <thead>
                         <tr>
                             <th style="width: 250px;">成员 / Member</th>
-                            <th class="text-center">总任务</th>
-                            <th class="text-center">已完成</th>
-                            <th class="text-center">按时交付</th>
-                            <th style="width: 200px;">完成率</th>
-                            <th class="text-center">逾期</th>
-                            <th class="text-center">平均耗时</th>
+                            <th class="text-center">总任务 / Total</th>
+                            <th class="text-center">已完成 / Done</th>
+                            <th class="text-center">按时交付 / On-Time</th>
+                            <th style="width: 200px;">完成率 / Completion Rate</th>
+                            <th class="text-center">逾期 / Overdue</th>
+                            <th class="text-center">平均耗时 / Avg Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -588,7 +588,7 @@
                             <td class="text-center text-secondary">{{ row.lead_time|default:'-' }}h</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="7" class="text-center text-muted" style="padding: 40px;">暂无数据</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted" style="padding: 40px;">暂无数据 / No Data</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -602,11 +602,11 @@
                     <thead>
                         <tr>
                             <th style="width: 300px;">项目名称 / Project</th>
-                            <th class="text-center">任务总数</th>
-                            <th class="text-center">已完成</th>
-                            <th style="width: 200px;">进度</th>
-                            <th class="text-center">逾期</th>
-                            <th class="text-center">平均耗时</th>
+                            <th class="text-center">任务总数 / Total</th>
+                            <th class="text-center">已完成 / Done</th>
+                            <th style="width: 200px;">进度 / Progress</th>
+                            <th class="text-center">逾期 / Overdue</th>
+                            <th class="text-center">平均耗时 / Avg Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -627,7 +627,7 @@
                             <td class="text-center text-secondary">{{ row.lead_time|default:'-' }}h</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-center text-muted" style="padding: 40px;">暂无数据</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted" style="padding: 40px;">暂无数据 / No Data</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -690,7 +690,7 @@
                 labels: JSON.parse(document.getElementById('chart-labels').textContent),
                 datasets: [
                     {
-                        label: '新增任务',
+                        label: '新增 / Created',
                         data: JSON.parse(document.getElementById('chart-created').textContent),
                         borderColor: '#3b82f6',
                         backgroundColor: gradientCreated,
@@ -702,7 +702,7 @@
                         fill: true
                     },
                     {
-                        label: '完成任务',
+                        label: '完成 / Completed',
                         data: JSON.parse(document.getElementById('chart-completed').textContent),
                         borderColor: '#10b981',
                         backgroundColor: gradientCompleted,

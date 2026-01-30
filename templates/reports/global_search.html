@@ -389,7 +389,7 @@
         <section class="result-section">
             <div class="section-header">
                 <div class="section-icon" style="color: #f59e0b; background: #fffbeb;">📝</div>
-                <h2 class="section-title">日报 <span style="color:#94a3b8; font-weight:400; font-size:14px; margin-left:8px;">{{ reports|length }}</span></h2>
+                <h2 class="section-title">日报 / Reports <span style="color:#94a3b8; font-weight:400; font-size:14px; margin-left:8px;">{{ reports|length }}</span></h2>
             </div>
             <div class="result-grid">
                 {% for r in reports %}
@@ -406,7 +406,7 @@
                         </div>
                     </div>
                     <div class="card-content">
-                        <span style="font-weight: 600; color: #334155;">今日工作：</span> 
+                        <span style="font-weight: 600; color: #334155;">今日工作 / Today: </span> 
                         {{ r.today_work|striptags|truncatechars:100 }}
                     </div>
                 </a>
@@ -419,8 +419,8 @@
         <div class="result-section">
             <div class="empty-state">
                 <div class="empty-icon" style="font-size: 64px;">🔍</div>
-                <div class="empty-title" style="font-size: 18px;">开始搜索</div>
-                <p>输入关键词查找您需要的项目、任务或日报内容</p>
+                <div class="empty-title" style="font-size: 18px;">开始搜索 / Start Searching</div>
+                <p>输入关键词查找您需要的项目、任务或日报内容 / Enter keywords to search</p>
             </div>
         </div>
     {% endif %}

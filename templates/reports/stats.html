@@ -80,7 +80,7 @@
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50">
             <h3 class="font-bold text-red-800">缺报人员名单 / Missing Reports</h3>
             {% if request.user.is_superuser %}
-            <a href="?remind=1&date={{ today|date:'Y-m-d' }}" class="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="return confirm('确定发送催报邮件？')">
+            <a href="?remind=1&date={{ today|date:'Y-m-d' }}" class="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="return confirm('确定发送催报邮件？/ Confirm send reminders?')">
                 一键催报 / Send Reminders
             </a>
             {% endif %}
@@ -125,9 +125,9 @@
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-500 uppercase bg-gray-50">
                         <tr>
-                            <th class="px-4 py-3">项目</th>
-                            <th class="px-4 py-3">SLA 达成率</th>
-                            <th class="px-4 py-3">完成/总数</th>
+                            <th class="px-4 py-3">项目 / Project</th>
+                            <th class="px-4 py-3">SLA 达成率 / SLA Rate</th>
+                            <th class="px-4 py-3">完成/总数 / Completed/Total</th>
                         </tr>
                     </thead>
                     <tbody>

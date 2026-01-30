@@ -1,7 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load tz safe_md %}
 {% block title %}日报详情 / Daily Report Detail{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容 / View your report content" %}{% endblock %}
 {% block extra_styles %}
 <style>
     /* --- Design System (Consistent with Admin Pages) --- */
@@ -189,7 +189,7 @@
                 {% endif %}
             </h2>
             <div style="font-size: 13px; color: var(--text-secondary);">
-                创建时间：{{ report.created_at|localtime|date:"Y-m-d H:i" }}
+                创建时间 / Created at：{{ report.created_at|localtime|date:"Y-m-d H:i" }}
             </div>
         </div>
 
@@ -227,9 +227,9 @@
             {% endfor %}
         {% else %}
             <div class="content-section">
-                <div class="content-header">无内容结构</div>
+                <div class="content-header">无内容结构 / No Structure</div>
                 <div class="content-body">
-                    <span class="empty-text">该角色模板未定义具体内容字段。</span>
+                    <span class="empty-text">该角色模板未定义具体内容字段。 / No content fields defined for this role.</span>
                 </div>
             </div>
         {% endif %}
