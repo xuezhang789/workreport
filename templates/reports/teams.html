@@ -419,11 +419,83 @@
             <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">团队管理 / Team Management</h1>
             <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 位成员 / Total {{ total_count }} members</p>
         </div>
-        <!-- Future: Add 'Invite Member' button here -->
+        
+        <!-- Tab Navigation -->
+        <div class="view-tabs" style="display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <button class="tab-btn active" onclick="switchTab('projects')" id="btn-projects" style="padding: 6px 16px; border-radius: 6px; border: none; background: transparent; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+                🏢 项目团队 / Project Teams
+            </button>
+            <button class="tab-btn" onclick="switchTab('members')" id="btn-members" style="padding: 6px 16px; border-radius: 6px; border: none; background: transparent; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+                👥 成员列表 / Member Directory
+            </button>
+        </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-section">
+    <!-- TAB 1: Project Teams -->
+    <div id="tab-projects" class="tab-pane">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
+            {% for item in project_teams %}
+            <div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;">
+                <div style="padding: 20px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">{{ item.project.code }}</div>
+                            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin: 4px 0 0;">
+                                <a href="{% url 'projects:project_detail' item.project.id %}" style="text-decoration: none; color: inherit; transition: color 0.2s;">
+                                    {{ item.project.name }}
+                                </a>
+                            </h3>
+                        </div>
+                        <span class="badge" style="background: var(--primary-light); color: var(--primary);">{{ item.member_count }} Members</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary);">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning);"></span>
+                            Owner: {{ item.project.owner.get_full_name|default:item.project.owner.username|default:"None" }}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></span>
+                            Managers: {{ item.manager_count }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="padding: 16px 20px; background: #f8fafc;">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600;">ROLE DISTRIBUTION</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        {% for stat in item.role_stats %}
+                            {% if stat.position %}
+                            <span style="font-size: 12px; padding: 2px 8px; background: white; border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-secondary);">
+                                {{ stat.position|upper }}: <b>{{ stat.count }}</b>
+                            </span>
+                            {% endif %}
+                        {% empty %}
+                            <span style="font-size: 12px; color: var(--text-muted);">No role data</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); text-align: right;">
+                    <button type="button" class="btn btn-secondary btn-sm" style="font-size: 13px;" onclick="openProjectManageModal('{{ item.project.id }}', '{{ item.project.name|escapejs }}')">
+                        管理团队 / Manage Team &rarr;
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Add New Project Placeholder -->
+            <a href="{% url 'admin:projects_project_add' %}" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); background: transparent; color: var(--text-muted); text-decoration: none; min-height: 200px; transition: all 0.2s;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span style="font-weight: 600;">创建新项目 / Create Project</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- TAB 2: Member Directory (Existing) -->
+    <div id="tab-members" class="tab-pane" style="display: none;">
+        <!-- Filter Bar -->
+        <div class="filter-section">
         <form method="get" id="filterForm">
             <div class="filter-grid">
                 <!-- Search -->
@@ -633,9 +705,173 @@
     </div>
     {% endif %}
 
+    </div> <!-- End tab-members -->
+
+    <script>
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+            // Show selected tab
+            document.getElementById('tab-' + tabId).style.display = 'block';
+            
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+                el.style.background = 'transparent';
+                el.style.color = 'var(--text-secondary)';
+                el.style.boxShadow = 'none';
+            });
+            const btn = document.getElementById('btn-' + tabId);
+            btn.classList.add('active');
+            btn.style.background = 'var(--bg-card)';
+            btn.style.color = 'var(--primary)';
+            btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        }
+        
+        // Init active state style
+        document.addEventListener('DOMContentLoaded', function() {
+            // If URL has ?tab=members, switch to it
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('q') || urlParams.get('role') || urlParams.get('page')) {
+                switchTab('members');
+            } else {
+                switchTab('projects');
+            }
+        });
+    </script>
+
 </div>
 
-<!-- Modals -->
+<!-- Project Management Modal -->
+<div id="project-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeProjectManageModal()">
+    <div class="modal-content" style="max-width: 600px; height: 80vh;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="pm-modal-title">项目团队管理 / Project Team</h3>
+            <button type="button" class="close-btn" onclick="closeProjectManageModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        
+        <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
+            <!-- Tabs inside Modal -->
+            <div style="display: flex; border-bottom: 1px solid var(--border-color); background: #f8fafc; padding: 0 16px;">
+                <button class="pm-tab active" onclick="switchPmTab('members')" id="pm-tab-members">成员 (Members)</button>
+                <button class="pm-tab" onclick="switchPmTab('managers')" id="pm-tab-managers">管理员 (Admins)</button>
+                <button class="pm-tab" onclick="switchPmTab('owner')" id="pm-tab-owner">负责人 (Owner)</button>
+            </div>
+
+            <!-- Content Area -->
+            <div style="flex: 1; overflow-y: auto; padding: 20px;">
+                
+                <!-- MEMBERS TAB -->
+                <div id="pm-view-members" class="pm-view">
+                    <div class="search-box-wrapper">
+                        <input type="text" id="pm-search-members" class="form-input" placeholder="搜索用户添加... / Search to add..." oninput="handleUserSearch('members', this.value)">
+                        <div id="pm-results-members" class="search-results-dropdown" style="display:none;"></div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">EXISTING MEMBERS</div>
+                        <div id="pm-list-members" class="user-list-container">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MANAGERS TAB -->
+                <div id="pm-view-managers" class="pm-view" style="display: none;">
+                    <div class="alert-box info">
+                        管理员可以编辑项目信息、管理任务和成员。 / Managers can edit project, manage tasks & members.
+                    </div>
+                    <div class="search-box-wrapper" style="margin-top: 12px;">
+                        <input type="text" id="pm-search-managers" class="form-input" placeholder="搜索用户添加... / Search to add..." oninput="handleUserSearch('managers', this.value)">
+                        <div id="pm-results-managers" class="search-results-dropdown" style="display:none;"></div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">MANAGERS</div>
+                        <div id="pm-list-managers" class="user-list-container"></div>
+                    </div>
+                </div>
+
+                <!-- OWNER TAB -->
+                <div id="pm-view-owner" class="pm-view" style="display: none;">
+                    <div class="alert-box warning">
+                        ⚠️ 转移负责人是敏感操作。 / Transferring ownership is sensitive.
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">当前负责人 / Current Owner</div>
+                        <div id="pm-current-owner" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 24px;">
+                            Loading...
+                        </div>
+                        
+                        <div style="text-align: left;">
+                            <label class="form-label">移交给... / Transfer to...</label>
+                            <div class="search-box-wrapper">
+                                <input type="text" id="pm-search-owner" class="form-input" placeholder="搜索新负责人... / Search new owner..." oninput="handleUserSearch('owner', this.value)">
+                                <div id="pm-results-owner" class="search-results-dropdown" style="display:none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pm-tab {
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .pm-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    .pm-tab:hover:not(.active) {
+        color: var(--text-main);
+    }
+
+    .search-box-wrapper { position: relative; }
+    .search-results-dropdown {
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: white; border: 1px solid var(--border-color);
+        border-radius: 8px; box-shadow: var(--shadow-lg);
+        max-height: 200px; overflow-y: auto; z-index: 10;
+        margin-top: 4px;
+    }
+    .search-result-item {
+        padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px;
+    }
+    .search-result-item:hover { background: var(--primary-light); }
+
+    .user-list-item {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px; border: 1px solid var(--border-color);
+        border-radius: 8px; margin-bottom: 8px; background: white;
+    }
+    .user-list-info { display: flex; align-items: center; gap: 10px; }
+    .user-list-avatar {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: var(--primary-light); color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; font-weight: 700;
+    }
+
+    .alert-box {
+        padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.4;
+    }
+    .alert-box.info { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+    .alert-box.warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+</style>
+
+<!-- Modals (Existing User Modals) -->
 {% for user in users %}
 <div id="user-modal-{{ user.id }}" class="modal-overlay" onclick="if(event.target === this) closeModal('user-modal-{{ user.id }}')">
     <div class="modal-content">
@@ -733,5 +969,184 @@
         btn.style.opacity = '0.7';
         return true;
     }
+    // === PROJECT MANAGEMENT MODAL LOGIC ===
+    let currentPmProjectId = null;
+    let searchDebounce = null;
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    function openProjectManageModal(projectId, projectName) {
+        currentPmProjectId = projectId;
+        document.getElementById('pm-modal-title').innerText = `管理团队 / Team: ${projectName}`;
+        document.getElementById('project-manage-modal').classList.add('open');
+        
+        // Reset state
+        switchPmTab('members');
+        loadProjectUsers();
+    }
+
+    function closeProjectManageModal() {
+        document.getElementById('project-manage-modal').classList.remove('open');
+        currentPmProjectId = null;
+    }
+
+    function switchPmTab(tabName) {
+        // Hide all views
+        document.querySelectorAll('.pm-view').forEach(el => el.style.display = 'none');
+        document.getElementById(`pm-view-${tabName}`).style.display = 'block';
+        
+        // Update tabs
+        document.querySelectorAll('.pm-tab').forEach(el => el.classList.remove('active'));
+        document.getElementById(`pm-tab-${tabName}`).classList.add('active');
+    }
+
+    async function loadProjectUsers() {
+        if(!currentPmProjectId) return;
+        
+        // Show loading state if needed
+        // fetch data
+        try {
+            const res = await fetch(`/projects/api/${currentPmProjectId}/users/`);
+            if(!res.ok) throw new Error('Failed to load users');
+            const data = await res.json();
+            
+            renderUserList('members', data.members, true);
+            renderUserList('managers', data.managers, true);
+            renderOwner(data.owner);
+            
+        } catch (e) {
+            console.error(e);
+            alert('加载失败 / Load failed');
+        }
+    }
+
+    function renderUserList(type, users, isRemovable=false) {
+        const container = document.getElementById(`pm-list-${type}`);
+        container.innerHTML = '';
+        
+        if(!users || users.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text-muted); font-size:13px;">暂无人员 / Empty</div>';
+            return;
+        }
+        
+        users.forEach(u => {
+            const div = document.createElement('div');
+            div.className = 'user-list-item';
+            
+            let actionHtml = '';
+            if(isRemovable) {
+                // Determine API action
+                const apiAction = type === 'managers' ? 'remove_manager' : 'remove_member';
+                actionHtml = `
+                    <button class="btn-remove" onclick="updateProjectMember('${apiAction}', ${u.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                `;
+            }
+            
+            div.innerHTML = `
+                <div class="user-list-info">
+                    <div class="user-list-avatar">${u.avatar_char}</div>
+                    <div>
+                        <div style="font-size:13px; font-weight:600;">${u.full_name}</div>
+                        <div style="font-size:11px; color:var(--text-secondary);">@${u.username}</div>
+                    </div>
+                </div>
+                ${actionHtml}
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function renderOwner(user) {
+        const container = document.getElementById('pm-current-owner');
+        if(user) {
+            container.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                    <div class="user-list-avatar" style="width:40px; height:40px; font-size:16px;">${user.avatar_char}</div>
+                    <div>${user.full_name} (@${user.username})</div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<span style="color:var(--text-muted)">None</span>';
+        }
+    }
+
+    function handleUserSearch(type, query) {
+        if(searchDebounce) clearTimeout(searchDebounce);
+        const container = document.getElementById(`pm-results-${type}`);
+        
+        if(!query.trim()) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        searchDebounce = setTimeout(async () => {
+            try {
+                const res = await fetch(`{% url 'core:user_search_api' %}?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                container.innerHTML = '';
+                if(data.results && data.results.length > 0) {
+                    data.results.forEach(u => {
+                        const div = document.createElement('div');
+                        div.className = 'search-result-item';
+                        div.innerHTML = `
+                            <div class="user-list-avatar" style="width:24px; height:24px; font-size:10px;">${(u.full_name||u.username)[0].toUpperCase()}</div>
+                            <div>${u.full_name || u.username} <span style="color:var(--text-muted)">@${u.username}</span></div>
+                        `;
+                        div.onclick = () => {
+                            // Determine Action
+                            let apiAction = '';
+                            if(type === 'members') apiAction = 'add_member';
+                            else if(type === 'managers') apiAction = 'add_manager';
+                            else if(type === 'owner') apiAction = 'set_owner';
+                            
+                            updateProjectMember(apiAction, u.id);
+                            container.style.display = 'none';
+                            document.getElementById(`pm-search-${type}`).value = '';
+                        };
+                        container.appendChild(div);
+                    });
+                    container.style.display = 'block';
+                } else {
+                    container.innerHTML = '<div style="padding:8px; font-size:12px; color:var(--text-muted); text-align:center;">No users found</div>';
+                    container.style.display = 'block';
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }, 300);
+    }
+
+    async function updateProjectMember(action, userId) {
+        if(action === 'set_owner' && !confirm('确定要转移项目负责人吗？此操作不可逆（除非管理员干预）。\nAre you sure to transfer ownership?')) return;
+        
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('user_id', userId);
+        
+        try {
+            const res = await fetch(`/projects/api/${currentPmProjectId}/manage-members/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: formData
+            });
+            
+            const data = await res.json();
+            if(data.status === 'success') {
+                // Reload data
+                loadProjectUsers();
+                if(data.message) alert(data.message);
+            } else {
+                alert(data.error || 'Operation failed');
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Request failed');
+        }
+    }
+
 </script>
 {% endblock %}

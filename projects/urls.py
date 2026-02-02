@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_export
+from . import views_api
 
 app_name = 'projects'
 
@@ -31,4 +32,8 @@ urlpatterns = [
     # API
     path('api/search/', views.project_search_api, name='project_search_api'),
     path('api/<int:pk>/', views.api_project_detail, name='api_project_detail'),
+    
+    # New Management APIs
+    path('api/<int:project_id>/manage-members/', views_api.project_manage_members_api, name='project_manage_members_api'),
+    path('api/<int:project_id>/users/', views_api.project_users_api, name='project_users_api'),
 ]
