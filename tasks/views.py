@@ -1927,6 +1927,7 @@ def task_history(request, pk: int):
         'end_date': request.GET.get('end_date'),
         'action_type': request.GET.get('action_type'), # field_change, attachment, comment
         'field_name': request.GET.get('field'),
+        'q': request.GET.get('q'),
     }
 
     qs = AuditLogService.get_history(task, filters)
@@ -1942,13 +1943,19 @@ def task_history(request, pk: int):
         entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
         if entry:
             timeline.append(entry)
+
+    # AJAX / HTMX support for lazy loading
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'audit/timeline.html', {'logs': timeline})
     
-    # Get users for filter
-    users = get_user_model().objects.filter(
-        Q(pk=task.user_id) | 
-        Q(project_memberships=task.project) | 
-        Q(collaborated_tasks=task)
-    ).distinct()
+    # Get users for filter - Optimization: Only fetch users who have history in this task
+    # 获取用于筛选的用户 - 优化：仅获取在此任务中有历史记录的用户
+    log_user_ids = AuditLog.objects.filter(
+        target_type='Task', 
+        target_id=str(task.id)
+    ).values_list('user_id', flat=True).distinct()
+    
+    users = get_user_model().objects.filter(id__in=log_user_ids).order_by('username')
 
     return render(request, 'tasks/task_history.html', {
         'task': task, 

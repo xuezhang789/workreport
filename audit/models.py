@@ -58,6 +58,9 @@ class AuditLog(models.Model):
             models.Index(fields=['created_at']),
             models.Index(fields=['project']),
             models.Index(fields=['task']),
+            # Composite index for common filtering
+            models.Index(fields=['target_type', 'target_id', 'created_at']),
+            models.Index(fields=['user', 'created_at']),
         ]
 
     def __str__(self):

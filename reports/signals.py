@@ -15,7 +15,7 @@ from reports.services.audit_service import AuditService
 from reports.services.notification_service import send_notification
 from core.services.notification_template import NotificationContent, NotificationItem, NotificationAction
 
-TRACKED_MODELS = [DailyReport, User, Project, Task]
+TRACKED_MODELS = [DailyReport, User]
 
 def _invalidate_stats_cache(sender=None, **kwargs):
     """

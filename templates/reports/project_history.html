@@ -269,146 +269,213 @@
 
         <!-- Filters -->
         <form method="get" class="filter-bar">
+            <!-- User Filter -->
             <div class="filter-group">
-                <span class="filter-label">用户 / User:</span>
+                <span class="filter-label"><i class="fa-solid fa-user"></i> 用户 / User</span>
                 <select name="user" class="form-control">
-                    <option value="">全部 / All</option>
+                    <option value="">全部 / All Users</option>
                     {% for u in users %}
                         <option value="{{ u.id }}" {% if filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>
-                            {{ u.get_full_name|default:u.username }} @{{ u.username }}
+                            {{ u.get_full_name|default:u.username }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
             
+            <!-- Type Filter -->
             <div class="filter-group">
-                <span class="filter-label">类型 / Type:</span>
+                <span class="filter-label"><i class="fa-solid fa-filter"></i> 类型 / Type</span>
                 <select name="action_type" class="form-control">
-                    <option value="">全部 / All</option>
-                    <option value="field_change" {% if filters.action_type == 'field_change' %}selected{% endif %}>字段变更 / Field Update</option>
-                    <option value="attachment" {% if filters.action_type == 'attachment' %}selected{% endif %}>附件 / Attachment</option>
-                    <option value="comment" {% if filters.action_type == 'comment' %}selected{% endif %}>评论 / Comment</option>
+                    <option value="">全部 / All Types</option>
+                    <option value="field_change" {% if filters.action_type == 'field_change' %}selected{% endif %}>变更 / Updates</option>
+                    <option value="attachment" {% if filters.action_type == 'attachment' %}selected{% endif %}>附件 / Attachments</option>
+                    <option value="comment" {% if filters.action_type == 'comment' %}selected{% endif %}>评论 / Comments</option>
                 </select>
             </div>
 
-            <div class="filter-group">
-                <span class="filter-label">日期 / Date:</span>
-                <input type="date" name="start_date" value="{{ filters.start_date|default:'' }}" class="form-control" style="width: auto;">
-                <span style="color: var(--text-secondary);">-</span>
-                <input type="date" name="end_date" value="{{ filters.end_date|default:'' }}" class="form-control" style="width: auto;">
+            <!-- Date Range Filter -->
+            <div class="filter-group date-group">
+                <span class="filter-label"><i class="fa-regular fa-calendar"></i> 日期 / Date</span>
+                <div class="date-inputs">
+                    <input type="date" name="start_date" value="{{ filters.start_date|default:'' }}" class="form-control">
+                    <span class="date-separator">→</span>
+                    <input type="date" name="end_date" value="{{ filters.end_date|default:'' }}" class="form-control">
+                </div>
             </div>
 
-            <div style="margin-left: auto; display: flex; gap: 8px;">
-                <button type="submit" class="btn btn-primary">筛选 / Filter</button>
-                <a href="?" class="btn btn-ghost">重置 / Reset</a>
-                <a href="{% url 'projects:project_history_export' project.pk %}?{{ request.GET.urlencode }}" class="btn btn-ghost" style="color: var(--primary);">
-                    <span>⬇️</span> 导出 / Export
+            <!-- Search Filter -->
+            <div class="filter-group search-group">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-search search-icon"></i>
+                    <input type="text" name="q" value="{{ filters.q|default:'' }}" class="form-control search-input" placeholder="搜索变更内容 / Search...">
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    筛选 / Apply
+                </button>
+                <a href="?" class="btn btn-ghost" title="Reset Filters">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </a>
+                <div class="divider-vertical"></div>
+                <a href="{% url 'projects:project_history_export' project.pk %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary">
+                    <i class="fa-solid fa-download"></i> 导出 / Export
                 </a>
             </div>
         </form>
 
+        <style>
+            /* Enhanced Filter Bar Styles */
+            .filter-bar {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                align-items: center;
+                background: #ffffff;
+                padding: 20px;
+                border-radius: 16px;
+                margin-bottom: 32px;
+                border: 1px solid var(--border-color);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+
+            .filter-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .filter-label {
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            .filter-label i { opacity: 0.7; }
+
+            .form-control {
+                padding: 10px 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                font-size: 13px;
+                outline: none;
+                min-width: 140px;
+                background: #f8fafc;
+                transition: all 0.2s;
+                color: var(--text-main);
+            }
+            
+            .form-control:focus {
+                background: white;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            }
+
+            .date-group .date-inputs {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .date-separator { color: var(--text-secondary); font-size: 12px; }
+
+            .search-group { flex-grow: 1; min-width: 200px; }
+            
+            .search-input-wrapper {
+                position: relative;
+                width: 100%;
+            }
+            
+            .search-icon {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-secondary);
+                font-size: 14px;
+            }
+            
+            .search-input {
+                width: 100%;
+                padding-left: 36px;
+            }
+
+            .filter-actions {
+                display: flex;
+                align-items: flex-end; /* Align with inputs */
+                gap: 12px;
+                margin-top: auto;
+                height: 40px; /* Match input height approx */
+                padding-bottom: 1px;
+            }
+            
+            .divider-vertical {
+                width: 1px;
+                height: 24px;
+                background: var(--border-color);
+                margin: auto 0;
+            }
+
+            .btn-outline-primary {
+                background: transparent;
+                border: 1px solid var(--primary);
+                color: var(--primary);
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            .btn-outline-primary:hover {
+                background: #eff6ff;
+            }
+
+            @media (max-width: 1024px) {
+                .filter-bar {
+                    gap: 12px;
+                }
+                .search-group {
+                    order: 10; /* Move to end on smaller screens */
+                    width: 100%;
+                    flex-basis: 100%;
+                }
+                .filter-actions {
+                    width: 100%;
+                    justify-content: flex-end;
+                    margin-top: 12px;
+                    order: 11;
+                }
+            }
+        </style>
+
         <!-- Timeline -->
-        {% if logs %}
+        <div id="timeline-wrapper">
+            {% include "audit/timeline.html" with logs=logs %}
+        </div>
         
-        <!-- Pagination Controls (Top) -->
-        {% if page_obj.paginator.num_pages > 1 %}
-        <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-            <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← 上一页 / Prev</a>
-                {% endif %}
-                
-                <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
-                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                </span>
-                
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">下一页 / Next →</a>
-                {% endif %}
-            </div>
+        <!-- Load More Button -->
+        {% if page_obj.has_next %}
+        <div style="text-align: center; margin-top: 24px;">
+            <button id="load-more-btn" class="btn btn-ghost" data-next-page="{{ page_obj.next_page_number }}" style="width: 100%;">
+                加载更多 / Load More
+            </button>
         </div>
         {% endif %}
-
-        <div class="timeline-container">
-            {% for log in logs %}
-            <div class="timeline-item">
-                <div class="timeline-marker">
-                    <svg class="timeline-marker-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                </div>
-                <div class="timeline-content">
-                    <div class="timeline-header">
-                        <div class="change-meta">
-                            {{ log.timestamp|localtime|date:"Y年m月d日 H:i:s" }}
-                        </div>
-                        <span class="user-badge-right">
-                            <div style="width: 16px; height: 16px; background: #cbd5e1; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: white;">
-                                {{ log.operator_name|first|upper }}
-                            </div>
-                            {{ log.operator_name }} {% if log.user %}@{{ log.user.username }}{% endif %}
-                        </span>
-                    </div>
-                    
-                    <div style="border-top: 1px dashed #e2e8f0; margin: 0 20px 20px 20px;"></div>
-                    
-                    <div class="action-label">
-                        <span class="action-dot"></span>
-                        信息更新 / Information Update
-                    </div>
-
-                    <div style="padding: 0 20px 20px 20px;">
-                        <table class="change-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 25%;">字段 / Field</th>
-                                    <th style="width: 37.5%;">旧值 / Old</th>
-                                    <th style="width: 37.5%;">新值 / New</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in log.items %}
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 500; color: #1e293b;">{{ item.field }}</div>
-                                    </td>
-                                    <td>
-                                        {% if item.action == 'Added' or item.action == 'Created' %}
-                                            <span class="val-empty">(Empty)</span>
-                                        {% elif item.action == 'Removed' %}
-                                            <span class="val-text-old">{{ item.old|default:"(Empty)" }}</span>
-                                        {% else %}
-                                            {% if item.old %}
-                                                <span class="val-text-old">{{ item.old }}</span>
-                                            {% else %}
-                                                <span class="val-empty">(Empty)</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if item.action == 'Removed' %}
-                                            <span class="val-empty">(Empty)</span>
-                                        {% elif item.action == 'Added' or item.action == 'Created' %}
-                                            <span class="val-text-new">{{ item.new|default:"(Empty)" }}</span>
-                                        {% else %}
-                                            {% if item.new %}
-                                                <span class="val-text-new">{{ item.new }}</span>
-                                            {% else %}
-                                                <span class="val-empty">(Empty)</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
         
-        <!-- Pagination Controls (Bottom) -->
+        <!-- Pagination Controls (Legacy Fallback) -->
+        <noscript>
         {% if page_obj.paginator.num_pages > 1 %}
         <div style="display: flex; justify-content: center; margin-top: 32px;">
             <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
@@ -426,13 +493,80 @@
             </div>
         </div>
         {% endif %}
-
-        {% else %}
-        <div style="text-align: center; padding: 60px; color: var(--text-secondary);">
-            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">📭</div>
-            <p>没有找到符合条件的记录 / No records found</p>
-        </div>
-        {% endif %}
+        </noscript>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const timelineWrapper = document.getElementById('timeline-container'); // Inner container from include
+        const spinner = document.getElementById('loading-spinner');
+
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function() {
+                const nextPage = this.dataset.nextPage;
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', nextPage);
+                
+                // Show spinner, hide button
+                this.style.display = 'none';
+                if(spinner) spinner.style.display = 'block';
+
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    // Create a temp container to parse HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newItems = doc.querySelectorAll('.timeline-item');
+                    
+                    // Append new items to timeline
+                    if (timelineWrapper) {
+                        newItems.forEach(item => {
+                            item.classList.add('animate-in'); // Ensure animation
+                            timelineWrapper.appendChild(item);
+                        });
+                    } else {
+                        // Fallback if wrapper id missing
+                        console.error('Timeline container not found');
+                        window.location.href = url;
+                        return;
+                    }
+
+                    // Update button state
+                    const hasMore = doc.querySelector('.timeline-item') !== null && newItems.length > 0; 
+                    // Actually we need to know if there is a next page. 
+                    // The simple fetch above just returns the HTML for the list.
+                    // We need to calculate next page or rely on backend to return "has_next" flag in header or similar.
+                    // Simplified: We assume if we got items, there *might* be more, but how do we know the NEXT page num?
+                    // Better approach: Return JSON with html + has_next, or parse the pagination from response if full page returned (but we returned partial).
+                    
+                    // Fix: We increment page manually or we need backend to tell us.
+                    // Current backend just returns render('audit/timeline.html').
+                    // We can check if the returned count < page_size (20).
+                    
+                    if (newItems.length < 20) {
+                        loadMoreBtn.remove();
+                    } else {
+                        loadMoreBtn.dataset.nextPage = parseInt(nextPage) + 1;
+                        loadMoreBtn.style.display = 'inline-block';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading more:', err);
+                    loadMoreBtn.textContent = 'Error loading. Retry?';
+                    loadMoreBtn.style.display = 'inline-block';
+                })
+                .finally(() => {
+                    if(spinner) spinner.style.display = 'none';
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

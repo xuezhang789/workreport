@@ -582,6 +582,7 @@ def project_history(request, project_id):
         'end_date': request.GET.get('end_date'),
         'action_type': request.GET.get('action_type'), # field_change, attachment, comment
         'field_name': request.GET.get('field'),
+        'q': request.GET.get('q'),
     }
 
     qs = AuditLogService.get_history(project, filters)
@@ -597,13 +598,19 @@ def project_history(request, project_id):
         entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
         if entry:
             timeline.append(entry)
+
+    # AJAX / HTMX support for lazy loading
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'audit/timeline.html', {'logs': timeline})
     
-    # Get users for filter
-    users = get_user_model().objects.filter(
-        Q(project_memberships=project) | 
-        Q(managed_projects=project) | 
-        Q(owned_projects=project)
-    ).distinct()
+    # Get users for filter - Optimization: Only fetch users who have history in this project
+    # 获取用于筛选的用户 - 优化：仅获取在此项目中有历史记录的用户
+    log_user_ids = AuditLog.objects.filter(
+        target_type='Project', 
+        target_id=str(project.id)
+    ).values_list('user_id', flat=True).distinct()
+    
+    users = get_user_model().objects.filter(id__in=log_user_ids).order_by('username')
 
     return render(request, 'reports/project_history.html', {
         'project': project, 

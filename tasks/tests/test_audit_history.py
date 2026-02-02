@@ -43,7 +43,8 @@ class TaskAuditHistoryTest(TestCase):
         self.assertEqual(response.status_code, 302)
         
         # Check AuditLog
-        logs = AuditLog.objects.filter(target_id=str(self.task.id), action='update').order_by('-created_at')
+        # Note: log_action creates target_type='AccessLog', so we filter strictly for Task logs here
+        logs = AuditLog.objects.filter(target_type='Task', target_id=str(self.task.id), action='update').order_by('-created_at')
         
         print(f"Total Logs: {logs.count()}")
         for log in logs:
@@ -56,7 +57,7 @@ class TaskAuditHistoryTest(TestCase):
         data_logs = [l for l in logs if 'diff' in l.details]
         self.assertEqual(len(data_logs), 1, "Should have exactly one signal-based audit log with diff")
         
-        # Verify manual log_action also exists (no diff, just context/data)
-        manual_logs = [l for l in logs if 'diff' not in l.details]
-        self.assertEqual(len(manual_logs), 1, "Should have exactly one manual log without diff")
+        # Verify manual log_action exists as AccessLog
+        manual_logs = AuditLog.objects.filter(target_type='AccessLog', summary__contains=f"task_status {self.task.id}")
+        self.assertEqual(manual_logs.count(), 1, "Should have exactly one manual access log")
 

@@ -376,11 +376,12 @@
         </div>
 
         <!-- Filters -->
-        <form method="get" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 32px; border: 1px solid #e2e8f0;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">用户 / User:</span>
-                <select name="user" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; outline: none; min-width: 140px;">
-                    <option value="">全部 / All</option>
+        <form method="get" class="filter-bar">
+            <!-- User Filter -->
+            <div class="filter-group">
+                <span class="filter-label"><i class="fa-solid fa-user"></i> 用户 / User</span>
+                <select name="user" class="form-control">
+                    <option value="">全部 / All Users</option>
                     {% for u in users %}
                         <option value="{{ u.id }}" {% if filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>
                             {{ u.get_full_name|default:u.username }}
@@ -389,28 +390,170 @@
                 </select>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">类型 / Type:</span>
-                <select name="action_type" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; outline: none; min-width: 140px;">
-                    <option value="">全部 / All</option>
-                    <option value="field_change" {% if filters.action_type == 'field_change' %}selected{% endif %}>字段变更 / Field Update</option>
-                    <option value="attachment" {% if filters.action_type == 'attachment' %}selected{% endif %}>附件 / Attachment</option>
-                    <option value="comment" {% if filters.action_type == 'comment' %}selected{% endif %}>评论 / Comment</option>
+            <!-- Type Filter -->
+            <div class="filter-group">
+                <span class="filter-label"><i class="fa-solid fa-filter"></i> 类型 / Type</span>
+                <select name="action_type" class="form-control">
+                    <option value="">全部 / All Types</option>
+                    <option value="field_change" {% if filters.action_type == 'field_change' %}selected{% endif %}>变更 / Updates</option>
+                    <option value="attachment" {% if filters.action_type == 'attachment' %}selected{% endif %}>附件 / Attachments</option>
+                    <option value="comment" {% if filters.action_type == 'comment' %}selected{% endif %}>评论 / Comments</option>
                 </select>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">日期 / Date:</span>
-                <input type="date" name="start_date" value="{{ filters.start_date|default:'' }}" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; outline: none; width: auto;">
-                <span style="color: var(--text-secondary);">-</span>
-                <input type="date" name="end_date" value="{{ filters.end_date|default:'' }}" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; outline: none; width: auto;">
+            <!-- Date Range Filter -->
+            <div class="filter-group date-group">
+                <span class="filter-label"><i class="fa-regular fa-calendar"></i> 日期 / Date</span>
+                <div class="date-inputs">
+                    <input type="date" name="start_date" value="{{ filters.start_date|default:'' }}" class="form-control">
+                    <span class="date-separator">→</span>
+                    <input type="date" name="end_date" value="{{ filters.end_date|default:'' }}" class="form-control">
+                </div>
             </div>
 
-            <div style="margin-left: auto; display: flex; gap: 8px;">
-                <button type="submit" class="btn btn-primary" style="background: #2563eb; color: white; border: none;">筛选 / Filter</button>
-                <a href="?" class="btn btn-ghost">重置 / Reset</a>
+            <!-- Search Filter -->
+            <div class="filter-group search-group">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-search search-icon"></i>
+                    <input type="text" name="q" value="{{ filters.q|default:'' }}" class="form-control search-input" placeholder="搜索变更内容 / Search...">
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    筛选 / Apply
+                </button>
+                <a href="?" class="btn btn-ghost" title="Reset Filters">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </a>
             </div>
         </form>
+
+        <style>
+            /* Enhanced Filter Bar Styles */
+            .filter-bar {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                align-items: center;
+                background: #ffffff;
+                padding: 20px;
+                border-radius: 16px;
+                margin-bottom: 32px;
+                border: 1px solid var(--border-color);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+
+            .filter-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .filter-label {
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            .filter-label i { opacity: 0.7; }
+
+            .form-control {
+                padding: 10px 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                font-size: 13px;
+                outline: none;
+                min-width: 140px;
+                background: #f8fafc;
+                transition: all 0.2s;
+                color: var(--text-main);
+            }
+            
+            .form-control:focus {
+                background: white;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            }
+
+            .date-group .date-inputs {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .date-separator { color: var(--text-secondary); font-size: 12px; }
+
+            .search-group { flex-grow: 1; min-width: 200px; }
+            
+            .search-input-wrapper {
+                position: relative;
+                width: 100%;
+            }
+            
+            .search-icon {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-secondary);
+                font-size: 14px;
+            }
+            
+            .search-input {
+                width: 100%;
+                padding-left: 36px;
+            }
+
+            .filter-actions {
+                display: flex;
+                align-items: flex-end; /* Align with inputs */
+                gap: 12px;
+                margin-top: auto;
+                height: 40px; /* Match input height approx */
+                padding-bottom: 1px;
+            }
+            
+            .divider-vertical {
+                width: 1px;
+                height: 24px;
+                background: var(--border-color);
+                margin: auto 0;
+            }
+
+            .btn-primary {
+                background: var(--primary); 
+                color: white; 
+                border: none;
+            }
+            
+            .btn-primary:hover {
+                background: var(--primary-hover);
+            }
+
+            @media (max-width: 1024px) {
+                .filter-bar {
+                    gap: 12px;
+                }
+                .search-group {
+                    order: 10; /* Move to end on smaller screens */
+                    width: 100%;
+                    flex-basis: 100%;
+                }
+                .filter-actions {
+                    width: 100%;
+                    justify-content: flex-end;
+                    margin-top: 12px;
+                    order: 11;
+                }
+            }
+        </style>
 
         <!-- Timeline Section -->
         <div style="margin-top: 48px;">
@@ -420,107 +563,23 @@
 
             {% if logs %}
             
-            <!-- Pagination Controls (Top) -->
-            {% if page_obj.paginator.num_pages > 1 %}
-            <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-                <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
-                    {% endif %}
-                    
-                    <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
-                        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                    </span>
-                    
-                    {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
-                    {% endif %}
+                <div id="timeline-wrapper">
+                    {% include "audit/timeline.html" with logs=logs %}
                 </div>
-            </div>
-            {% endif %}
-
-            <div class="timeline-container">
-                {% for log in logs %}
-                <div class="timeline-item {% if forloop.first %}active{% endif %}">
-                    <div class="timeline-marker">
-                    <svg class="timeline-marker-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                </div>
-                <div class="timeline-content">
-                    <div class="timeline-header">
-                        <div class="change-meta">
-                            {{ log.timestamp|localtime|date:"Y年m月d日 H:i:s" }}
-                        </div>
-                        <span class="user-badge-right">
-                            <div style="width: 16px; height: 16px; background: #cbd5e1; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: white;">
-                                {{ log.operator_name|first|upper }}
-                            </div>
-                            {{ log.operator_name }}
-                        </span>
-                    </div>
-                    
-                    <div style="border-top: 1px dashed #e2e8f0; margin: 0 20px 20px 20px;"></div>
-                    
-                    <div class="action-label">
-                        <span class="action-dot"></span>
-                        信息更新 / Information Update
-                    </div>
-
-                    <div style="padding: 0 20px 20px 20px;">
-                        <table class="change-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 25%;">字段 / Field</th>
-                                    <th style="width: 37.5%;">旧值 / Old</th>
-                                    <th style="width: 37.5%;">新值 / New</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in log.items %}
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 500; color: #1e293b;">{{ item.field }}</div>
-                                    </td>
-                                    <td>
-                                        {% if item.action == 'Added' or item.action == 'Created' %}
-                                            <span class="val-empty">(Empty)</span>
-                                        {% elif item.action == 'Removed' %}
-                                            <span class="val-text-old">{{ item.old|default:"(Empty)" }}</span>
-                                        {% else %}
-                                            {% if item.old %}
-                                                <span class="val-text-old">{{ item.old }}</span>
-                                            {% else %}
-                                                <span class="val-empty">(Empty)</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if item.action == 'Removed' %}
-                                            <span class="val-empty">(Empty)</span>
-                                        {% elif item.action == 'Added' or item.action == 'Created' %}
-                                            <span class="val-text-new">{{ item.new|default:"(Empty)" }}</span>
-                                        {% else %}
-                                            {% if item.new %}
-                                                <span class="val-text-new">{{ item.new }}</span>
-                                            {% else %}
-                                                <span class="val-empty">(Empty)</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                </div>
-                {% endfor %}
-            </div>
             
-            <!-- Pagination Controls (Bottom) -->
-            {% if page_obj.paginator.num_pages > 1 %}
-            <div style="display: flex; justify-content: center; margin-top: 32px;">
+                <!-- Load More Button -->
+                {% if page_obj.has_next %}
+                <div style="text-align: center; margin-top: 24px;">
+                    <button id="load-more-btn" class="btn btn-ghost" data-next-page="{{ page_obj.next_page_number }}" style="width: 100%;">
+                        加载更多 / Load More
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- Pagination Controls (Bottom) -->
+                <noscript>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div style="display: flex; justify-content: center; margin-top: 32px;">
                 <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
                     {% if page_obj.has_previous %}
                         <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
@@ -536,6 +595,7 @@
                 </div>
             </div>
             {% endif %}
+            </noscript>
 
             {% else %}
             <div class="empty-state">
@@ -547,4 +607,55 @@
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const timelineWrapper = document.getElementById('timeline-container');
+        const spinner = document.getElementById('loading-spinner');
+
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function() {
+                const nextPage = this.dataset.nextPage;
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', nextPage);
+                
+                this.style.display = 'none';
+                if(spinner) spinner.style.display = 'block';
+
+                fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newItems = doc.querySelectorAll('.timeline-item');
+                    
+                    if (timelineWrapper) {
+                        newItems.forEach(item => {
+                            item.classList.add('animate-in');
+                            timelineWrapper.appendChild(item);
+                        });
+                    }
+
+                    if (newItems.length < 20) {
+                        loadMoreBtn.remove();
+                    } else {
+                        loadMoreBtn.dataset.nextPage = parseInt(nextPage) + 1;
+                        loadMoreBtn.style.display = 'inline-block';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading more:', err);
+                    loadMoreBtn.textContent = 'Error loading. Retry?';
+                    loadMoreBtn.style.display = 'inline-block';
+                })
+                .finally(() => {
+                    if(spinner) spinner.style.display = 'none';
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -14,16 +14,26 @@
     <link rel="stylesheet" href="{% static 'css/workreport.css' %}">
     <style>
         :root {
-            --bg: #f8fafc;
-            --panel: #ffffff;
-            --card: #ffffff;
-            --ink: #1e293b;
-            --muted: #64748b;
+            /* Core Palette */
             --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary: #64748b;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            
+            /* Legacy mappings */
+            --bg: var(--bg-page);
+            --panel: var(--bg-card);
+            --card: var(--bg-card);
+            --ink: var(--text-main);
+            --muted: var(--text-secondary);
             --primary-2: #06b6d4;
             --accent: #f59e0b;
             --success: #10b981;
-            --border: #e2e8f0;
+            --border: var(--border-color);
             --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             --radius-lg: 20px;
             --radius-md: 14px;
