@@ -444,7 +444,7 @@ def my_reports(request):
             Q(mgr_tomorrow__icontains=q)
         )
 
-    paginator = Paginator(qs, 9)
+    paginator = Paginator(qs, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -637,7 +637,7 @@ def admin_reports(request):
     submitted_count = stats['submitted']
     draft_count = stats['draft']
 
-    paginator = Paginator(reports, 15)
+    paginator = Paginator(reports, 28)
     page_obj = paginator.get_page(request.GET.get('page'))
     
     # 获取项目列表：仅显示用户有权管理或参与的活跃项目

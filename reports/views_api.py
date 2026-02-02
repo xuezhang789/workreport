@@ -1,5 +1,9 @@
-
-# In reports/views.py
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from projects.models import Project
+from tasks.models import Task
+from reports.utils import can_manage_project, get_accessible_projects
 
 @login_required
 def api_project_detail(request, pk: int):
