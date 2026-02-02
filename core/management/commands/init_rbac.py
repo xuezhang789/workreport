@@ -5,22 +5,26 @@ from core.services.rbac import RBACService
 from projects.models import Project
 
 class Command(BaseCommand):
-    help = 'Initialize RBAC roles and permissions, and migrate existing project data.'
+    help = '初始化 RBAC 角色和权限，并迁移现有项目数据。'
 
     def handle(self, *args, **options):
         self.stdout.write("Initializing RBAC...")
 
         # 1. Define Permissions
+        # 1. 定义权限
         permissions_data = [
             # Project
+            # 项目
             {'code': 'project.view', 'name': '查看项目', 'group': 'project'},
-            {'code': 'project.manage', 'name': '管理项目', 'group': 'project'}, # Edit, Delete, Manage Members
+            {'code': 'project.manage', 'name': '管理项目', 'group': 'project'}, # Edit, Delete, Manage Members | 编辑，删除，管理成员
             # Task
+            # 任务
             {'code': 'task.view', 'name': '查看任务', 'group': 'task'},
             {'code': 'task.create', 'name': '创建任务', 'group': 'task'},
             {'code': 'task.edit', 'name': '编辑任务', 'group': 'task'},
             {'code': 'task.delete', 'name': '删除任务', 'group': 'task'},
             # Report
+            # 日报
             {'code': 'report.view', 'name': '查看日报', 'group': 'report'},
         ]
 
@@ -31,6 +35,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Permission: {perm.code}")
 
         # 2. Define Roles
+        # 2. 定义角色
         roles_data = [
             {
                 'code': 'project_owner', 
@@ -61,11 +66,13 @@ class Command(BaseCommand):
             self.stdout.write(f"  Role: {role.code}")
             
             # Assign permissions
+            # 分配权限
             for p_code in r_data['perms']:
                 if p_code in created_perms:
                     RBACService.grant_permission_to_role(role, created_perms[p_code])
 
         # 3. Migrate Project Data
+        # 3. 迁移项目数据
         self.stdout.write("Migrating Project Permissions...")
         
         projects = Project.objects.all()
@@ -76,14 +83,17 @@ class Command(BaseCommand):
                 scope = f"project:{project.id}"
                 
                 # Owner
+                # 所有者
                 if project.owner:
                     RBACService.assign_role(project.owner, created_roles['project_owner'], scope)
                     
                 # Managers
+                # 经理
                 for user in project.managers.all():
                     RBACService.assign_role(user, created_roles['project_manager'], scope)
                     
                 # Members
+                # 成员
                 for user in project.members.all():
                     RBACService.assign_role(user, created_roles['project_member'], scope)
                     
@@ -92,6 +102,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"  Processed {count} projects...")
 
         # 4. Migrate Profile Positions
+        # 4. 迁移个人资料职位
         self.stdout.write("Migrating Profile Positions...")
         profiles = Profile.objects.filter(position__in=['mgr', 'pm'])
         for profile in profiles:

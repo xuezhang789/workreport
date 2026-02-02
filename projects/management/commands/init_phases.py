@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from projects.models import ProjectPhaseConfig
 
 class Command(BaseCommand):
-    help = 'Initialize default project phases'
+    help = '初始化默认项目阶段'
 
     def handle(self, *args, **kwargs):
         phases = [
@@ -26,6 +26,6 @@ class Command(BaseCommand):
                 }
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f'Created phase: {name}'))
+                self.stdout.write(self.style.SUCCESS(f'已创建阶段: {name}'))
             else:
-                self.stdout.write(f'Phase already exists: {name}')
+                self.stdout.write(f'阶段已存在: {name}')

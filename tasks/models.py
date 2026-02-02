@@ -5,6 +5,10 @@ from core.constants import TaskStatus, TaskCategory
 from projects.models import Project
 
 class Task(models.Model):
+    """
+    任务模型：核心业务对象。
+    包含标题、内容、状态、优先级、负责人、截止时间等关键信息。
+    """
     STATUS_CHOICES = TaskStatus.choices
     CATEGORY_CHOICES = TaskCategory.choices
 
@@ -46,7 +50,7 @@ class Task(models.Model):
         verbose_name_plural = "任务"
 
     def save(self, *args, **kwargs):
-        # Auto-correct status for BUG if it's new and stuck on TODO default
+        # 如果是新建的 BUG 类型任务且状态为默认的 TODO，自动修正为 NEW
         if not self.pk and self.category == TaskCategory.BUG and self.status == TaskStatus.TODO:
             self.status = TaskStatus.NEW
         super().save(*args, **kwargs)
@@ -56,6 +60,9 @@ class Task(models.Model):
 
 
 class TaskComment(models.Model):
+    """
+    任务评论：支持用户在任务下留言，支持 @提及用户。
+    """
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments', verbose_name="任务")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_comments', verbose_name="用户")
     content = models.TextField(verbose_name="评论内容")
@@ -72,6 +79,9 @@ class TaskComment(models.Model):
 
 
 class TaskAttachment(models.Model):
+    """
+    任务附件：支持上传文件或添加外部链接。
+    """
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='attachments', verbose_name="任务")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_attachments', verbose_name="用户")
     url = models.URLField(blank=True, verbose_name="链接")
@@ -105,7 +115,9 @@ class TaskSlaTimer(models.Model):
 
 
 class TaskTemplateVersion(models.Model):
-    """任务模板版本：按项目保存任务标题/内容/链接模板，支持共享与版本记录。"""
+    """
+    任务模板版本：按项目或角色保存任务模板（标题/内容/链接），支持共享与版本控制。
+    """
     name = models.CharField(max_length=200, verbose_name="模板名称")
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='task_templates', verbose_name="适用项目")
     role = models.CharField(max_length=10, choices=Profile.ROLE_CHOICES, null=True, blank=True, verbose_name="适用角色")

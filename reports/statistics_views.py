@@ -31,6 +31,7 @@ def _send_weekly_digest(recipient, stats):
     Placeholder for missing function in original codebase.
     """
     # TODO: Implement actual email sending logic
+    # TODO: 实现实际的电子邮件发送逻辑
     return False
 
 @login_required
@@ -65,6 +66,7 @@ def workbench(request):
     ).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
 
     # daily report streak and today's report status
+    # 日报连签和今日日报状态
     today_date = timezone.localdate()
     qs_reports = DailyReport.objects.filter(user=request.user, status='submitted').values_list('date', flat=True).order_by('-date')
     date_set = set(qs_reports)
@@ -79,6 +81,7 @@ def workbench(request):
     has_today_report = today_report is not None and today_report.status == 'submitted'
 
     # project burndown with enhanced data
+    # 增强数据的项目燃尽图
     projects = Project.objects.filter(is_active=True, tasks__user=request.user).distinct().annotate(
         total_p=Count('tasks', filter=Q(tasks__user=request.user)),
         completed_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
@@ -106,6 +109,7 @@ def workbench(request):
         })
 
     # recent reports with status
+    # 具有状态的最近日报
     recent_reports = DailyReport.objects.filter(user=request.user).order_by('-date')[:5]
 
     # 获取用户角色用于个性化引导
@@ -171,14 +175,19 @@ def stats(request):
         
         # Pre-fetch all needed data to avoid N+1 queries
         # 1. Collect all missing user IDs across all active projects
+        # 预取所有需要的数据以避免 N+1 查询
+        # 1. 收集所有活动项目中所有缺失的用户 ID
         all_missing_ids = set()
         project_missing_map = {} # pid -> [uid, uid...]
         
         # Ensure we use prefetched relations to avoid DB hits
         # active_projects already prefetches 'members', 'managers'
+        # 确保我们使用预取的关联以避免 DB 命中
+        # active_projects 已经预取了 'members', 'managers'
         
         for p in active_projects:
             # use .all() to hit the prefetch cache instead of .values_list() which hits DB
+            # 使用 .all() 命中预取缓存，而不是 .values_list() 命中 DB
             member_ids = {u.id for u in p.members.all()}
             manager_ids = {u.id for u in p.managers.all()}
             expected_ids = member_ids | manager_ids
@@ -191,11 +200,13 @@ def stats(request):
                 project_missing_map[p.id] = missing_ids
 
         # 2. Fetch all missing users in one query
+        # 2. 在一个查询中获取所有缺失的用户
         if all_missing_ids:
             users_qs = get_user_model().objects.select_related('profile').filter(id__in=all_missing_ids)
             users_map = {u.id: u for u in users_qs}
             
             # 3. Fetch last report dates for all missing users in one query
+            # 3. 在一个查询中获取所有缺失用户的最后日报日期
             last_report_dates = DailyReport.objects.filter(
                 user_id__in=all_missing_ids, 
                 status='submitted'
@@ -207,6 +218,7 @@ def stats(request):
             last_map = {}
 
         # 4. Build result structure
+        # 4. 构建结果结构
         for p in active_projects:
             p_missing_ids = project_missing_map.get(p.id, [])
             if not p_missing_ids:
@@ -218,6 +230,7 @@ def stats(request):
                 if not u: continue
                 
                 # Apply role filter in memory
+                # 在内存中应用角色过滤器
                 if role_filter in dict(Profile.ROLE_CHOICES):
                     if not hasattr(u, 'profile') or u.profile.position != role_filter:
                         continue
@@ -229,6 +242,7 @@ def stats(request):
             total_missing += len(filtered_users)
             
             # Prepare user list for this project
+            # 为此项目准备用户列表
             user_list = []
             for u in filtered_users:
                 user_list.append({
@@ -241,7 +255,7 @@ def stats(request):
                 'project_id': p.id,
                 'missing_count': len(filtered_users),
                 'users': user_list,
-                'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # For individual reminders if needed
+                'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # For individual reminders if needed | 如果需要，用于个人提醒
             })
             
         cache.set(cache_key, (missing_projects, total_missing), 300)
@@ -319,6 +333,7 @@ def stats(request):
     sla_urgent_tasks = []
     
     # Pre-fetch SLA settings once
+    # 预取 SLA 设置一次
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
@@ -366,6 +381,9 @@ def performance_board(request):
         # Ordinary users: Check if they can see ANY performance stats
         # Requirement: "Admin Reports" page -> fine grained.
         # If I am a manager of P1, I can see P1 stats.
+        # 普通用户：检查他们是否可以看到任何绩效统计数据
+        # 需求：“管理报告”页面 -> 细粒度。
+        # 如果我是 P1 的经理，我可以看到 P1 的统计数据。
         accessible_projects = get_accessible_projects(request.user)
         if not accessible_projects.exists():
             messages.error(request, "需要管理员权限 / Admin access required")
@@ -381,6 +399,7 @@ def performance_board(request):
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
 
     # Security check for project filter
+    # 项目过滤器的安全检查
     if project_filter and accessible_projects is not None:
         if not accessible_projects.filter(id=project_filter).exists():
              return _admin_forbidden(request, "没有该项目的访问权限 / No access to this project")
@@ -395,6 +414,7 @@ def performance_board(request):
     )
     
     # Filter urgent tasks based on permission
+    # 根据权限过滤紧急任务
     urgent_tasks_qs = Task.objects.filter(status='overdue')
     total_tasks_qs = Task.objects.all()
     
@@ -406,6 +426,7 @@ def performance_board(request):
     total_tasks = stats.get('overall_total', total_tasks_qs.count())
     
     # Pre-fetch SLA settings once
+    # 预取 SLA 设置一次
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
@@ -432,6 +453,7 @@ def performance_board(request):
 
     if request.GET.get('send_weekly') == '1':
         # Send weekly logic... (keep as is)
+        # 发送周报逻辑...（保持原样）
         recipient = (request.user.email or '').strip()
         if not recipient:
             messages.error(request, "请先在个人中心绑定邮箱 / Please bind email first.")
@@ -465,6 +487,7 @@ def advanced_reporting(request):
     projects = Project.objects.filter(is_active=True)
     
     # Permission check for non-staff
+    # 非员工的权限检查
     if not (request.user.is_staff or request.user.has_perm('reports.view_project')):
          projects = projects.filter(
              Q(members=request.user) | 
@@ -478,11 +501,12 @@ def advanced_reporting(request):
     if selected_project_id and selected_project_id.isdigit():
         project_id = int(selected_project_id)
         # Verify access
+        # 验证访问权限
         proj = projects.filter(id=project_id).first()
         if proj:
             project_name = proj.name
         else:
-            project_id = None # Fallback if no access
+            project_id = None # Fallback if no access | 如果没有权限，则回退
             
     data = get_advanced_report_data(project_id)
     

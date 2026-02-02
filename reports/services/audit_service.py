@@ -6,7 +6,7 @@ class AuditService:
     @staticmethod
     def log_change(user, action, instance, old_instance=None, ip=None, remarks='', path='', method='', changes=None, result='success'):
         """
-        Log a change to the audit log.
+        记录变更到审计日志。
         """
         target_type = instance.__class__.__name__
         target_id = str(instance.pk)
@@ -14,7 +14,7 @@ class AuditService:
         
         operator_name = user.get_full_name() or user.username if user and user.is_authenticated else 'System/Anonymous'
         
-        # Determine Project & Task Context
+        # 确定项目和任务上下文
         project = None
         task = None
         
@@ -29,14 +29,14 @@ class AuditService:
         elif target_type == 'TaskAttachment':
             task = instance.task
             project = instance.task.project
-        elif hasattr(instance, 'project') and instance.project and hasattr(instance.project, 'pk'): # Check if project is a FK model instance
-             # Generic fallback for models with 'project' FK
+        elif hasattr(instance, 'project') and instance.project and hasattr(instance.project, 'pk'): # 检查项目是否为外键模型实例
+             # 具有 'project' 外键的模型的通用回退
              project = instance.project
              
-        # DailyReport Special Handling
-        # DailyReport has M2M 'projects'. We can't easily assign a single project unless we pick one.
-        # But log_change is usually for one instance. 
-        # For now, we leave project=None for DailyReport unless we want to log multiple entries (too complex here).
+        # 日报特殊处理
+        # 日报具有多对多 'projects' 字段。除非我们选择一个，否则我们无法轻松分配单个项目。
+        # 但 log_change 通常用于单个实例。
+        # 目前，对于日报我们保留 project=None，除非我们想记录多个条目（此处过于复杂）。
 
         details = {}
         if changes is None:
@@ -68,7 +68,7 @@ class AuditService:
     @staticmethod
     def _calculate_diff(old_instance, new_instance):
         diff = {}
-        # Get fields
+        # 获取字段
         for field in new_instance._meta.fields:
             field_name = field.name
             
@@ -76,7 +76,7 @@ class AuditService:
                 old_val = getattr(old_instance, field_name)
                 new_val = getattr(new_instance, field_name)
                 
-                # Convert to string or comparable format if needed
+                # 如果需要，转换为字符串或可比较的格式
                 if old_val != new_val:
                     diff[field_name] = {
                         'old': str(old_val),

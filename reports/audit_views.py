@@ -52,6 +52,7 @@ def audit_logs(request):
     page_obj = paginator.get_page(request.GET.get('page'))
 
     # Log this access (meta-audit!)
+    # 记录此次访问（元审计！）
     log_action(request, 'access', f"audit_logs page={page_obj.number}")
 
     context = {
@@ -80,6 +81,8 @@ def api_audit_logs(request):
     """
     # For now, let's keep it consistent with the view: superuser only.
     # If we want object-level history, we should check permissions on the object.
+    # 目前，让我们与视图保持一致：仅限超级用户。
+    # 如果我们需要对象级历史记录，我们应该检查对象的权限。
     
     target_type = request.GET.get('target_type')
     target_id = request.GET.get('target_id')
@@ -87,6 +90,8 @@ def api_audit_logs(request):
     if not (request.user.is_superuser):
          # Allow if checking history of something they own?
          # For now, strict.
+         # 如果检查他们拥有的东西的历史记录，是否允许？
+         # 目前，严格限制。
          return JsonResponse({'error': 'Permission denied'}, status=403)
 
     qs = AuditLog.objects.filter(target_type=target_type, target_id=target_id).order_by('-created_at')

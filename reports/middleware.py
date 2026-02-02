@@ -19,7 +19,7 @@ class AuditMiddleware:
         
         response = self.get_response(request)
         
-        # Cleanup
+        # 清理
         if hasattr(_thread_locals, 'user'):
             del _thread_locals.user
         if hasattr(_thread_locals, 'ip'):
@@ -43,6 +43,6 @@ class TimingMiddleware:
         start_time = time.time()
         response = self.get_response(request)
         duration = time.time() - start_time
-        # Add duration to response headers
+        # 将持续时间添加到响应头
         response['X-Page-Generation-Duration-ms'] = int(duration * 1000)
         return response

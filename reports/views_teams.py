@@ -13,6 +13,8 @@ from audit.utils import log_action
 def teams_list(request):
     # Global Team Management is restricted to Superuser.
     # Project Managers should manage teams via Project Detail page.
+    # 全局团队管理仅限于超级用户。
+    # 项目经理应通过项目详情页面管理团队。
     if not request.user.is_superuser:
         return _admin_forbidden(request)
 
@@ -35,7 +37,7 @@ def teams_list(request):
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
         'total_count': qs.count(),
-        'projects': Project.objects.filter(is_active=True).order_by('name'), # For modal & filter
+        'projects': Project.objects.filter(is_active=True).order_by('name'), # For modal & filter | 用于模态框和过滤器
     })
 
 @login_required

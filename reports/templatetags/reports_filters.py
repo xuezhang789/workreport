@@ -8,7 +8,7 @@ register = template.Library()
 @register.filter
 def get_avatar_url(user):
     """
-    Safely get user avatar URL from UserPreference.
+    从 UserPreference 安全地获取用户头像 URL。
     """
     try:
         if user.is_authenticated:
@@ -20,7 +20,7 @@ def get_avatar_url(user):
 @register.filter
 def mask_email(email):
     """
-    Mask email address for privacy.
+    为了隐私屏蔽电子邮件地址。
     Example: arlo@example.com -> a***o@example.com
     """
     if not email or '@' not in email:
@@ -39,7 +39,7 @@ def mask_email(email):
 @register.filter
 def pretty_json(value):
     """
-    Format dictionary as pretty JSON string.
+    将字典格式化为漂亮的 JSON 字符串。
     """
     try:
         if isinstance(value, str):

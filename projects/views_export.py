@@ -12,12 +12,14 @@ def project_history_export(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     
     # Permission check
+    # 权限检查
     if not request.user.is_superuser:
         accessible = get_accessible_projects(request.user)
         if not accessible.filter(id=project.id).exists():
              raise Http404
 
     # Filters (reuse logic from project_history)
+    # 过滤器（重用项目历史记录的逻辑）
     filters = {
         'user_id': request.GET.get('user'),
         'start_date': request.GET.get('start_date'),
@@ -41,6 +43,7 @@ def project_history_export(request, project_id):
             item_type = item.get('type', 'general')
             
             # Format: Timestamp, Operator, Type, Field, Old, New, Description
+            # 格式：时间戳，操作人，类型，字段，旧值，新值，描述
             rows.append([
                 timestamp,
                 operator,

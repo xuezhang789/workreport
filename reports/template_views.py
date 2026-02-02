@@ -37,15 +37,18 @@ def role_template_manage(request):
     role_filter = (request.GET.get('role') or 'dev').strip()
     
     # Validate role
+    # 验证角色
     all_roles_dict = dict(Profile.ROLE_CHOICES)
     if role_filter not in all_roles_dict:
         role_filter = 'dev'
 
     # Handle POST (Save)
+    # 处理 POST (保存)
     if request.method == 'POST':
         role = request.POST.get('role')
         if role != role_filter:
              # Should not happen if UI is correct, but safety check
+             # 如果 UI 正确，不应发生，但作为安全检查
              pass
         
         hint = request.POST.get('hint', '').strip()
@@ -53,6 +56,7 @@ def role_template_manage(request):
         placeholders_raw = request.POST.get('placeholders', '{}')
         
         # Handle sort_order safely
+        # 安全处理 sort_order
         try:
             sort_order = int(request.POST.get('sort_order') or 0)
         except (ValueError, TypeError):
@@ -67,6 +71,7 @@ def role_template_manage(request):
             placeholders = {}
 
         # Update or Create
+        # 更新或创建
         obj, created = RoleTemplate.objects.update_or_create(
             role=role_filter,
             defaults={
@@ -91,6 +96,7 @@ def role_template_manage(request):
         return redirect(f"{request.path}?role={role_filter}")
 
     # GET: Get existing template or default
+    # GET: 获取现有模板或默认值
     try:
         tpl = RoleTemplate.objects.get(role=role_filter)
         hint_text = tpl.hint
@@ -133,6 +139,7 @@ def role_template_api(request):
         return JsonResponse({'error': 'Role required'}, status=400)
     
     # 1. Try to find system default for this role
+    # 1. 尝试查找此角色的系统默认值
     try:
         tpl = RoleTemplate.objects.get(role=role, is_active=True)
         return JsonResponse({
@@ -144,6 +151,7 @@ def role_template_api(request):
         pass
     
     # 2. Fallback default placeholders if no DB template
+    # 2. 如果没有数据库模板，则回退到默认占位符
     defaults = {
         'dev': {'today_work': '', 'progress_issues': '', 'tomorrow_plan': ''},
         'qa': {'testing_scope': '', 'testing_progress': '', 'bug_summary': '', 'testing_tomorrow': ''},
@@ -165,12 +173,14 @@ def template_center(request):
     Unified Template Center for Report and Task templates.
     """
     # Permission check (strict for center view as it implies management)
+    # 权限检查（对于中心视图严格，因为它意味着管理）
     if not request.user.is_superuser:
         return _admin_forbidden(request)
 
     tab = request.GET.get('tab', 'report')  # 'report' or 'task'
     
     # Handle Create/Edit Form Submission
+    # 处理创建/编辑表单提交
     if request.method == 'POST':
         action_type = request.POST.get('type') # 'report' or 'task'
         
@@ -195,8 +205,11 @@ def template_center(request):
     
     # Querysets for list view (Latest versions only logic?)
     # Requirement: "show unique templates" -> Group by name, take latest version.
+    # 列表视图的查询集（仅最新版本的逻辑？）
+    # 需求：“显示唯一模板”-> 按名称分组，取最新版本。
     
     # Report Templates
+    # 报告模板
     latest_report_versions = ReportTemplateVersion.objects.filter(
         version=Subquery(
             ReportTemplateVersion.objects.filter(name=OuterRef('name'))
@@ -206,6 +219,7 @@ def template_center(request):
     ).order_by('-created_at')
     
     # Task Templates
+    # 任务模板
     latest_task_versions = TaskTemplateVersion.objects.filter(
         version=Subquery(
             TaskTemplateVersion.objects.filter(name=OuterRef('name'))
@@ -215,17 +229,19 @@ def template_center(request):
     ).order_by('-created_at')
 
     # Filter by search
+    # 按搜索过滤
     q = request.GET.get('q')
     if q:
         latest_report_versions = latest_report_versions.filter(Q(name__icontains=q) | Q(description__icontains=q))
         latest_task_versions = latest_task_versions.filter(Q(name__icontains=q) | Q(description__icontains=q))
 
     # Pagination
+    # 分页
     paginator_report = Paginator(latest_report_versions, 10)
     page_report = paginator_report.get_page(request.GET.get('page'))
     
     paginator_task = Paginator(latest_task_versions, 10)
-    page_task = paginator_task.get_page(request.GET.get('page')) # Note: sharing page param for tabs is imperfect but simple
+    page_task = paginator_task.get_page(request.GET.get('page')) # Note: sharing page param for tabs is imperfect but simple | 注意：为选项卡共享页面参数不完美但简单
 
     context = {
         'tab': tab,
@@ -267,6 +283,7 @@ def template_apply_api(request):
             match = get_object_or_404(ReportTemplateVersion, id=tpl_id)
         elif role:
             # Fallback logic: Find best match
+            # 回退逻辑：寻找最佳匹配
             qs = ReportTemplateVersion.objects.filter(role=role) # is_active=True?
             if project_id:
                 match = qs.filter(project_id=project_id).order_by('-version').first()
@@ -278,16 +295,20 @@ def template_apply_api(request):
             match = get_object_or_404(TaskTemplateVersion, id=tpl_id)
         elif 'name' in data:
             # Try to find by name + context
+            # 尝试按名称 + 上下文查找
             name = data.get('name')
             qs = TaskTemplateVersion.objects.filter(name=name)
             if project_id:
                 match = qs.filter(project_id=project_id).order_by('-version').first()
             if not match:
                 # Try global shared
+                # 尝试全局共享
                 match = qs.filter(project__isnull=True, is_shared=True).order_by('-version').first()
             if not match:
                 # Try just name match if unique? Or loose match?
                 # For now strict name match on latest version
+                # 尝试仅名称匹配（如果唯一）？或宽松匹配？
+                # 目前在最新版本上进行严格名称匹配
                 match = qs.order_by('-version').first()
 
     if match:
@@ -308,6 +329,7 @@ def template_apply_api(request):
         return JsonResponse(response_data)
     else:
         # No template found, return empty or default
+        # 未找到模板，返回空或默认值
         return JsonResponse({'success': False, 'message': 'No template found', 'content': {}})
         
 @login_required
@@ -324,6 +346,7 @@ def template_recommend_api(request):
         if q:
             qs = qs.filter(name__icontains=q)
         # Simple recommendation: return top 5 latest
+        # 简单推荐：返回最新的前 5 个
         data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description', 'version', 'project__name'))
     else:
         qs = TaskTemplateVersion.objects.filter()

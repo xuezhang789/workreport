@@ -4,7 +4,7 @@ from ..models import Profile, Project
 
 def get_team_members(q=None, role=None, project_id=None):
     """
-    Get filtered team members list.
+    获取过滤后的团队成员列表。
     """
     User = get_user_model()
     qs = User.objects.select_related('profile').prefetch_related('project_memberships').order_by('username')
@@ -27,7 +27,7 @@ def get_team_members(q=None, role=None, project_id=None):
 
 def update_member_role(user_id, new_role, changed_by=None):
     """
-    Update a user's role.
+    更新用户角色。
     """
     User = get_user_model()
     try:
@@ -45,7 +45,7 @@ def update_member_role(user_id, new_role, changed_by=None):
 
 def add_member_to_project(user_id, project_id, changed_by=None):
     """
-    Add a user to a project.
+    将用户添加到项目。
     """
     User = get_user_model()
     try:
@@ -64,7 +64,7 @@ def add_member_to_project(user_id, project_id, changed_by=None):
 
 def remove_member_from_project(user_id, project_id, changed_by=None):
     """
-    Remove a user from a project.
+    从项目中移除用户。
     """
     User = get_user_model()
     try:

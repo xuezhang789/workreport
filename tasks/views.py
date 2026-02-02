@@ -54,17 +54,17 @@ MANAGER_ROLES = {'mgr', 'pm'}
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
 def has_manage_permission(user):
-    # Deprecated: Use can_manage_project(user, project) for granular control.
-    # Keeping for legacy compatibility if strictly needed, but returning False to force explicit checks.
+    # 已弃用：请使用 can_manage_project(user, project) 进行更细粒度的控制。
+    # 为了兼容旧代码保留，但默认返回 False 以强制显式检查。
     return False
 
 def _add_history(task: Task, user, field: str, old: str, new: str):
-    # Deprecated: Signals in audit/signals.py handle AuditLog creation automatically via pre_save/post_save.
+    # 已弃用：audit/signals.py 中的信号通过 pre_save/post_save 自动处理审计日志创建。
     pass
 
 @login_required
 def admin_task_list(request):
-    # Unified Task List: Super Admins see all, others see tasks in accessible projects
+    # 统一任务列表：超级管理员查看所有，其他用户查看有权限项目中的任务
     accessible_projects = get_accessible_projects(request.user)
     if not request.user.is_superuser and not accessible_projects.exists():
         return _admin_forbidden(request, "需要相关项目权限 / Project access required")
@@ -80,7 +80,7 @@ def admin_task_list(request):
 
     tasks_qs = Task.objects.select_related('project', 'user', 'sla_timer').prefetch_related('collaborators')
     
-    # Pre-fetch SLA settings once
+    # 预取一次 SLA 设置
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     
@@ -88,7 +88,7 @@ def admin_task_list(request):
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
     
     now = timezone.now()
-    # Default SLA hours for general query if no project specific
+    # 如果没有指定项目，则使用默认 SLA 小时数进行通用查询
     default_sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
     due_soon_ids = set(tasks_qs.filter(
@@ -117,14 +117,14 @@ def admin_task_list(request):
         tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
     if hot:
-        # Optimize: Filter at DB level to reduce memory usage
-        # 'hot' means 'overdue' or 'tight' (remaining < amber_threshold)
-        # adjusted_due = due_at + total_paused_seconds
-        # condition: adjusted_due < cutoff_time
-        # Since paused_seconds >= 0, adjusted_due >= due_at.
-        # So if adjusted_due < cutoff_time, then due_at < cutoff_time.
-        # We can safely filter by due_at < cutoff_time to get a superset,
-        # avoiding complex DB arithmetic (ExpressionWrapper) that causes issues on some DBs.
+        # 优化：在数据库层面过滤以减少内存使用
+        # 'hot' 意味着 '逾期' 或 '紧急' (剩余时间 < amber_threshold)
+        # 调整后的截止时间 = due_at + total_paused_seconds
+        # 条件: adjusted_due < cutoff_time
+        # 因为 paused_seconds >= 0, 所以 adjusted_due >= due_at.
+        # 如果 adjusted_due < cutoff_time, 那么 due_at < cutoff_time.
+        # 我们可以安全地通过 due_at < cutoff_time 过滤得到一个超集，
+        # 避免在某些数据库上导致问题的复杂 DB 运算 (ExpressionWrapper)。
         
         amber_hours = get_sla_thresholds(sla_thresholds_val).get('amber', 4)
         cutoff_time = now + timedelta(hours=amber_hours)
@@ -134,10 +134,10 @@ def admin_task_list(request):
             due_at__lt=cutoff_time
         )
         
-        # Fallback to Python for exact status calculation and sorting, but on a much smaller set
+        # 回退到 Python 进行精确的状态计算和排序，但基于一个小得多的数据集
         tasks = list(hot_qs)
         
-        # Double check with Python logic to ensure consistency with calculate_sla_info
+        # 使用 Python 逻辑再次检查以确保与 calculate_sla_info 一致
         tasks = [t for t in tasks if calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)['status'] in ('tight', 'overdue')]
         
         far_future = now + timedelta(days=365)
@@ -153,7 +153,7 @@ def admin_task_list(request):
         paginator = Paginator(tasks, 15)
         page_obj = paginator.get_page(request.GET.get('page'))
     else:
-        # Standard Sorting
+        # 标准排序
         allowed_sorts = {
             'created_at': 'created_at',
             '-created_at': '-created_at',
@@ -169,7 +169,7 @@ def admin_task_list(request):
         sort_field = allowed_sorts.get(sort_by, '-created_at')
         tasks_qs = tasks_qs.order_by(sort_field)
 
-        # DB Pagination for standard view (Performance Optimization)
+        # 标准视图的数据库分页（性能优化）
         paginator = Paginator(tasks_qs, 15)
         page_obj = paginator.get_page(request.GET.get('page'))
         for t in page_obj:
@@ -182,7 +182,7 @@ def admin_task_list(request):
         project_choices = Project.objects.filter(is_active=True).order_by('name')
     else:
         project_choices = accessible_projects.order_by('name')
-        # Users in accessible projects
+        # 可访问项目中的用户
         user_objs = User.objects.filter(
             Q(project_memberships__in=accessible_projects) |
             Q(managed_projects__in=accessible_projects) |
@@ -225,7 +225,7 @@ def admin_task_bulk_action(request):
     if redirect_to and not url_has_allowed_host_and_scheme(url=redirect_to, allowed_hosts={request.get_host()}):
         redirect_to = None
     
-    # Filter context for logging
+    # 过滤上下文用于记录日志
     project_id = request.POST.get('project')
     user_id = request.POST.get('user')
 
@@ -279,13 +279,13 @@ def admin_task_bulk_action(request):
         tasks.update(status=TaskStatus.TODO, completed_at=None)
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
-    elif action == 'update' or action in ('assign', 'change_status'): # Support separate actions or merged update
-        # Map frontend params to backend logic
+    elif action == 'update' or action in ('assign', 'change_status'): # 支持独立动作或合并更新
+        # 将前端参数映射到后端逻辑
         status_value = (request.POST.get('target_status') or request.POST.get('status_value') or '').strip()
         assign_to = request.POST.get('target_user') or request.POST.get('assign_to')
         due_at_str = (request.POST.get('due_at') or '').strip()
         
-        # If action implies specific update, ensure we respect it
+        # 如果动作暗示特定更新，确保我们遵守它
         if action == 'assign' and not assign_to:
              messages.warning(request, "未选择目标用户 / No user selected")
              return redirect(redirect_to or 'tasks:admin_task_list')
@@ -293,7 +293,7 @@ def admin_task_bulk_action(request):
               messages.warning(request, "未选择目标状态 / No status selected")
               return redirect(redirect_to or 'tasks:admin_task_list')
         
-        # Enforce action scope to avoid accidental updates
+        # 强制动作范围以避免意外更新
         if action == 'assign':
             status_value = ''
             due_at_str = ''
@@ -318,7 +318,7 @@ def admin_task_bulk_action(request):
         for t in tasks:
             update_fields = []
             if valid_status and status_value != t.status:
-                # _add_history removed
+                # _add_history 已移除
                 t.status = status_value
                 if status_value in ('done', 'closed'):
                     t.completed_at = now
@@ -329,18 +329,18 @@ def admin_task_bulk_action(request):
                         update_fields.append('completed_at')
                 update_fields.append('status')
             if parsed_due and (t.due_at != parsed_due):
-                # _add_history removed
+                # _add_history 已移除
                 t.due_at = parsed_due
                 update_fields.append('due_at')
             if assign_user and assign_user.id != t.user_id and (is_admin or t.project_id in manageable_project_ids):
-                # _add_history removed
+                # _add_history 已移除
                 t.user = assign_user
                 update_fields.append('user')
             if update_fields:
                 t.save(update_fields=update_fields)
                 updated += 1
         if updated:
-            # log_action removed to avoid duplication with final summary log
+            # log_action 已移除，避免与最终摘要日志重复
             pass
     if updated:
         messages.success(request, f"批量操作完成：更新 {updated}/{total_selected} 条")
@@ -382,9 +382,9 @@ def admin_task_export(request):
     hot = request.GET.get('hot') == '1'
     sort_by = request.GET.get('sort', '-created_at')
 
-    tasks = Task.objects.select_related('project', 'user').prefetch_related('collaborators')
+    tasks = Task.objects.select_related('project', 'user', 'sla_timer').prefetch_related('collaborators')
     
-    # Pre-fetch SLA settings once
+    # 预取一次 SLA 设置
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     
@@ -424,7 +424,7 @@ def admin_task_export(request):
         sort_field = allowed_sorts.get(sort_by, '-created_at')
         tasks = tasks.order_by(sort_field)
     else:
-        # Hot mode default sort
+        # 热门模式默认排序
         tasks = tasks.order_by('-created_at')
 
     if hot:
@@ -498,20 +498,20 @@ def sla_settings(request):
 @login_required
 def admin_task_stats(request):
     """
-    Refactored Admin Task Stats View (Scientific & Insightful):
-    - Multi-dimensional metrics (Total, Completion, Efficiency, Quality).
-    - Comparative analysis (Growth rates).
-    - Time-window based filtering (Today, Week, Month).
+    重构后的管理后台任务统计视图 (科学且具有洞察力):
+    - 多维度指标 (总量, 完成情况, 效率, 质量).
+    - 比较分析 (增长率).
+    - 基于时间窗口的过滤 (今天, 本周, 本月).
     """
     User = get_user_model()
     accessible_projects = get_accessible_projects(request.user)
     if not request.user.is_superuser and not accessible_projects.exists():
         return _admin_forbidden(request, "需要相关项目权限 / Project access required")
 
-    # --- 1. Filter Context & Date Ranges ---
-    period = request.GET.get('period', 'month') # Default: This Month
+    # --- 1. 过滤上下文和日期范围 ---
+    period = request.GET.get('period', 'month') # 默认: 本月
     
-    # Custom Range overrides Period
+    # 自定义范围覆盖期间
     custom_start = request.GET.get('start')
     custom_end = request.GET.get('end')
     
@@ -529,31 +529,29 @@ def admin_task_stats(request):
         if period == 'today':
             start_date = end_date = today
             prev_start_date = prev_end_date = today - timedelta(days=1)
-        elif period == 'week': # This Week (Mon - Today)
+        elif period == 'week': # 本周 (周一 - 今天)
             start_date = today - timedelta(days=today.weekday())
             end_date = today
             prev_start_date = start_date - timedelta(days=7)
             prev_end_date = end_date - timedelta(days=7)
-        elif period == 'month': # This Month (1st - Today)
+        elif period == 'month': # 本月 (1号 - 今天)
             start_date = today.replace(day=1)
             end_date = today
-            # Previous month
+            # 上个月
             last_month_end = start_date - timedelta(days=1)
             prev_start_date = last_month_end.replace(day=1)
-            prev_end_date = last_month_end # Compare to full last month? Or same days? 
-            # Usually "Month to Date" compares to "Last Month to Date" or "Full Last Month"
-            # For simplicity, compare to full last month or same duration. 
-            # Let's use "Previous Month" full range for simplicity in trend, 
-            # but for "Growth", we usually compare equivalent durations.
-            # Let's simple use: Previous Month 1st to Previous Month End.
+            prev_end_date = last_month_end # 比较完整的上个月? 或者相同天数? 
+            # 通常 "月至今" 比较的是 "上月至今" 或 "完整的上个月"
+            # 为了简单起见，比较完整的上个月或相同的持续时间。
+            # 这里简单使用: 上个月1号到上个月底。
         elif period == 'year':
             start_date = today.replace(month=1, day=1)
             end_date = today
             prev_start_date = start_date.replace(year=start_date.year - 1)
             prev_end_date = end_date.replace(year=end_date.year - 1)
 
-    # --- 2. Base QuerySets ---
-    # We need separate QuerySets for "Created", "Completed", "Active"
+    # --- 2. 基础查询集 ---
+    # 我们需要分离的查询集用于 "创建", "完成", "活跃"
     base_tasks = Task.objects.all()
     base_reports = DailyReport.objects.all()
     
@@ -561,7 +559,7 @@ def admin_task_stats(request):
         base_tasks = base_tasks.filter(project__in=accessible_projects)
         base_reports = base_reports.filter(projects__in=accessible_projects)
 
-    # Apply Non-Date Filters
+    # 应用非日期过滤器
     project_id = request.GET.get('project')
     user_id = request.GET.get('user')
     role = request.GET.get('role')
@@ -587,8 +585,8 @@ def admin_task_stats(request):
         base_tasks = base_tasks.filter(user__profile__position=role)
         base_reports = base_reports.filter(role=role)
 
-    # --- 3. KPIs Calculation ---
-    # Helper to count based on date field
+    # --- 3. KPI 计算 ---
+    # 辅助函数：基于日期字段计数
     def get_metric(qs, date_field, start, end, extra_q=Q()):
         if not start or not end:
             return qs.filter(extra_q).count()
@@ -597,23 +595,23 @@ def admin_task_stats(request):
         }
         return qs.filter(extra_q, **filter_kwargs).count()
 
-    # 3.1 Total Created (Volume)
+    # 3.1 总创建数 (量)
     metric_new = get_metric(base_tasks, 'created_at__date', start_date, end_date)
     prev_new = get_metric(base_tasks, 'created_at__date', prev_start_date, prev_end_date) if prev_start_date else 0
     
-    # 3.2 Total Completed (Output)
+    # 3.2 总完成数 (产出)
     metric_done = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
     prev_done = get_metric(base_tasks, 'completed_at__date', prev_start_date, prev_end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])) if prev_start_date else 0
     
-    # 3.3 Completion Rate (Quality/Efficiency)
-    # Rate = Completed / (Created + Pending)? Or just Completed / Created in period?
-    # Usually: Completed Count / Created Count in same period (Throughput Ratio)
-    # OR: Percentage of *all* tasks that are done.
-    # Let's use "Throughput Rate": Completed / Created * 100
+    # 3.3 完成率 (质量/效率)
+    # 率 = 完成数 / (创建数 + 待处理)? 或者仅仅是 完成数 / 期间创建数?
+    # 通常: 同一期间的 完成计数 / 创建计数 (吞吐率)
+    # 或者: *所有* 任务中已完成的百分比。
+    # 让我们使用 "吞吐率": 完成数 / 创建数 * 100
     rate_throughput = (metric_done / metric_new * 100) if metric_new else 0
     prev_rate = (prev_done / prev_new * 100) if prev_new else 0
     
-    # 3.4 Overdue (Risk) - Snapshot (Current)
+    # 3.4 逾期 (风险) - 快照 (当前)
     now = timezone.now()
     current_overdue_qs = base_tasks.filter(
         status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], 
@@ -621,12 +619,12 @@ def admin_task_stats(request):
     )
     metric_overdue = current_overdue_qs.count()
 
-    # 3.5 On-Time Delivery (Quality)
-    # Tasks completed where completed_at <= due_at (if due_at exists)
-    # Note: This ignores SLA pause time for bulk performance, which is acceptable for high-level stats.
-    # We only consider tasks that HAD a due date for this metric to be fair? 
-    # Or should we assume no due date = on time? Usually "On Time" implies adherence to a schedule.
-    # Let's count tasks with due_at.
+    # 3.5 准时交付 (质量)
+    # 任务已完成且 completed_at <= due_at (如果存在 due_at)
+    # 注意: 为了批量性能，这里忽略 SLA 暂停时间，这对于高层统计是可以接受的。
+    # 我们是否只考虑在此期间有截止日期的任务才公平？
+    # 或者我们假设没有截止日期 = 准时？通常 "准时" 意味着遵守时间表。
+    # 让我们统计有 due_at 的任务。
     tasks_with_due_in_period = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False))
     
     metric_on_time = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at')))
@@ -636,8 +634,8 @@ def admin_task_stats(request):
     prev_on_time = get_metric(base_tasks, 'completed_at__date', prev_start_date, prev_end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at'))) if prev_start_date else 0
     prev_rate_on_time = (prev_on_time / prev_tasks_with_due * 100) if prev_tasks_with_due else 0
 
-    # 3.6 Avg Resolution Time (Efficiency)
-    # Only for tasks completed in period
+    # 3.6 平均解决时间 (效率)
+    # 仅针对期间内完成的任务
     def get_avg_duration(qs, start, end):
         if not start or not end:
             dur = qs.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).aggregate(avg=Avg(F('completed_at') - F('created_at')))['avg']
@@ -654,7 +652,7 @@ def admin_task_stats(request):
     metric_avg_time = get_avg_duration(base_tasks, start_date, end_date)
     prev_avg_time = get_avg_duration(base_tasks, prev_start_date, prev_end_date) if prev_start_date else 0
 
-    # Growth Calculation
+    # 增长计算
     def calc_growth(current, previous):
         if not previous:
             return 100 if current > 0 else 0
@@ -662,16 +660,16 @@ def admin_task_stats(request):
 
     growth_new = calc_growth(metric_new, prev_new)
     growth_done = calc_growth(metric_done, prev_done)
-    growth_rate = round(rate_throughput - prev_rate, 1) # Absolute diff for percentage
+    growth_rate = round(rate_throughput - prev_rate, 1) # 百分比绝对差
     growth_on_time = round(rate_on_time - prev_rate_on_time, 1)
-    growth_avg_time = round(metric_avg_time - prev_avg_time, 1) # Absolute hours diff
+    growth_avg_time = round(metric_avg_time - prev_avg_time, 1) # 小时绝对差
 
-    # --- 4. Charts: Trend Analysis ---
-    # Show last 14/30 days regardless of filter? Or match filter?
-    # If "Month" selected, show daily trend for that month.
-    # If "Week", daily for week.
-    # If "Today", maybe hourly? (Too complex for now).
-    # Default to: If range < 60 days, daily. Else weekly/monthly.
+    # --- 4. 图表: 趋势分析 ---
+    # 显示最近 14/30 天，无论过滤器如何？或者匹配过滤器？
+    # 如果选择 "本月"，显示该月的每日趋势。
+    # 如果 "本周"，显示本周每日。
+    # 如果 "今天"，也许每小时？（目前太复杂）。
+    # 默认为：如果范围 < 60 天，每日。否则每周/每月。
     
     chart_start = start_date or (today - timedelta(days=29))
     chart_end = end_date or today
@@ -681,8 +679,8 @@ def admin_task_stats(request):
     trend_created = []
     trend_completed = []
     
-    # Efficient Aggregation
-    # Group by date
+    # 高效聚合
+    # 按日期分组
     created_data = base_tasks.filter(created_at__date__range=(chart_start, chart_end))\
         .values('created_at__date').annotate(c=Count('id'))
     created_map = {item['created_at__date']: item['c'] for item in created_data}
@@ -691,18 +689,18 @@ def admin_task_stats(request):
         .values('completed_at__date').annotate(c=Count('id'))
     completed_map = {item['completed_at__date']: item['c'] for item in completed_data}
     
-    # Fill gaps
+    # 填充空缺
     for i in range(days_diff):
         d = chart_start + timedelta(days=i)
         trend_labels.append(d.strftime('%m-%d'))
         trend_created.append(created_map.get(d, 0))
         trend_completed.append(completed_map.get(d, 0))
 
-    # --- 5. Distribution: Status & Priority (Snapshot of Active) ---
-    # For distribution, usually we look at *Current Active* tasks if no date range,
-    # OR tasks *Created* in range. 
-    # "Task Stats" usually implies "What's the status of tasks generated in this period?"
-    # Let's filter by `created_at` in range if period is set.
+    # --- 5. 分布: 状态与优先级 (活跃任务快照) ---
+    # 对于分布，通常如果没有日期范围，我们看 *当前活跃* 任务，
+    # 或者 *范围期间创建* 的任务。
+    # "任务统计" 通常暗示 "在此期间产生的任务状态如何？"
+    # 如果设置了期间，让我们按范围内的 `created_at` 过滤。
     dist_qs = base_tasks
     if start_date and end_date:
         dist_qs = dist_qs.filter(created_at__date__range=(start_date, end_date))
@@ -712,16 +710,16 @@ def admin_task_stats(request):
     priority_dist = list(dist_qs.values('priority').annotate(c=Count('id')))
     priority_map = dict(Task.PRIORITY_CHOICES)
 
-    # --- 6. Missing Reports (Actionable) ---
-    # Same logic as before, but only for "Today"
+    # --- 6. 缺失日报 (可操作) ---
+    # 逻辑同前，但仅针对 "今天"
     missing_count = 0
     
-    if period == 'today' or period == 'custom': # Show missing only if relevant
+    if period == 'today' or period == 'custom': # 仅在相关时显示缺失
         # ... (Missing logic reused from previous) ...
-        # Optimization: Only calculate if needed
+        # 优化：仅在需要时计算
         reported_ids = DailyReport.objects.filter(created_at__date=today).values_list('user_id', flat=True)
         
-        # Relevant Users
+        # 相关用户
         target_projs = Project.objects.filter(is_active=True)
         if not request.user.is_superuser:
             target_projs = target_projs.filter(id__in=accessible_projects)
@@ -738,18 +736,18 @@ def admin_task_stats(request):
         missing_users_qs = relevant_users.exclude(id__in=reported_ids)
         missing_count = missing_users_qs.count()
         
-        # Missing Projects grouping (if count > 0)
+        # 缺失项目分组 (如果 count > 0)
         if missing_count > 0:
-             # ... (reused grouping logic) ...
-             # Simplify for brevity in this refactor
+             # ... (重用分组逻辑) ...
+             # 为简洁起见，在此重构中简化
              pass
 
-    # --- 7. Detail Tables (Project / User) ---
-    # Group by Project
+    # --- 7. 详情表 (项目 / 用户) ---
+    # 按项目分组
     project_metrics = dist_qs.values('project__id', 'project__name').annotate(
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
-        overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)), # Overdue Active
+        overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)), # 逾期活跃
         avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
     ).order_by('-total')
     
@@ -768,14 +766,14 @@ def admin_task_stats(request):
             'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
         })
 
-    # Group by User
+    # 按用户分组
     user_metrics = dist_qs.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
         overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)),
         on_time=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at'))),
         avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
-    ).order_by('-total')[:50] # Limit to top 50
+    ).order_by('-total')[:50] # 限制前 50
     
     user_stats = []
     for row in user_metrics:
@@ -793,9 +791,9 @@ def admin_task_stats(request):
             'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
         })
 
-    # --- 8. Context ---
-    # Drill-down filter string
-    # When clicking "Overdue", we want to go to list with same project/user filters + status=overdue
+    # --- 8. 上下文 ---
+    # 下钻过滤字符串
+    # 当点击 "逾期" 时，我们想跳转到具有相同 项目/用户 过滤 + status=overdue 的列表
     base_params = request.GET.copy()
     if 'period' in base_params: del base_params['period'] 
     
@@ -897,7 +895,7 @@ def admin_task_stats_export(request):
         tasks = tasks.filter(created_at__date__lte=end_date)
 
     rows = []
-    # Use same annotation logic as admin_task_stats for consistency
+    # 使用与 admin_task_stats 相同的注释逻辑以保持一致性
     grouped = tasks.values('project__name', 'user__username', 'user__first_name', 'user__last_name').annotate(
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=['done', 'closed'])),
@@ -933,21 +931,21 @@ def admin_task_stats_export(request):
 def admin_task_create(request):
     user = request.user
     
-    # Permission check: Any accessible project
+    # 权限检查：任何可访问的项目
     accessible_projects = get_accessible_projects(user)
     if not user.is_superuser and not accessible_projects.exists():
         return _admin_forbidden(request, "您没有权限创建任务 / No accessible projects")
 
     projects_qs = Project.objects.filter(is_active=True)
     if not user.is_superuser:
-        # Filter projects for selection dropdown: Only show projects user can MANAGE
-        # Because ordinary members cannot create tasks.
+        # 筛选下拉菜单的项目：仅显示用户可以管理的项目
+        # 因为普通成员不能创建任务。
         manageable_projects = get_manageable_projects(user)
         projects_qs = projects_qs.filter(id__in=manageable_projects.values('id'))
         
     projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
-    # Performance optimization: Do NOT load all users.
+    # 性能优化：不要加载所有用户。
     # user_objs = list(User.objects.all().order_by('username'))
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
@@ -958,7 +956,7 @@ def admin_task_create(request):
         project_id = request.POST.get('project')
         user_id = request.POST.get('user')
         category = request.POST.get('category') or TaskCategory.TASK
-        # If user didn't select status (or it's empty), default based on category
+        # 如果用户未选择状态（或为空），则根据分类设置默认值
         raw_status = request.POST.get('status')
         if category == TaskCategory.BUG and (not raw_status or raw_status == 'todo'):
              status = TaskStatus.NEW
@@ -968,7 +966,7 @@ def admin_task_create(request):
         priority = request.POST.get('priority') or 'medium'
         due_at_str = request.POST.get('due_at')
 
-        # Enforce initial status for BUG
+        # 强制 BUG 的初始状态
         if category == TaskCategory.BUG and status == TaskStatus.TODO:
             status = TaskStatus.NEW
 
@@ -991,7 +989,7 @@ def admin_task_create(request):
         if not project:
             errors.append("请选择项目")
         elif not request.user.is_superuser:
-            # Check if user can manage this project (to create tasks)
+            # 检查用户是否可以管理此项目（以创建任务）
             if not can_manage_project(request.user, project):
                  errors.append("您没有权限在此项目发布任务 (需管理员或负责人权限)")
             
@@ -1040,7 +1038,7 @@ def admin_task_create(request):
         if collaborators:
             task.collaborators.set(collaborators)
 
-        # Handle attachments
+        # 处理附件
         for f in request.FILES.getlist('attachments'):
             TaskAttachment.objects.create(
                 task=task,
@@ -1060,15 +1058,15 @@ def admin_task_create(request):
         'existing_urls': existing_urls,
         'form_values': {
             'project_id': request.GET.get('project_id'),
-            'category': request.GET.get('category'), # Allow pre-filling category
-            'status': TaskStatus.NEW if request.GET.get('category') == 'BUG' else None, # Pre-fill status if BUG
+            'category': request.GET.get('category'), # 允许预填充类别
+            'status': TaskStatus.NEW if request.GET.get('category') == 'BUG' else None, # 如果是 BUG，预填充状态
         },
     })
 
 
 @login_required
 def admin_task_edit(request, pk):
-    # Try to fetch task
+    # 尝试获取任务
     try:
         task = Task.objects.select_related('project').get(pk=pk)
     except Task.DoesNotExist:
@@ -1076,12 +1074,12 @@ def admin_task_edit(request, pk):
         
     user = request.user
     
-    # Check if user can even SEE this task (basic visibility)
-    # 1. Check Visibility: Can user SEE this task?
-    #    - Superuser: Yes.
-    #    - Project Accessible (Member/Owner/Manager): Yes.
-    #    - Task Owner/Collaborator: Yes.
-    #    If NO -> 404.
+    # 检查用户是否可以看到此任务 (基本可见性)
+    # 1. 检查可见性：用户能看到这个任务吗？
+    #    - 超级用户：是。
+    #    - 项目可访问（成员/拥有者/管理者）：是。
+    #    - 任务拥有者/协作者：是。
+    #    如果 否 -> 404。
     
     can_see = user.is_superuser or \
               get_accessible_projects(user).filter(id=task.project.id).exists() or \
@@ -1091,9 +1089,9 @@ def admin_task_edit(request, pk):
     if not can_see:
         raise Http404
             
-    # Check permission (Superuser, Project Owner/Manager, Task Owner, or Collaborator)
-    # Note: Ordinary members can edit their own tasks or if they are collaborators.
-    # But they cannot edit tasks they are not related to, even in the same project.
+    # 检查权限（超级用户，项目拥有者/管理者，任务拥有者，或协作者）
+    # 注意：普通成员可以编辑他们自己的任务或如果他们是协作者。
+    # 但他们不能编辑与他们无关的任务，即使是在同一个项目中。
     can_manage = user.is_superuser or \
                  can_manage_project(user, task.project) or \
                  task.user == user or \
@@ -1102,7 +1100,7 @@ def admin_task_edit(request, pk):
     if not can_manage:
         return _admin_forbidden(request)
 
-    # Permission Check: Collaborator-only Restriction
+    # 权限检查：仅限协作者的限制
     can_full_edit = user.is_superuser or \
                     can_manage_project(user, task.project) or \
                     task.user == user
@@ -1110,7 +1108,7 @@ def admin_task_edit(request, pk):
 
     projects_qs = Project.objects.filter(is_active=True)
     if not user.is_superuser:
-        # Simplification: Show accessible projects, but validate on save.
+        # 简化：显示可访问的项目，但在保存时验证。
         accessible_projects = get_accessible_projects(user)
         projects_qs = projects_qs.filter(id__in=accessible_projects.values('id'))
         
@@ -1119,7 +1117,7 @@ def admin_task_edit(request, pk):
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
     if request.method == 'POST':
-        # Enforce Collaborator-only Restrictions: Check if they tried to bypass UI
+        # 强制执行仅限协作者的限制：检查他们是否试图绕过 UI
         if is_collaborator_only:
              if 'title' in request.POST and (request.POST.get('title') or '').strip() != task.title:
                  return _admin_forbidden(request, "权限不足：协作人无法修改任务标题")
@@ -1128,7 +1126,7 @@ def admin_task_edit(request, pk):
              if 'user' in request.POST and request.POST.get('user') and int(request.POST.get('user')) != task.user.id:
                  return _admin_forbidden(request, "权限不足：协作人无法转让负责人")
         
-        # Capture old state for history
+        # 捕获旧状态用于历史记录
         old_status = task.status
         old_due = task.due_at
         old_user = task.user
@@ -1139,7 +1137,7 @@ def admin_task_edit(request, pk):
         errors = []
         
         if is_collaborator_only:
-            # Use existing values
+            # 使用现有值
             title = task.title
             url = task.url
             content = task.content
@@ -1223,7 +1221,7 @@ def admin_task_edit(request, pk):
                 },
             })
 
-        # Update task
+        # 更新任务
         task.title = title
         task.url = url
         task.content = content
@@ -1237,7 +1235,7 @@ def admin_task_edit(request, pk):
         
         task.collaborators.set(collaborators)
 
-        # Handle attachments (Only allow upload if not collaborator-only)
+        # 处理附件（仅在非仅限协作者时允许上传）
         if not is_collaborator_only:
             for f in request.FILES.getlist('attachments'):
                 TaskAttachment.objects.create(
@@ -1276,8 +1274,8 @@ def admin_task_edit(request, pk):
 def task_upload_attachment(request, task_id):
     task = get_object_or_404(Task, pk=task_id)
     
-    # Check permission
-    # Superuser, Project Owner/Manager, Task Owner, or Collaborator
+    # 权限检查
+    # 超级用户，项目拥有者/管理者，任务拥有者，或协作者
     can_upload = request.user.is_superuser or \
                  can_manage_project(request.user, task.project) or \
                  task.user == request.user or \
@@ -1316,8 +1314,8 @@ def task_delete_attachment(request, attachment_id):
     attachment = get_object_or_404(TaskAttachment, pk=attachment_id)
     task = attachment.task
     
-    # Check permission
-    # Superuser, Task Responsible (Assigned To), or Uploader
+    # 权限检查
+    # 超级用户，任务负责人 (Assigned To)，或上传者
     can_delete = request.user.is_superuser or \
                  task.user == request.user or \
                  attachment.user == request.user
@@ -1333,10 +1331,10 @@ def task_delete_attachment(request, attachment_id):
 
 @login_required
 def api_task_detail(request, pk: int):
-    """API to get task details for editing form."""
+    """用于编辑表单的获取任务详情的 API。"""
     task = get_object_or_404(Task, pk=pk)
     
-    # Permission check (reuse logic from admin_task_edit)
+    # 权限检查 (重用 admin_task_edit 的逻辑)
     can_see = request.user.is_superuser or \
               get_accessible_projects(request.user).filter(id=task.project.id).exists() or \
               task.user == request.user or \
@@ -1361,7 +1359,7 @@ def api_task_detail(request, pk: int):
 
 @login_required
 def task_list(request):
-    """User-facing task list with filters and completion button."""
+    """面向用户的任务列表，带有筛选和完成按钮。"""
     status = (request.GET.get('status') or '').strip()
     category = (request.GET.get('category') or '').strip()
     project_id = request.GET.get('project')
@@ -1378,7 +1376,7 @@ def task_list(request):
 
     # Permission check: Show tasks from accessible projects
     if not request.user.is_superuser:
-        # Now: All tasks in accessible projects
+        # 现：可访问项目中的所有任务
         accessible_projects = get_accessible_projects(request.user)
         tasks_qs = tasks_qs.filter(project__in=accessible_projects)
     
@@ -1508,7 +1506,8 @@ def task_export(request):
         cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
         sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
 
-        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+        # 使用 list() 替代 iterator() 以支持 prefetch_related
+        for t in tasks:
             info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info['status'] in ('tight', 'overdue'):
                 t.sla_info = info
@@ -1524,7 +1523,7 @@ def task_export(request):
             path = _generate_export_file(
                 job,
                 TaskExportService.get_header(),
-                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else list(tasks))
             )
             return JsonResponse({'queued': True, 'job_id': job.id})
         except Exception as e:
@@ -1533,7 +1532,7 @@ def task_export(request):
             job.save(update_fields=['status', 'message', 'updated_at'])
             return JsonResponse({'error': 'export failed'}, status=500)
 
-    rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+    rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else list(tasks))
     header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename=\"tasks.csv\"'
@@ -1548,7 +1547,7 @@ def task_export_selected(request):
         return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
     tasks = Task.objects.select_related('project', 'user').prefetch_related('collaborators').filter(user=request.user, id__in=ids)
-    # _mark_overdue_tasks(tasks) - Deprecated logic
+    # _mark_overdue_tasks(tasks) - 已弃用逻辑
     if not tasks.exists():
         return HttpResponse("请选择任务后导出", status=400)
     rows = TaskExportService.get_export_rows(tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
@@ -1563,7 +1562,7 @@ def task_export_selected(request):
 def task_complete(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
     
-    # Check permission: User Owner, Collaborator, or Project Manager
+    # 权限检查：用户所有者，协作者，或项目管理员
     if not (task.user == request.user or 
             task.collaborators.filter(pk=request.user.pk).exists() or 
             can_manage_project(request.user, task.project)):
@@ -1574,7 +1573,7 @@ def task_complete(request, pk: int):
     # 完成任务
     try:
         with transaction.atomic():
-            # _add_history removed
+            # _add_history 已移除
             task.status = 'done'
             task.completed_at = timezone.now()
             timer = _get_sla_timer_readonly(task)
@@ -1604,7 +1603,7 @@ def task_bulk_action(request):
     if redirect_to and not url_has_allowed_host_and_scheme(url=redirect_to, allowed_hosts={request.get_host()}):
         redirect_to = None
         
-    # Permission: Owner, Collaborator, or Project Manager
+    # 权限：拥有者，协作者，或项目管理员
     manageable_projects = get_manageable_projects(request.user)
     
     tasks = Task.objects.filter(
@@ -1660,7 +1659,7 @@ def task_bulk_action(request):
             return _admin_forbidden(request, "仅超级管理员可批量删除 / Superuser only")
         count = tasks.count()
         
-        # Audit Log for deletion
+        # 删除审计日志
         audit_batch = []
         for t in tasks:
             audit_batch.append(AuditLog(
@@ -1696,7 +1695,7 @@ def task_bulk_action(request):
         for t in tasks:
             update_fields = []
             if valid_status and status_value != t.status:
-                # _add_history removed
+                # _add_history 已移除
                 t.status = status_value
                 if status_value in ('done', 'closed'):
                     t.completed_at = now
@@ -1707,7 +1706,7 @@ def task_bulk_action(request):
                         update_fields.append('completed_at')
                 update_fields.append('status')
             if parsed_due and (t.due_at != parsed_due):
-                # _add_history removed
+                # _add_history 已移除
                 t.due_at = parsed_due
                 update_fields.append('due_at')
             if update_fields:
@@ -1722,8 +1721,8 @@ def task_bulk_action(request):
     else:
         messages.info(request, "未更新任何任务，请检查操作与选择")
     
-    # log_action is manual business log, AuditLog is automatic data log. 
-    # We keep log_action for high-level "bulk action" tracking.
+    # log_action 是手动业务日志，AuditLog 是自动数据日志。
+    # 我们保留 log_action 用于高级 "批量动作" 跟踪。
     log_action(
         request,
         'update',
@@ -1737,16 +1736,16 @@ def task_bulk_action(request):
 @login_required
 def task_view(request, pk: int):
     """View task content or redirect to URL."""
-    # Use prefetch_related for collaborators to avoid N+1 queries if we access them
+    # 使用 prefetch_related 获取协作者以避免访问时的 N+1 查询
     task = get_object_or_404(Task.objects.select_related('project', 'user').prefetch_related('collaborators'), pk=pk)
     
-    # Permission Check
+    # 权限检查
     can_manage = can_manage_project(request.user, task.project)
     is_owner = task.user == request.user
     is_collab = task.collaborators.filter(pk=request.user.pk).exists()
     is_member = task.project.members.filter(pk=request.user.pk).exists()
     
-    # Visibility: Managers (inc Superuser), Owner, Collabs, and Project Members
+    # 可见性：管理者（包括超级用户），拥有者，协作者，和项目成员
     if not (can_manage or is_owner or is_collab or is_member):
          return _friendly_forbidden(request, "无权限查看此任务 / No permission to view this task")
          
@@ -1768,7 +1767,7 @@ def task_view(request, pk: int):
                 log_action(request, 'create', f"task_comment {task.id}")
         elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
             # 已完成任务支持重新打开
-            # _add_history removed
+            # _add_history 已移除
             task.status = 'todo'
             task.completed_at = None
             task.save(update_fields=['status', 'completed_at'])
@@ -1779,7 +1778,7 @@ def task_view(request, pk: int):
                 timer.paused_at = timezone.now()
                 timer.save(update_fields=['paused_at'])
                 if task.status != 'blocked':
-                    # _add_history removed
+                    # _add_history 已移除
                     task.status = 'blocked'
                     task.save(update_fields=['status'])
                 messages.success(request, "计时已暂停")
@@ -1791,7 +1790,7 @@ def task_view(request, pk: int):
                 timer.paused_at = None
                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
                 if task.status == 'blocked':
-                    # _add_history removed
+                    # _add_history 已移除
                     task.status = 'in_progress'
                     task.save(update_fields=['status'])
                 messages.success(request, "计时已恢复")
@@ -1815,7 +1814,7 @@ def task_view(request, pk: int):
         elif request.POST.get('action') == 'set_status':
             new_status = request.POST.get('status_value')
             
-            # Validate transition
+            # 验证流转
             if not TaskStateService.validate_transition(task.category, task.status, new_status):
                  messages.error(request, f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}")
                  return redirect('tasks:task_view', pk=pk)
@@ -1823,7 +1822,7 @@ def task_view(request, pk: int):
             if new_status in dict(Task.STATUS_CHOICES):
                 try:
                     with transaction.atomic():
-                        # _add_history removed as AuditLog signal handles it
+                        # _add_history 已移除，因为 AuditLog 信号会处理它
                         if new_status in ('done', 'closed'):
                             task.status = new_status
                             task.completed_at = timezone.now()
@@ -1838,11 +1837,11 @@ def task_view(request, pk: int):
                                 task.completed_at = None
                         task.save(update_fields=['status', 'completed_at'])
                     
-                    # Notifications for BUG states
+                    # BUG 状态通知
                     if task.category == TaskCategory.BUG:
                         if new_status == TaskStatus.VERIFYING:
-                            # Notify Tester (Project QAs)
-                            # Note: Task Owner is already notified by generic 'notify_task_assignment' signal
+                            # 通知测试人员 (项目 QA)
+                            # 注意：任务负责人已由通用 'notify_task_assignment' 信号通知
                             qas = list(task.project.members.filter(profile__position='qa'))
                             for qa_user in qas:
                                 if qa_user != request.user and qa_user != task.user:
@@ -1855,7 +1854,7 @@ def task_view(request, pk: int):
                                         data={'task_id': task.id, 'project_id': task.project.id}
                                     )
                             
-                        # CLOSED status notification is handled by generic signal to Owner/Collaborators
+                        # CLOSED 状态通知由通用的 Owner/Collaborators 信号处理
 
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
                     messages.success(request, "状态已更新 / Status updated.")
@@ -1867,7 +1866,7 @@ def task_view(request, pk: int):
     comments = task.comments.select_related('user').all()
     attachments = task.attachments.select_related('user').all()
     
-    # Unified History (AuditLogs for Task) removed from here, moved to separate view
+    # 统一历史记录 (Task 的 AuditLogs) 已从此移除，移至单独视图
     
     sla_ref_time = task.completed_at if task.completed_at else None
     
@@ -1880,7 +1879,7 @@ def task_view(request, pk: int):
         'sla': calculate_sla_info(task, as_of=sla_ref_time),
         'can_edit': can_edit,
         'allowed_statuses': allowed_statuses,
-        'task_status_choices': Task.STATUS_CHOICES, # Full choices for mapping
+        'task_status_choices': Task.STATUS_CHOICES, # 用于映射的完整选项
     })
 
 
@@ -1888,7 +1887,7 @@ def task_view(request, pk: int):
 def task_history(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
     
-    # Permission check (same as task_view)
+    # 权限检查 (同 task_view)
     can_view = (
         request.user.is_superuser or 
         request.user == task.user or 

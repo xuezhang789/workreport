@@ -45,11 +45,14 @@ def _filtered_projects(request):
     sort_by = request.GET.get('sort') or '-created_at'
 
     # Base QuerySet
+    # 基础查询集
     qs = Project.objects.select_related('owner', 'owner__preferences', 'current_phase').filter(is_active=True)
     
     if not request.user.is_superuser:
         # Only Super Admin sees all.
         # Ordinary users (including PMs/Managers who are not superuser) see only accessible projects.
+        # 仅超级管理员可见所有项目。
+        # 普通用户（包括非超级管理员的 PM/Manager）仅可见有权限的项目。
         accessible = get_accessible_projects(request.user)
         qs = qs.filter(id__in=accessible.values('id'))
 
@@ -77,6 +80,9 @@ def _filtered_projects(request):
         qs = qs.order_by('-created_at', '-id')
 
     return qs, q, start_date, end_date, owner, sort_by
+
+import logging
+logger = logging.getLogger(__name__)
 
 def _send_phase_change_notification(project, old_phase, new_phase, changed_by):
     """
@@ -166,6 +172,9 @@ def project_detail(request, pk: int):
     # Check permission first
     # 1. Superuser: All
     # 2. Others: Must be accessible (Owner/Manager/Member)
+    # 首先检查权限
+    # 1. 超级用户：所有权限
+    # 2. 其他：必须是可访问的项目（负责人/经理/成员）
     if not request.user.is_superuser:
         accessible = get_accessible_projects(request.user)
         if not accessible.filter(pk=pk).exists():
@@ -177,20 +186,59 @@ def project_detail(request, pk: int):
     
     recent_reports = project.reports.select_related('user').order_by('-date')[:5]
     tasks_qs = Task.objects.filter(project=project)
-    total = tasks_qs.count()
-    completed = tasks_qs.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
-    overdue = tasks_qs.filter(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now()).count()
-    within_sla = tasks_qs.filter(
-        status__in=[TaskStatus.DONE, TaskStatus.CLOSED],
-        due_at__isnull=False,
-        completed_at__isnull=False,
-        completed_at__lte=F('due_at')
-    ).count()
+    
+    # Optimized stats calculation
+    # 优化的统计计算
+    import json
+    from tasks.services.sla import get_sla_hours, get_sla_thresholds
+    from core.models import SystemSetting
+    
+    # 1. Fetch SLA settings once (Try DB, fallback to defaults)
+    # We fetch raw values to pass to calculate_sla_info to avoid DB hits there
+    # 1. 一次性获取 SLA 设置（尝试数据库，回退到默认值）
+    # 我们获取原始值传递给 calculate_sla_info 以避免那里的数据库点击
+    try:
+        sla_h_setting = SystemSetting.objects.get(key='sla_hours').value
+    except:
+        sla_h_setting = None
+        
+    try:
+        sla_t_setting = SystemSetting.objects.get(key='sla_thresholds').value
+    except:
+        sla_t_setting = None
+
+    # 2. Aggregate counts (Cached)
+    # 2. 聚合计数（缓存）
+    from django.core.cache import cache
+    
+    stats_cache_key = f'project_stats_{pk}_{tasks_qs.count()}' # Simple invalidation by count or time
+    stats = cache.get(stats_cache_key)
+    
+    if not stats:
+        stats = tasks_qs.aggregate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
+            overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
+            within_sla=Count('id', filter=Q(
+                status__in=[TaskStatus.DONE, TaskStatus.CLOSED],
+                due_at__isnull=False,
+                completed_at__isnull=False,
+                completed_at__lte=F('due_at')
+            ))
+        )
+        cache.set(stats_cache_key, stats, 300) # 5 mins
+    
+    total = stats['total']
+    completed = stats['completed']
+    overdue = stats['overdue']
+    within_sla = stats['within_sla']
     sla_rate = (within_sla / completed * 100) if completed else 0
     
     # Task List Logic - Simplified for Project Detail
     # Only showing tasks for this project
-    tasks_qs = Task.objects.filter(project=project).select_related('user', 'user__profile')
+    # 任务列表逻辑 - 针对项目详情进行了简化
+    # 仅显示该项目的任务
+    tasks_qs = Task.objects.filter(project=project).select_related('user', 'user__profile', 'sla_timer')
     
     task_status = request.GET.get('task_status')
     if task_status in dict(Task.STATUS_CHOICES):
@@ -213,8 +261,13 @@ def project_detail(request, pk: int):
     page_obj = paginator.get_page(page_number)
     
     # Calculate SLA info for displayed tasks
+    # 为显示的任务计算 SLA 信息
     for t in page_obj:
-        t.sla_info = calculate_sla_info(t)
+        t.sla_info = calculate_sla_info(
+            t, 
+            sla_hours_setting=int(sla_h_setting) if sla_h_setting else None,
+            sla_thresholds_setting=json.loads(sla_t_setting) if sla_t_setting else None
+        )
 
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     
@@ -222,6 +275,10 @@ def project_detail(request, pk: int):
     # 1. Superuser
     # 2. Project Manager / Owner
     # (Matches 'can_manage_project')
+    # 项目详情中的新建任务权限：
+    # 1. 超级用户
+    # 2. 项目经理 / 负责人
+    # (符合 'can_manage_project')
     can_create_task = can_manage_project(request.user, project)
     
     return render(request, 'reports/project_detail.html', {
@@ -252,6 +309,14 @@ def project_create(request):
         form = ProjectForm(request.POST)
         if form.is_valid():
             project = form.save()
+            
+            # Auto-assign initial phase
+            if not project.current_phase:
+                initial_phase = ProjectPhaseConfig.objects.filter(is_active=True).order_by('order_index').first()
+                if initial_phase:
+                    project.current_phase = initial_phase
+                    project.overall_progress = initial_phase.progress_percentage
+                    project.save(update_fields=['current_phase', 'overall_progress'])
             
             # Handle file uploads if any (for Create mode)
             if request.FILES.getlist('files'):
@@ -450,6 +515,8 @@ def project_update_phase(request, project_id):
                 project=project,
                 old_phase=old_phase,
                 new_phase=new_phase,
+                old_progress=old_phase.progress_percentage if old_phase else 0,
+                new_progress=new_phase.progress_percentage,
                 changed_by=request.user
             )
             
@@ -475,7 +542,7 @@ def project_update_phase(request, project_id):
                         )
             except Exception as e:
                 # Log error but don't fail the request
-                print(f"Notification failed: {e}")
+                logger.error(f"Notification failed: {e}")
             
             # Note: AuditLog is automatically created via signals on project.save()
             

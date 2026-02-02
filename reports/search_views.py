@@ -23,6 +23,7 @@ def global_search(request):
     
     if q:
         # Projects
+        # 项目
         if scope in ('all', 'projects'):
             accessible_projects = get_accessible_projects(request.user)
             results['projects'] = accessible_projects.filter(
@@ -30,6 +31,7 @@ def global_search(request):
             ).distinct()[:10]
 
         # Tasks
+        # 任务
         if scope in ('all', 'tasks'):
             accessible_tasks = get_accessible_tasks(request.user)
             results['tasks'] = accessible_tasks.filter(
@@ -37,6 +39,7 @@ def global_search(request):
             ).select_related('project', 'user').distinct()[:10]
 
         # Reports
+        # 报告
         if scope in ('all', 'reports'):
             accessible_reports = get_accessible_reports(request.user)
             results['reports'] = accessible_reports.filter(
@@ -46,6 +49,7 @@ def global_search(request):
             ).select_related('user').distinct()[:10]
             
         # Users
+        # 用户
         if scope in ('all', 'users'):
             results['users'] = get_user_model().objects.filter(
                 Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q)

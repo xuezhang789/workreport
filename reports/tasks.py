@@ -22,7 +22,7 @@ def _sanitize_csv_cell(value):
 @shared_task
 def send_weekly_digest_task(recipient, stats):
     """
-    Async wrapper for sending weekly digest email.
+    发送周报邮件的异步包装器。
     """
     # from reports.services.notifications import send_weekly_digest
     # send_weekly_digest(recipient, stats)
@@ -31,7 +31,7 @@ def send_weekly_digest_task(recipient, stats):
 @shared_task
 def generate_export_file_task(job_id, export_type, params):
     """
-    Async task to generate export file.
+    生成导出文件的异步任务。
     """
     try:
         job = ExportJob.objects.get(id=job_id)
@@ -69,6 +69,8 @@ def generate_export_file_task(job_id, export_type, params):
             
             # Use iterator to avoid memory issues, but we need to fetch all for the loop or handle iterator carefully
             # Since this is a background task, we can afford a bit more time but should still be memory efficient.
+            # 使用迭代器以避免内存问题，但我们需要为循环获取所有内容或小心处理迭代器
+            # 由于这是后台任务，我们可以多花一点时间，但仍应保持内存效率。
             
             def report_iterator():
                 for r in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
@@ -85,6 +87,7 @@ def generate_export_file_task(job_id, export_type, params):
             rows_iterable = report_iterator()
 
         # Generate File
+        # 生成文件
         fd, path = tempfile.mkstemp(prefix=f'export_{job.export_type}_', suffix='.csv')
         with os.fdopen(fd, 'w', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
@@ -95,7 +98,7 @@ def generate_export_file_task(job_id, export_type, params):
                 writer.writerow([_sanitize_csv_cell(col) for col in row])
                 total_processed += 1
                 if total_processed % 50 == 0:
-                    job.progress = min(95, 5 + int((total_processed / (total_processed + 100)) * 90)) # Rough progress
+                    job.progress = min(95, 5 + int((total_processed / (total_processed + 100)) * 90)) # Rough progress | 粗略进度
                     job.save(update_fields=['progress', 'updated_at'])
 
         job.progress = 100
@@ -108,4 +111,5 @@ def generate_export_file_task(job_id, export_type, params):
         job.message = str(e)
         job.save(update_fields=['status', 'message', 'updated_at'])
         # Re-raise to let Celery know it failed (optional, depending on if we want retry)
+        # 重新引发以让 Celery 知道它失败了（可选，取决于我们是否想要重试）
         # raise e 

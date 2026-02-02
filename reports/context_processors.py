@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 
 def admin_flags(request):
     """Provide admin-related flags for templates."""
+    """为模板提供管理相关的标志。"""
 
     user = request.user
     is_authenticated = getattr(user, "is_authenticated", False)

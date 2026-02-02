@@ -16,6 +16,7 @@ class TaskTemplateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['project'].queryset = Project.objects.filter(is_active=True).order_by('name')
         self.fields['name'].widget.attrs.update({'placeholder': '如：上线任务模板 / e.g., Release Task'})
+        self.fields['role'].widget.attrs.update({'placeholder': '如：后端 / e.g., Backend'})
         self.fields['title'].widget.attrs.update({'placeholder': '如：发布 v1.2 版本 / e.g., Release v1.2'})
         self.fields['content'].widget.attrs.update({'placeholder': '步骤/说明（中英）：\n- 检查部署包 / Check build\n- 预发验证 / Staging verify\n- 正式发布 / Production rollout'})
         self.fields['url'].widget.attrs.update({'placeholder': '可选：任务链接 / Optional task link'})

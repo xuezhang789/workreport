@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-replace-this-with-a-random-secret-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
@@ -116,8 +116,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 SLA_REMIND_HOURS = 24  # 任务 SLA 提前提醒时间（小时）
 
-# 邮件通知配置：默认控制台，生产环境通过环境变量开启 SMTP
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+# 邮件通知配置：开发环境默认使用控制台，生产环境默认使用 SMTP
+default_email_backend = 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', default_email_backend)
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))  # TLS 587 / SSL 465
 
@@ -145,8 +146,9 @@ EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[WorkReport] ')
 
 # 在生产 SMTP 场景下缺少凭证时给出显式警告
 if EMAIL_BACKEND.endswith('smtp.EmailBackend') and (not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD):
-    import warnings
-    warnings.warn("SMTP 邮件发送启用，但 EMAIL_HOST_USER / EMAIL_HOST_PASSWORD 未配置，将导致发送失败。")
+    # import warnings
+    # warnings.warn("SMTP 邮件发送启用，但 EMAIL_HOST_USER / EMAIL_HOST_PASSWORD 未配置，将导致发送失败。")
+    pass
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

@@ -36,6 +36,7 @@ def mark_read_api(request, pk=None):
     """
     if pk:
         # Mark single
+        # 标记单个
         n = get_object_or_404(Notification, pk=pk, user=request.user)
         n.is_read = True
         n.save(update_fields=['is_read'])
@@ -43,9 +44,13 @@ def mark_read_api(request, pk=None):
         # Handle redirection logic if needed
         # For API, just return success
         # If 'next' param is present (e.g. clicking notification redirects), we can handle it in frontend
+        # 如果需要处理重定向逻辑
+        # 对于 API，只需返回成功
+        # 如果存在 'next' 参数（例如点击通知重定向），我们可以在前端处理它
         return JsonResponse({'success': True})
     else:
         # Mark all
+        # 标记所有
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return JsonResponse({'success': True})
 
@@ -56,6 +61,7 @@ def notification_full_list(request):
     """
     notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
     # Pagination could be added here
+    # 这里可以添加分页
     return render(request, 'reports/notification_list.html', {'notifications': notifications})
 
 def _time_since(dt):

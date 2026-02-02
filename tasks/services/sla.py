@@ -11,13 +11,13 @@ DEFAULT_THRESHOLDS = {'amber': 4, 'red': 0}
 
 def get_sla_hours(system_setting_value=None):
     """
-    Get configured SLA hours, checking cache or DB if not provided.
+    获取配置的 SLA 小时数，如果未提供则检查缓存或数据库。
     """
     if system_setting_value is not None:
         return system_setting_value
     
-    # Simple fetch without cache for now, or rely on caller to pass value
-    # In production, cache this
+    # 暂时不使用缓存进行简单获取，或者依赖调用者传递值
+    # 在生产环境中，建议缓存此值
     try:
         setting = SystemSetting.objects.get(key='sla_hours')
         return int(setting.value)
@@ -26,7 +26,7 @@ def get_sla_hours(system_setting_value=None):
 
 def get_sla_thresholds(system_setting_value=None):
     """
-    Get configured SLA thresholds (orange/red hours).
+    获取配置的 SLA 阈值 (橙色/红色 小时数)。
     """
     if system_setting_value:
         try:
@@ -42,30 +42,30 @@ def get_sla_thresholds(system_setting_value=None):
 
 def _ensure_sla_timer(task):
     """
-    Ensure a TaskSlaTimer exists for the task.
+    确保任务存在 TaskSlaTimer。
     """
     timer, created = TaskSlaTimer.objects.get_or_create(task=task)
     return timer
 
 def _get_sla_timer_readonly(task):
     """
-    Get timer without creating one (for lists).
+    获取计时器而不创建它 (用于列表)。
     """
-    # Use correct related_name 'sla_timer' (defined in models.py)
-    # hasattr triggers query if not cached, but if select_related is used, it hits cache.
+    # 使用正确的 related_name 'sla_timer' (在 models.py 中定义)
+    # hasattr 如果未缓存会触发查询，但如果使用了 select_related，它会命中缓存。
     if hasattr(task, 'sla_timer'):
         return task.sla_timer
     return TaskSlaTimer.objects.filter(task=task).first()
 
 def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
     """
-    Calculate detailed SLA status for a task.
+    计算任务的详细 SLA 状态。
     """
     if as_of is None:
         as_of = timezone.now()
         
-    # Determine SLA hours
-    # Priority: 1. Project Setting 2. System Setting 3. Default
+    # 确定 SLA 小时数
+    # 优先级: 1. 项目设置 2. 系统设置 3. 默认
     if task.project and task.project.sla_hours:
         sla_hours = task.project.sla_hours
     else:
@@ -73,16 +73,16 @@ def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_
 
     thresholds = sla_thresholds_setting or get_sla_thresholds()
     
-    # Basic Due Date Logic
+    # 基本截止日期逻辑
     if not task.due_at:
-        # If no due date, maybe calculate from created_at + SLA?
-        # Assuming due_at is the source of truth for now.
-        # If due_at is None, we can treat it as no SLA or use default window
+        # 如果没有截止日期，也许从 created_at + SLA 计算？
+        # 目前假设 due_at 是事实来源。
+        # 如果 due_at 为 None，我们可以将其视为无 SLA 或使用默认窗口
         effective_due = task.created_at + timedelta(hours=sla_hours)
     else:
         effective_due = task.due_at
 
-    # Timer logic (pauses)
+    # 计时器逻辑 (暂停)
     timer = _get_sla_timer_readonly(task)
     paused_seconds = 0
     is_paused = False
@@ -91,15 +91,15 @@ def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_
         paused_seconds = timer.total_paused_seconds
         if timer.paused_at:
             is_paused = True
-            # Add current pause duration if still paused
+            # 如果仍在暂停，添加当前暂停持续时间
             current_pause = (as_of - timer.paused_at).total_seconds()
             paused_seconds += int(current_pause)
             
-    # Adjust effective due date by adding paused time
-    # If I paused for 1 hour, my due date is pushed back by 1 hour
+    # 通过添加暂停时间调整有效截止日期
+    # 如果我暂停了 1 小时，我的截止日期推迟 1 小时
     adjusted_due = effective_due + timedelta(seconds=paused_seconds)
     
-    # Remaining time
+    # 剩余时间
     remaining_delta = adjusted_due - as_of
     remaining_hours = remaining_delta.total_seconds() / 3600
     
@@ -108,16 +108,16 @@ def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_
     sort_order = 3
     
     if task.status in (TaskStatus.DONE, TaskStatus.CLOSED):
-        # If completed, check if it was done on time
-        # We compare completed_at with adjusted_due
-        done_at = task.completed_at or as_of # fallback
+        # 如果已完成，检查是否按时完成
+        # 我们比较 completed_at 和 adjusted_due
+        done_at = task.completed_at or as_of # 回退
         if done_at <= adjusted_due:
              status = 'on_time'
-             level = 'success' # or blue
+             level = 'success' # 或蓝色
         else:
              status = 'completed_late'
              level = 'red'
-        remaining_hours = 0 # Meaningless for completed
+        remaining_hours = 0 # 对于已完成无意义
         sort_order = 4
         
     elif is_paused:

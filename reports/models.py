@@ -1,5 +1,5 @@
-# DEPRECATED: This file is kept for backward compatibility with old migrations.
-# Please import models directly from their respective apps:
+# 已弃用：此文件保留是为了与旧迁移向后兼容。
+# 请直接从各自的应用程序导入模型：
 # - core.models
 # - projects.models
 # - tasks.models

@@ -32,6 +32,7 @@ class Project(models.Model):
     sla_hours = models.PositiveIntegerField(null=True, blank=True, help_text="项目级 SLA 提醒窗口（小时）", verbose_name="SLA时限(小时)")
     
     # New fields for Phase Management
+    # 阶段管理的新字段
     current_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects', verbose_name="当前阶段")
     overall_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="总体进度(%)")
     progress_note = models.TextField(blank=True, verbose_name="进度备注")

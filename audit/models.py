@@ -4,6 +4,10 @@ from projects.models import Project
 from tasks.models import Task
 
 class AuditLog(models.Model):
+    """
+    统一审计日志：记录所有关键操作（创建、更新、删除、访问、上传等）。
+    支持存储详细的变更差异 (diff) 和上下文信息。
+    """
     ACTION_CHOICES = [
         ('login', '登录 / Login'),
         ('logout', '登出 / Logout'),

@@ -9,25 +9,25 @@ from core.services.notification_template import NotificationContent, Notificatio
 
 def send_notification(user, title, message, notification_type, data=None, priority='normal', content: NotificationContent = None):
     """
-    Creates a notification record, pushes via WebSocket, and optionally sends Email.
+    创建通知记录，通过 WebSocket 推送，并可选择发送电子邮件。
     
     Args:
-        content (NotificationContent): If provided, renders a rich HTML email and stores structured data.
+        content (NotificationContent): 如果提供，则渲染富 HTML 电子邮件并存储结构化数据。
     """
     if not user:
         return None
 
-    # Handle Unified Content
+    # 处理统一内容
     if content:
         if data is None:
             data = {}
         data['rich_content'] = NotificationTemplateService.render_to_dict(content)
         
-        # Ensure fallback text matches content if not explicitly overridden (or keep caller's trust)
-        # We'll stick to using the passed title/message for the DB record for now, 
-        # but the rich_content in 'data' will be used by frontend/email.
+        # 确保回退文本与内容匹配（除非显式覆盖）
+        # 我们暂时坚持使用传递的标题/消息作为数据库记录，
+        # 但 'data' 中的 rich_content 将由前端/电子邮件使用。
 
-    # 1. Create DB Record
+    # 1. 创建数据库记录
     notification = Notification.objects.create(
         user=user,
         title=title,
@@ -38,7 +38,7 @@ def send_notification(user, title, message, notification_type, data=None, priori
         expires_at=timezone.now() + timezone.timedelta(days=30) # Default 30 days
     )
 
-    # 2. Push to WebSocket (Only High/Normal priority or specific types)
+    # 2. 推送到 WebSocket（仅限高/普通优先级或特定类型）
     if priority in ['high', 'normal']:
         try:
             channel_layer = get_channel_layer()
@@ -60,12 +60,12 @@ def send_notification(user, title, message, notification_type, data=None, priori
             notification.save(update_fields=['is_pushed'])
         except Exception as e:
             print(f"Failed to push notification to {user.username}: {e}")
-            # We don't fail the transaction, just log it. The DB record is still there.
+            # 我们不会让事务失败，只是记录它。数据库记录仍然存在。
 
-    # 3. Send Email (Unified Logic)
-    # Only send if content is provided (Rich Email) OR explicit request?
-    # Requirement says "ensure ... correct display in ... Email".
-    # So if we have the content object, we assume we should send the email in that format.
+    # 3. 发送电子邮件（统一逻辑）
+    # 仅在提供内容时发送（富文本邮件）或显式请求？
+    # 需求称“确保...正确显示...”
+    # 因此，如果我们有内容对象，我们假设应该以该格式发送电子邮件。
     if content and user.email:
         try:
             html_message = NotificationTemplateService.render_email(content)

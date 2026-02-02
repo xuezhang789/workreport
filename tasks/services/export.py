@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class TaskExportService:
     """
-    Service to handle task export logic, ensuring consistency across different export views.
+    处理任务导出逻辑的服务，确保不同导出视图之间的一致性。
     """
 
     HEADER = [
@@ -37,9 +37,9 @@ class TaskExportService:
     @staticmethod
     def get_export_rows(tasks):
         """
-        Generator that yields rows for the CSV export.
+        生成器，生成 CSV 导出的行。
         """
-        # Pre-fetch SLA settings once
+        # 预取一次 SLA 设置
         cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
         sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
         
@@ -51,7 +51,7 @@ class TaskExportService:
 
     @staticmethod
     def _format_task_row(task, sla_hours_val, sla_thresholds_val):
-        # Calculate SLA
+        # 计算 SLA
         sla_info = calculate_sla_info(task, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         sla_status_display = sla_info.get('status', 'normal')
         if sla_info.get('paused'):
@@ -60,19 +60,19 @@ class TaskExportService:
         remaining = sla_info.get('remaining_hours')
         remaining_str = f"{remaining:.1f}" if remaining is not None else ""
 
-        # Format Dates
+        # 格式化日期
         due_at = timezone.localtime(task.due_at).strftime('%Y-%m-%d %H:%M:%S') if task.due_at else ''
         completed_at = timezone.localtime(task.completed_at).strftime('%Y-%m-%d %H:%M:%S') if task.completed_at else ''
         created_at = timezone.localtime(task.created_at).strftime('%Y-%m-%d %H:%M:%S')
 
-        # Collaborators
+        # 协作者
         collabs = ", ".join([u.get_full_name() or u.username for u in task.collaborators.all()])
 
         return [
             str(task.id),
             task.title,
             task.project.name,
-            task.get_category_display(), # Added Category
+            task.get_category_display(), # 添加分类
             task.get_status_display(),
             task.get_priority_display(),
             task.user.get_full_name() or task.user.username,
@@ -80,8 +80,8 @@ class TaskExportService:
             due_at,
             completed_at,
             created_at,
-            sla_status_display, # Added SLA Status
-            remaining_str,      # Added SLA Remaining
+            sla_status_display, # 添加 SLA 状态
+            remaining_str,      # 添加 SLA 剩余时间
             task.url or '',
             task.content or '',
         ]

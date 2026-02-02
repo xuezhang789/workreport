@@ -18,6 +18,7 @@ class RBACService:
         key = cls._get_cache_key(user_id, scope)
         cache.delete(key)
         # Also clear global cache if scope is provided, as global roles apply everywhere
+        # 如果提供了 scope，也清除全局缓存，因为全局角色适用于任何地方
         if scope:
             cache.delete(cls._get_cache_key(user_id, None))
 
@@ -43,6 +44,8 @@ class RBACService:
 
         # Fetch roles: Global (scope=None) OR Scoped
         # Note: Global roles apply to ALL scopes.
+        # 获取角色：全局（scope=None）或指定范围
+        # 注意：全局角色适用于所有范围。
         query = Q(user=user) & (Q(scope__isnull=True) | Q(scope=''))
         if scope:
             query |= (Q(user=user) & Q(scope=scope))
@@ -50,6 +53,7 @@ class RBACService:
         user_roles = UserRole.objects.filter(query).select_related('role')
         
         # Collect all roles (including parents)
+        # 收集所有角色（包括父角色）
         all_roles = set()
         queue = [ur.role for ur in user_roles]
         
@@ -62,10 +66,13 @@ class RBACService:
                 queue.append(role.parent)
 
         # Collect permissions
+        # 收集权限
         perms = set()
         for role in all_roles:
             # Optimize: This loop might cause N+1 if not careful. 
             # Ideally we'd fetch all RolePermissions for these roles in one go.
+            # 优化：如果不小心，此循环可能会导致 N+1 问题。
+            # 理想情况下，我们应该一次性获取这些角色的所有 RolePermissions。
             pass
         
         if all_roles:
@@ -77,7 +84,7 @@ class RBACService:
 
         cache.set(cache_key, perms, cls.CACHE_TIMEOUT)
         return perms
-
+    
     @classmethod
     def has_permission(cls, user, permission_code, scope=None):
         """
@@ -103,6 +110,7 @@ class RBACService:
             return []
         
         # 1. Find all roles that have this permission
+        # 1. 查找所有拥有此权限的角色
         roles_with_perm = Role.objects.filter(
             Q(permissions__code=permission_code) | Q(permissions__code='*')
         ).distinct()
@@ -121,11 +129,25 @@ class RBACService:
         # So `roles_with_perm` will only return A.
         # But User might have Role B.
         # So we need to find all descendants of A as well.
+        # 是否也包含继承自这些角色的角色？
+        # 如果子角色继承自父角色，且父角色拥有权限，则子角色也拥有权限。
+        # 因此我们需要找到所有角色 R，其中 R 或其任何父角色拥有权限。
+        # 如果没有递归 CTE，反向查询会很复杂。
+        # 简化方法：
+        # 在内存中获取所有角色，构建继承树，查找目标角色。
+        # 或者：依赖 permissions__code 查询，如果我们没有手动使用 'through' 并带有额外逻辑，它应该能正确处理 ManyToMany。
+        # 但继承是通过 parent 外键手动实现的。
+        # 如果角色 A（父）拥有权限 X。角色 B（子）拥有父角色 A。
+        # 角色 B 在 RolePermission 表中没有权限 X。
+        # 所以 roles_with_perm 只会返回 A。
+        # 但用户可能拥有角色 B。
+        # 因此我们也需要找到 A 的所有后代。
         
         base_role_ids = list(roles_with_perm.values_list('id', flat=True))
         all_target_role_ids = set(base_role_ids)
         
         # Iteratively find children
+        # 迭代查找子角色
         current_ids = base_role_ids
         while current_ids:
             children = Role.objects.filter(parent_id__in=current_ids).values_list('id', flat=True)
@@ -136,6 +158,7 @@ class RBACService:
             current_ids = new_children
             
         # 2. Find UserRoles for these roles
+        # 2. 查找这些角色的 UserRoles
         user_roles = UserRole.objects.filter(
             user=user,
             role_id__in=all_target_role_ids
@@ -194,4 +217,10 @@ class RBACService:
         # Or clear all RBAC cache if role definition changes (simple but heavy).
         # Better: Do nothing and let TTL expire, or provide a 'flush_all' admin tool.
         # For critical updates, we can bump a global version key in cache keys.
+        # 使拥有此角色的所有用户的缓存失效？
+        # 这很昂贵（扫描 UserRole）。
+        # 目前，我们接受最终一致性或实施版本控制策略。
+        # 或者如果角色定义发生变化，清除所有 RBAC 缓存（简单但繁重）。
+        # 更好：什么也不做，让 TTL 过期，或提供 'flush_all' 管理工具。
+        # 对于关键更新，我们可以在缓存键中增加全局版本密钥。
         pass

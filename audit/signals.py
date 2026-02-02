@@ -114,9 +114,9 @@ def log_model_changes(sender, instance, created, **kwargs):
             task = instance
             project = instance.project
 
-        # Optimization: Idempotency Check (Debounce)
-        # Prevent creating duplicate log for same action/user/target within 5 seconds
-        # This handles rapid double-clicks or repeated signal firing
+        # 优化：幂等性检查 (去抖动)
+        # 防止在 5 秒内为同一动作/用户/目标创建重复日志
+        # 这处理了快速双击或重复信号触发
         cutoff = timezone.now() - timedelta(seconds=5)
         details = {'diff': diff}
         
@@ -128,10 +128,10 @@ def log_model_changes(sender, instance, created, **kwargs):
             created_at__gte=cutoff
         ).first()
         
-        # If exists, check if details are effectively the same
-        # Note: JSON comparison in Python is safe (dict order doesn't matter for equality)
+        # 如果存在，检查详情是否实际上相同
+        # 注意：Python 中的 JSON 比较是安全的（字典顺序不影响相等性）
         if exists and exists.details == details:
-            return # Skip duplicate
+            return # 跳过重复项
 
         AuditLog.objects.create(
             user=user if user else None,
@@ -145,7 +145,7 @@ def log_model_changes(sender, instance, created, **kwargs):
             task=task
         )
 
-# M2M Tracking
+# M2M 跟踪
 @receiver(m2m_changed, sender=Project.members.through)
 @receiver(m2m_changed, sender=Project.managers.through)
 @receiver(m2m_changed, sender=Task.collaborators.through)
@@ -153,7 +153,7 @@ def log_m2m_changes(sender, instance, action, reverse, model, pk_set, **kwargs):
     if action not in ["post_add", "post_remove", "post_clear"]: return
     
     user = get_current_user()
-    # M2M changes often happen in views where user is available
+    # M2M 变更通常发生在用户可用的视图中
     
     field_name = ''
     if sender == Project.members.through: field_name = 'members'
@@ -172,10 +172,10 @@ def log_m2m_changes(sender, instance, action, reverse, model, pk_set, **kwargs):
             else:
                 names.append(str(obj))
     
-    # Correctly identify instance. For reverse M2M (e.g. user.project_set), instance is User.
-    # But here sender is Project.members.through.
-    # If action is forward (project.members.add(user)), instance is Project, model is User.
-    # If action is reverse (user.project_memberships.add(project)), instance is User, model is Project.
+    # 正确识别实例。对于反向 M2M（例如 user.project_set），实例是 User。
+    # 但这里 sender 是 Project.members.through。
+    # 如果动作是正向 (project.members.add(user))，实例是 Project，模型是 User。
+    # 如果动作是反向 (user.project_memberships.add(project))，实例是 User，模型是 Project。
     
     project = None
     task = None
@@ -189,22 +189,22 @@ def log_m2m_changes(sender, instance, action, reverse, model, pk_set, **kwargs):
         project = instance.project
         target_obj = instance
     elif isinstance(instance, User):
-        # Reverse relation change. We need to log for each Project/Task involved.
-        # But pk_set contains Project/Task IDs.
-        # This is tricky because we want to log against the Project/Task, not the User.
-        # We should iterate over the target objects in pk_set.
+        # 反向关系变更。我们需要为涉及的每个项目/任务记录日志。
+        # 但 pk_set 包含项目/任务 ID。
+        # 这很棘手，因为我们要针对项目/任务记录，而不是针对用户。
+        # 我们应该遍历 pk_set 中的目标对象。
         pass
 
-    # If reverse M2M (User side), we need to handle it differently or skip?
-    # Usually we want logs on the Project/Task.
-    # If I do user.project_memberships.add(p1), instance=user, model=Project, pk_set={p1.id}
+    # 如果是反向 M2M（用户侧），我们需要以不同方式处理或跳过？
+    # 通常我们希望在项目/任务上记录日志。
+    # 如果我做 user.project_memberships.add(p1)，instance=user，model=Project，pk_set={p1.id}
     
     if isinstance(instance, User):
-        # Swap logic: We want to create logs for each Project/Task in pk_set
+        # 交换逻辑：我们要为 pk_set 中的每个项目/任务创建日志
         targets = model.objects.filter(pk__in=pk_set)
         for target in targets:
-            # Recursive call or manual create? Manual create is safer to avoid infinite loop
-            # Determine field name on Target side
+            # 递归调用或手动创建？手动创建更安全以避免无限循环
+            # 确定目标侧的字段名称
             if model == Project and sender == Project.members.through:
                 t_field = 'members'
             elif model == Project and sender == Project.managers.through:

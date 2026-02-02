@@ -28,6 +28,7 @@ def api_task_detail(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
     
     # Permission check (reuse logic from admin_task_edit)
+    # 权限检查（重用 admin_task_edit 的逻辑）
     can_see = request.user.is_superuser or \
               get_accessible_projects(request.user).filter(id=task.project.id).exists() or \
               task.user == request.user or \

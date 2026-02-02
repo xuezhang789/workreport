@@ -13,12 +13,13 @@ def notification_list(request):
     notifications = request.user.notifications.all()
     
     # Filter by type if requested
+    # 如果请求，按类型过滤
     n_type = request.GET.get('type')
     if n_type:
         notifications = notifications.filter(notification_type=n_type)
         
     return render(request, 'reports/notification_list.html', {
-        'notifications': notifications[:50], # Limit to recent 50
+        'notifications': notifications[:50], # Limit to recent 50 | 限制为最近 50 条
         'unread_count': notifications.filter(is_read=False).count()
     })
 

@@ -2,39 +2,39 @@ from core.constants import TaskStatus, TaskCategory
 
 class TaskStateService:
     """
-    Service to handle task state transitions and validation.
+    处理任务状态流转和验证的服务。
     """
     
     BUG_FLOW = {
         TaskStatus.NEW: [TaskStatus.CONFIRMED],
         TaskStatus.CONFIRMED: [TaskStatus.FIXING],
         TaskStatus.FIXING: [TaskStatus.VERIFYING],
-        TaskStatus.VERIFYING: [TaskStatus.CLOSED, TaskStatus.FIXING], # Allow reopen if verification fails
-        TaskStatus.CLOSED: [TaskStatus.VERIFYING], # Allow reopen to verifying? Or Fixing?
+        TaskStatus.VERIFYING: [TaskStatus.CLOSED, TaskStatus.FIXING], # 允许如果验证失败重新打开
+        TaskStatus.CLOSED: [TaskStatus.VERIFYING], # 允许重新打开到验证? 或者修复?
     }
-    # Note: Requirement says "New -> Confirmed -> Fixing -> Verifying -> Closed".
-    # I will allow Verifying -> Fixing (rejection) and Closed -> Verifying (reopen) as practical defaults,
-    # but strictly prioritization the linear flow. 
-    # Actually, let's stick to the strict requirement first: "New -> Confirmed -> Fixing -> Verifying -> Closed".
-    # And maybe allow Verifying -> Fixing because otherwise you can't fix a failed verification.
+    # 注意: 需求说是 "New -> Confirmed -> Fixing -> Verifying -> Closed".
+    # 我将允许 Verifying -> Fixing (拒绝) 和 Closed -> Verifying (重新打开) 作为实际默认值，
+    # 但严格优先考虑线性流程。
+    # 实际上，让我们先坚持严格的需求: "New -> Confirmed -> Fixing -> Verifying -> Closed".
+    # 并允许 Verifying -> Fixing 因为否则你无法修复失败的验证。
     
     STRICT_BUG_FLOW = {
         TaskStatus.NEW: [TaskStatus.CONFIRMED],
         TaskStatus.CONFIRMED: [TaskStatus.FIXING],
         TaskStatus.FIXING: [TaskStatus.VERIFYING],
-        TaskStatus.VERIFYING: [TaskStatus.CLOSED, TaskStatus.FIXING], # Added loop back for failed verification
-        TaskStatus.CLOSED: [TaskStatus.FIXING, TaskStatus.NEW], # Allow reopen
+        TaskStatus.VERIFYING: [TaskStatus.CLOSED, TaskStatus.FIXING], # 添加回环用于失败的验证
+        TaskStatus.CLOSED: [TaskStatus.FIXING, TaskStatus.NEW], # 允许重新打开
     }
 
     @classmethod
     def get_allowed_next_statuses(cls, category, current_status):
         """
-        Get allowed next statuses for a given category and current status.
+        获取给定分类和当前状态的允许的下一个状态。
         """
         if category == TaskCategory.TASK:
-            # Task allows transition to any Task-compatible status
-            # Existing statuses: TODO, IN_PROGRESS, BLOCKED, IN_REVIEW, DONE, CLOSED
-            # It should NOT allow Bug-specific statuses like NEW, CONFIRMED, FIXING, VERIFYING.
+            # 任务允许流转到任何与任务兼容的状态
+            # 现有状态: TODO, IN_PROGRESS, BLOCKED, IN_REVIEW, DONE, CLOSED
+            # 它不应该允许 Bug 特定的状态，如 NEW, CONFIRMED, FIXING, VERIFYING。
             return [
                 TaskStatus.TODO,
                 TaskStatus.IN_PROGRESS,
@@ -45,14 +45,14 @@ class TaskStateService:
             ]
         
         elif category == TaskCategory.BUG:
-            # Bug allows specific flow
-            # If current status is not in the flow (e.g. converted from Task), allow resetting to NEW?
-            # Or assume valid start.
+            # Bug 允许特定流程
+            # 如果当前状态不在流程中（例如从任务转换而来），允许重置为 NEW？
+            # 或者假设有效的开始。
             
             allowed = cls.STRICT_BUG_FLOW.get(current_status, [])
-            # Also always allow staying in same status
+            # 总是允许保持在同一状态
             if current_status not in allowed:
-                # If we are in a weird state (e.g. TODO), allow jumping to NEW
+                # 如果我们处于奇怪的状态（例如 TODO），允许跳转到 NEW
                 if current_status not in [TaskStatus.NEW, TaskStatus.CONFIRMED, TaskStatus.FIXING, TaskStatus.VERIFYING, TaskStatus.CLOSED]:
                     return [TaskStatus.NEW]
             return allowed
@@ -60,7 +60,7 @@ class TaskStateService:
     @classmethod
     def validate_transition(cls, category, current_status, new_status):
         """
-        Validate if a transition is allowed.
+        验证流转是否允许。
         """
         if current_status == new_status:
             return True

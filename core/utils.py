@@ -28,7 +28,7 @@ MANAGER_ROLES = {'mgr', 'pm'}
 # We imported it above, so it is available in this namespace.
 
 def _throttle(request, key: str, min_interval=0.8):
-    """简单接口节流，基于 session/key。"""
+    """简单接口节流，基于 session/key。 / Simple API throttle based on session/key."""
     now = time.monotonic()
     last = request.session.get(key)
     if last and now - last < min_interval:
@@ -41,12 +41,13 @@ def _admin_forbidden(request, message="需要管理员权限 / Admin access requ
     return render(request, '403.html', {'detail': message}, status=403)
 
 def _friendly_forbidden(request, message):
-    """统一的友好 403 返回，带双语提示。"""
+    """统一的友好 403 返回，带双语提示。 / Unified friendly 403 response with bilingual message."""
     return render(request, '403.html', {'detail': message}, status=403)
 
 def _validate_file(file):
     """
     Validates file size and extension.
+    验证文件大小和扩展名。
     Returns (is_valid, error_message)
     """
     if file.size > UPLOAD_MAX_SIZE:
@@ -88,7 +89,7 @@ def _create_export_job(user, export_type):
     return ExportJob.objects.create(user=user, export_type=export_type, status='running', progress=10, expires_at=expires)
 
 def _generate_export_file(job, header, rows_iterable):
-    """生成 CSV 临时文件，更新 Job 状态，返回文件路径。"""
+    """生成 CSV 临时文件，更新 Job 状态，返回文件路径。 / Generate CSV temp file, update Job status, return file path."""
     import tempfile
     import csv as pycsv
     import os

@@ -18,7 +18,7 @@ class Command(BaseCommand):
         today = date.today()
         weekday = now.weekday()  # Monday = 0
 
-        # Optimization: Fetch all users who submitted today
+        # 优化：获取今天已提交的所有用户
         submitted_user_ids = set(
             DailyReport.objects.filter(date=today, status='submitted')
             .values_list('user_id', flat=True)
@@ -63,11 +63,11 @@ class Command(BaseCommand):
                     miss.save(update_fields=['notified_at'])
 
                 if should_notify:
-                    # Email Notification
+                    # 邮件通知
                     if user.email:
                         self._send_email(user, project.name, today)
                     
-                    # In-App Notification
+                    # 站内通知
                     send_notification(
                         user=user,
                         title="日报缺报提醒",

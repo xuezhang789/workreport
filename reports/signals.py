@@ -19,13 +19,13 @@ TRACKED_MODELS = [DailyReport, User, Project, Task]
 
 def _invalidate_stats_cache(sender=None, **kwargs):
     """
-    Invalidate statistics cache. Can be used as a signal receiver or helper.
+    使统计缓存无效。可以用作信号接收器或助手。
     """
     try:
-        # Attempt to use pattern deletion (e.g., django-redis)
+        # 尝试使用模式删除（例如 django-redis）
         cache.delete_pattern("stats_*")
     except (AttributeError, Exception):
-        # Fallback for backends without delete_pattern (e.g., LocMemCache in tests)
+        # 对于不支持 delete_pattern 的后端的回退（例如测试中的 LocMemCache）
         cache.clear()
 
 @receiver(pre_save)
@@ -37,7 +37,7 @@ def audit_pre_save(sender, instance, **kwargs):
         try:
             old_instance = sender.objects.get(pk=instance.pk)
             instance._audit_diff = AuditService._calculate_diff(old_instance, instance)
-            instance._old_instance = old_instance # Keep reference for post_save logic
+            instance._old_instance = old_instance # 保留 post_save 逻辑的引用
         except sender.DoesNotExist:
             instance._audit_diff = None
     else:
@@ -45,7 +45,7 @@ def audit_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
-    # Cache Invalidation for core models
+    # 核心模型的缓存失效
     if sender in [Project, Task, DailyReport]:
         _invalidate_stats_cache()
 
@@ -56,17 +56,25 @@ def audit_post_save(sender, instance, created, **kwargs):
     ip = get_current_ip()
     
     if created:
-        AuditService.log_change(user, 'create', instance, ip=ip)
+        try:
+            AuditService.log_change(user, 'create', instance, ip=ip)
+        except Exception as e:
+            # 当 AuditLog 表不存在时的回退（例如在初始迁移/创建期间）
+            # 这对于“createsuperuser”在全新数据库上工作至关重要
+            print(f"Warning: Failed to log audit creation (likely table missing): {e}")
     else:
         # Update
         if hasattr(instance, '_audit_diff') and instance._audit_diff:
-            AuditService.log_change(
-                user, 
-                'update', 
-                instance, 
-                ip=ip, 
-                changes=instance._audit_diff
-            )
+            try:
+                AuditService.log_change(
+                    user, 
+                    'update', 
+                    instance, 
+                    ip=ip, 
+                    changes=instance._audit_diff
+                )
+            except Exception as e:
+                print(f"Warning: Failed to log audit update: {e}")
 
 @receiver(post_delete)
 def audit_post_delete(sender, instance, **kwargs):
@@ -79,17 +87,20 @@ def audit_post_delete(sender, instance, **kwargs):
     user = get_current_user()
     ip = get_current_ip()
     
-    AuditService.log_change(user, 'delete', instance, ip=ip)
+    try:
+        AuditService.log_change(user, 'delete', instance, ip=ip)
+    except Exception as e:
+        print(f"Warning: Failed to log audit delete: {e}")
 
 @receiver(post_save, sender=Task)
 def notify_task_assignment(sender, instance, created, **kwargs):
     """
-    Notify user when a task is assigned to them or status/priority changes.
+    当任务分配给用户或状态/优先级更改时通知用户。
     """
     current_operator = get_current_user()
 
     if created:
-        # New task assigned
+        # 分配了新任务
         if instance.user and instance.user != current_operator:
             send_notification(
                 user=instance.user,
@@ -100,14 +111,14 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                 data={'task_id': instance.id, 'project_id': instance.project_id}
             )
     else:
-        # Update Scenarios
+        # 更新场景
         if hasattr(instance, '_audit_diff') and instance._audit_diff:
             diff = instance._audit_diff
             
-            # 1. User Re-assignment
+            # 1. 用户重新分配
             if 'user' in diff:
                 new_user_username = diff['user']['new']
-                # Notify new user
+                # 通知新用户
                 if instance.user and instance.user != current_operator:
                     send_notification(
                         user=instance.user,
@@ -118,12 +129,12 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         data={'task_id': instance.id, 'project_id': instance.project_id}
                     )
             
-            # 2. Status Change
+            # 2. 状态变更
             if 'status' in diff:
                 old_status = diff['status']['old']
                 new_status = diff['status']['new']
                 
-                # Notify Owner (if not operator)
+                # 通知所有者（如果不是操作员）
                 if instance.user and instance.user != current_operator:
                     send_notification(
                         user=instance.user,
@@ -134,7 +145,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         data={'task_id': instance.id, 'project_id': instance.project_id, 'diff': diff}
                     )
                 
-                # Notify Collaborators
+                # 通知协作者
                 for collaborator in instance.collaborators.all():
                     if collaborator != current_operator and collaborator != instance.user:
                         send_notification(
@@ -146,7 +157,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                             data={'task_id': instance.id, 'project_id': instance.project_id}
                         )
 
-            # 3. Priority Change (High Priority Alert)
+            # 3. 优先级变更（高优先级警报）
             if 'priority' in diff:
                 new_priority = diff['priority']['new']
                 if new_priority == 'high' and instance.user != current_operator:
@@ -162,7 +173,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Project)
 def notify_project_change(sender, instance, created, **kwargs):
     """
-    Notify members when project phase changes or critical updates occur.
+    当项目阶段变更或发生关键更新时通知成员。
     """
     if created:
         return
@@ -172,18 +183,18 @@ def notify_project_change(sender, instance, created, **kwargs):
     if hasattr(instance, '_audit_diff') and instance._audit_diff:
         diff = instance._audit_diff
         
-        # Track Phase & Progress fields
+        # 跟踪阶段和进度字段
         monitored_fields = ['current_phase', 'overall_progress', 'start_date', 'end_date', 'progress_note']
         if not any(field in diff for field in monitored_fields):
             return
 
-        # Prepare Log Data
+        # 准备日志数据
         old_phase = None
         new_phase = None
         old_progress = 0
         new_progress = 0
         
-        # Handle Phase
+        # 处理阶段
         if 'current_phase' in diff:
             new_phase = instance.current_phase
             if hasattr(instance, '_old_instance'):
@@ -192,19 +203,19 @@ def notify_project_change(sender, instance, created, **kwargs):
             new_phase = instance.current_phase
             old_phase = instance.current_phase
 
-        # Handle Progress
+        # 处理进度
         if 'overall_progress' in diff:
             old_progress = diff['overall_progress']['old'] or 0
             new_progress = diff['overall_progress']['new'] or 0
         else:
             new_progress = instance.overall_progress
-            old_progress = instance.overall_progress # Assume no change
+            old_progress = instance.overall_progress # 假设没有变化
 
-        # Create Change Log
+        # 创建变更日志
         details = {}
         for field in monitored_fields:
             if field in diff:
-                # Store string representation for dates/notes
+                # 存储日期/备注的字符串表示形式
                 details[field] = {
                     'old': str(diff[field]['old']) if diff[field]['old'] is not None else None,
                     'new': str(diff[field]['new']) if diff[field]['new'] is not None else None
@@ -220,34 +231,34 @@ def notify_project_change(sender, instance, created, **kwargs):
             changed_by=current_operator
         )
 
-        # Identify Recipients
+        # 确定收件人
         recipients = set()
         
-        # 1. Project Managers (Owner + Managers)
+        # 1. 项目经理（所有者 + 经理）
         if instance.owner:
             recipients.add(instance.owner)
         recipients.update(instance.managers.all())
         
-        # 2. Phase Responsible Person (Dynamic Role)
+        # 2. 阶段负责人（动态角色）
         if new_phase and new_phase.related_role:
-            # Find users with this role in this project scope
+            # 在此项目范围内查找具有此角色的用户
             scope = f"project:{instance.id}"
             role_users = UserRole.objects.filter(
                 role=new_phase.related_role,
-                scope__in=[scope, None] # Project scope or Global
+                scope__in=[scope, None] # 项目范围或全局
             ).values_list('user_id', flat=True)
             
             if role_users:
                 recipients.update(User.objects.filter(id__in=role_users))
 
-        # Remove operator from recipients
+        # 从收件人中移除操作员
         if current_operator in recipients:
             recipients.remove(current_operator)
             
         if not recipients:
             return
 
-        # Build Unified Notification Content
+        # 构建统一通知内容
         content = NotificationContent(
             title=f"项目进度更新 / Project Progress Updated",
             subtitle=instance.name,
@@ -293,7 +304,7 @@ def notify_project_change(sender, instance, created, **kwargs):
                 value=str(diff['end_date']['new']),
                 old_value=str(diff['end_date']['old'])
             ))
-
+            
         if 'progress_note' in diff:
              content.items.append(NotificationItem(
                 label="备注 / Note",
@@ -301,7 +312,7 @@ def notify_project_change(sender, instance, created, **kwargs):
                 old_value=None
             ))
 
-        # Send Notifications
+        # 发送通知
         for user in recipients:
             send_notification(
                 user=user,
@@ -315,13 +326,13 @@ def notify_project_change(sender, instance, created, **kwargs):
 @receiver(post_save, sender=TaskComment)
 def notify_comment_mention(sender, instance, created, **kwargs):
     """
-    Notify users mentioned in a comment.
+    通知评论中提到的用户。
     """
     if not created:
         return
         
-    mentions = instance.mentions # List of usernames or IDs? Model says JSONField.
-    # Assuming mentions is a list of usernames for now based on typical implementation
+    mentions = instance.mentions # 用户名或 ID 列表？模型显示为 JSONField。
+    # 假设 mentions 是基于典型实现的用户名列表
     if not mentions:
         return
         
@@ -329,7 +340,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
         try:
             user = User.objects.get(username=username)
             if user == instance.user:
-                continue # Don't notify self
+                continue # 不通知自己
                 
             send_notification(
                 user=user,
@@ -342,7 +353,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
         except User.DoesNotExist:
             pass
             
-    # Also notify task owner if someone else comments
+    # 如果其他人评论，也通知任务所有者
     task_owner = instance.task.user
     if task_owner != instance.user and (not mentions or task_owner.username not in mentions):
         send_notification(
@@ -356,6 +367,6 @@ def notify_comment_mention(sender, instance, created, **kwargs):
 
 @receiver(m2m_changed)
 def audit_m2m_changed(sender, instance, action, **kwargs):
-    # Handle DailyReport.projects changes
+    # 处理 DailyReport.projects 变更
     if isinstance(instance, DailyReport) and action in ["post_add", "post_remove", "post_clear"]:
         _invalidate_stats_cache()

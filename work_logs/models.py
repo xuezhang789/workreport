@@ -26,6 +26,10 @@ class ReminderRule(models.Model):
         return f"{self.project.code} {role} @ {self.cutoff_time}"
 
 class DailyReport(models.Model):
+    """
+    日报模型：记录用户每日工作内容、计划和问题。
+    字段根据角色动态展示。
+    """
     ROLE_CHOICES = Profile.ROLE_CHOICES
     STATUS_CHOICES = [
         ('draft', '草稿 / Draft'),

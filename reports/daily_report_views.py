@@ -139,8 +139,8 @@ def daily_report_create(request):
     # 防止重复日报：同一用户+日期+角色唯一
 
     if request.method == 'POST':
-        date_str = request.POST.get('date')
-        role = request.POST.get('role') or position
+        date_str = request.POST.get('date', '').strip()
+        role = (request.POST.get('role') or '').strip() or position
         role_value = role
         date_value = date_str
         project_ids = [int(pid) for pid in request.POST.getlist('projects') if pid.isdigit()]
@@ -153,35 +153,35 @@ def daily_report_create(request):
         edit_report_id = request.POST.get('report_id')
 
         # 通用
-        today_work = request.POST.get('today_work', '')
-        progress_issues = request.POST.get('progress_issues', '')
-        tomorrow_plan = request.POST.get('tomorrow_plan', '')
+        today_work = request.POST.get('today_work', '').strip()
+        progress_issues = request.POST.get('progress_issues', '').strip()
+        tomorrow_plan = request.POST.get('tomorrow_plan', '').strip()
 
         # QA
-        testing_scope = request.POST.get('testing_scope', '')
-        testing_progress = request.POST.get('testing_progress', '')
-        bug_summary = request.POST.get('bug_summary', '')
-        testing_tomorrow = request.POST.get('testing_tomorrow', '')
+        testing_scope = request.POST.get('testing_scope', '').strip()
+        testing_progress = request.POST.get('testing_progress', '').strip()
+        bug_summary = request.POST.get('bug_summary', '').strip()
+        testing_tomorrow = request.POST.get('testing_tomorrow', '').strip()
 
         # 产品
-        product_today = request.POST.get('product_today', '')
-        product_coordination = request.POST.get('product_coordination', '')
-        product_tomorrow = request.POST.get('product_tomorrow', '')
+        product_today = request.POST.get('product_today', '').strip()
+        product_coordination = request.POST.get('product_coordination', '').strip()
+        product_tomorrow = request.POST.get('product_tomorrow', '').strip()
 
         # UI
-        ui_today = request.POST.get('ui_today', '')
-        ui_feedback = request.POST.get('ui_feedback', '')
-        ui_tomorrow = request.POST.get('ui_tomorrow', '')
+        ui_today = request.POST.get('ui_today', '').strip()
+        ui_feedback = request.POST.get('ui_feedback', '').strip()
+        ui_tomorrow = request.POST.get('ui_tomorrow', '').strip()
 
         # 运维
-        ops_today = request.POST.get('ops_today', '')
-        ops_monitoring = request.POST.get('ops_monitoring', '')
-        ops_tomorrow = request.POST.get('ops_tomorrow', '')
+        ops_today = request.POST.get('ops_today', '').strip()
+        ops_monitoring = request.POST.get('ops_monitoring', '').strip()
+        ops_tomorrow = request.POST.get('ops_tomorrow', '').strip()
 
         # 管理
-        mgr_progress = request.POST.get('mgr_progress', '')
-        mgr_risks = request.POST.get('mgr_risks', '')
-        mgr_tomorrow = request.POST.get('mgr_tomorrow', '')
+        mgr_progress = request.POST.get('mgr_progress', '').strip()
+        mgr_risks = request.POST.get('mgr_risks', '').strip()
+        mgr_tomorrow = request.POST.get('mgr_tomorrow', '').strip()
 
         if not role or role not in dict(DailyReport.ROLE_CHOICES):
             errors.append("请选择有效的角色")

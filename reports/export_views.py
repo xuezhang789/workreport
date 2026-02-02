@@ -321,6 +321,7 @@ def performance_export(request):
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
     
     # Security check for project filter
+    # 项目过滤器的安全检查
     if project_filter and accessible_projects is not None:
         if not accessible_projects.filter(id=project_filter).exists():
              return _admin_forbidden(request, "没有该项目的访问权限 / No access to this project")

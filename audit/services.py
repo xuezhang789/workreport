@@ -6,9 +6,9 @@ class AuditLogService:
     @staticmethod
     def get_history(target_obj, filters=None):
         """
-        Get audit history QuerySet for a specific target object (Project or Task).
-        Supports filtering by user, date, action, and specific field changes via DB lookups.
-        Returns a QuerySet (lazy), not a list.
+        获取特定目标对象（项目或任务）的审计历史查询集。
+        支持按用户、日期、动作和特定字段变更进行过滤。
+        返回一个 QuerySet（惰性），而不是列表。
         """
         filters = filters or {}
         
@@ -17,15 +17,15 @@ class AuditLogService:
         
         qs = AuditLog.objects.filter(target_type=target_type, target_id=target_id).select_related('user')
         
-        # Filter out manual access logs or redundant logs
-        # We only want data changes or specific actions like upload/export
+        # 过滤掉手动访问日志或冗余日志
+        # 我们只想要数据变更或特定操作，如上传/导出
         qs = qs.exclude(target_type='AccessLog')
         
-        # Filter by User (Operator)
+        # 按用户过滤 (操作人)
         if filters.get('user_id'):
             qs = qs.filter(user_id=filters.get('user_id'))
             
-        # Filter by Date Range
+        # 按日期范围过滤
         if filters.get('start_date'):
             start = parse_date(filters.get('start_date'))
             if start:
@@ -36,7 +36,7 @@ class AuditLogService:
             if end:
                 qs = qs.filter(created_at__date__lte=end)
                 
-        # Filter by Action Type
+        # 按动作类型过滤
         action_type = filters.get('action_type')
         if action_type:
             if action_type == 'field_change':
@@ -50,7 +50,7 @@ class AuditLogService:
             elif action_type == 'comment':
                  qs = qs.filter(summary__icontains='comment')
         
-        # Filter by Field Name (DB Level Optimization)
+        # 按字段名称过滤 (数据库级优化)
         if filters.get('field_name'):
             f_name = filters.get('field_name')
             if f_name == 'attachment':
@@ -61,7 +61,7 @@ class AuditLogService:
             elif f_name == 'comment':
                 qs = qs.filter(summary__icontains='comment')
             else:
-                # Field change: details -> diff -> field_name exists
+                # 字段变更: details -> diff -> field_name 存在
                 qs = qs.filter(details__diff__has_key=f_name)
 
         return qs.order_by('-created_at')
@@ -69,10 +69,10 @@ class AuditLogService:
     @staticmethod
     def format_log_entry(log, field_filter=None):
         """
-        Process a single AuditLog instance into a display-friendly dictionary.
-        Args:
-            log: AuditLog instance
-            field_filter: If provided, only return items matching this field name.
+        将单个 AuditLog 实例处理为显示友好的字典。
+        参数:
+            log: AuditLog 实例
+            field_filter: 如果提供，则仅返回匹配此字段名称的项目。
         """
         entry = {
             'id': log.id,
@@ -83,20 +83,21 @@ class AuditLogService:
             'items': []
         }
         
-        # 1. Field Changes (Diff)
+        # 1. 字段变更 (Diff)
         if log.details and 'diff' in log.details:
             diff = log.details['diff']
             
-            # Apply field filter if strict filtering is required
+            # 如果需要严格过滤，应用字段过滤器
             if field_filter and field_filter not in ['attachment', 'comment']:
                 if field_filter in diff:
                     diff = {field_filter: diff[field_filter]}
                 else:
-                    diff = {} # Should not happen if DB filtered correctly, but safe fallback
+                    diff = {} # 如果数据库过滤正确，这不应发生，但作为安全回退
+
 
             for field, change in diff.items():
                 if isinstance(change, dict):
-                    # Handle M2M changes
+                    # 处理 M2M 变更
                     if 'action' in change and 'values' in change:
                         action_verb = change.get('action')
                         values = change.get('values', [])
@@ -111,7 +112,7 @@ class AuditLogService:
                             'action': action_verb
                         })
                     else:
-                        # Standard field change
+                        # 标准字段变更
                         old_val = change.get('old')
                         new_val = change.get('new')
                         entry['items'].append({
@@ -123,7 +124,7 @@ class AuditLogService:
                             'action': 'changed'
                         })
                 else:
-                    # Fallback for old logs or malformed data
+                    # 兼容旧日志或格式错误的数据
                     entry['items'].append({
                         'type': 'field',
                         'field': field,
@@ -133,7 +134,7 @@ class AuditLogService:
                         'action': 'changed'
                     })
 
-        # 2. Attachments
+        # 2. 附件
         should_show_attachments = not field_filter or field_filter == 'attachment'
         if should_show_attachments:
             if log.action in ['upload', 'delete'] or (log.details and 'attachment_actions' in log.details):
@@ -181,7 +182,7 @@ class AuditLogService:
                                 'description': f"Updated content of {filename}"
                             })
 
-        # 3. Comments
+        # 3. 评论
         should_show_comments = not field_filter or field_filter == 'comment'
         if should_show_comments and 'comment' in log.summary:
             entry['items'].append({
@@ -193,10 +194,10 @@ class AuditLogService:
                 'description': 'Added a comment'
             })
 
-        # 4. Create/General (Lifecycle)
-        # Only show lifecycle if no filter or specific filter matches?
-        # Usually lifecycle is separate. If filtering by field 'status', do we show 'Created'?
-        # Probably not.
+        # 4. 创建/通用 (生命周期)
+        # 仅在无过滤器或特定过滤器匹配时显示生命周期？
+        # 通常生命周期是分开的。如果按字段 'status' 过滤，我们是否显示 'Created'？
+        # 可能不会。
         if not field_filter and log.action == 'create' and not entry['items']:
              entry['items'].append({
                 'type': 'lifecycle',

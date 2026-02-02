@@ -16,4 +16,5 @@ from .search_views import *
 from .notification_views import *
 
 # Explicitly export internal services used by tests
+# 显式导出测试使用的内部服务
 from reports.services.stats import get_performance_stats as _performance_stats
