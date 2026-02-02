@@ -490,6 +490,54 @@
                 <span style="font-weight: 600;">创建新项目 / Create Project</span>
             </a>
         </div>
+
+        <!-- Pagination for Projects -->
+        {% if project_page_obj.has_other_pages %}
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span>共 {{ project_page_obj.paginator.count }} 个项目 / Total {{ project_page_obj.paginator.count }} projects</span>
+                <span>显示 {{ project_page_obj.start_index }}-{{ project_page_obj.end_index }}</span>
+            </div>
+    
+            <div class="pagination-controls">
+                {% if project_page_obj.has_previous %}
+                <a href="?{% url_replace project_page=project_page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="page-btn disabled">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </span>
+                {% endif %}
+    
+                {% for i in project_page_obj.paginator.page_range %}
+                    {% if project_page_obj.number == i %}
+                    <span class="page-btn active">{{ i }}</span>
+                    {% elif i > project_page_obj.number|add:'-3' and i < project_page_obj.number|add:'3' %}
+                    <a href="?{% url_replace project_page=i %}" class="page-btn">{{ i }}</a>
+                    {% endif %}
+                {% endfor %}
+    
+                {% if project_page_obj.has_next %}
+                <a href="?{% url_replace project_page=project_page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="page-btn disabled">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- TAB 2: Member Directory (Existing) -->
@@ -610,15 +658,15 @@
                     <div class="meta-item" style="align-items: flex-start;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 3px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         <div style="flex: 1;">
-                            <div style="margin-bottom: 4px;">参与项目 / Projects ({{ user.project_memberships.count }})</div>
+                            <div style="margin-bottom: 4px;">参与项目 / Projects ({{ user.project_memberships.all|length }})</div>
                             <div class="project-tags">
                                 {% for proj in user.project_memberships.all|slice:":4" %}
                                     <span class="project-tag">{{ proj.code }}</span>
                                 {% endfor %}
-                                {% if user.project_memberships.count > 4 %}
-                                    <span class="project-tag">+{{ user.project_memberships.count|add:"-4" }}</span>
+                                {% if user.project_memberships.all|length > 4 %}
+                                    <span class="project-tag">+{{ user.project_memberships.all|length|add:"-4" }}</span>
                                 {% endif %}
-                                {% if user.project_memberships.count == 0 %}
+                                {% if user.project_memberships.all|length == 0 %}
                                     <span class="text-muted" style="font-size: 12px;">--</span>
                                 {% endif %}
                             </div>
@@ -655,7 +703,7 @@
 
         <div class="pagination-controls">
             {% if page_obj.has_previous %}
-            <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
+            <a href="?{% url_replace member_page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
@@ -672,12 +720,12 @@
                 {% if page_obj.number == i %}
                 <span class="page-btn active">{{ i }}</span>
                 {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
+                <a href="?{% url_replace member_page=i %}" class="page-btn">{{ i }}</a>
                 {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
-            <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
+            <a href="?{% url_replace member_page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
@@ -732,7 +780,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // If URL has ?tab=members, switch to it
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('q') || urlParams.get('role') || urlParams.get('page')) {
+            if (urlParams.get('q') || urlParams.get('role') || urlParams.get('member_page')) {
                 switchTab('members');
             } else {
                 switchTab('projects');

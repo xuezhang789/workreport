@@ -73,37 +73,70 @@ def teams_list(request):
         # Let's stick to: Directory = All Users (so you can add them).
         qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
-    paginator = Paginator(qs, 28)
-    page_obj = paginator.get_page(request.GET.get('page'))
+    # --- Pagination for Member Directory ---
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('member_page'))
 
-    # Project Team Data for "Project View"
+    # --- Project Team Data for "Project View" ---
     # Filtered by manageable projects
     project_teams = []
-    # all_projects = Project.objects.filter(is_active=True)... -> Replaced by manageable_projects
     
-    target_projects = manageable_projects.prefetch_related('members', 'managers', 'owner').order_by('name')
+    # Optimization: Annotate counts and prefetch related fields to avoid N+1
+    target_projects_qs = manageable_projects.annotate(
+        member_count=models.Count('members', distinct=True),
+        manager_count=models.Count('managers', distinct=True)
+    ).select_related('owner').order_by('name')
     
-    for proj in target_projects:
-        # Count roles based on Profile (Legacy/Simple) or RBAC?
-        member_ids = proj.members.values_list('id', flat=True)
-        role_stats = Profile.objects.filter(user_id__in=member_ids).values('position').annotate(count=models.Count('position'))
+    # --- Pagination for Project Teams ---
+    project_paginator = Paginator(target_projects_qs, 20)
+    project_page_obj = project_paginator.get_page(request.GET.get('project_page'))
+    current_page_projects = project_page_obj.object_list
+    
+    # Optimization: Fetch role stats in bulk instead of per-project loop
+    # Group by (Project, Position)
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    # Only fetch stats for projects on current page
+    role_stats_qs = User.objects.filter(
+        project_memberships__in=current_page_projects
+    ).values(
+        'project_memberships', 'profile__position'
+    ).annotate(
+        count=models.Count('id')
+    )
+    
+    # Process stats in memory
+    stats_map = {}
+    for stat in role_stats_qs:
+        p_id = stat['project_memberships']
+        if not p_id: continue
         
+        pos = stat['profile__position']
+        cnt = stat['count']
+        
+        if p_id not in stats_map:
+            stats_map[p_id] = []
+        stats_map[p_id].append({'position': pos, 'count': cnt})
+    
+    for proj in current_page_projects:
         project_teams.append({
             'project': proj,
-            'member_count': proj.members.count(),
-            'manager_count': proj.managers.count(),
-            'role_stats': role_stats
+            'member_count': proj.member_count,
+            'manager_count': proj.manager_count,
+            'role_stats': stats_map.get(proj.id, [])
         })
 
     return render(request, 'reports/teams.html', {
         'users': page_obj,
         'page_obj': page_obj,
+        'project_page_obj': project_page_obj,
         'q': q,
         'role': role,
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
         'total_count': qs.count(),
-        'projects': target_projects, # For modal & filter -> Only show projects user can manage
+        'projects': target_projects_qs, # For modal & filter -> Only show projects user can manage
         'project_teams': project_teams, # New Data -> Only show projects user can manage
     })
 

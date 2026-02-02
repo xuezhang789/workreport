@@ -138,9 +138,21 @@ def project_list(request):
     if phase_id and phase_id.isdigit():
         projects = projects.filter(current_phase_id=int(phase_id))
         
-    projects = projects.annotate(member_count=Count('members', distinct=True))
+    # Optimization: Remove heavy annotation for list view if not strictly needed or optimize it
+    # annotate(member_count=Count('members', distinct=True)) is expensive.
+    # Instead, we can prefetch members and count in python for the current page only, OR use a Subquery.
+    # Since we paginate to 12, prefetch is better.
+    
+    # projects = projects.annotate(member_count=Count('members', distinct=True))
+    
     paginator = Paginator(projects, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
+    
+    # Calculate member count for current page only
+    # 为当前页面计算成员数量
+    # Also fetch members to display avatars if needed
+    for p in page_obj:
+        p.member_count = p.members.count() 
     
     # Optimization: Bulk fetch manageable status instead of per-project permission check
     from reports.utils import get_manageable_projects
@@ -696,13 +708,22 @@ def project_search_api(request):
     user = request.user
     if not user.is_superuser:
         accessible_ids = get_accessible_projects(user).values_list('id', flat=True)
-        project_filter &= Q(id__in=accessible_ids)
+        project_filter &= (
+            Q(id__in=accessible_ids) |
+            Q(owner=user) |
+            Q(members=user) |
+            Q(managers=user)
+        )
 
-    qs = Project.objects.filter(project_filter).annotate(
-        user_used=Count('reports', filter=Q(reports__user=user))
-    )
+    # Optimized: Remove expensive annotate(Count).
+    # Just filter by name/code.
+    # 优化：移除昂贵的 annotate(Count)。仅按名称/代码过滤。
+    qs = Project.objects.filter(project_filter)
+    
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(description__icontains=q))
-    projects = qs.order_by('-user_used', 'name')[:20]
+    
+    # Sort by name, limit to 20
+    projects = qs.order_by('name')[:20]
     data = [{'id': p.id, 'name': p.name, 'code': p.code} for p in projects]
     return JsonResponse({'results': data})

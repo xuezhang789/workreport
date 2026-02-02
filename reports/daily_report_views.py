@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, IntegerField
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -121,13 +121,57 @@ def daily_report_create(request):
 
     project_filter = Q(is_active=True)
     if not has_manage_permission(user):
-        # project_filter &= (Q(members=user) | Q(managers=user) | Q(owner=user))
+        # Combine RBAC and direct assignment for robustness
         accessible_projects = get_accessible_projects(user)
-        project_filter &= Q(id__in=accessible_projects.values('id'))
+        project_filter &= (
+            Q(id__in=accessible_projects.values('id')) | 
+            Q(owner=user) | 
+            Q(members=user) | 
+            Q(managers=user)
+        )
+    
+    # Optimization: Remove expensive annotate(Count). 
+    # Strategy: Load "Recent Projects" + "Assigned Projects" limited to 50.
+    # 优化：移除昂贵的 annotate(Count)。策略：加载“最近项目”+“分配项目”，限制为50个。
+    
+    # 1. Recent project IDs from last 100 reports (efficient join)
+    recent_pids = list(DailyReport.projects.through.objects.filter(
+        dailyreport__user=user
+    ).order_by('-dailyreport_id').values_list('project_id', flat=True)[:100])
+    
+    # 2. Assigned projects (Member/Owner/Manager)
+    # If superuser, accessible_projects is All, so we might skip "Assigned" specific check 
+    # but strictly we should show what they are likely to use.
+    # For superuser, "Assigned" might be empty if they are just admin.
+    # So we stick to project_filter (which is All for superuser, Accessible for others).
+    
+    # Let's get IDs from project_filter, but we can't fetch all IDs if there are 10k.
+    # So we fetch recent first.
+    
+    final_pids = []
+    seen = set()
+    
+    # Add recent valid projects first
+    # We need to ensure recent projects are still active and accessible
+    valid_recent = Project.objects.filter(project_filter, id__in=recent_pids).values_list('id', flat=True)
+    valid_recent_set = set(valid_recent)
+    
+    # Preserve recency order
+    for pid in recent_pids:
+        if pid in valid_recent_set and pid not in seen:
+            final_pids.append(pid)
+            seen.add(pid)
+            
+    # Add other accessible projects (limit total to 50)
+    remaining_limit = 50 - len(final_pids)
+    if remaining_limit > 0:
+        others = Project.objects.filter(project_filter).exclude(id__in=seen).order_by('name').values_list('id', flat=True)[:remaining_limit]
+        final_pids.extend(others)
         
-    projects_qs = Project.objects.filter(project_filter).annotate(
-        user_used=Count('reports', filter=Q(reports__user=user))
-    ).distinct().order_by('-user_used', 'name')
+    # Fetch objects and preserve order
+    projects_map = {p.id: p for p in Project.objects.filter(id__in=final_pids)}
+    projects_list = [projects_map[pid] for pid in final_pids if pid in projects_map]
+
     latest_report = DailyReport.objects.filter(user=user).order_by('-date', '-created_at').first()
     selected_project_ids = list(latest_report.projects.values_list('id', flat=True)) if latest_report else []
     role_value = position
@@ -228,7 +272,7 @@ def daily_report_create(request):
                 messages.error(request, e)
             context = {
                 'user_position': position,
-                'projects': projects_qs,
+                'projects': projects_list,
                 'selected_project_ids': project_ids or selected_project_ids,
                 'role_value': role_value,
                 'date_value': date_value,
@@ -274,7 +318,7 @@ def daily_report_create(request):
                     messages.error(request, e)
                 context = {
                     'user_position': position,
-                    'projects': projects_qs,
+                    'projects': projects_list,
                     'selected_project_ids': project_ids or selected_project_ids,
                     'role_value': role_value,
                     'date_value': date_value,
@@ -346,7 +390,7 @@ def daily_report_create(request):
 
     context = {
         'user_position': position,
-        'projects': projects_qs,
+        'projects': projects_list,
         'selected_project_ids': selected_project_ids,
         'role_value': role_value,
         'date_value': date_value,
@@ -406,15 +450,39 @@ def my_reports(request):
 
     today = timezone.localdate()
     has_today = qs.filter(date=today).exists()
-    # streak: count consecutive days back from today with submitted, independent of filters
-    streak_qs = DailyReport.objects.filter(user=request.user, status='submitted').values_list('date', flat=True).order_by('-date')
+    
+    # Optimized streak calculation: Fetch distinct dates only, limited to 365 days
+    # 优化连胜计算：仅获取不重复的日期，限制为365天
+    streak_qs = DailyReport.objects.filter(user=request.user, status='submitted').values_list('date', flat=True).distinct().order_by('-date')[:365]
     dates = list(streak_qs)
+    
     streak = 0
     curr = today
     date_set = set(dates)
-    while curr in date_set:
+    
+    # Simple check for today/yesterday continuity
+    # 简单的今天/昨天连续性检查
+    if curr in date_set:
         streak += 1
         curr = curr - timedelta(days=1)
+        while curr in date_set:
+            streak += 1
+            curr = curr - timedelta(days=1)
+    elif (curr - timedelta(days=1)) in date_set:
+         # If today not submitted, check if streak ended yesterday
+         # 如果今天未提交，检查连胜是否在昨天结束
+         curr = curr - timedelta(days=1)
+         while curr in date_set:
+            streak += 1
+            curr = curr - timedelta(days=1)
+
+    # Optimized Project List: Remove expensive Count annotation
+    # 优化项目列表：移除昂贵的 Count 聚合
+    # Only show projects the user is actually involved in (Member/Owner/Manager)
+    # 仅显示用户实际参与的项目（成员/负责人/经理）
+    user_projects = Project.objects.filter(
+        Q(members=request.user) | Q(owner=request.user) | Q(managers=request.user)
+    ).filter(is_active=True).distinct().order_by('name')
 
     context = {
         'reports': page_obj,
@@ -425,11 +493,9 @@ def my_reports(request):
         'project_id': int(project_id) if project_id and project_id.isdigit() else '',
         'role': role,
         'q': q,
-        'total_count': qs.count(),
-        'latest_date': qs.first().date if qs.exists() else None,
-        'projects': Project.objects.filter(
-            Q(members=request.user) | Q(owner=request.user) | Q(managers=request.user) | Q(is_active=True)
-        ).annotate(user_used=Count('reports', filter=Q(reports__user=request.user))).distinct().order_by('-user_used', 'name'),
+        'total_count': paginator.count, # Use paginator's cached count if available
+        'latest_date': page_obj[0].date if page_obj else None, # Avoid extra query | 避免额外查询
+        'projects': user_projects,
         'has_today': has_today,
         'streak': streak,
     }
@@ -477,8 +543,39 @@ def report_edit(request, pk: int):
     project_filter = Q(is_active=True)
     if not has_manage_permission(request.user):
         project_filter &= (Q(owner=request.user) | Q(members=request.user) | Q(managers=request.user))
-    projects_qs = Project.objects.filter(project_filter).distinct().order_by('name')
+    
+    # Optimization for Edit: Limit projects
     selected_project_ids = list(report.projects.values_list('id', flat=True))
+    
+    # 1. Recent
+    recent_pids = list(DailyReport.projects.through.objects.filter(
+        dailyreport__user=request.user
+    ).order_by('-dailyreport_id').values_list('project_id', flat=True)[:50])
+    
+    final_pids = []
+    seen = set()
+    
+    # Ensure selected are present
+    for pid in selected_project_ids:
+        if pid not in seen:
+            final_pids.append(pid)
+            seen.add(pid)
+            
+    # Add recent
+    for pid in recent_pids:
+        if pid not in seen:
+            final_pids.append(pid)
+            seen.add(pid)
+            
+    # Fill up to 50
+    remaining = 50 - len(final_pids)
+    if remaining > 0:
+        others = Project.objects.filter(project_filter).exclude(id__in=seen).order_by('name').values_list('id', flat=True)[:remaining]
+        final_pids.extend(others)
+        
+    projects_map = {p.id: p for p in Project.objects.filter(id__in=final_pids)}
+    projects_list = [projects_map[pid] for pid in final_pids if pid in projects_map]
+
     errors = []
 
     if request.method == 'POST':
@@ -486,7 +583,7 @@ def report_edit(request, pk: int):
 
     context = {
         'user_position': position,
-        'projects': projects_qs,
+        'projects': projects_list,
         'selected_project_ids': selected_project_ids,
         'role_value': report.role,
         'date_value': report.date,
@@ -506,9 +603,10 @@ def admin_reports(request):
     
     # 权限控制：如果不是超级管理员，仅显示其有权管理的项目的日报
     if not request.user.is_superuser:
-        accessible_reports = get_accessible_reports(request.user)
-        # 使用 id__in 进行过滤，确保只有相关日报可见
-        reports = reports.filter(id__in=accessible_reports.values('id'))
+        # Optimization: Filter directly by accessible projects to avoid nested subqueries
+        # 优化：直接通过可访问项目过滤，避免嵌套子查询
+        accessible_projects = get_accessible_projects(request.user)
+        reports = reports.filter(projects__in=accessible_projects).distinct()
 
     username = (request.GET.get('username') or '').strip()
     user_id = request.GET.get('user')
@@ -528,10 +626,16 @@ def admin_reports(request):
     if status in dict(DailyReport.STATUS_CHOICES):
         reports = reports.filter(status=status)
 
-    # 聚合统计数据
-    total_count = reports.count()
-    submitted_count = reports.filter(status='submitted').count()
-    draft_count = reports.filter(status='draft').count()
+    # 聚合统计数据 / Aggregate stats
+    # Optimization: Use one query instead of three count() queries
+    stats = reports.aggregate(
+        total=Count('id'),
+        submitted=Count(Case(When(status='submitted', then=1), output_field=IntegerField())),
+        draft=Count(Case(When(status='draft', then=1), output_field=IntegerField()))
+    )
+    total_count = stats['total']
+    submitted_count = stats['submitted']
+    draft_count = stats['draft']
 
     paginator = Paginator(reports, 15)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -540,7 +644,7 @@ def admin_reports(request):
     if request.user.is_superuser:
         projects = Project.objects.filter(is_active=True).order_by('name')
     else:
-        projects = get_accessible_projects(request.user).order_by('name')
+        projects = accessible_projects.order_by('name')
 
     log_action(request, 'access', f"admin_reports count={total_count} role={role} start={start_date} end={end_date} username={username} project={project_id} status={status}")
     context = {
@@ -557,7 +661,7 @@ def admin_reports(request):
         'user_id': int(user_id) if user_id and user_id.isdigit() else '',
         'project_id': int(project_id) if project_id and project_id.isdigit() else '',
         'projects': projects,
-        'users': get_user_model().objects.order_by('username'),
+        # 'users': get_user_model().objects.order_by('username'), # Unused in template
         'status': status,
     }
     return render(request, 'reports/admin_reports.html', context)

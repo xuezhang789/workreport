@@ -2,14 +2,32 @@
 {% load static %}
 
 {% block title %}高级报表 / Advanced Reporting{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="高级报表 / Advanced Reporting" nav_subtitle="可视化项目进度与趋势分析 / Visualizing project progress and trends" %}{% endblock %}
 
 {% block extra_styles %}
 <style>
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
     /* --- Page Layout --- */
     .page-container {
         max-width: 1600px;
         margin: 0 auto;
-        padding-bottom: 80px;
+        padding: 0 24px 80px 24px;
     }
 
     .page-header {
@@ -24,6 +42,7 @@
         font-weight: 800;
         color: var(--text-main);
         margin: 0 0 4px 0;
+        font-family: 'Space Grotesk', sans-serif;
     }
 
     .page-subtitle {
@@ -37,21 +56,22 @@
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
-        padding: 24px;
+        padding: 20px;
         margin-bottom: 24px;
         box-shadow: var(--shadow-sm);
-        display: flex;
-        align-items: flex-end;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 16px;
-        flex-wrap: wrap;
+        align-items: end;
     }
 
     .form-group {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        min-width: 240px;
-        flex: 1;
+        gap: 6px;
     }
 
     .form-label {
@@ -68,7 +88,7 @@
         background-color: #fff;
         color: var(--text-main);
         width: 100%;
-        height: 42px;
+        transition: var(--transition);
     }
 
     .form-select:focus {
@@ -77,20 +97,27 @@
         box-shadow: 0 0 0 3px var(--primary-light);
     }
 
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    /* --- Buttons --- */
     .btn {
-        height: 42px;
-        padding: 0 20px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 14px;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
         cursor: pointer;
-        border: 1px solid transparent;
         text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        line-height: 1.5;
     }
 
     .btn-primary {
@@ -100,6 +127,7 @@
 
     .btn-primary:hover {
         background: var(--primary-hover);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
     }
 
     .btn-outline {
@@ -109,8 +137,8 @@
     }
 
     .btn-outline:hover {
-        background: #f8fafc;
         border-color: #cbd5e1;
+        background: #f8fafc;
     }
 
     /* --- Charts Cards --- */
@@ -121,13 +149,20 @@
         padding: 24px;
         margin-bottom: 24px;
         box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+
+    .chart-card:hover {
+        box-shadow: var(--shadow-md);
     }
 
     .chart-header {
-        margin-bottom: 20px;
+        margin-bottom: 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
     }
 
     .chart-title {
@@ -135,24 +170,34 @@
         font-weight: 700;
         color: var(--text-main);
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     /* --- Empty State --- */
     .empty-state {
         text-align: center;
-        padding: 60px 24px;
+        padding: 64px 24px;
         color: var(--text-secondary);
         background: var(--bg-card);
         border-radius: var(--radius-lg);
-        border: 1px dashed var(--border-color);
+        border: 2px dashed var(--border-color);
+    }
+    
+    .empty-state h4 {
+        color: var(--text-main);
+        margin: 16px 0 8px 0;
+        font-weight: 700;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-container">
-    <!-- Header -->
-    <div class="page-header">
+    <!-- Header (Hidden in favor of Topbar, or kept for print/structure?) -->
+    <!-- We already have nav_header, so we can remove the duplicate page-header or style it as a sub-header -->
+    <div class="page-header" style="display: none;">
         <div>
             <h1 class="page-title">高级报表 / Advanced Reporting</h1>
             <p class="page-subtitle">可视化项目进度与趋势分析 / Visualizing project progress and trends</p>
@@ -160,31 +205,35 @@
     </div>
     
     <!-- Filter -->
-    <form method="GET" id="reportFilterForm" class="filter-section">
-        <div class="form-group">
-            <label for="projectSelect" class="form-label">选择项目 / Select Project</label>
-            <select class="form-select" id="projectSelect" name="project_id" onchange="this.form.submit()">
-                <option value="">所有项目 / All Projects</option>
-                {% for project in projects %}
-                    <option value="{{ project.id }}" 
-                        {% if project.id == selected_project_id %}selected{% endif %}>
-                        {{ project.name }} ({{ project.code }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        
-        <div style="display: flex; gap: 12px;">
-            <a href="{% url 'tasks:admin_task_export' %}?project={{ selected_project_id }}" class="btn btn-outline">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                导出任务 / Export Tasks
-            </a>
-            <button type="submit" class="btn btn-primary">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                应用筛选 / Apply Filter
-            </button>
-        </div>
-    </form>
+    <div class="filter-section">
+        <form method="GET" id="reportFilterForm">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label for="projectSelect" class="form-label">选择项目 / Select Project</label>
+                    <select class="form-select" id="projectSelect" name="project_id" onchange="this.form.submit()">
+                        <option value="">所有项目 / All Projects</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}" 
+                                {% if project.id == selected_project_id %}selected{% endif %}>
+                                {{ project.name }} ({{ project.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'tasks:admin_task_export' %}?project={{ selected_project_id }}" class="btn btn-outline">
+                    <i class="fa-solid fa-download"></i>
+                    导出任务 / Export Tasks
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-filter"></i>
+                    应用筛选 / Apply Filter
+                </button>
+            </div>
+        </form>
+    </div>
     
     {% if gantt_data %}
     <div class="chart-card">
@@ -215,12 +264,7 @@
     
     {% if not gantt_data and not burn_down_data.labels and not cfd_data.labels %}
     <div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-muted); margin-bottom: 16px;">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="12" y1="18" x2="12" y2="12"></line>
-            <line x1="9" y1="15" x2="15" y2="15"></line>
-        </svg>
+        <i class="fa-regular fa-file-lines empty-icon" style="font-size: 48px; display: block; margin: 0 auto 16px;"></i>
         <h4>暂无数据 / No Data Available</h4>
         <p>请选择一个项目或确保该项目下有任务数据。 / Please select a project or ensure tasks exist.</p>
     </div>
@@ -262,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Common Chart Options
     const commonOptions = {
-        fontFamily: 'Inter, system-ui, sans-serif',
+        fontFamily: "'Noto Sans SC', sans-serif",
         toolbar: { show: false }
     };
 

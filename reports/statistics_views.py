@@ -68,38 +68,66 @@ def workbench(request):
     # daily report streak and today's report status
     # 日报连签和今日日报状态
     today_date = timezone.localdate()
-    qs_reports = DailyReport.objects.filter(user=request.user, status='submitted').values_list('date', flat=True).order_by('-date')
+    # Optimized: Limit streak check to recent history (365 days) and use distinct
+    qs_reports = DailyReport.objects.filter(
+        user=request.user, 
+        status='submitted'
+    ).values_list('date', flat=True).distinct().order_by('-date')[:365]
+    
     date_set = set(qs_reports)
     streak = 0
     curr = today_date
-    while curr in date_set:
+    
+    # Check if today is submitted to start streak count, otherwise check yesterday
+    if curr in date_set:
         streak += 1
         curr = curr - timedelta(days=1)
+        while curr in date_set:
+            streak += 1
+            curr = curr - timedelta(days=1)
+    elif (curr - timedelta(days=1)) in date_set:
+        curr = curr - timedelta(days=1)
+        while curr in date_set:
+            streak += 1
+            curr = curr - timedelta(days=1)
     
     # 检查今日是否已提交日报
-    today_report = DailyReport.objects.filter(user=request.user, date=today_date).first()
-    has_today_report = today_report is not None and today_report.status == 'submitted'
+    # Check today using the set we already fetched (if today is in range) or explicit query if needed?
+    # Actually explicit query is safer for "status" object access if we needed the object, 
+    # but here we just need bool.
+    # However, existing code does: today_report = DailyReport.objects.filter(...).first()
+    # Let's optimize: has_today_report is True if today_date in date_set (since we filtered status='submitted')
+    
+    has_today_report = today_date in date_set
 
     # project burndown with enhanced data
     # 增强数据的项目燃尽图
-    projects = Project.objects.filter(is_active=True, tasks__user=request.user).distinct().annotate(
-        total_p=Count('tasks', filter=Q(tasks__user=request.user)),
-        completed_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
-        overdue_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], tasks__due_at__lt=timezone.now())),
-        in_progress_p=Count('tasks', filter=Q(tasks__user=request.user, tasks__status=TaskStatus.IN_PROGRESS))
-    )
+    # Optimized: Query Task directly to avoid heavy Project Group By
+    # 优化：直接查询任务以避免繁重的项目分组
+    
+    task_stats = Task.objects.filter(
+        user=request.user,
+        project__is_active=True
+    ).values(
+        'project__name', 'project__code'
+    ).annotate(
+        total_p=Count('id'),
+        completed_p=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
+        overdue_p=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
+        in_progress_p=Count('id', filter=Q(status=TaskStatus.IN_PROGRESS))
+    ).order_by('project__name')
     
     project_burndown = []
-    for proj in projects:
-        total_p = proj.total_p
-        completed_p = proj.completed_p
-        overdue_p = proj.overdue_p
-        in_progress_p = proj.in_progress_p
+    for stat in task_stats:
+        total_p = stat['total_p']
+        completed_p = stat['completed_p']
+        overdue_p = stat['overdue_p']
+        in_progress_p = stat['in_progress_p']
         completion_rate_p = (completed_p / total_p * 100) if total_p else 0
         
         project_burndown.append({
-            'project': proj.name,
-            'code': proj.code,
+            'project': stat['project__name'],
+            'code': stat['project__code'],
             'total': total_p,
             'completed': completed_p,
             'in_progress': in_progress_p,
@@ -436,12 +464,14 @@ def performance_board(request):
     sla_only = request.GET.get('sla_only') == '1'
     sla_urgent_tasks = []
     
-    sla_qs = Task.objects.select_related('project', 'user').exclude(status=TaskStatus.DONE)
+    # Optimized: select_related 'sla_timer' to avoid N+1 in calculate_sla_info
+    sla_qs = Task.objects.select_related('project', 'user', 'sla_timer').exclude(status=TaskStatus.DONE)
     if accessible_projects is not None:
         sla_qs = sla_qs.filter(project__in=accessible_projects)
         
     for t in sla_qs:
-        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+        # Pass parsed thresholds dict instead of raw string
+        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=thresholds)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info
             sla_urgent_tasks.append(t)

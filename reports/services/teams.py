@@ -7,7 +7,8 @@ def get_team_members(q=None, role=None, project_id=None):
     获取过滤后的团队成员列表。
     """
     User = get_user_model()
-    qs = User.objects.select_related('profile').prefetch_related('project_memberships').order_by('username')
+    # Optimized: Add 'preferences' to select_related to avoid N+1 in avatar rendering
+    qs = User.objects.select_related('profile', 'preferences').prefetch_related('project_memberships').order_by('username')
     
     if q:
         qs = qs.filter(

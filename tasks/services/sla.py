@@ -47,15 +47,19 @@ def _ensure_sla_timer(task):
     timer, created = TaskSlaTimer.objects.get_or_create(task=task)
     return timer
 
+from django.core.exceptions import ObjectDoesNotExist
+
 def _get_sla_timer_readonly(task):
     """
     获取计时器而不创建它 (用于列表)。
     """
-    # 使用正确的 related_name 'sla_timer' (在 models.py 中定义)
-    # hasattr 如果未缓存会触发查询，但如果使用了 select_related，它会命中缓存。
-    if hasattr(task, 'sla_timer'):
+    # 优化：直接访问属性。如果已通过 select_related 获取，它会使用缓存。
+    # 如果不存在（无论是缓存中不存在还是数据库中不存在），会抛出异常，此时返回 None。
+    # 避免了 hasattr 返回 False 后进行的额外数据库查询。
+    try:
         return task.sla_timer
-    return TaskSlaTimer.objects.filter(task=task).first()
+    except ObjectDoesNotExist:
+        return None
 
 def calculate_sla_info(task, as_of=None, sla_hours_setting=None, sla_thresholds_setting=None):
     """

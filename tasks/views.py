@@ -585,72 +585,85 @@ def admin_task_stats(request):
         base_tasks = base_tasks.filter(user__profile__position=role)
         base_reports = base_reports.filter(role=role)
 
-    # --- 3. KPI 计算 ---
-    # 辅助函数：基于日期字段计数
-    def get_metric(qs, date_field, start, end, extra_q=Q()):
-        if not start or not end:
-            return qs.filter(extra_q).count()
-        filter_kwargs = {
-            f"{date_field}__range": (start, end)
-        }
-        return qs.filter(extra_q, **filter_kwargs).count()
+    # --- 3. KPI 计算 (Optimized) ---
+    # Optimization: Use single aggregate query for all metrics instead of multiple count() queries
+    
+    # 3.1 Construct Aggregation
+    aggs = {}
+    
+    # New Tasks (Current)
+    new_q = Q(created_at__date__range=(start_date, end_date)) if (start_date and end_date) else Q()
+    aggs['new'] = Count('pk', filter=new_q)
+    
+    # Done Tasks (Current)
+    done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])
+    if start_date and end_date:
+        done_q &= Q(completed_at__date__range=(start_date, end_date))
+    aggs['done'] = Count('pk', filter=done_q)
+    
+    # Overdue (Snapshot - Current)
+    now = timezone.now()
+    overdue_q = Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=now)
+    aggs['overdue'] = Count('pk', filter=overdue_q)
+    
+    # On Time (Current)
+    # Done & Has Due & Completed <= Due
+    with_due_q = done_q & Q(due_at__isnull=False)
+    on_time_q = with_due_q & Q(completed_at__lte=F('due_at'))
+    
+    aggs['on_time'] = Count('pk', filter=on_time_q)
+    aggs['with_due'] = Count('pk', filter=with_due_q)
+    
+    # Avg Duration (Current)
+    aggs['avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=done_q)
 
-    # 3.1 总创建数 (量)
-    metric_new = get_metric(base_tasks, 'created_at__date', start_date, end_date)
-    prev_new = get_metric(base_tasks, 'created_at__date', prev_start_date, prev_end_date) if prev_start_date else 0
+    # Previous Period Metrics
+    if prev_start_date:
+        # Prev New
+        prev_new_q = Q(created_at__date__range=(prev_start_date, prev_end_date))
+        aggs['prev_new'] = Count('pk', filter=prev_new_q)
+        
+        # Prev Done
+        prev_done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__date__range=(prev_start_date, prev_end_date))
+        aggs['prev_done'] = Count('pk', filter=prev_done_q)
+        
+        # Prev On Time
+        prev_with_due_q = prev_done_q & Q(due_at__isnull=False)
+        prev_on_time_q = prev_with_due_q & Q(completed_at__lte=F('due_at'))
+        
+        aggs['prev_on_time'] = Count('pk', filter=prev_on_time_q)
+        aggs['prev_with_due'] = Count('pk', filter=prev_with_due_q)
+        
+        # Prev Avg Duration
+        aggs['prev_avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=prev_done_q)
+
+    # Execute Aggregation
+    results = base_tasks.aggregate(**aggs)
+
+    # 3.2 Extract Results
+    metric_new = results.get('new', 0)
+    metric_done = results.get('done', 0)
+    metric_overdue = results.get('overdue', 0)
+    metric_on_time = results.get('on_time', 0)
+    tasks_with_due_in_period = results.get('with_due', 0)
     
-    # 3.2 总完成数 (产出)
-    metric_done = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
-    prev_done = get_metric(base_tasks, 'completed_at__date', prev_start_date, prev_end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])) if prev_start_date else 0
+    avg_dur = results.get('avg_dur')
+    metric_avg_time = avg_dur.total_seconds() / 3600 if avg_dur else 0
     
-    # 3.3 完成率 (质量/效率)
-    # 率 = 完成数 / (创建数 + 待处理)? 或者仅仅是 完成数 / 期间创建数?
-    # 通常: 同一期间的 完成计数 / 创建计数 (吞吐率)
-    # 或者: *所有* 任务中已完成的百分比。
-    # 让我们使用 "吞吐率": 完成数 / 创建数 * 100
+    prev_new = results.get('prev_new', 0)
+    prev_done = results.get('prev_done', 0)
+    prev_on_time = results.get('prev_on_time', 0)
+    prev_tasks_with_due = results.get('prev_with_due', 0)
+    
+    prev_avg_dur = results.get('prev_avg_dur')
+    prev_avg_time = prev_avg_dur.total_seconds() / 3600 if prev_avg_dur else 0
+
+    # 3.3 Derived Rates
     rate_throughput = (metric_done / metric_new * 100) if metric_new else 0
     prev_rate = (prev_done / prev_new * 100) if prev_new else 0
     
-    # 3.4 逾期 (风险) - 快照 (当前)
-    now = timezone.now()
-    current_overdue_qs = base_tasks.filter(
-        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], 
-        due_at__lt=now
-    )
-    metric_overdue = current_overdue_qs.count()
-
-    # 3.5 准时交付 (质量)
-    # 任务已完成且 completed_at <= due_at (如果存在 due_at)
-    # 注意: 为了批量性能，这里忽略 SLA 暂停时间，这对于高层统计是可以接受的。
-    # 我们是否只考虑在此期间有截止日期的任务才公平？
-    # 或者我们假设没有截止日期 = 准时？通常 "准时" 意味着遵守时间表。
-    # 让我们统计有 due_at 的任务。
-    tasks_with_due_in_period = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False))
-    
-    metric_on_time = get_metric(base_tasks, 'completed_at__date', start_date, end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at')))
-    
     rate_on_time = (metric_on_time / tasks_with_due_in_period * 100) if tasks_with_due_in_period else 0
-    prev_tasks_with_due = get_metric(base_tasks, 'completed_at__date', prev_start_date, prev_end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False)) if prev_start_date else 0
-    prev_on_time = get_metric(base_tasks, 'completed_at__date', prev_start_date, prev_end_date, Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at'))) if prev_start_date else 0
     prev_rate_on_time = (prev_on_time / prev_tasks_with_due * 100) if prev_tasks_with_due else 0
-
-    # 3.6 平均解决时间 (效率)
-    # 仅针对期间内完成的任务
-    def get_avg_duration(qs, start, end):
-        if not start or not end:
-            dur = qs.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).aggregate(avg=Avg(F('completed_at') - F('created_at')))['avg']
-        else:
-            dur = qs.filter(
-                status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
-                completed_at__date__range=(start, end)
-            ).aggregate(avg=Avg(F('completed_at') - F('created_at')))['avg']
-        
-        if dur:
-            return dur.total_seconds() / 3600 # hours
-        return 0
-
-    metric_avg_time = get_avg_duration(base_tasks, start_date, end_date)
-    prev_avg_time = get_avg_duration(base_tasks, prev_start_date, prev_end_date) if prev_start_date else 0
 
     # 增长计算
     def calc_growth(current, previous):
@@ -717,7 +730,8 @@ def admin_task_stats(request):
     if period == 'today' or period == 'custom': # 仅在相关时显示缺失
         # ... (Missing logic reused from previous) ...
         # 优化：仅在需要时计算
-        reported_ids = DailyReport.objects.filter(created_at__date=today).values_list('user_id', flat=True)
+        # Optimization: Use 'date' field instead of 'created_at__date' for index usage
+        reported_ids = DailyReport.objects.filter(date=today).values_list('user_id', flat=True)
         
         # 相关用户
         target_projs = Project.objects.filter(is_active=True)
@@ -1368,8 +1382,9 @@ def task_list(request):
     priority = (request.GET.get('priority') or '').strip()
 
     # 优化查询，使用select_related和prefetch_related减少数据库查询
+    # 添加 user__preferences 以避免头像显示时的 N+1 查询
     tasks_qs = Task.objects.select_related(
-        'project', 'user', 'sla_timer'
+        'project', 'user', 'sla_timer', 'user__preferences'
     ).prefetch_related(
         'collaborators'
     )
@@ -1380,7 +1395,8 @@ def task_list(request):
         accessible_projects = get_accessible_projects(request.user)
         tasks_qs = tasks_qs.filter(project__in=accessible_projects)
     
-    tasks_qs = tasks_qs.distinct().order_by('-created_at')
+    # 优化：移除不必要的 distinct() 调用，它会显著增加查询开销
+    tasks_qs = tasks_qs.order_by('-created_at')
     
     now = timezone.now()
     
@@ -1393,15 +1409,18 @@ def task_list(request):
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
-    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
+    # 修复：正确解析阈值配置为字典，避免传给 calculate_sla_info 时出错
+    sla_thresholds_val = get_sla_thresholds(cfg_thresholds.value if cfg_thresholds else None)
     
     sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
-    due_soon_ids = set(tasks_qs.filter(
+    # 优化：使用 count() 替代获取所有 ID，避免大量数据加载
+    due_soon_filter = Q(
         status__in=['todo', 'in_progress', 'blocked', 'in_review'],
         due_at__gt=now,
         due_at__lte=now + timedelta(hours=sla_hours)
-    ).values_list('id', flat=True))
+    )
+    due_soon_count = tasks_qs.filter(due_soon_filter).count()
 
     # 应用过滤器
     if status:
@@ -1416,10 +1435,11 @@ def task_list(request):
         tasks_qs = tasks_qs.filter(priority=priority)
 
     if hot:  # 显示即将到期的任务
-        tasks_qs = tasks_qs.filter(id__in=due_soon_ids)
+        tasks_qs = tasks_qs.filter(due_soon_filter)
 
     # 排序处理
     sort_by = request.GET.get('sort', '-created_at')
+
     allowed_sorts = {
         'created_at': 'created_at',
         '-created_at': '-created_at',
@@ -1468,7 +1488,7 @@ def task_list(request):
         'priority': priority,
         'priorities': Task.PRIORITY_CHOICES,
         'task_category_choices': Task.CATEGORY_CHOICES,
-        'due_soon_count': len(due_soon_ids),
+        'due_soon_count': due_soon_count,
         'sort_by': sort_by,
     })
 

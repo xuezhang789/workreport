@@ -1,4 +1,4 @@
-from django.db.models import Count, Avg, F, Q, DurationField, ExpressionWrapper
+from django.db.models import Count, Avg, F, Q, DurationField, ExpressionWrapper, Min
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from ..models import Task, DailyReport, Profile, Project
@@ -42,21 +42,34 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
     # --- 预计算交付周期（优化）---
-    completed_tasks_iter = tasks.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__isnull=False).select_related('project', 'user__profile')
+    # Optimized: Fetch only necessary fields using values() to avoid model instantiation overhead
+    completed_data = tasks.filter(
+        status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
+        completed_at__isnull=False
+    ).values(
+        'project__name', 
+        'user__profile__position', 
+        'user__username', 
+        'created_at', 
+        'completed_at'
+    )
     
     project_durations = defaultdict(list)
     role_durations = defaultdict(list)
     user_durations = defaultdict(list)
+    all_durations = []
     
-    for t in completed_tasks_iter:
-        if t.completed_at and t.created_at:
-            duration = (t.completed_at - t.created_at).total_seconds() / 3600
-            if t.project and t.project.name:
-                project_durations[t.project.name].append(duration)
-            if hasattr(t.user, 'profile') and t.user.profile.position:
-                role_durations[t.user.profile.position].append(duration)
-            if t.user.username:
-                user_durations[t.user.username].append(duration)
+    for item in completed_data:
+        if item['completed_at'] and item['created_at']:
+            duration = (item['completed_at'] - item['created_at']).total_seconds() / 3600
+            all_durations.append(duration)
+            
+            if item['project__name']:
+                project_durations[item['project__name']].append(duration)
+            if item['user__profile__position']:
+                role_durations[item['user__profile__position']].append(duration)
+            if item['user__username']:
+                user_durations[item['user__username']].append(duration)
 
     # --- 1. 项目统计 ---
     project_stats = []
@@ -170,35 +183,28 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     # 连签的实现需要复杂的每日分析，暂时保持简单或为空
 
     # --- 5. 总体统计 ---
-    overall_total = tasks.count()
-    overall_overdue = tasks.filter(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now()).count()
+    # Optimized: Use single aggregate query for counts
+    overall_aggs = tasks.aggregate(
+        total=Count('id'),
+        overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
+        completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
+        on_time=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]) & (Q(due_at__isnull=True) | Q(completed_at__lte=F('due_at'))))
+    )
     
-    completed_qs = tasks.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])
-    completed_count = completed_qs.count()
+    overall_total = overall_aggs['total']
+    overall_overdue = overall_aggs['overdue']
+    completed_count = overall_aggs['completed']
+    on_time_count = overall_aggs['on_time']
     
     if completed_count > 0:
-        # 准时：completed_at <= due_at 或 due_at 为 NULL
-        # 注意：在某些数据库中，带有 NULL 的 F() 可能需要小心，但 Django 通常会处理它。
-        # 如果 due_at 为 None，我们要么假设准时（要么与 SLA 无关）。
-        on_time_count = completed_qs.filter(
-            Q(due_at__isnull=True) | Q(completed_at__lte=F('due_at'))
-        ).count()
         overall_sla_on_time_rate = (on_time_count / completed_count) * 100
     else:
         overall_sla_on_time_rate = 0
 
     # 计算总体交付周期
-    completed_tasks_durations = []
-    # 重用 completed_qs 但我们需要时间。
-    # 我们可以只获取时间戳以最大限度地减少内存使用
-    completed_times = completed_qs.filter(completed_at__isnull=False, created_at__isnull=False).values_list('created_at', 'completed_at')
-    
-    for start, end in completed_times:
-        if start and end:
-            completed_tasks_durations.append((end - start).total_seconds() / 3600)
-            
-    overall_lead_avg = statistics.mean(completed_tasks_durations) if completed_tasks_durations else None
-    overall_lead_p50 = statistics.median(completed_tasks_durations) if completed_tasks_durations else None
+    # Optimized: Reuse all_durations calculated earlier
+    overall_lead_avg = statistics.mean(all_durations) if all_durations else None
+    overall_lead_p50 = statistics.median(all_durations) if all_durations else None
 
     return {
         'project_stats': project_stats,
@@ -254,8 +260,9 @@ def get_advanced_report_data(project_id=None):
     burndown_data = {'labels': [], 'ideal': [], 'actual': []}
     
     if tasks.exists():
-        earliest_task = tasks.order_by('created_at').first()
-        earliest = earliest_task.created_at.date() if earliest_task else timezone.now().date()
+        # Optimized: Fetch min created_at in one query
+        earliest_created = tasks.aggregate(min_date=Min('created_at'))['min_date']
+        earliest = earliest_created.date() if earliest_created else timezone.now().date()
         latest = timezone.now().date()
         
         # 创建日期范围
@@ -272,6 +279,16 @@ def get_advanced_report_data(project_id=None):
             
         total_tasks_count = tasks.count()
         
+        # Optimized: Fetch all completion dates once
+        # 获取所有完成日期，在内存中进行聚合
+        completion_dates = list(tasks.filter(
+            status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
+            completed_at__isnull=False
+        ).values_list('completed_at__date', flat=True))
+        
+        # 预先排序以便快速过滤
+        completion_dates.sort()
+        
         # 计算理想值：从总数线性下降到 0
         days_span = (latest - earliest).days or 1
         
@@ -283,7 +300,9 @@ def get_advanced_report_data(project_id=None):
             burndown_data['ideal'].append(round(ideal_val, 1))
             
             # 实际值：总数 - 截至日期 d 已完成数
-            completed_count = tasks.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__date__lte=d).count()
+            # Optimized: Count in memory using sorted list
+            # 使用 bisect 或简单比较来计数
+            completed_count = sum(1 for cd in completion_dates if cd <= d)
             actual_remaining = total_tasks_count - completed_count
             burndown_data['actual'].append(actual_remaining)
 
@@ -294,10 +313,9 @@ def get_advanced_report_data(project_id=None):
     if tasks.exists() and burndown_data['labels']:
         cfd_data['labels'] = burndown_data['labels']
         
-        # 大致重用日期范围逻辑或从标签重新解析
-        # 仅重用逻辑：
-        earliest_task = tasks.order_by('created_at').first()
-        earliest = earliest_task.created_at.date() if earliest_task else timezone.now().date()
+        # Reuse logic
+        earliest_created = tasks.aggregate(min_date=Min('created_at'))['min_date']
+        earliest = earliest_created.date() if earliest_created else timezone.now().date()
         latest = timezone.now().date()
         
         date_range = []
@@ -313,14 +331,22 @@ def get_advanced_report_data(project_id=None):
         pending_data = []
         completed_data = []
         
+        # Optimized: Use pre-fetched data
+        # Fetch creation dates for 'pending' calculation
+        creation_dates = list(tasks.values_list('created_at__date', flat=True))
+        creation_dates.sort()
+        
+        # Reuse completion_dates from burndown
+        # completion_dates already sorted
+        
         for d in date_range:
             # 第 d 天结束时的快照
             # 已完成
-            comp = tasks.filter(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__date__lte=d).count()
+            comp = sum(1 for cd in completion_dates if cd <= d)
             completed_data.append(comp)
             
             # 待办：截至 d 创建 - 已完成
-            created_by_d = tasks.filter(created_at__date__lte=d).count()
+            created_by_d = sum(1 for cd in creation_dates if cd <= d)
             todo = created_by_d - comp
             
             pending_data.append(todo)

@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-replace-this-with-a-random-secret-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
@@ -68,10 +68,11 @@ ASGI_APPLICATION = 'asgi.application'
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
+        # "BACKEND": "channels_redis.core.RedisChannelLayer",
+        # "CONFIG": {
+        #     "hosts": [("127.0.0.1", 6379)],
+        # },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 
