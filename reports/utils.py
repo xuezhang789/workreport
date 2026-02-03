@@ -44,14 +44,36 @@ def get_accessible_projects(user):
     if user.is_superuser:
         return rbac_projects
         
-    # Combine with M2M membership (Members implicitly have view access)
-    return (rbac_projects | Project.objects.filter(members=user, is_active=True)).distinct()
+    # Combine with Model fields (Owner, Managers, Members)
+    # 结合模型字段（负责人，管理员，成员）
+    # Note: RBAC is powerful but we must respect the direct database relationships too.
+    direct_access = Project.objects.filter(
+        Q(members=user) | Q(managers=user) | Q(owner=user),
+        is_active=True
+    )
+    
+    return (rbac_projects | direct_access).distinct()
 
 def can_manage_project(user, project):
     """
     Check if user has edit/manage permission for a specific project.
     检查用户是否拥有特定项目的编辑/管理权限。
     """
+    if not user.is_authenticated:
+        return False
+        
+    if user.is_superuser:
+        return True
+        
+    # Check Project model fields directly (Owner/Managers)
+    # 检查 Project 模型字段（负责人/管理员）
+    if user == project.owner:
+        return True
+    
+    if project.managers.filter(pk=user.pk).exists():
+        return True
+        
+    # Check RBAC permissions (if assigned via Role)
     scope = f"project:{project.id}"
     return RBACService.has_permission(user, 'project.manage', scope=scope)
 
@@ -60,7 +82,18 @@ def get_manageable_projects(user):
     Returns QuerySet of projects the user can manage (edit/update).
     返回用户可以管理（编辑/更新）的项目查询集。
     """
-    return _get_projects_by_permission(user, 'project.manage')
+    if user.is_superuser:
+        return Project.objects.filter(is_active=True)
+
+    rbac_projects = _get_projects_by_permission(user, 'project.manage')
+    
+    # Combine with direct Model ownership/management
+    direct_manage = Project.objects.filter(
+        Q(managers=user) | Q(owner=user),
+        is_active=True
+    )
+    
+    return (rbac_projects | direct_manage).distinct()
 
 def get_accessible_tasks(user):
     """

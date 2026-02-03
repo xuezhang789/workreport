@@ -154,6 +154,9 @@ def project_list(request):
     
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     
+    # Permission Check for Create Button
+    can_create_project = request.user.is_superuser
+    
     context = {
         'projects': page_obj,
         'page_obj': page_obj,
@@ -166,6 +169,7 @@ def project_list(request):
         'manageable_ids': manageable_ids,
         'phases': phases,
         'phase_id': int(phase_id) if phase_id and phase_id.isdigit() else '',
+        'can_create_project': can_create_project,
     }
     return render(request, 'reports/project_list.html', context)
 

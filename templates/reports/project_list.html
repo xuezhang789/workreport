@@ -172,7 +172,7 @@
                 </button>
             </div>
 
-            {% if request.user.is_superuser %}
+            {% if can_create_project %}
                 <a href="{% url 'projects:project_create' %}" class="btn btn-primary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -463,7 +463,7 @@
             </svg>
             <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目 / No projects found</h3>
             <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。<br>Try adjusting filters or create a new project.</p>
-            {% if request.user.is_superuser %}
+            {% if can_create_project %}
                 <a href="{% url 'projects:project_create' %}" class="btn btn-primary">新建项目 / New Project</a>
             {% else %}
                 <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
