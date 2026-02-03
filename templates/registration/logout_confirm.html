@@ -1,0 +1,20 @@
+{% extends "base_topbar.html" %}
+
+{% block title %}注销确认 / Logout Confirmation{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div class="auth-header">
+        <h1>注销登录 / Sign Out</h1>
+        <p>您确定要退出当前账号吗？ / Are you sure you want to sign out?</p>
+    </div>
+
+    <form method="post" action="{% url 'core:logout' %}">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block">确认退出 / Confirm Logout</button>
+            <a href="/" class="btn btn-secondary btn-block" style="margin-top: 12px; text-align: center;">取消 / Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

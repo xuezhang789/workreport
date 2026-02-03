@@ -49,11 +49,21 @@ def register(request):
 
 def logout_view(request):
     """
-    Allow GET/POST logout and show a friendly logged-out page.
+    Allow POST logout for security. GET shows a confirmation page.
     """
-    logout(request)
+    if request.method == 'POST':
+        logout(request)
+        return render(request, 'registration/logged_out.html')
+    
+    # If GET, show confirmation page to prevent CSRF logout
+    if request.user.is_authenticated:
+        return render(request, 'registration/logout_confirm.html')
+        
     return render(request, 'registration/logged_out.html')
 
+
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 @login_required
 def send_email_code_api(request):
@@ -70,8 +80,10 @@ def send_email_code_api(request):
     if not email:
         return JsonResponse({'error': '请输入邮箱地址 / Please enter email address'}, status=400)
 
-    # Check if email is valid format (simple check)
-    if '@' not in email or '.' not in email:
+    # Security: Use Django's robust validator
+    try:
+        validate_email(email)
+    except ValidationError:
         return JsonResponse({'error': '邮箱格式不正确 / Invalid email format'}, status=400)
 
     user = request.user

@@ -138,21 +138,11 @@ def project_list(request):
     if phase_id and phase_id.isdigit():
         projects = projects.filter(current_phase_id=int(phase_id))
         
-    # Optimization: Remove heavy annotation for list view if not strictly needed or optimize it
-    # annotate(member_count=Count('members', distinct=True)) is expensive.
-    # Instead, we can prefetch members and count in python for the current page only, OR use a Subquery.
-    # Since we paginate to 12, prefetch is better.
-    
-    # projects = projects.annotate(member_count=Count('members', distinct=True))
+    # Optimization: Use annotate to count members efficiently (Avoid N+1)
+    projects = projects.annotate(member_count=Count('members', distinct=True))
     
     paginator = Paginator(projects, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
-    
-    # Calculate member count for current page only
-    # 为当前页面计算成员数量
-    # Also fetch members to display avatars if needed
-    for p in page_obj:
-        p.member_count = p.members.count() 
     
     # Optimization: Bulk fetch manageable status instead of per-project permission check
     from reports.utils import get_manageable_projects
@@ -662,16 +652,21 @@ def project_upload_attachment(request, project_id):
 
 @login_required
 def project_delete_attachment(request, attachment_id):
-    # This was missing in reports/views.py scan but assuming it exists or similar to task
-    # Actually I saw project_delete_attachment in grep list.
     attachment = get_object_or_404(ProjectAttachment, pk=attachment_id)
     project = attachment.project
     
     # Check permission
-    # Superuser, Project Owner, or Uploader
-    can_delete = request.user.is_superuser or \
-                 project.owner == request.user or \
-                 attachment.uploaded_by == request.user
+    # 1. Superuser
+    # 2. Project Manager/Owner (Full Access)
+    # 3. Uploader (IF they still have access to the project)
+    
+    has_manage = can_manage_project(request.user, project)
+    is_uploader = attachment.uploaded_by == request.user
+    
+    # Verify project access for uploader (prevent deleted members from managing files)
+    has_access = get_accessible_projects(request.user).filter(pk=project.pk).exists()
+    
+    can_delete = request.user.is_superuser or has_manage or (is_uploader and has_access)
                  
     if not can_delete:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)

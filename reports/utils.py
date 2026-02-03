@@ -38,7 +38,14 @@ def get_accessible_projects(user):
     Returns a QuerySet of projects accessible to the user (view permission).
     返回用户可访问（查看权限）的项目查询集。
     """
-    return _get_projects_by_permission(user, 'project.view')
+    # Base RBAC access
+    rbac_projects = _get_projects_by_permission(user, 'project.view')
+    
+    if user.is_superuser:
+        return rbac_projects
+        
+    # Combine with M2M membership (Members implicitly have view access)
+    return (rbac_projects | Project.objects.filter(members=user, is_active=True)).distinct()
 
 def can_manage_project(user, project):
     """

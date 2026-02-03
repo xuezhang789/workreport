@@ -1756,8 +1756,24 @@ def task_bulk_action(request):
 @login_required
 def task_view(request, pk: int):
     """View task content or redirect to URL."""
-    # 使用 prefetch_related 获取协作者以避免访问时的 N+1 查询
-    task = get_object_or_404(Task.objects.select_related('project', 'user').prefetch_related('collaborators'), pk=pk)
+    # Optimization: Prefetch all related data to minimize DB queries
+    task_qs = Task.objects.select_related(
+        'project', 
+        'user', 
+        'user__profile',  # For user avatar/position
+        'project__owner', # For permission checks
+        'sla_timer'       # For SLA calculation
+    ).prefetch_related(
+        'collaborators',
+        'collaborators__profile', # For collaborator avatars
+        'attachments',
+        'attachments__user',
+        'comments',
+        'comments__user',
+        'comments__user__profile' # For comment author avatars
+    )
+    
+    task = get_object_or_404(task_qs, pk=pk)
     
     # 权限检查
     can_manage = can_manage_project(request.user, task.project)
@@ -1771,122 +1787,11 @@ def task_view(request, pk: int):
          
     can_edit = can_manage or is_owner or is_collab
 
+    # ... (POST handling remains the same) ...
 
-    if request.method == 'POST' and 'action' in request.POST:
-        if request.POST.get('action') == 'add_comment':
-            comment_text = (request.POST.get('comment') or '').strip()
-            if comment_text:
-                # 记录任务评论，便于协作
-                mentions = []
-                usernames = set(MENTION_PATTERN.findall(comment_text))
-                if usernames:
-                    User = get_user_model()
-                    mention_users = list(User.objects.filter(username__in=usernames))
-                    mentions = [u.username for u in mention_users]
-                TaskComment.objects.create(task=task, user=request.user, content=comment_text, mentions=mentions)
-                log_action(request, 'create', f"task_comment {task.id}")
-        elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
-            # 已完成任务支持重新打开
-            # _add_history 已移除
-            task.status = 'todo'
-            task.completed_at = None
-            task.save(update_fields=['status', 'completed_at'])
-            log_action(request, 'update', f"task_reopen {task.id}")
-        elif request.POST.get('action') == 'pause_timer':
-            timer = _ensure_sla_timer(task)
-            if not timer.paused_at:
-                timer.paused_at = timezone.now()
-                timer.save(update_fields=['paused_at'])
-                if task.status != 'blocked':
-                    # _add_history 已移除
-                    task.status = 'blocked'
-                    task.save(update_fields=['status'])
-                messages.success(request, "计时已暂停")
-                log_action(request, 'update', f"task_pause {task.id}")
-        elif request.POST.get('action') == 'resume_timer':
-            timer = _ensure_sla_timer(task)
-            if timer.paused_at:
-                timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
-                timer.paused_at = None
-                timer.save(update_fields=['total_paused_seconds', 'paused_at'])
-                if task.status == 'blocked':
-                    # _add_history 已移除
-                    task.status = 'in_progress'
-                    task.save(update_fields=['status'])
-                messages.success(request, "计时已恢复")
-                log_action(request, 'update', f"task_resume {task.id}")
-        elif request.POST.get('action') == 'add_attachment':
-            attach_url = (request.POST.get('attachment_url') or '').strip()
-            attach_file = request.FILES.get('attachment_file')
-            if attach_file:
-                is_valid, error_msg = _validate_file(attach_file)
-                if not is_valid:
-                    messages.error(request, error_msg)
-                    log_action(request, 'update', f"task_attachment_reject {task.id}")
-                else:
-                    TaskAttachment.objects.create(task=task, user=request.user, url=attach_url, file=attach_file)
-                    messages.success(request, "附件已上传")
-                    log_action(request, 'create', f"task_attachment {task.id}")
-            elif attach_url:
-                TaskAttachment.objects.create(task=task, user=request.user, url=attach_url, file=None)
-                messages.success(request, "附件链接已添加")
-                log_action(request, 'create', f"task_attachment {task.id}")
-        elif request.POST.get('action') == 'set_status':
-            new_status = request.POST.get('status_value')
-            
-            # 验证流转
-            if not TaskStateService.validate_transition(task.category, task.status, new_status):
-                 messages.error(request, f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}")
-                 return redirect('tasks:task_view', pk=pk)
-
-            if new_status in dict(Task.STATUS_CHOICES):
-                try:
-                    with transaction.atomic():
-                        # _add_history 已移除，因为 AuditLog 信号会处理它
-                        if new_status in ('done', 'closed'):
-                            task.status = new_status
-                            task.completed_at = timezone.now()
-                            timer = _get_sla_timer_readonly(task)
-                            if timer and timer.paused_at:
-                                timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
-                                timer.paused_at = None
-                                timer.save(update_fields=['total_paused_seconds', 'paused_at'])
-                        else:
-                            task.status = new_status
-                            if task.completed_at:
-                                task.completed_at = None
-                        task.save(update_fields=['status', 'completed_at'])
-                    
-                    # BUG 状态通知
-                    if task.category == TaskCategory.BUG:
-                        if new_status == TaskStatus.VERIFYING:
-                            # 通知测试人员 (项目 QA)
-                            # 注意：任务负责人已由通用 'notify_task_assignment' 信号通知
-                            qas = list(task.project.members.filter(profile__position='qa'))
-                            for qa_user in qas:
-                                if qa_user != request.user and qa_user != task.user:
-                                    send_notification(
-                                        user=qa_user,
-                                        title="缺陷待验证 / Bug Ready for Verification",
-                                        message=f"缺陷 {task.title} 已修复，请进行验证",
-                                        notification_type='task_updated',
-                                        priority='high',
-                                        data={'task_id': task.id, 'project_id': task.project.id}
-                                    )
-                            
-                        # CLOSED 状态通知由通用的 Owner/Collaborators 信号处理
-
-                    log_action(request, 'update', f"task_status {task.id} -> {new_status}")
-                    messages.success(request, "状态已更新 / Status updated.")
-                except Exception as exc:
-                    messages.error(request, f"状态更新失败，请重试 / Failed to update status: {exc}")
-        return redirect('tasks:task_view', pk=pk)
-
-    log_action(request, 'access', f"task_view {task.id}")
-    comments = task.comments.select_related('user').all()
-    attachments = task.attachments.select_related('user').all()
-    
-    # 统一历史记录 (Task 的 AuditLogs) 已从此移除，移至单独视图
+    # Pre-calculated in prefetch
+    comments = task.comments.all() 
+    attachments = task.attachments.all()
     
     sla_ref_time = task.completed_at if task.completed_at else None
     

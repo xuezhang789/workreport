@@ -57,13 +57,26 @@ class RBACService:
         all_roles = set()
         queue = [ur.role for ur in user_roles]
         
-        while queue:
-            role = queue.pop(0)
-            if role in all_roles:
-                continue
-            all_roles.add(role)
-            if role.parent:
-                queue.append(role.parent)
+        # Security: Prevent infinite recursion if roles have circular inheritance
+        # 安全：防止角色循环继承导致的无限递归
+        max_depth = 20
+        depth = 0
+        
+        while queue and depth < max_depth:
+            # Process current level
+            level_size = len(queue)
+            for _ in range(level_size):
+                role = queue.pop(0)
+                if role in all_roles:
+                    continue
+                all_roles.add(role)
+                if role.parent:
+                    queue.append(role.parent)
+            depth += 1
+            
+        if depth >= max_depth:
+            # Log warning about potential cycle or too deep hierarchy
+            pass
 
         # Collect permissions
         # 收集权限
