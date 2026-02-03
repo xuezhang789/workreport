@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse, Http404
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.db.models import Q, Count, Avg, F
+from django.db.models import Q, Count, Avg, F, Subquery, OuterRef
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.core.paginator import Paginator
@@ -18,7 +18,7 @@ from django.db import transaction
 from django.urls import reverse
 
 from projects.models import Project
-from tasks.models import Task, TaskAttachment, TaskComment
+from tasks.models import Task, TaskAttachment, TaskComment, TaskTemplateVersion
 from core.constants import TaskStatus, TaskCategory
 from tasks.services.state import TaskStateService
 from audit.utils import log_action
@@ -951,6 +951,16 @@ def admin_task_create(request):
     # user_objs = list(User.objects.all().order_by('username'))
     existing_urls = [u for u in Task.objects.exclude(url='').values_list('url', flat=True).distinct()]
 
+    # 获取任务模板（最新版本）
+    task_templates = TaskTemplateVersion.objects.filter(
+        version=Subquery(
+            TaskTemplateVersion.objects.filter(name=OuterRef('name'))
+            .order_by('-version')
+            .values('version')[:1]
+        ),
+        is_shared=True
+    ).order_by('name')
+
     if request.method == 'POST':
         title = (request.POST.get('title') or '').strip()
         url = (request.POST.get('url') or '').strip()
@@ -1017,6 +1027,7 @@ def admin_task_create(request):
             return render(request, 'tasks/admin_task_form.html', {
                 'errors': errors,
                 'projects': projects,
+                'task_templates': task_templates,
                 'users': collaborators,
                 'task_status_choices': Task.STATUS_CHOICES,
                 'task_category_choices': Task.CATEGORY_CHOICES,
@@ -1054,6 +1065,7 @@ def admin_task_create(request):
     return render(request, 'tasks/admin_task_form.html', {
         'projects': projects,
         'users': [],
+        'task_templates': task_templates,
         'task_status_choices': Task.STATUS_CHOICES,
         'task_category_choices': Task.CATEGORY_CHOICES,
         'task_priority_choices': Task.PRIORITY_CHOICES,

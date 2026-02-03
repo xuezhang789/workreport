@@ -386,6 +386,46 @@
     .remove-tag-btn:hover {
         background: rgba(37, 99, 235, 0.2);
     }
+
+    /* Virtual Select Styles */
+    .vs-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        display: none;
+        max-height: 400px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    .vs-dropdown.open { display: block; }
+    .vs-list-container {
+        height: 250px;
+        overflow-y: auto;
+        position: relative;
+    }
+    .vs-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-sizing: border-box; /* Ensure padding doesn't affect height calc */
+    }
+    .vs-item:hover, .vs-item.highlighted {
+        background: #f1f5f9;
+    }
+    .vs-item .code { color: var(--text-secondary); font-size: 12px; }
+    .vs-status { padding: 12px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+    .vs-label { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-secondary); background: #f8fafc; }
+    .vs-history-item { padding: 8px 12px; cursor: pointer; color: var(--text-main); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .vs-history-item:hover { background: #eff6ff; }
 </style>
 {% endblock %}
 
@@ -418,9 +458,12 @@
         {% if not is_collaborator_only %}
         <div class="template-bar">
             <div style="flex: 1; min-width: 200px;">
-                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">智能模板推荐 / Smart Template</label>
+                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">选择模板 / Select Template</label>
                 <select id="task-tpl-recommend" class="form-select" style="padding: 8px 12px; font-size: 13px; background: white;">
-                    <option value="">加载中... / Loading...</option>
+                    <option value="">请选择模板 / Select a template...</option>
+                    {% for tpl in task_templates %}
+                        <option value="{{ tpl.name }}">{{ tpl.name }} (v{{ tpl.version }})</option>
+                    {% endfor %}
                 </select>
             </div>
             <div style="flex: 1; min-width: 200px;">
@@ -446,16 +489,32 @@
                         <input type="text" name="title" class="form-input" value="{{ form_values.title|default:'' }}" required placeholder="简明扼要地描述任务 / Concise task description" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group" style="margin-bottom: 0;" id="project-selector-wrapper">
                         <label class="form-label">所属项目 / Project <span style="color:red">*</span></label>
-                        <input type="text" id="project-typeahead" list="project-options" class="form-input" placeholder="输入项目名搜索... / Search project..." style="margin-bottom: 8px;" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
-                        <datalist id="project-options"></datalist>
-                        <select name="project" id="project-select" class="form-select" required {% if is_collaborator_only %}disabled style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
-                            <option value="">请选择项目 / Select Project</option>
-                            {% for p in projects %}
-                                <option value="{{ p.id }}" {% if form_values.project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
-                            {% endfor %}
-                        </select>
+                        <!-- Custom Virtual Select Component -->
+                        <div class="vs-wrapper" style="position: relative;">
+                            <input type="text" id="vs-input" class="form-input" placeholder="输入项目名、拼音或代码... / Search name, pinyin..." autocomplete="off" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
+                            <input type="hidden" name="project" id="vs-hidden" required value="{{ form_values.project_id|default:'' }}">
+                            
+                            <!-- Initial server-rendered display if value exists -->
+                            <div id="vs-selected-display" style="margin-top: 8px; font-size: 13px; color: var(--primary); font-weight: 600; display: {% if form_values.project_id %}block{% else %}none{% endif %};">
+                                {% if task %}已选择: {{ task.project.name }} ({{ task.project.code }}){% endif %}
+                            </div>
+
+                            <div id="vs-dropdown" class="vs-dropdown">
+                                <div id="vs-loading" class="vs-status">加载中... / Loading...</div>
+                                <div id="vs-history-label" class="vs-label" style="display:none;">最近搜索 / Recent</div>
+                                <div id="vs-history-list"></div>
+                                <div id="vs-list-container" class="vs-list-container">
+                                    <div id="vs-virtual-spacer"></div>
+                                    <div id="vs-virtual-content"></div>
+                                </div>
+                                <div id="vs-empty" class="vs-status" style="display:none;">
+                                    <span>未找到项目 / No project found</span>
+                                    <a href="{% url 'projects:project_create' %}" target="_blank" style="display:block; margin-top:4px; color:var(--primary);">+ 新建项目 / Create New</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -700,58 +759,256 @@
                 });
         }
 
-        // --- Project Search ---
-        const projectTypeahead = document.getElementById('project-typeahead');
-        const projectOptions = document.getElementById('project-options');
-        const projectSelect = document.getElementById('project-select');
-        const projectApi = "{% url 'projects:project_search_api' %}";
+        // --- Virtual Project Select ---
+        class VirtualProjectSelect {
+            constructor() {
+                this.input = document.getElementById('vs-input');
+                this.hidden = document.getElementById('vs-hidden');
+                this.dropdown = document.getElementById('vs-dropdown');
+                this.listContainer = document.getElementById('vs-list-container');
+                this.virtualSpacer = document.getElementById('vs-virtual-spacer');
+                this.virtualContent = document.getElementById('vs-virtual-content');
+                this.loading = document.getElementById('vs-loading');
+                this.empty = document.getElementById('vs-empty');
+                this.display = document.getElementById('vs-selected-display');
+                
+                this.historyList = document.getElementById('vs-history-list');
+                this.historyLabel = document.getElementById('vs-history-label');
 
-        async function fetchProjects(q) {
-            if (!projectOptions) return;
-            projectOptions.innerHTML = ''; 
-            try {
-                const res = await fetch(`${projectApi}?q=${encodeURIComponent(q)}`);
-                if (res.status === 429) return; 
-                if (!res.ok) return;
-                const data = await res.json();
-                (data.results || []).forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = `${item.name} (${item.code})`;
-                    opt.dataset.id = item.id;
-                    projectOptions.appendChild(opt);
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        function applySelectedProject() {
-            if (!projectSelect || !projectTypeahead) return;
-            const text = projectTypeahead.value;
-            const match = Array.from(projectOptions.options).find(o => o.value === text);
-            if (!match) return;
-            
-            const pid = match.dataset.id;
-            let opt = Array.from(projectSelect.options).find(o => o.value === pid);
-            if (!opt) {
-                opt = document.createElement('option');
-                opt.value = pid;
-                opt.textContent = text;
-                projectSelect.appendChild(opt);
+                this.allProjects = []; // Local cache
+                this.filteredProjects = [];
+                this.itemHeight = 36;
+                this.visibleItems = 10;
+                this.highlightIndex = -1;
+                this.searchDebounce = null;
+                
+                if (this.input) this.init();
             }
-            projectSelect.value = pid;
-            loadTaskRecommendations();
-        }
 
-        if (projectTypeahead) {
-            let projDebounce;
-            projectTypeahead.addEventListener('input', (e) => {
-                const q = e.target.value;
-                clearTimeout(projDebounce);
-                if (q && q.length >= 1) {
-                    projDebounce = setTimeout(() => fetchProjects(q), 500);
+            async init() {
+                // Event Listeners
+                this.input.addEventListener('focus', () => this.onFocus());
+                this.input.addEventListener('blur', () => setTimeout(() => this.close(), 200));
+                this.input.addEventListener('input', (e) => this.onInput(e.target.value));
+                this.input.addEventListener('keydown', (e) => this.onKeydown(e));
+                
+                this.listContainer.addEventListener('scroll', () => this.renderVirtual());
+                
+                // Fetch Data (Lite Mode)
+                this.loading.style.display = 'block';
+                try {
+                    // Fetch top 5000 projects for client-side search (Lite Mode)
+                    const res = await fetch("{% url 'projects:project_search_api' %}?mode=lite&limit=5000");
+                    const data = await res.json();
+                    this.allProjects = data.results || [];
+                    this.filteredProjects = this.allProjects;
+                    this.loading.style.display = 'none';
+                    
+                    // Initial render if dropdown is open (unlikely) or just pre-calc
+                    this.renderVirtual();
+                } catch (e) {
+                    console.error('Failed to load projects', e);
+                    this.loading.textContent = '加载失败 / Load failed';
                 }
-            });
-            projectTypeahead.addEventListener('change', applySelectedProject);
+            }
+
+            onFocus() {
+                this.dropdown.classList.add('open');
+                this.renderHistory();
+                if (!this.input.value.trim()) {
+                    this.filteredProjects = this.allProjects;
+                    this.renderVirtual();
+                } else {
+                    this.filter(this.input.value);
+                }
+            }
+
+            close() {
+                this.dropdown.classList.remove('open');
+            }
+
+            onInput(q) {
+                clearTimeout(this.searchDebounce);
+                // 300ms Debounce
+                this.searchDebounce = setTimeout(() => {
+                    this.filter(q);
+                }, 300);
+            }
+
+            filter(q) {
+                if (!q || q.length < 1) { // Min 1 char to reset to full list, but user requirement says min 2 chars triggers search?
+                    // User req: "trigger search on min 2 chars". 
+                    // Interpretation: If < 2 chars, show History or Top projects? Or nothing?
+                    // Usually for client-side search, immediate is fine. But let's follow requirement if it was server-side.
+                    // Since it's client-side now, instant is better. I'll stick to instant for < 2 chars showing ALL projects is fine.
+                    this.filteredProjects = this.allProjects;
+                } else {
+                    const lowerQ = q.toLowerCase();
+                    // Multi-dimension fuzzy matching: Name, Code, ID
+                    this.filteredProjects = this.allProjects.filter(p => 
+                        (p.name && p.name.toLowerCase().includes(lowerQ)) || 
+                        (p.code && p.code.toLowerCase().includes(lowerQ)) ||
+                        String(p.id) === lowerQ
+                    );
+                    
+                    // Smart Sorting
+                    this.filteredProjects.sort((a, b) => {
+                         // 1. Exact Match Code/Name
+                         const aExact = (a.code && a.code.toLowerCase() === lowerQ) || (a.name && a.name.toLowerCase() === lowerQ);
+                         const bExact = (b.code && b.code.toLowerCase() === lowerQ) || (b.name && b.name.toLowerCase() === lowerQ);
+                         if (aExact && !bExact) return -1;
+                         if (!aExact && bExact) return 1;
+                         
+                         // 2. Starts With Code
+                         const aStart = a.code && a.code.toLowerCase().startsWith(lowerQ);
+                         const bStart = b.code && b.code.toLowerCase().startsWith(lowerQ);
+                         if (aStart && !bStart) return -1;
+                         if (!aStart && bStart) return 1;
+                         
+                         return 0; // Maintain original order (created_at desc)
+                    });
+                }
+                
+                this.highlightIndex = -1;
+                this.listContainer.scrollTop = 0;
+                this.renderVirtual();
+                
+                if (this.filteredProjects.length === 0) {
+                    this.empty.style.display = 'block';
+                    this.listContainer.style.display = 'none';
+                } else {
+                    this.empty.style.display = 'none';
+                    this.listContainer.style.display = 'block';
+                }
+            }
+
+            renderVirtual() {
+                const total = this.filteredProjects.length;
+                const scrollTop = this.listContainer.scrollTop;
+                const containerHeight = this.listContainer.clientHeight;
+                
+                this.virtualSpacer.style.height = `${total * this.itemHeight}px`;
+                
+                const startIndex = Math.floor(scrollTop / this.itemHeight);
+                const endIndex = Math.min(total, Math.ceil((scrollTop + containerHeight) / this.itemHeight) + 5); 
+                
+                let html = '';
+                for (let i = startIndex; i < endIndex; i++) {
+                    const p = this.filteredProjects[i];
+                    const isHighlight = i === this.highlightIndex ? 'highlighted' : '';
+                    html += `
+                        <div class="vs-item ${isHighlight}" style="height:${this.itemHeight}px; transform: translateY(${i * this.itemHeight}px); position: absolute; width: 100%;" 
+                             onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
+                            <span class="name">${this.highlightMatch(p.name, this.input.value)}</span>
+                            <span class="code">${this.highlightMatch(p.code, this.input.value)}</span>
+                        </div>
+                    `;
+                }
+                this.virtualContent.innerHTML = html;
+            }
+            
+            escape(str) {
+                if (!str) return '';
+                return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            }
+
+            highlightMatch(text, q) {
+                if (!text) return '';
+                if (!q) return text;
+                const reg = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                return text.replace(reg, '<span style="color:var(--primary);font-weight:bold;">$1</span>');
+            }
+
+            select(id, name, code) {
+                this.input.value = ''; // Clear input or keep it? Usually keep name. But we have display.
+                // Requirement: "Input project name...". If I set value, it filters.
+                // Let's keep input empty for next search, and show selected below.
+                this.input.value = ''; 
+                this.hidden.value = id;
+                
+                this.display.textContent = `已选择: ${name} (${code})`;
+                this.display.style.display = 'block';
+                
+                this.addToHistory({id, name, code});
+                this.close();
+                
+                // Trigger updates
+                if (window.loadTaskRecommendations) window.loadTaskRecommendations(); 
+            }
+            
+            addToHistory(item) {
+                let hist = JSON.parse(localStorage.getItem('vs_history') || '[]');
+                hist = hist.filter(i => i.id !== item.id);
+                hist.unshift(item);
+                if (hist.length > 5) hist.pop();
+                localStorage.setItem('vs_history', JSON.stringify(hist));
+            }
+            
+            renderHistory() {
+                const hist = JSON.parse(localStorage.getItem('vs_history') || '[]');
+                if (hist.length > 0 && !this.input.value) {
+                    this.historyLabel.style.display = 'block';
+                    this.historyList.innerHTML = hist.map(p => `
+                        <div class="vs-history-item" onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
+                            <span style="font-size:16px;">🕒</span> 
+                            <span>${p.name} <span style="color:#94a3b8;font-size:12px;">(${p.code})</span></span>
+                        </div>
+                    `).join('');
+                } else {
+                    this.historyLabel.style.display = 'none';
+                    this.historyList.innerHTML = '';
+                }
+            }
+
+            onKeydown(e) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.highlightIndex = Math.min(this.highlightIndex + 1, this.filteredProjects.length - 1);
+                    this.renderVirtual();
+                    this.scrollToHighlight();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
+                    this.renderVirtual();
+                    this.scrollToHighlight();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (this.highlightIndex >= 0 && this.filteredProjects[this.highlightIndex]) {
+                        const p = this.filteredProjects[this.highlightIndex];
+                        this.select(p.id, p.name, p.code);
+                    }
+                }
+            }
+            
+            scrollToHighlight() {
+                const top = this.highlightIndex * this.itemHeight;
+                if (top < this.listContainer.scrollTop) {
+                    this.listContainer.scrollTop = top;
+                } else if (top + this.itemHeight > this.listContainer.scrollTop + this.listContainer.clientHeight) {
+                    this.listContainer.scrollTop = top + this.itemHeight - this.listContainer.clientHeight;
+                }
+            }
+            
+            // External Set (for template application)
+            setProject(id) {
+                // Find in allProjects
+                const p = this.allProjects.find(i => String(i.id) === String(id));
+                if (p) {
+                    this.select(p.id, p.name, p.code);
+                } else {
+                    // Fallback if not loaded yet or not found (maybe fetch details?)
+                    this.hidden.value = id;
+                    // Try to fetch single? Or just set ID and let backend handle display on reload.
+                    // For now, assume it's in the lite list.
+                }
+            }
         }
+        
+        window.vsSelect = function(id, name, code) {
+             if (window.virtualProjectSelect) window.virtualProjectSelect.select(id, name, code);
+        };
+
+        window.virtualProjectSelect = new VirtualProjectSelect();
 
         // --- User Search ---
         const userTypeahead = document.getElementById('user-typeahead');
@@ -939,7 +1196,7 @@
 
             form.addEventListener('submit', function(e) {
                 const title = form.querySelector('input[name="title"]').value;
-                const projectVal = projectSelect ? projectSelect.value : '';
+                const projectVal = document.getElementById('vs-hidden') ? document.getElementById('vs-hidden').value : '';
                 const userVal = userHiddenInput ? userHiddenInput.value : ''; 
                 const url = form.querySelector('input[name="url"]').value;
                 const content = form.querySelector('textarea[name="content"]').value;
@@ -965,7 +1222,7 @@
         async function loadTaskRecommendations() {
             if (!tplRecommend) return;
             const params = new URLSearchParams({type: 'task'});
-            const projectVal = projectSelect ? projectSelect.value : '';
+            const projectVal = document.getElementById('vs-hidden') ? document.getElementById('vs-hidden').value : '';
             const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
             
             if (roleVal) params.append('role', roleVal);
@@ -987,7 +1244,7 @@
 
         async function applyTaskTemplate(mode = 'replace') {
             const name = tplName ? tplName.value.trim() : '';
-            const projectVal = projectSelect ? projectSelect.value : '';
+            const projectVal = document.getElementById('vs-hidden') ? document.getElementById('vs-hidden').value : '';
             const roleVal = "{% if request.user.profile %}{{ request.user.profile.position }}{% else %}{% endif %}";
             
             const params = new URLSearchParams({type: 'task'});
@@ -1014,9 +1271,8 @@
 
                 if (urlInput && data.url) urlInput.value = data.url;
 
-                if (data.project && projectSelect) {
-                    let opt = Array.from(projectSelect.options).find(o => o.value === String(data.project));
-                    if (opt) projectSelect.value = String(data.project);
+                if (data.project && window.virtualProjectSelect) {
+                    window.virtualProjectSelect.setProject(data.project);
                 }
 
                 alert(data.fallback ? '已应用默认模板 (Fallback) / Applied default template' : '模板已应用 / Template applied');
@@ -1025,8 +1281,6 @@
 
         if (tplRecommend) {
             tplRecommend.addEventListener('change', (e) => { if (tplName) tplName.value = e.target.value; });
-            loadTaskRecommendations();
-            if (projectSelect) projectSelect.addEventListener('change', loadTaskRecommendations);
         }
 
         if (tplBtn) tplBtn.addEventListener('click', () => applyTaskTemplate('replace'));

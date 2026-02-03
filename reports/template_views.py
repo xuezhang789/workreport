@@ -14,6 +14,7 @@ from reports.forms import ReportTemplateForm
 from tasks.forms import TaskTemplateForm
 from core.utils import _admin_forbidden, has_manage_permission
 from audit.utils import log_action
+from audit.models import AuditLog
 from reports.signals import _invalidate_stats_cache
 
 ROLE_FIELDS_MAPPING = {
@@ -174,7 +175,7 @@ def template_center(request):
     """
     # Permission check (strict for center view as it implies management)
     # 权限检查（对于中心视图严格，因为它意味着管理）
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
 
     tab = request.GET.get('tab', 'report')  # 'report' or 'task'
@@ -261,6 +262,7 @@ def template_apply_api(request):
     """
     Apply a template (Report or Task) to current context.
     Returns the JSON content of the template.
+    Logs the usage.
     """
     if request.method == 'POST':
         try:
@@ -283,40 +285,59 @@ def template_apply_api(request):
             match = get_object_or_404(ReportTemplateVersion, id=tpl_id)
         elif role:
             # Fallback logic: Find best match
-            # 回退逻辑：寻找最佳匹配
-            qs = ReportTemplateVersion.objects.filter(role=role) # is_active=True?
+            qs = ReportTemplateVersion.objects.filter(role=role) 
             if project_id:
+                # First try project specific
                 match = qs.filter(project_id=project_id).order_by('-version').first()
             if not match:
+                # Then global shared
                 match = qs.filter(project__isnull=True, is_shared=True).order_by('-version').first()
+            if not match and not project_id:
+                # If no project specified, just get any shared one for role? 
+                # Or maybe RoleTemplate system default?
+                # For now, let's stick to ReportTemplateVersion
+                pass
     
     elif tpl_type == 'task':
         if tpl_id:
             match = get_object_or_404(TaskTemplateVersion, id=tpl_id)
         elif 'name' in data:
-            # Try to find by name + context
-            # 尝试按名称 + 上下文查找
             name = data.get('name')
             qs = TaskTemplateVersion.objects.filter(name=name)
             if project_id:
                 match = qs.filter(project_id=project_id).order_by('-version').first()
             if not match:
-                # Try global shared
-                # 尝试全局共享
                 match = qs.filter(project__isnull=True, is_shared=True).order_by('-version').first()
             if not match:
-                # Try just name match if unique? Or loose match?
-                # For now strict name match on latest version
-                # 尝试仅名称匹配（如果唯一）？或宽松匹配？
-                # 目前在最新版本上进行严格名称匹配
                 match = qs.order_by('-version').first()
 
     if match:
+        # Log Usage
+        match.usage_count += 1
+        match.save(update_fields=['usage_count'])
+        
+        # Manually create audit log since log_action util is limited
+        AuditLog.objects.create(
+            user=request.user,
+            operator_name=request.user.get_full_name() or request.user.username,
+            action='other', 
+            target_type=match.__class__.__name__,
+            target_id=str(match.id),
+            target_label=match.name,
+            project_id=project_id if project_id else (match.project_id if hasattr(match, 'project_id') else None),
+            summary=f"Applied template '{match.name}' (v{match.version})",
+            details={'role': role, 'project_id': project_id, 'context': 'template_apply_api'},
+            result='success'
+        )
+
         response_data = {
             'success': True, 
             'content': match.content,
             'placeholders': getattr(match, 'placeholders', {}),
-            'fallback': True if not tpl_id else False
+            'fallback': True if not tpl_id else False,
+            'id': match.id,
+            'name': match.name,
+            'role': match.role # Return role for frontend switching
         }
         
         if tpl_type == 'task':
@@ -328,8 +349,21 @@ def template_apply_api(request):
             
         return JsonResponse(response_data)
     else:
-        # No template found, return empty or default
-        # 未找到模板，返回空或默认值
+        # Try RoleTemplate as last resort for reports
+        if tpl_type == 'report' and role:
+            try:
+                rt = RoleTemplate.objects.get(role=role)
+                return JsonResponse({
+                    'success': True,
+                    'content': rt.sample_md,
+                    'placeholders': rt.placeholders,
+                    'fallback': True,
+                    'id': f"rt_{rt.id}",
+                    'name': f"Default {rt.get_role_display()} Template"
+                })
+            except RoleTemplate.DoesNotExist:
+                pass
+
         return JsonResponse({'success': False, 'message': 'No template found', 'content': {}})
         
 @login_required
@@ -337,21 +371,54 @@ def template_apply_api(request):
 def template_recommend_api(request):
     """
     Recommend templates based on context (e.g., project type, user role).
+    Supports filtering and full list.
     """
     tpl_type = request.GET.get('type', 'report')
     q = request.GET.get('q', '')
+    role = request.GET.get('role', '')
+    project_id = request.GET.get('project', '')
     
     if tpl_type == 'report':
-        qs = ReportTemplateVersion.objects.filter() # is_active?
+        qs = ReportTemplateVersion.objects.all()
+        
+        # 1. Filter by Role (if specified)
+        if role:
+            qs = qs.filter(Q(role=role) | Q(role__isnull=True) | Q(role=''))
+            
+        # 2. Filter by Project (Exact match or Global)
+        if project_id:
+            qs = qs.filter(Q(project_id=project_id) | Q(project__isnull=True))
+        else:
+            # If no project selected, show globals
+            qs = qs.filter(project__isnull=True)
+            
+        # 3. Search
         if q:
-            qs = qs.filter(name__icontains=q)
-        # Simple recommendation: return top 5 latest
-        # 简单推荐：返回最新的前 5 个
-        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description', 'version', 'project__name'))
+            qs = qs.filter(Q(name__icontains=q) | Q(role__icontains=q))
+            
+        # 4. Recommendation Logic:
+        # Prioritize: Same Project > Same Role > High Usage > Newest
+        # Using simple ordering for now
+        qs = qs.order_by('-project_id', '-usage_count', '-created_at')
+        
+        # Limit if needed, or pagination? For modal list we might want all relevant
+        # But let's limit to 50 to avoid overload
+        data = list(qs[:50].values(
+            'id', 'name', 'role', 'version', 'project__name', 'usage_count', 'created_at'
+        ))
+        
+        # Add system defaults if role is present and list is small?
+        # Actually RoleTemplate is separate.
+        
     else:
-        qs = TaskTemplateVersion.objects.filter()
+        qs = TaskTemplateVersion.objects.all()
         if q:
             qs = qs.filter(name__icontains=q)
-        data = list(qs.order_by('-created_at')[:5].values('id', 'name', 'description', 'version', 'project__name'))
+        if project_id:
+             qs = qs.filter(Q(project_id=project_id) | Q(project__isnull=True))
+             
+        data = list(qs.order_by('-usage_count', '-created_at')[:50].values(
+            'id', 'name', 'description', 'version', 'project__name', 'usage_count'
+        ))
         
     return JsonResponse({'success': True, 'templates': data})

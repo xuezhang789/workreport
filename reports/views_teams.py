@@ -29,17 +29,8 @@ def teams_list(request):
         
         from reports.utils import get_manageable_projects
         # This RBAC helper returns projects where user has 'project.manage'.
-        # If RBAC is not fully migrated, we might need to combine with legacy fields.
-        rbac_managed = get_manageable_projects(request.user)
-        
-        # Legacy/Model-field based management (Owner/Managers)
-        legacy_managed = Project.objects.filter(
-            models.Q(owner=request.user) | 
-            models.Q(managers=request.user),
-            is_active=True
-        )
-        
-        manageable_projects = (rbac_managed | legacy_managed).distinct()
+        # It also includes legacy/model-field based management (Owner/Managers).
+        manageable_projects = get_manageable_projects(request.user)
         has_access = manageable_projects.exists()
 
     if not has_access:
