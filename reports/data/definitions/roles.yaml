@@ -1,0 +1,265 @@
+
+templates:
+  - role: mgr
+    name: "Project Manager Daily / 项目经理日报"
+    hint: "关注项目整体进度、风险控制、资源协调及团队绩效。"
+    version: 2
+    sort_order: 10
+    fields:
+      - key: "mgr_progress"
+        label: "项目进度与里程碑 / Progress & Milestones"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 项目进度 (Progress)
+          - **[里程碑]** 核心模块开发: 85% (🟢 正常)
+          - **[关键路径]** 支付接口联调 -> 验收测试 (预计延期 1 天)
+          - **[交付物]** 需求规格说明书 v1.2 (已签收)
+          
+          | 项目 | 阶段 | 进度 | 状态 |
+          |---|---|---|---|
+          | CRM系统 | 开发 | 60% | 🟢 |
+          | 商城App | 测试 | 85% | 🟡 |
+      - key: "mgr_risks"
+        label: "风险管理与应对 / Risks & Mitigation"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🚩 风险与问题 (Risks)
+          - **[High]** 服务器资源不足 -> **应对**: 已提交采购申请，预计周三到位
+          - **[Medium]** 第三方API不稳定 -> **应对**: 增加重试机制，评估备选方案
+      - key: "mgr_resources"
+        label: "资源与协调 / Resources & Coordination"
+        required: false
+        type: "markdown"
+        default: |
+          ### 👥 资源协调 (Resources)
+          - **[需协调]** UI 组需补充 "个人中心" 切图
+          - **[团队]** 本周请假: 张三 (周五)
+      - key: "mgr_tomorrow"
+        label: "明日重点 / Key Focus"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📝 明日计划
+          - 组织商城App上线前验收评审
+          - 跟进服务器资源申请进度
+    metrics:
+      - key: "risks_active"
+        label: "Active Risks"
+        type: "integer"
+      - key: "milestone_completion"
+        label: "Milestone %"
+        type: "percentage"
+
+  - role: dev
+    name: "Developer Daily / 开发工程师日报"
+    hint: "详细记录代码产出、技术难点及性能优化事项。"
+    version: 2
+    sort_order: 20
+    fields:
+      - key: "today_work"
+        label: "开发进度 / Development"
+        required: true
+        type: "markdown"
+        default: |
+          ### 💻 功能开发 (Features)
+          - **[Feat]** 购物车逻辑 (JIRA-101): 已完成后端接口，待联调
+          - **[Fix]** 修复登录 Token 过期 Bug (JIRA-105)
+          - **[Commit]** feat: add cart api; fix: login bug (Total: 5 commits)
+      - key: "progress_issues"
+        label: "技术挑战 / Tech Challenges"
+        required: false
+        type: "markdown"
+        default: |
+          ### 🧩 技术难点 (Challenges)
+          - **[难点]** 分布式锁在 Redis 集群下的偶发失效
+          - **[方案]** 升级 Redisson 版本并调整锁超时策略
+          
+          ### 👓 代码审查 (Code Review)
+          - Reviewed PR #45 (Pass)
+          - Submitted PR #48 (Pending)
+      - key: "dev_performance"
+        label: "性能优化 / Performance"
+        required: false
+        type: "markdown"
+        default: |
+          ### 🚀 性能优化
+          - 优化了图片懒加载逻辑，首屏 LCP 提升 200ms
+      - key: "tomorrow_plan"
+        label: "明日计划 / Plan"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 明日计划
+          - 完成支付回调接口开发
+          - 编写单元测试 (目标覆盖率 80%)
+    metrics:
+      - key: "commit_count"
+        label: "Commits"
+        type: "integer"
+      - key: "cr_count"
+        label: "Code Reviews"
+        type: "integer"
+
+  - role: qa
+    name: "QA Engineer Daily / 测试工程师日报"
+    hint: "聚焦测试执行、缺陷追踪及质量覆盖率。"
+    version: 2
+    sort_order: 30
+    fields:
+      - key: "testing_progress"
+        label: "测试执行 / Execution Stats"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🧪 测试执行 (Execution)
+          - **[计划]** 执行用例 50 条
+          - **[实际]** 执行 50 条 (Pass: 45, Fail: 5, Blocked: 0)
+          - **[覆盖]** 订单模块 (Functional), 支付模块 (Smoke)
+      - key: "bug_summary"
+        label: "缺陷矩阵 / Bug Matrix"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🐛 缺陷统计 (Bugs)
+          - **[Critical]** 0
+          - **[Major]** 2 (JIRA-201, JIRA-202) - 待开发修复
+          - **[Minor]** 3 - 已验证关闭
+      - key: "testing_quality"
+        label: "质量与回归 / Quality & Regression"
+        required: false
+        type: "markdown"
+        default: |
+          ### 📉 回归测试
+          - v1.5.0 回归进度: 60%
+          - 发现回归 Bug: 1 个
+          
+          ### 📊 性能指标
+          - 登录接口 TPS: 500 (达标)
+      - key: "testing_tomorrow"
+        label: "明日计划 / Plan"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 明日计划
+          - 完成 v1.5.0 剩余回归测试
+          - 验证已修复的 Major 缺陷
+    metrics:
+      - key: "cases_executed"
+        label: "Cases Executed"
+        type: "integer"
+      - key: "bugs_found"
+        label: "Bugs Found"
+        type: "integer"
+
+  - role: pm
+    name: "Product Manager Daily / 产品经理日报"
+    hint: "涵盖需求变更、用户反馈、竞品分析及发布计划。"
+    version: 2
+    sort_order: 40
+    fields:
+      - key: "product_today"
+        label: "需求与反馈 / Requirements & Feedback"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📝 需求管理 (Requirements)
+          - **[变更]** 调整 "会员等级" 规则 (v2.1 -> v2.2)
+          - **[PRD]** 完成《积分商城》需求文档初稿
+          
+          ### 🗣️ 用户反馈 (Feedback)
+          - **[用户]** 3位用户反馈注册流程繁琐 -> **Action**: 简化步骤
+          - **[竞品]** 竞品A 上线了 "AI 助手" 功能，需关注
+      - key: "product_metrics"
+        label: "产品指标 / Product Metrics"
+        required: false
+        type: "markdown"
+        default: |
+          ### 📊 数据表现
+          - 昨日 DAU: 12,000 (+2%)
+          - 转化率: 3.5% (目标 4.0%)
+      - key: "product_tomorrow"
+        label: "发布计划 / Release Plan"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 版本计划
+          - v2.0.0: 预计 10/25 上线 (倒计时 5天)
+          - 明日重点: 评审《积分商城》需求
+    metrics:
+      - key: "prd_pages"
+        label: "PRD Pages"
+        type: "integer"
+
+  - role: ops
+    name: "DevOps Daily / 运维工程师日报"
+    hint: "记录系统稳定性、变更操作及SLA达成情况。"
+    version: 2
+    sort_order: 50
+    fields:
+      - key: "ops_monitoring"
+        label: "系统状态 / System Status"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🖥️ 监控概览
+          - **Uptime**: 99.99%
+          - **Resource**: CPU < 60%, Mem < 70%
+          - **QPS**: Peak 2000 / Avg 500
+      - key: "ops_today"
+        label: "变更与告警 / Changes & Incidents"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🛠️ 变更记录
+          - 升级 Nginx 至 1.24 (无中断)
+          
+          ### 🚨 告警处理
+          - [已解决] 14:00 DB连接数突增 (慢查询导致，已Kill)
+      - key: "ops_tomorrow"
+        label: "明日计划 / Plan"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 维护计划
+          - 数据库备份恢复演练
+          - 更新生产环境 SSL 证书
+    metrics:
+      - key: "incidents"
+        label: "Incidents"
+        type: "integer"
+
+  - role: ui
+    name: "Designer Daily / 设计师日报"
+    hint: "记录设计进度、交互细节及视觉验收结果。"
+    version: 2
+    sort_order: 60
+    fields:
+      - key: "ui_today"
+        label: "设计工作 / Design Work"
+        required: true
+        type: "markdown"
+        default: |
+          ### 🎨 设计产出
+          - 完成「个人中心」高保真设计图 (3P)
+          - 输出「支付弹窗」交互规范
+      - key: "ui_feedback"
+        label: "视觉验收 / Visual Review"
+        required: false
+        type: "markdown"
+        default: |
+          ### 👁️ 验收记录
+          - 验收 Android v2.1: 发现 3 处还原度问题 (已提交 Jira)
+      - key: "ui_tomorrow"
+        label: "明日计划 / Plan"
+        required: true
+        type: "markdown"
+        default: |
+          ### 📅 设计计划
+          - 启动「活动页」头图设计
+          - 整理 Button 组件库
+    metrics:
+      - key: "screens"
+        label: "Screens"
+        type: "integer"

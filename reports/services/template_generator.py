@@ -79,3 +79,30 @@ class TemplateGenerator:
                 }
             )
             logger.info(f"Updated Task Template: {t['name']}")
+
+    @classmethod
+    def validate_config(cls):
+        """
+        Validate the template configuration against the system models.
+        Returns a list of errors.
+        """
+        errors = []
+        from core.models import Profile
+        from work_logs.models import DailyReport
+        
+        # 1. Validate Roles
+        valid_roles = dict(Profile.ROLE_CHOICES).keys()
+        for role, tpl in DAILY_REPORT_TEMPLATES.items():
+            if role not in valid_roles:
+                errors.append(f"Invalid role '{role}' in DAILY_REPORT_TEMPLATES. Valid choices: {list(valid_roles)}")
+                
+            # 2. Validate Placeholders
+            placeholders = tpl.get('placeholders', {})
+            for key in placeholders.keys():
+                # Check if field exists in DailyReport model
+                try:
+                    DailyReport._meta.get_field(key)
+                except Exception:
+                    errors.append(f"Invalid placeholder key '{key}' in template '{role}'. Field does not exist in DailyReport model.")
+        
+        return errors
