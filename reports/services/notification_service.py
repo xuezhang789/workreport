@@ -7,6 +7,10 @@ from channels.layers import get_channel_layer
 from reports.models import Notification
 from core.services.notification_template import NotificationContent, NotificationTemplateService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def send_notification(user, title, message, notification_type, data=None, priority='normal', content: NotificationContent = None):
     """
     创建通知记录，通过 WebSocket 推送，并可选择发送电子邮件。
@@ -59,7 +63,7 @@ def send_notification(user, title, message, notification_type, data=None, priori
             notification.is_pushed = True
             notification.save(update_fields=['is_pushed'])
         except Exception as e:
-            print(f"Failed to push notification to {user.username}: {e}")
+            logger.error(f"Failed to push notification to {user.username}: {e}", exc_info=True)
             # 我们不会让事务失败，只是记录它。数据库记录仍然存在。
 
     # 3. 发送电子邮件（统一逻辑）
@@ -80,6 +84,6 @@ def send_notification(user, title, message, notification_type, data=None, priori
                 fail_silently=True
             )
         except Exception as e:
-            print(f"Failed to send email to {user.email}: {e}")
+            logger.error(f"Failed to send email to {user.email}: {e}", exc_info=True)
     
     return notification

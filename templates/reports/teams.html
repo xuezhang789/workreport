@@ -685,7 +685,7 @@
                     <span style="color: var(--border-color); margin: 0 4px;">|</span>
                     {{ user.date_joined|date:"Y-m-d" }}
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('user-modal-{{ user.id }}')">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.position }}', JSON.parse('{{ user.project_memberships.all|to_project_json|escapejs }}'))">
                     管理 / Manage
                 </button>
             </div>
@@ -919,13 +919,12 @@
     .alert-box.warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
 </style>
 
-<!-- Modals (Existing User Modals) -->
-{% for user in users %}
-<div id="user-modal-{{ user.id }}" class="modal-overlay" onclick="if(event.target === this) closeModal('user-modal-{{ user.id }}')">
+<!-- Single User Manage Modal -->
+<div id="user-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeUserManageModal()">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 class="modal-title">管理成员 / Manage Member: {{ user.get_full_name|default:user.username }}</h3>
-            <button type="button" class="close-btn" onclick="closeModal('user-modal-{{ user.id }}')">
+            <h3 class="modal-title" id="umm-title">管理成员 / Manage Member</h3>
+            <button type="button" class="close-btn" onclick="closeUserManageModal()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>
@@ -933,11 +932,11 @@
             <!-- 1. Role Update -->
             <div class="modal-section">
                 <div class="modal-section-title">角色设置 / Role Settings</div>
-                <form action="{% url 'reports:team_member_update_role' user.id %}" method="post" style="display: flex; gap: 8px;">
+                <form id="umm-role-form" method="post" style="display: flex; gap: 8px;">
                     {% csrf_token %}
-                    <select name="role" class="form-select" style="flex:1;">
+                    <select id="umm-role-select" name="role" class="form-select" style="flex:1;">
                         {% for r_val, r_label in roles %}
-                        <option value="{{ r_val }}" {% if user.profile.position == r_val %}selected{% endif %}>{{ r_label }}</option>
+                        <option value="{{ r_val }}">{{ r_label }}</option>
                         {% endfor %}
                     </select>
                     <button type="submit" class="btn btn-primary">更新 / Update</button>
@@ -946,28 +945,16 @@
 
             <!-- 2. Project List -->
             <div class="modal-section">
-                <div class="modal-section-title">参与项目 / Projects ({{ user.project_memberships.count }})</div>
-                <div class="project-list-modal">
-                    {% for proj in user.project_memberships.all %}
-                    <div class="project-item-modal">
-                        <span style="font-weight: 500;">{{ proj.name }} <span style="color: var(--text-muted); font-weight: normal;">({{ proj.code }})</span></span>
-                        <form action="{% url 'reports:team_member_remove_project' user.id proj.id %}" method="post" style="margin:0;" onsubmit="return handleProjectRemove(this);">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-remove" title="移除项目">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
-                        </form>
-                    </div>
-                    {% empty %}
-                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">暂未参与任何项目 / No projects assigned</div>
-                    {% endfor %}
+                <div class="modal-section-title" id="umm-projects-title">参与项目 / Projects (0)</div>
+                <div id="umm-project-list" class="project-list-modal">
+                    <!-- Populated via JS -->
                 </div>
             </div>
 
             <!-- 3. Add Project -->
             <div class="modal-section">
                 <div class="modal-section-title">添加项目 / Add Project</div>
-                <form action="{% url 'reports:team_member_add_project' user.id %}" method="post" style="display: flex; gap: 8px;" onsubmit="showAdding(this)">
+                <form id="umm-add-project-form" method="post" style="display: flex; gap: 8px;" onsubmit="showAdding(this)">
                     {% csrf_token %}
                     <select name="project_id" class="form-select" style="flex:1;" required>
                         <option value="">选择项目... / Select Project...</option>
@@ -981,9 +968,54 @@
         </div>
     </div>
 </div>
-{% endfor %}
 
 <script>
+    function openUserManageModal(userId, userName, currentRole, projects) {
+        // Set Title
+        document.getElementById('umm-title').innerText = `管理成员 / Manage Member: ${userName}`;
+        
+        // Setup Role Form
+        const roleForm = document.getElementById('umm-role-form');
+        roleForm.action = `/reports/teams/${userId}/role/`; // Ensure this matches URL pattern
+        document.getElementById('umm-role-select').value = currentRole;
+        
+        // Setup Projects List
+        const projectList = document.getElementById('umm-project-list');
+        projectList.innerHTML = '';
+        document.getElementById('umm-projects-title').innerText = `参与项目 / Projects (${projects.length})`;
+        
+        if (projects.length === 0) {
+            projectList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">暂未参与任何项目 / No projects assigned</div>';
+        } else {
+            projects.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'project-item-modal';
+                div.innerHTML = `
+                    <span style="font-weight: 500;">${p.name} <span style="color: var(--text-muted); font-weight: normal;">(${p.code})</span></span>
+                    <form action="/reports/teams/${userId}/project/${p.id}/remove/" method="post" style="margin:0;" onsubmit="return handleProjectRemove(this);">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF_TOKEN}">
+                        <button type="submit" class="btn-remove" title="移除项目">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </form>
+                `;
+                projectList.appendChild(div);
+            });
+        }
+        
+        // Setup Add Project Form
+        const addForm = document.getElementById('umm-add-project-form');
+        addForm.action = `/reports/teams/${userId}/project/add/`;
+        addForm.reset();
+        
+        // Open Modal
+        document.getElementById('user-manage-modal').classList.add('open');
+    }
+
+    function closeUserManageModal() {
+        document.getElementById('user-manage-modal').classList.remove('open');
+    }
+
     function openModal(id) {
         document.getElementById(id).classList.add('open');
     }

@@ -1605,6 +1605,7 @@ def task_complete(request, pk: int):
         log_action(request, 'update', f"task_complete {task.id}")
         messages.success(request, "任务已标记完成 / Task marked as completed.")
     except Exception as exc:
+        logger.error(f"Failed to complete task {task.id}: {exc}", exc_info=True)
         messages.error(request, f"任务完成失败，请重试 / Failed to complete task: {exc}")
     
     next_url = request.GET.get('next') or request.POST.get('next')
@@ -1879,6 +1880,7 @@ def task_view(request, pk: int):
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
                     messages.success(request, "状态已更新 / Status updated.")
                 except Exception as exc:
+                    logger.error(f"Failed to update status for task {task.id}: {exc}", exc_info=True)
                     messages.error(request, f"状态更新失败，请重试 / Failed to update status: {exc}")
         return redirect('tasks:task_view', pk=pk)
 

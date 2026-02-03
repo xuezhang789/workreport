@@ -2,451 +2,310 @@
 {% load static %}
 
 {% block title %}高级报表 / Advanced Reporting{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="高级报表 / Advanced Reporting" nav_subtitle="可视化项目进度与趋势分析 / Visualizing project progress and trends" %}{% endblock %}
 
 {% block extra_styles %}
 <style>
-    :root {
-        --primary: #2563eb;
-        --primary-light: #eff6ff;
-        --primary-hover: #1d4ed8;
-        --text-main: #1e293b;
-        --text-secondary: #64748b;
-        --text-muted: #94a3b8;
-        --bg-page: #f8fafc;
-        --bg-card: #ffffff;
-        --border-color: #e2e8f0;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    .loading-overlay {
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center;
+        z-index: 10; font-weight: 600; color: var(--primary);
     }
-
-    /* --- Page Layout --- */
-    .page-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        padding: 0 24px 80px 24px;
-    }
-
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 24px;
-    }
-
-    .page-title {
-        font-size: 24px;
-        font-weight: 800;
-        color: var(--text-main);
-        margin: 0 0 4px 0;
-        font-family: 'Space Grotesk', sans-serif;
-    }
-
-    .page-subtitle {
-        color: var(--text-secondary);
-        font-size: 14px;
-        margin: 0;
-    }
-
-    /* --- Filter Section --- */
-    .filter-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        margin-bottom: 24px;
-        box-shadow: var(--shadow-sm);
-    }
-
-    .filter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        align-items: end;
-    }
-
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .form-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-
-    .form-select {
-        padding: 10px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 14px;
-        background-color: #fff;
-        color: var(--text-main);
-        width: 100%;
-        transition: var(--transition);
-    }
-
-    .form-select:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px var(--primary-light);
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        margin-top: 16px;
-    }
-
-    /* --- Buttons --- */
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        transition: var(--transition);
-        border: 1px solid transparent;
-        line-height: 1.5;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: var(--primary-hover);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-    }
-
-    .btn-outline {
-        background: white;
-        border-color: var(--border-color);
-        color: var(--text-main);
-    }
-
-    .btn-outline:hover {
-        border-color: #cbd5e1;
-        background: #f8fafc;
-    }
-
-    /* --- Charts Cards --- */
-    .chart-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: var(--shadow-sm);
-        transition: var(--transition);
-    }
-
-    .chart-card:hover {
-        box-shadow: var(--shadow-md);
-    }
-
-    .chart-header {
-        margin-bottom: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 16px;
-    }
-
-    .chart-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--text-main);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* --- Empty State --- */
-    .empty-state {
-        text-align: center;
-        padding: 64px 24px;
-        color: var(--text-secondary);
-        background: var(--bg-card);
-        border-radius: var(--radius-lg);
-        border: 2px dashed var(--border-color);
-    }
-    
-    .empty-state h4 {
-        color: var(--text-main);
-        margin: 16px 0 8px 0;
-        font-weight: 700;
-    }
+    .chart-card { position: relative; min-height: 200px; padding: 20px; background: #fff; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .filter-section { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .pagination-controls { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    [v-cloak] { display: none; }
 </style>
+<link rel="stylesheet" href="https://npm.elemecdn.com/apexcharts@3.41.0/dist/apexcharts.min.css">
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
-    <!-- Header (Hidden in favor of Topbar, or kept for print/structure?) -->
-    <!-- We already have nav_header, so we can remove the duplicate page-header or style it as a sub-header -->
-    <div class="page-header" style="display: none;">
-        <div>
-            <h1 class="page-title">高级报表 / Advanced Reporting</h1>
-            <p class="page-subtitle">可视化项目进度与趋势分析 / Visualizing project progress and trends</p>
-        </div>
-    </div>
-    
+<div id="app" class="page-container" v-cloak>
     <!-- Filter -->
     <div class="filter-section">
-        <form method="GET" id="reportFilterForm">
-            <div class="filter-grid">
-                <div class="form-group">
-                    <label for="projectSelect" class="form-label">选择项目 / Select Project</label>
-                    <select class="form-select" id="projectSelect" name="project_id" onchange="this.form.submit()">
-                        <option value="">所有项目 / All Projects</option>
-                        {% for project in projects %}
-                            <option value="{{ project.id }}" 
-                                {% if project.id == selected_project_id %}selected{% endif %}>
-                                {{ project.name }} ({{ project.code }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div class="filter-actions">
-                <a href="{% url 'tasks:admin_task_export' %}?project={{ selected_project_id }}" class="btn btn-outline">
-                    <i class="fa-solid fa-download"></i>
-                    导出任务 / Export Tasks
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fa-solid fa-filter"></i>
-                    应用筛选 / Apply Filter
-                </button>
-            </div>
-        </form>
+        <div class="filter-grid" style="display: flex; gap: 20px; align-items: flex-end;">
+             <div class="form-group" style="flex: 1; max-width: 300px;">
+                <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 600;">选择项目 / Select Project</label>
+                <select class="form-select" v-model="projectId" @change="handleProjectChange" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <option value="">所有项目 / All Projects</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }} ({{ project.code }})</option>
+                    {% endfor %}
+                </select>
+             </div>
+             <div class="filter-actions">
+                 <button class="btn btn-primary" @click="refreshAll" :disabled="loadingAny" style="background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+                    <i class="fa-solid fa-rotate" :class="{'fa-spin': loadingAny}"></i> 刷新 / Refresh
+                 </button>
+             </div>
+        </div>
     </div>
-    
-    {% if gantt_data %}
+
+    <!-- Gantt Chart -->
     <div class="chart-card">
-        <div class="chart-header">
-            <h5 class="chart-title">项目甘特图 / Project Gantt Chart</h5>
+        <div class="chart-header" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <h5 class="chart-title" style="margin: 0; font-size: 18px;">项目甘特图 / Project Gantt Chart</h5>
+            <div class="pagination-controls" v-if="ganttTotal > 0">
+                <button class="btn btn-sm" :disabled="ganttPage <= 1" @click="prevGanttPage" style="padding: 4px 10px;">&lt;</button>
+                <span>[[ ganttPage ]] / [[ ganttTotalPages ]]</span>
+                <button class="btn btn-sm" :disabled="ganttPage >= ganttTotalPages" @click="nextGanttPage" style="padding: 4px 10px;">&gt;</button>
+            </div>
         </div>
         <div id="ganttChart" style="height: 500px;"></div>
+        <div v-if="ganttLoading" class="loading-overlay">Loading Data...</div>
     </div>
-    {% endif %}
-    
-    {% if burn_down_data.labels %}
-    <div class="chart-card">
-        <div class="chart-header">
-            <h5 class="chart-title">项目燃尽图 / Project Burndown Chart</h5>
-        </div>
-        <div id="burnDownChart" style="height: 400px;"></div>
-    </div>
-    {% endif %}
 
-    {% if cfd_data.labels %}
-    <div class="chart-card">
-        <div class="chart-header">
-            <h5 class="chart-title">累积流图 / Cumulative Flow Diagram (CFD)</h5>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Burndown Chart (Async) -->
+        <div class="chart-card">
+            <div class="chart-header" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h5 class="chart-title" style="margin: 0; font-size: 18px;">燃尽图 / Burndown</h5>
+                <span v-if="burndownStatus === 'running'" style="color: #f59e0b; font-size: 12px;">Computing...</span>
+                <span v-if="burndownStatus === 'failed'" style="color: #ef4444; font-size: 12px;">Failed</span>
+            </div>
+            <div id="burndownChart" style="height: 400px;"></div>
+            <div v-if="burndownStatus === 'pending' || burndownStatus === 'running'" class="loading-overlay">Processing...</div>
         </div>
-        <div id="cfdChart" style="height: 400px;"></div>
+
+        <!-- CFD Chart (Async) -->
+        <div class="chart-card">
+            <div class="chart-header" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h5 class="chart-title" style="margin: 0; font-size: 18px;">累积流图 / CFD</h5>
+                <span v-if="cfdStatus === 'running'" style="color: #f59e0b; font-size: 12px;">Computing...</span>
+            </div>
+            <div id="cfdChart" style="height: 400px;"></div>
+            <div v-if="cfdStatus === 'pending' || cfdStatus === 'running'" class="loading-overlay">Processing...</div>
+        </div>
     </div>
-    {% endif %}
-    
-    {% if not gantt_data and not burn_down_data.labels and not cfd_data.labels %}
-    <div class="empty-state">
-        <i class="fa-regular fa-file-lines empty-icon" style="font-size: 48px; display: block; margin: 0 auto 16px;"></i>
-        <h4>暂无数据 / No Data Available</h4>
-        <p>请选择一个项目或确保该项目下有任务数据。 / Please select a project or ensure tasks exist.</p>
-    </div>
-    {% endif %}
 </div>
 
-<link rel="stylesheet" href="https://npm.elemecdn.com/apexcharts@3.41.0/dist/apexcharts.min.css">
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="https://npm.elemecdn.com/apexcharts@3.41.0/dist/apexcharts.min.js"></script>
 
-<!-- Data Injection -->
-{{ gantt_data|json_script:"gantt-data" }}
-{{ burn_down_data|json_script:"burndown-data" }}
-{{ cfd_data|json_script:"cfd-data" }}
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Helper function for colors
-    function getStatusColor(status) {
-        // Updated to match Django Task model status choices
-        const colorMap = {
-            'todo': '#94a3b8',         // Slate 400
-            'pending': '#94a3b8',      // Fallback
-            'in_progress': '#3b82f6',  // Blue 500
-            'in_review': '#f59e0b',    // Amber 500
-            'blocked': '#ef4444',      // Red 500
-            'done': '#22c55e',         // Green 500
-            'completed': '#22c55e',    // Fallback
-            'closed': '#64748b'        // Slate 500
-        };
-        // Normalize status key (remove gantt-bar- prefix if present)
-        const key = status.replace('gantt-bar-', '');
-        return colorMap[key] || '#cbd5e1';
-    }
+const { createApp, ref, computed, onMounted, watch } = Vue;
 
-    // Parse Data
-    const ganttData = JSON.parse(document.getElementById('gantt-data').textContent || '[]');
-    const burnDownData = JSON.parse(document.getElementById('burndown-data').textContent || '{}');
-    const cfdData = JSON.parse(document.getElementById('cfd-data').textContent || '{}');
+function getStatusColor(status) {
+    const key = status ? status.replace('gantt-bar-', '') : 'todo';
+    const colorMap = {
+        'todo': '#94a3b8',
+        'in_progress': '#3b82f6',
+        'in_review': '#f59e0b',
+        'blocked': '#ef4444',
+        'done': '#22c55e',
+        'closed': '#64748b'
+    };
+    return colorMap[key] || '#cbd5e1';
+}
 
-    // Common Chart Options
-    const commonOptions = {
-        fontFamily: "'Noto Sans SC', sans-serif",
-        toolbar: { show: false }
+// Hook: usePagination
+function usePagination(fetchFn, initialPage = 1, initialLimit = 50) {
+    const page = ref(initialPage);
+    const limit = ref(initialLimit);
+    const total = ref(0);
+    const data = ref([]);
+    const loading = ref(false);
+    const error = ref(null);
+
+    const totalPages = computed(() => Math.ceil(total.value / limit.value) || 1);
+
+    const fetchData = async () => {
+        loading.value = true;
+        try {
+            const res = await fetchFn(page.value, limit.value);
+            data.value = res.data;
+            total.value = res.total;
+        } catch (e) {
+            error.value = e.message;
+        } finally {
+            loading.value = false;
+        }
     };
 
-    // 初始化甘特图
-    if (ganttData.length > 0) {
-        var ganttSeriesData = ganttData.map(function(task) {
-            return {
-                x: task.name,
-                y: [
-                    new Date(task.start).getTime(),
-                    new Date(task.end).getTime()
+    const next = () => {
+        if (page.value < totalPages.value) {
+            page.value++;
+            fetchData();
+        }
+    };
+
+    const prev = () => {
+        if (page.value > 1) {
+            page.value--;
+            fetchData();
+        }
+    };
+
+    return { page, limit, total, totalPages, data, loading, error, fetchData, next, prev };
+}
+
+// Hook: useReportJob
+function useReportJob(type) {
+    const status = ref('idle');
+    const result = ref(null);
+    const error = ref(null);
+    let pollInterval = null;
+
+    const startJob = async (projectId) => {
+        status.value = 'pending';
+        try {
+            const res = await fetch('/reports/api/jobs/start/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json', 
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ type, project_id: projectId })
+            }).then(r => r.json());
+            
+            if (res.status === 'done') {
+                status.value = 'done';
+                result.value = res.result;
+            } else if (res.job_id) {
+                status.value = 'running';
+                poll(res.job_id);
+            } else {
+                throw new Error(res.error || 'Unknown error');
+            }
+        } catch (e) {
+            status.value = 'failed';
+            error.value = e.message;
+        }
+    };
+
+    const poll = (jobId) => {
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/reports/api/jobs/${jobId}/`).then(r => r.json());
+                if (res.status === 'done') {
+                    status.value = 'done';
+                    result.value = res.result;
+                    clearInterval(pollInterval);
+                } else if (res.status === 'failed') {
+                    status.value = 'failed';
+                    error.value = res.error;
+                    clearInterval(pollInterval);
+                }
+            } catch (e) {
+                clearInterval(pollInterval);
+            }
+        }, 1000); 
+    };
+
+    return { status, result, error, startJob };
+}
+
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const projectId = ref('{{ selected_project_id|default:"" }}');
+        
+        const fetchGantt = async (p, l) => {
+            const url = `/reports/api/advanced/gantt/?project_id=${projectId.value}&page=${p}&limit=${l}`;
+            return await fetch(url).then(r => r.json());
+        };
+        const gantt = usePagination(fetchGantt);
+        const burndown = useReportJob('burndown');
+        const cfd = useReportJob('cfd');
+        
+        let ganttChartObj = null;
+        let burndownChartObj = null;
+        let cfdChartObj = null;
+
+        const renderGantt = () => {
+            if (ganttChartObj) ganttChartObj.destroy();
+            if (!gantt.data.value.length) return;
+            
+            const series = [{
+                data: gantt.data.value.map(t => ({
+                    x: t.name,
+                    y: [new Date(t.start).getTime(), new Date(t.end).getTime()],
+                    fillColor: getStatusColor(t.custom_class)
+                }))
+            }];
+            ganttChartObj = new ApexCharts(document.querySelector("#ganttChart"), {
+                series,
+                chart: { height: 500, type: 'rangeBar', toolbar: {show: false} },
+                plotOptions: { bar: { horizontal: true, barHeight: '60%', borderRadius: 4 } },
+                xaxis: { type: 'datetime' },
+                grid: { borderColor: '#f1f5f9' }
+            });
+            ganttChartObj.render();
+        };
+
+        const renderBurndown = () => {
+            if (!burndown.result.value) return;
+            if (burndownChartObj) burndownChartObj.destroy();
+            const data = burndown.result.value;
+            if (!data.labels || !data.labels.length) return;
+            
+            burndownChartObj = new ApexCharts(document.querySelector("#burndownChart"), {
+                series: [
+                    { name: 'Ideal', data: data.ideal, color: '#94a3b8' },
+                    { name: 'Actual', data: data.actual, color: '#ef4444' }
                 ],
-                fillColor: getStatusColor(task.custom_class)
-            };
+                chart: { height: 400, type: 'line', toolbar: {show: false} },
+                stroke: { curve: 'straight', width: [2, 3], dashArray: [5, 0] },
+                xaxis: { categories: data.labels },
+                grid: { borderColor: '#f1f5f9' }
+            });
+            burndownChartObj.render();
+        };
+        
+        const renderCfd = () => {
+            if (!cfd.result.value) return;
+            if (cfdChartObj) cfdChartObj.destroy();
+            const data = cfd.result.value;
+            if (!data.labels || !data.labels.length) return;
+            
+            cfdChartObj = new ApexCharts(document.querySelector("#cfdChart"), {
+                series: data.datasets,
+                chart: { height: 400, type: 'area', stacked: true, toolbar: {show: false} },
+                colors: ['#cbd5e1', '#22c55e'],
+                dataLabels: { enabled: false },
+                fill: { type: 'solid', opacity: 0.6 },
+                xaxis: { categories: data.labels },
+                grid: { borderColor: '#f1f5f9' }
+            });
+            cfdChartObj.render();
+        };
+
+        watch(gantt.data, renderGantt);
+        watch(burndown.result, renderBurndown);
+        watch(cfd.result, renderCfd);
+
+        const refreshAll = () => {
+            gantt.fetchData();
+            burndown.startJob(projectId.value);
+            cfd.startJob(projectId.value);
+        };
+
+        const handleProjectChange = () => {
+            gantt.page.value = 1;
+            refreshAll();
+        };
+
+        onMounted(() => {
+            refreshAll();
         });
 
-        var ganttOptions = {
-            ...commonOptions,
-            series: [{
-                data: ganttSeriesData
-            }],
-            chart: {
-                height: 500,
-                type: 'rangeBar',
-                toolbar: { show: true }
-            },
-            plotOptions: {
-                bar: {
-                    horizontal: true,
-                    distributed: true,
-                    barHeight: '60%',
-                    borderRadius: 4
-                }
-            },
-            xaxis: {
-                type: 'datetime'
-            },
-            grid: {
-                borderColor: '#f1f5f9'
-            },
-            tooltip: {
-                theme: 'light',
-                x: {
-                    format: 'dd MMM yyyy'
-                }
-            }
-        };
+        const loadingAny = computed(() => gantt.loading.value || burndown.status.value === 'running' || cfd.status.value === 'running');
 
-        var ganttChart = new ApexCharts(document.querySelector("#ganttChart"), ganttOptions);
-        ganttChart.render();
-    }
-    
-    // 初始化燃尽图
-    if (burnDownData.labels && burnDownData.labels.length > 0) {
-        var burnDownOptions = {
-            ...commonOptions,
-            chart: {
-                type: 'line',
-                height: 400,
-                zoom: { enabled: false }
-            },
-            series: [
-                {
-                    name: '理想剩余 / Ideal',
-                    data: burnDownData.ideal,
-                    color: '#94a3b8',
-                    dashArray: 5
-                },
-                {
-                    name: '实际剩余 / Actual',
-                    data: burnDownData.actual,
-                    color: '#ef4444'
-                }
-            ],
-            xaxis: {
-                categories: burnDownData.labels,
-                type: 'datetime',
-                labels: { style: { colors: '#64748b' } }
-            },
-            yaxis: {
-                labels: { style: { colors: '#64748b' } }
-            },
-            stroke: {
-                curve: 'straight',
-                width: [2, 3],
-                dashArray: [5, 0]
-            },
-            grid: {
-                borderColor: '#f1f5f9'
-            },
-            legend: {
-                position: 'top'
-            }
+        return {
+            projectId,
+            handleProjectChange,
+            refreshAll,
+            loadingAny,
+            ganttPage: gantt.page,
+            ganttTotalPages: gantt.totalPages,
+            ganttTotal: gantt.total,
+            ganttLoading: gantt.loading,
+            prevGanttPage: gantt.prev,
+            nextGanttPage: gantt.next,
+            burndownStatus: burndown.status,
+            cfdStatus: cfd.status
         };
-
-        var burnDownChart = new ApexCharts(document.querySelector("#burnDownChart"), burnDownOptions);
-        burnDownChart.render();
     }
-
-    // 初始化 CFD
-    if (cfdData.labels && cfdData.labels.length > 0) {
-        var cfdOptions = {
-            ...commonOptions,
-            series: cfdData.datasets,
-            chart: {
-                type: 'area',
-                height: 400,
-                stacked: true,
-                zoom: { enabled: false }
-            },
-            colors: ['#cbd5e1', '#22c55e'], // Pending (Gray), Done (Green)
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            fill: {
-                type: 'solid',
-                opacity: 0.6
-            },
-            xaxis: {
-                categories: cfdData.labels,
-                type: 'datetime',
-                labels: { style: { colors: '#64748b' } }
-            },
-            yaxis: {
-                labels: { style: { colors: '#64748b' } }
-            },
-            grid: {
-                borderColor: '#f1f5f9'
-            },
-            legend: {
-                position: 'top'
-            }
-        };
-        var cfdChart = new ApexCharts(document.querySelector("#cfdChart"), cfdOptions);
-        cfdChart.render();
-    }
-});
+}).mount('#app');
 </script>
 {% endblock %}

@@ -1,10 +1,12 @@
 from django.db.models import Count, Avg, F, Q, DurationField, ExpressionWrapper, Min
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from ..models import Task, DailyReport, Profile, Project
 from core.constants import TaskStatus
 import statistics
 from collections import defaultdict
+import bisect
 
 def get_performance_stats(start_date=None, end_date=None, project_id=None, role_filter=None, q=None, accessible_projects=None):
     """
@@ -218,146 +220,155 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         'overall_lead_p50': round(overall_lead_p50, 1) if overall_lead_p50 is not None else None,
     }
 
-def get_advanced_report_data(project_id=None):
-    """
-    获取高级报表图表的数据（甘特图、燃尽图、累积流图）。
-    """
-    User = get_user_model()
+def generate_gantt_data(project_id=None, page=1, limit=50):
+    tasks = Task.objects.all()
+    if project_id:
+        tasks = tasks.filter(project_id=project_id)
     
+    total = tasks.count()
+    start = (page - 1) * limit
+    end = start + limit
+    
+    # Use select_related to avoid N+1
+    page_tasks = tasks.select_related('user').order_by('created_at')[start:end]
+    
+    data = []
+    for t in page_tasks:
+        s = t.created_at
+        e = t.completed_at or t.due_at or (s + timezone.timedelta(days=2))
+        if e < s: e = s + timezone.timedelta(hours=1)
+        
+        progress = 100 if t.status in ('done', 'closed') else (50 if t.status == 'in_progress' else 0)
+        
+        data.append({
+            'id': str(t.id),
+            'name': t.title,
+            'start': s.strftime('%Y-%m-%d'),
+            'end': e.strftime('%Y-%m-%d'),
+            'progress': progress,
+            'custom_class': f'gantt-bar-{t.status}'
+        })
+    
+    return {
+        'total': total,
+        'page': page,
+        'limit': limit,
+        'data': data
+    }
+
+def generate_burndown_data(project_id=None):
     tasks = Task.objects.all()
     if project_id:
         tasks = tasks.filter(project_id=project_id)
         
-    # --- 1. 甘特图数据 ---
-    # 为甘特图准备任务
-    gantt_data = []
-    gantt_tasks = tasks.select_related('user').order_by('created_at')[:100] # 限制以提高性能
+    if not tasks.exists():
+        return {'labels': [], 'ideal': [], 'actual': []}
+        
+    earliest = tasks.aggregate(m=Min('created_at'))['m'].date()
+    latest = timezone.now().date()
+    total_tasks = tasks.count()
     
-    for t in gantt_tasks:
-        start = t.created_at
-        end = t.completed_at or t.due_at or (start + timezone.timedelta(days=2)) # 回退结束时间
+    # DB Aggregation: Daily completion counts
+    completions = tasks.filter(
+        status__in=['done', 'closed'], 
+        completed_at__isnull=False
+    ).annotate(
+        date=TruncDate('completed_at')
+    ).values('date').annotate(c=Count('id')).order_by('date')
+    
+    comp_map = {item['date']: item['c'] for item in completions}
+    
+    # Sampling
+    date_range = []
+    curr = earliest
+    while curr <= latest:
+        date_range.append(curr)
+        curr += timezone.timedelta(days=1)
+    
+    if len(date_range) > 30:
+        step = len(date_range) // 30
+        date_range = date_range[::step]
         
-        # 确保结束时间在开始时间之后
-        if end < start:
-            end = start + timezone.timedelta(hours=1)
-            
-        progress = 100 if t.status in (TaskStatus.DONE, TaskStatus.CLOSED) else (50 if t.status == TaskStatus.IN_PROGRESS else 0)
+    labels = []
+    ideal = []
+    actual = []
+    
+    sorted_comp_dates = sorted(comp_map.keys())
+    
+    for i, d in enumerate(date_range):
+        labels.append(d.strftime('%Y-%m-%d'))
         
-        gantt_data.append({
-            'id': str(t.id),
-            'name': t.title,
-            'start': start.strftime('%Y-%m-%d'),
-            'end': end.strftime('%Y-%m-%d'),
-            'progress': progress,
-            'dependencies': None, # 如果模型支持，添加依赖逻辑
-            'custom_class': f'gantt-bar-{t.status}' 
-        })
+        # Ideal
+        ideal_val = max(0, total_tasks - (i * (total_tasks / len(date_range))))
+        ideal.append(round(ideal_val, 1))
+        
+        # Actual
+        done_so_far = sum(comp_map[cd] for cd in sorted_comp_dates if cd <= d)
+        actual.append(total_tasks - done_so_far)
+        
+    return {'labels': labels, 'ideal': ideal, 'actual': actual}
 
-    # --- 2. 燃尽图数据 ---
-    # 理想线 vs 实际剩余
-    # 简单方法：计算总任务数，随时间减去已完成数
+def generate_cfd_data(project_id=None):
+    tasks = Task.objects.all()
+    if project_id:
+        tasks = tasks.filter(project_id=project_id)
     
-    burndown_data = {'labels': [], 'ideal': [], 'actual': []}
-    
-    if tasks.exists():
-        # Optimized: Fetch min created_at in one query
-        earliest_created = tasks.aggregate(min_date=Min('created_at'))['min_date']
-        earliest = earliest_created.date() if earliest_created else timezone.now().date()
-        latest = timezone.now().date()
-        
-        # 创建日期范围
-        date_range = []
-        curr = earliest
-        while curr <= latest:
-            date_range.append(curr)
-            curr += timezone.timedelta(days=1)
-            
-        # 限制点数以避免图表混乱（例如最多 30 个点）
-        if len(date_range) > 30:
-            step = len(date_range) // 30
-            date_range = date_range[::step]
-            
-        total_tasks_count = tasks.count()
-        
-        # Optimized: Fetch all completion dates once
-        # 获取所有完成日期，在内存中进行聚合
-        completion_dates = list(tasks.filter(
-            status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
-            completed_at__isnull=False
-        ).values_list('completed_at__date', flat=True))
-        
-        # 预先排序以便快速过滤
-        completion_dates.sort()
-        
-        # 计算理想值：从总数线性下降到 0
-        days_span = (latest - earliest).days or 1
-        
-        for i, d in enumerate(date_range):
-            burndown_data['labels'].append(d.strftime('%Y-%m-%d'))
-            
-            # Ideal
-            ideal_val = max(0, total_tasks_count - (i * (total_tasks_count / len(date_range))))
-            burndown_data['ideal'].append(round(ideal_val, 1))
-            
-            # 实际值：总数 - 截至日期 d 已完成数
-            # Optimized: Count in memory using sorted list
-            # 使用 bisect 或简单比较来计数
-            completed_count = sum(1 for cd in completion_dates if cd <= d)
-            actual_remaining = total_tasks_count - completed_count
-            burndown_data['actual'].append(actual_remaining)
+    if not tasks.exists():
+         return {'labels': [], 'datasets': []}
 
-    # --- 3. 累积流图数据 ---
-    # 累积流图
+    earliest = tasks.aggregate(m=Min('created_at'))['m'].date()
+    latest = timezone.now().date()
     
-    cfd_data = {'labels': [], 'datasets': []}
-    if tasks.exists() and burndown_data['labels']:
-        cfd_data['labels'] = burndown_data['labels']
+    # Aggregations
+    creations = tasks.annotate(date=TruncDate('created_at')).values('date').annotate(c=Count('id')).order_by('date')
+    create_map = {item['date']: item['c'] for item in creations}
+    
+    completions = tasks.filter(status__in=['done', 'closed'], completed_at__isnull=False)\
+        .annotate(date=TruncDate('completed_at')).values('date').annotate(c=Count('id')).order_by('date')
+    comp_map = {item['date']: item['c'] for item in completions}
+    
+    date_range = []
+    curr = earliest
+    while curr <= latest:
+        date_range.append(curr)
+        curr += timezone.timedelta(days=1)
         
-        # Reuse logic
-        earliest_created = tasks.aggregate(min_date=Min('created_at'))['min_date']
-        earliest = earliest_created.date() if earliest_created else timezone.now().date()
-        latest = timezone.now().date()
+    if len(date_range) > 30:
+        step = len(date_range) // 30
+        date_range = date_range[::step]
         
-        date_range = []
-        curr = earliest
-        while curr <= latest:
-            date_range.append(curr)
-            curr += timezone.timedelta(days=1)
-            
-        if len(date_range) > 30:
-            step = len(date_range) // 30
-            date_range = date_range[::step]
+    labels = []
+    pending_data = []
+    completed_data = []
+    
+    sorted_create_dates = sorted(create_map.keys())
+    sorted_comp_dates = sorted(comp_map.keys())
+    
+    for d in date_range:
+        labels.append(d.strftime('%Y-%m-%d'))
         
-        pending_data = []
-        completed_data = []
+        created_so_far = sum(create_map[cd] for cd in sorted_create_dates if cd <= d)
+        done_so_far = sum(comp_map[cd] for cd in sorted_comp_dates if cd <= d)
         
-        # Optimized: Use pre-fetched data
-        # Fetch creation dates for 'pending' calculation
-        creation_dates = list(tasks.values_list('created_at__date', flat=True))
-        creation_dates.sort()
+        completed_data.append(done_so_far)
+        pending_data.append(created_so_far - done_so_far)
         
-        # Reuse completion_dates from burndown
-        # completion_dates already sorted
-        
-        for d in date_range:
-            # 第 d 天结束时的快照
-            # 已完成
-            comp = sum(1 for cd in completion_dates if cd <= d)
-            completed_data.append(comp)
-            
-            # 待办：截至 d 创建 - 已完成
-            created_by_d = sum(1 for cd in creation_dates if cd <= d)
-            todo = created_by_d - comp
-            
-            pending_data.append(todo)
-            
-        cfd_data['datasets'] = [
-            {'name': '待处理 / To Do', 'data': pending_data},
-            {'name': '已完成 / Done', 'data': completed_data},
-        ]
-
     return {
-        'gantt': gantt_data,
-        'burndown': burndown_data,
-        'cfd': cfd_data
+        'labels': labels,
+        'datasets': [
+            {'name': '待处理 / To Do', 'data': pending_data},
+            {'name': '已完成 / Done', 'data': completed_data}
+        ]
     }
+
+def get_advanced_report_data(project_id=None):
+    """
+    Deprecated: Use individual generate_* functions.
+    Wrapper for backward compatibility.
+    """
+    return {
+        'gantt': generate_gantt_data(project_id, limit=100)['data'],
+        'burndown': generate_burndown_data(project_id),
+        'cfd': generate_cfd_data(project_id)
+    }
+

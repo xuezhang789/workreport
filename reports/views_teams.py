@@ -81,14 +81,21 @@ def teams_list(request):
     # Filtered by manageable projects
     project_teams = []
     
-    # Optimization: Annotate counts and prefetch related fields to avoid N+1
-    target_projects_qs = manageable_projects.annotate(
+    # Optimization: Split queries for different purposes
+    
+    # 1. Lightweight query for Dropdowns (Filter & Modal)
+    # No annotations needed here, just ID/Name/Code
+    dropdown_projects = manageable_projects.order_by('name')
+    
+    # 2. Heavy query for Project List (Cards)
+    # Needs member/manager counts and owner
+    dashboard_projects_qs = manageable_projects.annotate(
         member_count=models.Count('members', distinct=True),
         manager_count=models.Count('managers', distinct=True)
     ).select_related('owner').order_by('name')
     
     # --- Pagination for Project Teams ---
-    project_paginator = Paginator(target_projects_qs, 20)
+    project_paginator = Paginator(dashboard_projects_qs, 20)
     project_page_obj = project_paginator.get_page(request.GET.get('project_page'))
     current_page_projects = project_page_obj.object_list
     
@@ -136,8 +143,8 @@ def teams_list(request):
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
         'total_count': qs.count(),
-        'projects': target_projects_qs, # For modal & filter -> Only show projects user can manage
-        'project_teams': project_teams, # New Data -> Only show projects user can manage
+        'projects': dropdown_projects, # Lightweight query for dropdowns
+        'project_teams': project_teams, # Processed data for cards
     })
 
 @login_required

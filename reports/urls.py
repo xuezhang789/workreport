@@ -9,6 +9,7 @@ from . import template_views
 from . import audit_views
 from . import search_views
 from . import notification_views
+from . import views_api
 
 app_name = 'reports'
 
@@ -47,6 +48,11 @@ urlpatterns = [
     # API
     # path('api/projects/<int:pk>/', views.api_project_detail, name='api_project_detail'), # Moved
     path('api/audit-logs/', audit_views.api_audit_logs, name='api_audit_logs'),
+    
+    # Advanced Reporting APIs
+    path('api/advanced/gantt/', views_api.api_advanced_gantt, name='api_advanced_gantt'),
+    path('api/jobs/start/', views_api.api_start_report_job, name='api_start_report_job'),
+    path('api/jobs/<int:job_id>/', views_api.api_check_report_job, name='api_check_report_job'),
 
     # Phase Management - Moved
     
