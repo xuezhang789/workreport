@@ -3,10 +3,6 @@ from django.core.exceptions import ObjectDoesNotExist
 import json
 from django.utils.safestring import mark_safe
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 register = template.Library()
 
 @register.filter
@@ -37,8 +33,7 @@ def mask_email(email):
         else:
             masked_local = local[0] + "***" + local[-1]
         return f"{masked_local}@{domain}"
-    except Exception as e:
-        logger.warning(f"mask_email failed for input '{email}': {e}")
+    except Exception:
         return email
 
 @register.filter
@@ -50,8 +45,7 @@ def pretty_json(value):
         if isinstance(value, str):
             value = json.loads(value)
         return mark_safe(json.dumps(value, indent=2, ensure_ascii=False))
-    except Exception as e:
-        logger.warning(f"pretty_json failed: {e}")
+    except Exception:
         return value
 
 @register.filter
@@ -62,6 +56,5 @@ def to_project_json(projects):
     try:
         data = [{'id': p.id, 'name': p.name, 'code': p.code} for p in projects]
         return mark_safe(json.dumps(data, ensure_ascii=False))
-    except Exception as e:
-        logger.warning(f"to_project_json failed: {e}")
+    except Exception:
         return "[]"
