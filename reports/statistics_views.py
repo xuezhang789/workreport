@@ -14,7 +14,7 @@ from tasks.models import Task
 from work_logs.models import DailyReport
 from projects.models import Project
 from core.models import Profile, SystemSetting
-from reports.services.stats import get_performance_stats as _performance_stats, get_advanced_report_data
+from reports.services.stats import get_performance_stats as _performance_stats
 from reports.services.guidance import generate_workbench_guidance
 from reports.utils import get_accessible_projects
 from core.utils import _admin_forbidden, has_manage_permission
@@ -190,7 +190,8 @@ def stats(request):
     generated_at = timezone.now()
 
     todays_user_ids = set(qs.filter(date=target_date).values_list('user_id', flat=True))
-    active_projects = Project.objects.filter(is_active=True).prefetch_related('members', 'managers', 'reports')
+    # Optimized: Removed 'reports' from prefetch as it loads all historical reports which is heavy and unused
+    active_projects = Project.objects.filter(is_active=True).prefetch_related('members', 'managers')
     if project_filter and project_filter.isdigit():
         active_projects = active_projects.filter(id=int(project_filter))
     cache_key = f"stats_missing_{target_date}_{project_filter}_{role_filter}"
@@ -367,7 +368,7 @@ def stats(request):
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
 
-    for t in Task.objects.select_related('project', 'user').exclude(status=TaskStatus.DONE).iterator():
+    for t in Task.objects.select_related('project', 'user', 'sla_timer').exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).iterator():
         info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info
@@ -509,45 +510,3 @@ def performance_board(request):
         'report_roles': Profile.ROLE_CHOICES,
         'user_stats_page': Paginator(stats.get('user_stats', []), 10).get_page(request.GET.get('upage')),
     })
-
-
-@login_required
-def advanced_reporting(request):
-    selected_project_id = request.GET.get('project_id')
-    projects = Project.objects.filter(is_active=True)
-    
-    # Permission check for non-staff
-    # 非员工的权限检查
-    if not (request.user.is_staff or request.user.has_perm('reports.view_project')):
-         projects = projects.filter(
-             Q(members=request.user) | 
-             Q(owner=request.user) | 
-             Q(managers=request.user)
-         ).distinct()
-
-    project_id = None
-    project_name = "所有项目"
-    
-    if selected_project_id and selected_project_id.isdigit():
-        project_id = int(selected_project_id)
-        # Verify access
-        # 验证访问权限
-        proj = projects.filter(id=project_id).first()
-        if proj:
-            project_name = proj.name
-        else:
-            project_id = None # Fallback if no access | 如果没有权限，则回退
-            
-    data = get_advanced_report_data(project_id)
-    
-    if data.get('burndown'):
-        data['burndown']['project_name'] = project_name
-
-    context = {
-        'projects': projects,
-        'selected_project_id': int(selected_project_id) if selected_project_id and selected_project_id.isdigit() else '',
-        'gantt_data': data.get('gantt'),
-        'burn_down_data': data.get('burndown'),
-        'cfd_data': data.get('cfd'),
-    }
-    return render(request, 'reports/advanced_reporting.html', context)

@@ -72,35 +72,6 @@ class ExportJob(models.Model):
         return f"{self.export_type} {self.status}"
 
 
-class ReportJob(models.Model):
-    """异步报表任务：用于处理耗时的统计计算 / Async Report Job: for heavy stats calculation."""
-    STATUS_CHOICES = [
-        ('pending', '待处理 / Pending'),
-        ('running', '处理中 / Running'),
-        ('done', '完成 / Done'),
-        ('failed', '失败 / Failed'),
-    ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='report_jobs', verbose_name="用户")
-    report_type = models.CharField(max_length=50, verbose_name="报表类型")
-    params = models.JSONField(default=dict, blank=True, verbose_name="参数")
-    result = models.JSONField(null=True, blank=True, verbose_name="结果数据")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="状态")
-    error_message = models.TextField(blank=True, verbose_name="错误信息")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = "报表任务"
-        verbose_name_plural = "报表任务"
-        indexes = [
-            models.Index(fields=['user', 'report_type', 'created_at']),
-        ]
-
-    def __str__(self):
-        return f"{self.report_type} - {self.status}"
-
-
 class UserPreference(models.Model):
     """用户偏好，存储仪表卡片等设置。 / User preferences, stores dashboard cards etc."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences', verbose_name="用户")

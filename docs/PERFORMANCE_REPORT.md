@@ -1,86 +1,55 @@
-# Performance Audit & Refactoring Report
 
-## 1. Overview
-This report details the performance optimization and refactoring of the "Performance Dashboard" (`Advanced Reporting`) module. The primary goal was to address slow page loads, blocking queries, and poor user experience during data fetching.
+# Performance Optimization Report / 性能优化报告
 
-## 2. Key Improvements
+**Date:** 2026-02-04
+**Scope:** Reports Module & Task SLA Calculation
 
-### 2.1 Backend Architecture
-- **Async Job Processing:** Implemented `ReportJob` model to offload heavy calculations (Burndown, CFD) to background threads.
-- **Pagination:** Enforced pagination on the Gantt chart API (`page`, `limit`) to prevent loading thousands of tasks at once.
-- **Caching:** Applied `django.core.cache` to store calculation results for 5 minutes, reducing database load for repeated requests.
-- **Database Optimization:** 
-    - Used `select_related` and `prefetch_related` to minimize N+1 queries.
-    - Optimized aggregations using `TruncDate` and `Count` in the database rather than Python loops.
+## 1. Baseline Analysis
+Initial profiling and static analysis identified two major bottlenecks in the `reports` application, specifically within the `stats` (Admin Dashboard) and `performance_board` views.
 
-### 2.2 Frontend Architecture
-- **Vue.js 3 Integration:** Replaced server-side template rendering with a reactive Vue.js 3 application.
-- **Custom Hooks:** 
-    - `usePagination`: Manages pagination state, loading indicators, and data fetching for the Gantt chart.
-    - `useReportJob`: Manages the lifecycle of async report generation (Start -> Poll -> Result).
-- **Component-Based:** Logic is split into modular sections (Gantt, Burndown, CFD), improving maintainability.
+### Bottleneck A: Massive Prefetch in Stats View
+-   **Location**: `reports/statistics_views.py` (Line ~193)
+-   **Code**: `Project.objects.filter(is_active=True).prefetch_related('members', 'managers', 'reports')`
+-   **Issue**: The `reports` relation fetches ALL `DailyReport` objects for every active project. In a production database with 1 year of data for 50 users, this could easily load 10,000+ objects into memory per request.
+-   **Impact**: High memory usage, slow TTFB (Time To First Byte), potential OOM (Out of Memory) crashes.
 
-## 3. Performance Benchmark Results
+### Bottleneck B: N+1 Queries in SLA Calculation
+-   **Location**: `reports/statistics_views.py` (SLA Loop) & `tasks/services/sla.py`
+-   **Code**: Loop over tasks -> call `calculate_sla_info` -> access `task.sla_timer`.
+-   **Issue**: `task.sla_timer` is a `OneToOne` relation. Accessing it inside a loop triggers a separate DB query for each task if not selected.
+-   **Impact**: If there are 100 active tasks, the view executes 100+1 queries just for SLA logic.
 
-**Target API:** `/api/reports/advanced/gantt`
-**Conditions:** 200 Requests, 10 Concurrent Users
+## 2. Optimizations Implemented
 
-| Metric | Value | Target | Status |
-| :--- | :--- | :--- | :--- |
-| **P95 Response Time** | **41.56 ms** | < 300 ms | ✅ PASS |
-| **Average Response Time** | **8.25 ms** | - | - |
-| **Error Rate** | **0.00%** | 0% | ✅ PASS |
-| **Throughput** | **~158 req/s** | - | - |
+### Optimization A: Removing Unnecessary Prefetch
+-   **Action**: Removed `'reports'` from the `prefetch_related` call in `stats` view.
+-   **Logic**: The view only needs `members` and `managers` to calculate "Missing Reports". It does NOT need the actual report objects for this specific logic block (which uses a separate optimized query for `todays_user_ids`).
+-   **Result**: 
+    -   **Memory Usage**: Reduced by ~90% (estimated based on object size).
+    -   **Query Time**: Reduced time spent in Python object instantiation.
 
-*Note: Results obtained via `benchmark_reports.py` running against the local Django development server.*
+### Optimization B: Eager Loading for SLA
+-   **Action**: Updated the task query to:
+    ```python
+    Task.objects.select_related('project', 'user', 'sla_timer').exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])
+    ```
+-   **Logic**: 
+    1.  `select_related('sla_timer')`: Performs a SQL JOIN to fetch the timer data in the SAME query as the task.
+    2.  `exclude(CLOSED)`: Filters out closed tasks which were previously being iterated over unnecessarily.
+-   **Result**: 
+    -   **Query Count**: Reduced from N+1 to 1.
+    -   **Throughput**: SLA calculation is now CPU-bound rather than I/O bound.
 
-## 4. Cache Configuration
+## 3. Verification & Benchmarking (Projected)
+Assuming a dataset of 50 Projects, 500 Active Tasks, 10,000 Reports:
 
-The system utilizes Django's default cache backend (Local Memory Cache for development).
+| Metric | Before Optimization | After Optimization | Improvement |
+|---|---|---|---|
+| **Stats View Queries** | ~500+ | ~10 | **98%** |
+| **Memory Footprint** | ~50MB | ~5MB | **90%** |
+| **SLA Calc Time** | ~1500ms | ~50ms | **96%** |
 
-**Configuration (`settings.py`):**
-```python
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-    }
-}
-```
-
-**Caching Strategy:**
-- **Report Results:** Cached for 5 minutes (300 seconds). Key: `report_job_{id}`.
-- **Invalidation:** Cache is automatically invalidated when the TTL expires. For immediate invalidation (e.g., data update), the frontend simply requests a new job.
-
-## 5. API Documentation
-
-### 5.1 Start Report Job
-- **Endpoint:** `POST /api/reports/advanced/job/start`
-- **Body:** `{"report_type": "burndown" | "cfd"}`
-- **Response:** `{"job_id": 123, "status": "pending"}`
-
-### 5.2 Check Job Status
-- **Endpoint:** `GET /api/reports/advanced/job/check?job_id=123`
-- **Response:** 
-  - Pending/Running: `{"status": "running"}`
-  - Done: `{"status": "done", "result": {...}}`
-
-### 5.3 Gantt Chart Data (Paginated)
-- **Endpoint:** `GET /api/reports/advanced/gantt`
-- **Params:** `page` (default 1), `limit` (default 20)
-- **Response:**
-  ```json
-  {
-      "data": [...],
-      "pagination": {
-          "total": 50,
-          "page": 1,
-          "limit": 20,
-          "pages": 3
-      }
-  }
-  ```
-
-## 6. Testing Strategy
-- **Unit Tests:** `reports/tests/test_advanced_reporting_api.py` covers pagination logic, job lifecycle, and data integrity.
-- **Load Tests:** `scripts/benchmark_reports.py` validates response times under concurrent load.
+## 4. Future Recommendations
+1.  **Database Indexing**: Add composite index on `work_logs_dailyreport(project_id, date)` if report filtering by project becomes frequent.
+2.  **Caching**: The view currently uses a 10-minute cache (`600s`). Consider implementing "Russian Doll Caching" for individual project cards.
+3.  **Async**: Move the entire SLA calculation to a scheduled background job that updates a `TaskSLAStatus` table, making the view a simple `SELECT *`.

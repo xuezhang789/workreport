@@ -17,7 +17,7 @@
 *   **问题**: jsDelivr 在中国大陆无 ICP 备案，近期连接不稳定，丢包率高。
 *   **替换为**: `npm.elemecdn.com`
 *   **服务商**: 饿了么/阿里云 CDN (国内节点丰富，全球加速)
-*   **涉及文件**: `templates/reports/advanced_reporting.html`
+*   **涉及文件**: (已移除) `templates/reports/advanced_reporting.html`
 
 ### 2.3 协议升级
 *   所有资源链接强制使用 `https://`，确保安全传输。

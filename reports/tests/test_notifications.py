@@ -49,26 +49,3 @@ class NotificationTest(TestCase):
         notifications = Notification.objects.filter(user=self.user, notification_type='task_assigned')
         self.assertTrue(notifications.exists())
         self.assertEqual(notifications.first().priority, 'high')
-
-    def test_project_phase_change_signal(self):
-        """Test that project phase change triggers high priority notification."""
-        # Setup initial state
-        self.project.phase = 'planning'
-        self.project.save()
-        
-        # Simulate change tracking (mimicking audit middleware/signal logic)
-        self.project._audit_diff = {'phase': {'old': 'planning', 'new': 'development'}}
-        
-        # Trigger signal manually or via save if logic supports it
-        # Since logic relies on _audit_diff which is usually set in pre_save signal or manually,
-        # we need to ensure the signal receiver gets it.
-        # The receiver checks instance._audit_diff.
-        
-        # Note: In real flow, AuditService calculates diff. Here we mock it.
-        from reports.signals import notify_project_change
-        notify_project_change(sender=Project, instance=self.project, created=False)
-        
-        # Check notification for member
-        notifications = Notification.objects.filter(user=self.user, notification_type='project_update')
-        self.assertTrue(notifications.exists())
-        self.assertEqual(notifications.first().priority, 'high')

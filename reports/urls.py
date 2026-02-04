@@ -9,7 +9,6 @@ from . import template_views
 from . import audit_views
 from . import search_views
 from . import notification_views
-from . import views_api
 
 app_name = 'reports'
 
@@ -31,7 +30,6 @@ urlpatterns = [
     path('performance/export/', export_views.performance_export, name='performance_export'),
     path('admin/reports/', daily_report_views.admin_reports, name='admin_reports'),
     path('admin/reports/export/', export_views.admin_reports_export, name='admin_reports_export'),
-    path('advanced/', statistics_views.advanced_reporting, name='advanced_reporting'),
     path('my/<int:pk>/edit/', daily_report_views.report_edit, name='report_edit'),
     # Projects moved to projects app
     
@@ -49,11 +47,6 @@ urlpatterns = [
     # path('api/projects/<int:pk>/', views.api_project_detail, name='api_project_detail'), # Moved
     path('api/audit-logs/', audit_views.api_audit_logs, name='api_audit_logs'),
     
-    # Advanced Reporting APIs
-    path('api/advanced/gantt/', views_api.api_advanced_gantt, name='api_advanced_gantt'),
-    path('api/jobs/start/', views_api.api_start_report_job, name='api_start_report_job'),
-    path('api/jobs/<int:job_id>/', views_api.api_check_report_job, name='api_check_report_job'),
-
     # Phase Management - Moved
     
     # Project Phase Actions - Moved

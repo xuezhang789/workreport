@@ -5,10 +5,23 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-replace-this-with-a-random-secret-key-for-dev')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+# Check if we are running in a development server environment
+import sys
+IS_DEV_SERVER = 'runserver' in sys.argv
+
+# Default DEBUG to True if running via runserver, otherwise False (secure by default)
+DEFAULT_DEBUG = 'True' if IS_DEV_SERVER else 'False'
+DEBUG = os.environ.get('DJANGO_DEBUG', DEFAULT_DEBUG) == 'True'
+
+if not SECRET_KEY:
+    if DEBUG:
+        # Fallback for dev only
+        SECRET_KEY = 'django-insecure-replace-this-with-a-random-secret-key-for-dev'
+    else:
+        # In production (DEBUG=False), we must have a secret key
+        raise ValueError("DJANGO_SECRET_KEY environment variable is required in production.")
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
