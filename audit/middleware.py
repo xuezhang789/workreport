@@ -1,6 +1,7 @@
 import threading
+from asgiref.local import Local
 
-_thread_locals = threading.local()
+_thread_locals = Local()
 
 def get_current_user():
     return getattr(_thread_locals, 'user', None)
@@ -22,7 +23,7 @@ class AuditMiddleware:
         
         response = self.get_response(request)
         
-        # Cleanup to prevent leak in thread-pool environments
+        # Cleanup (Local handles this better but explicit cleanup is good practice)
         if hasattr(_thread_locals, 'user'): del _thread_locals.user
         if hasattr(_thread_locals, 'request'): del _thread_locals.request
         if hasattr(_thread_locals, 'ip'): del _thread_locals.ip

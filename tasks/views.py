@@ -467,7 +467,7 @@ def sla_settings(request):
             red = int(red_str)
             if hours < 1 or amber < 1 or red < 1:
                 raise ValueError("必须大于 0")
-        except Exception:
+        except (ValueError, TypeError):
             messages.error(request, "请输入有效的小时数（正整数）")
         else:
             SystemSetting.objects.update_or_create(key='sla_hours', defaults={'value': str(hours)})
@@ -1477,7 +1477,7 @@ def task_list(request):
     
     projects = projects.order_by('name')
 
-    return render(request, 'tasks/task_list.html', {
+    context = {
         'tasks': tasks,
         'projects': projects,
         'selected_status': status,
@@ -1490,7 +1490,12 @@ def task_list(request):
         'task_category_choices': Task.CATEGORY_CHOICES,
         'due_soon_count': due_soon_count,
         'sort_by': sort_by,
-    })
+    }
+
+    if request.headers.get('HX-Request'):
+         return render(request, 'tasks/partials/task_list_content.html', context)
+
+    return render(request, 'tasks/task_list.html', context)
 
 
 @login_required

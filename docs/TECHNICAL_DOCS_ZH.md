@@ -7,9 +7,10 @@ WorkReport 是一个基于 Django 的企业级项目协作与日报管理系统�
 
 ### 2.1 技术栈
 - **后端**: Python 3.12+, Django 5.x
-- **数据库**: SQLite (开发环境) / PostgreSQL (生产环境建议)
+- **数据库**: SQLite (开发环境) / PostgreSQL, MySQL (生产环境支持)
 - **前端**: Django Templates, HTMX (局部刷新), Bootstrap 5 (UI框架), Chart.js/ApexCharts (图表)
 - **异步任务**: Celery + Redis (邮件发送、报表导出)
+- **服务器**: Daphne (ASGI) / Gunicorn (WSGI)
 
 ### 2.2 模块划分
 系统采用模块化设计，核心应用如下：

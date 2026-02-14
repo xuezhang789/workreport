@@ -1,0 +1,112 @@
+{
+  "stats": {
+    "users": 1000,
+    "projects": 5000,
+    "tasks": 97760,
+    "reports": 916100
+  },
+  "sample_users": [
+    {
+      "username": "admin",
+      "first_name": "",
+      "last_name": ""
+    },
+    {
+      "username": "liulanying_539",
+      "first_name": "兰英",
+      "last_name": "刘"
+    },
+    {
+      "username": "dengshuzhen_622",
+      "first_name": "淑珍",
+      "last_name": "邓"
+    },
+    {
+      "username": "lijianjun_408",
+      "first_name": "建军",
+      "last_name": "李"
+    },
+    {
+      "username": "zhouxuemei_658",
+      "first_name": "雪梅",
+      "last_name": "周"
+    },
+    {
+      "username": "zhaoyun_436",
+      "first_name": "云",
+      "last_name": "赵"
+    },
+    {
+      "username": "wangguihua_216",
+      "first_name": "桂花",
+      "last_name": "王"
+    },
+    {
+      "username": "gaoxiaohong_508",
+      "first_name": "小红",
+      "last_name": "高"
+    },
+    {
+      "username": "yangchao_238",
+      "first_name": "超",
+      "last_name": "杨"
+    },
+    {
+      "username": "yangdongmei_319",
+      "first_name": "冬梅",
+      "last_name": "杨"
+    }
+  ],
+  "sample_projects": [
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-558932",
+      "overall_progress": 90.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-123288",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-170565",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-779632",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-482277",
+      "overall_progress": 10.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-405343",
+      "overall_progress": 75.0
+    },
+    {
+      "name": "人工智能APP三期项目",
+      "code": "PRJ-387421",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能APP二期项目",
+      "code": "PRJ-540348",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能APP二期项目",
+      "code": "PRJ-117210",
+      "overall_progress": 90.0
+    },
+    {
+      "name": "人工智能APP二期项目",
+      "code": "PRJ-62910",
+      "overall_progress": 90.0
+    }
+  ]
+}

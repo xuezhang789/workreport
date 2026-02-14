@@ -28,11 +28,51 @@ DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
 def _send_weekly_digest(recipient, stats):
     """
-    Placeholder for missing function in original codebase.
+    发送周报邮件给指定收件人。
+    Send weekly digest email to recipient.
     """
-    # TODO: Implement actual email sending logic
-    # TODO: 实现实际的电子邮件发送逻辑
-    return False
+    try:
+        subject = f"周报 / Weekly Digest: {timezone.localdate().isoformat()}"
+        
+        # 简单构建邮件内容 (Simple plain text for now, can be HTML)
+        # 指标摘要
+        total = stats.get('overall_total', 0)
+        completed = stats.get('overall_completed', 0)
+        overdue = stats.get('overall_overdue', 0)
+        rate = stats.get('overall_rate', 0)
+        
+        message = f"""
+        你好 / Hello,
+        
+        这是您的本周工作简报 / Here is your weekly work digest:
+        
+        --- 总体概况 / Overview ---
+        任务总数 / Total Tasks: {total}
+        已完成 / Completed: {completed}
+        逾期任务 / Overdue: {overdue}
+        完成率 / Completion Rate: {rate:.1f}%
+        
+        --- 项目详情 / Projects ---
+        """
+        
+        for p in stats.get('project_stats', []):
+            message += f"\nProject: {p['name']}\n"
+            message += f"  Total: {p['total']}, Done: {p['completed']}, Overdue: {p['overdue']}\n"
+            
+        message += "\n\n请登录系统查看详情 / Please login to view details."
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        # Log error in production
+        print(f"Failed to send weekly digest: {e}")
+        return False
 
 @login_required
 def workbench(request):

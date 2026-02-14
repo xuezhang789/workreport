@@ -8,12 +8,21 @@
 ## 2. 发现的问题与修复记录
 
 ### 2.1 安全漏洞 (Critical/High)
-1.  **IDOR (越权访问) - 报表导出**:
+1.  **敏感信息泄露 (.env)**:
+    *   **问题**: `.env` 文件中包含不安全的默认密钥 `DJANGO_SECRET_KEY=django-insecure-local-dev-key-12345`。
+    *   **建议**: 在生产环境中必须轮换此密钥，并确保 `.env` 不被提交到版本控制系统。
+2.  **配置漏洞 (settings.py)**:
+    *   **问题**: `settings.py` 中的数据库配置忽略了环境变量 (`DB_NAME`, `DB_USER` 等)，强制使用 SQLite，导致生产环境配置失效。
+    *   **修复**: 已修改 `settings.py` 以优先读取环境变量中的数据库配置，并支持 PostgreSQL/MySQL。
+3.  **IDOR (越权访问) - 报表导出**:
     *   **问题**: `reports/export_views.py` 中的 `admin_reports_export` 和 `stats_export` 仅检查了 `has_manage_permission`（是否为管理者），但未限制非超级管理员只能导出其有权限的项目数据。攻击者可通过构造请求导出任意项目数据。
     *   **修复**: 增加了 `get_accessible_projects(request.user)` 过滤逻辑，强制非超级管理员只能获取其权限范围内的数据。
 
 ### 2.2 代码质量与维护性 (Medium)
-1.  **废弃模型残留**:
+1.  **并发安全性 (Threading)**:
+    *   **问题**: `audit/middleware.py` 使用了 `threading.local` 存储请求上下文。由于项目使用了 `channels` 和 `daphne` (ASGI)，在异步环境下 `threading.local` 可能导致上下文混乱或丢失。
+    *   **修复**: 将 `threading.local` 替换为 `asgiref.local.Local`，确保兼容 ASGI 和 WSGI 环境。
+2.  **废弃模型残留**:
     *   **问题**: `core.models.PermissionMatrix` 已被标记为 Deprecated 并由新的 RBAC 系统取代，但仍被 `admin.py` 和迁移脚本引用，造成混淆。
     *   **修复**: 移除了 `admin.py` 和 `reports/models.py` 中的引用，注释掉了 `core/models.py` 中的模型定义，并更新了 `migrate_legacy_data.py` 以跳过该模型的迁移。
 

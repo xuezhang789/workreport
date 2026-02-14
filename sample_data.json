@@ -1,0 +1,112 @@
+{
+  "stats": {
+    "users": 100,
+    "projects": 50,
+    "tasks": 161,
+    "reports": 500
+  },
+  "sample_users": [
+    {
+      "username": "admin",
+      "first_name": "",
+      "last_name": ""
+    },
+    {
+      "username": "baoxiang_978",
+      "first_name": "想",
+      "last_name": "薄"
+    },
+    {
+      "username": "longbo_659",
+      "first_name": "博",
+      "last_name": "龙"
+    },
+    {
+      "username": "zhutao_186",
+      "first_name": "涛",
+      "last_name": "朱"
+    },
+    {
+      "username": "zhengjianping_943",
+      "first_name": "建平",
+      "last_name": "郑"
+    },
+    {
+      "username": "laiyu_538",
+      "first_name": "瑜",
+      "last_name": "赖"
+    },
+    {
+      "username": "songwen_996",
+      "first_name": "文",
+      "last_name": "宋"
+    },
+    {
+      "username": "hufei_811",
+      "first_name": "飞",
+      "last_name": "胡"
+    },
+    {
+      "username": "xiongliang_503",
+      "first_name": "亮",
+      "last_name": "熊"
+    },
+    {
+      "username": "zhaolin_871",
+      "first_name": "琳",
+      "last_name": "赵"
+    }
+  ],
+  "sample_projects": [
+    {
+      "name": "人工智能数据中台优化项目",
+      "code": "PRJ-521674",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能数据中台重构项目",
+      "code": "PRJ-873775",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "人工智能系统优化项目",
+      "code": "PRJ-93093",
+      "overall_progress": 90.0
+    },
+    {
+      "name": "人工智能系统迁移项目",
+      "code": "PRJ-248600",
+      "overall_progress": 100.0
+    },
+    {
+      "name": "医疗接口服务三期项目",
+      "code": "PRJ-672694",
+      "overall_progress": 0.0
+    },
+    {
+      "name": "医疗接口服务二期项目",
+      "code": "PRJ-440140",
+      "overall_progress": 0.0
+    },
+    {
+      "name": "医疗数据中台开发项目",
+      "code": "PRJ-3270",
+      "overall_progress": 75.0
+    },
+    {
+      "name": "医疗数据中台重构项目",
+      "code": "PRJ-87362",
+      "overall_progress": 30.0
+    },
+    {
+      "name": "医疗管理后台维护项目",
+      "code": "PRJ-67288",
+      "overall_progress": 25.0
+    },
+    {
+      "name": "医疗网站维护项目",
+      "code": "PRJ-916434",
+      "overall_progress": 0.0
+    }
+  ]
+}

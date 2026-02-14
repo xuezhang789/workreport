@@ -205,12 +205,12 @@ def project_detail(request, pk: int):
     # 我们获取原始值传递给 calculate_sla_info 以避免那里的数据库点击
     try:
         sla_h_setting = SystemSetting.objects.get(key='sla_hours').value
-    except:
+    except SystemSetting.DoesNotExist:
         sla_h_setting = None
         
     try:
         sla_t_setting = SystemSetting.objects.get(key='sla_thresholds').value
-    except:
+    except SystemSetting.DoesNotExist:
         sla_t_setting = None
 
     # 2. Aggregate counts (Cached)
