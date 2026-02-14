@@ -9,6 +9,10 @@ from reports.models import Profile, Project
 from reports.services import teams as team_service
 from core.utils import has_manage_permission, _admin_forbidden
 from audit.utils import log_action
+from django.utils import timezone
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from django.contrib.auth import get_user_model
 
 @login_required
 def teams_list(request):
@@ -136,6 +140,7 @@ def teams_list(request):
         'total_count': qs.count(),
         'projects': dropdown_projects, # Lightweight query for dropdowns
         'project_teams': project_teams, # Processed data for cards
+        'today_date': timezone.now().strftime('%Y-%m-%d'),
     })
 
 @login_required
@@ -147,6 +152,27 @@ def team_member_update_role(request, user_id):
     new_role = request.POST.get('role')
     success, message = team_service.update_member_role(user_id, new_role, changed_by=request.user)
     
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
+        if success:
+            # Broadcast
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "team_updates_global",
+                {
+                    "type": "team_update",
+                    "user_id": user_id,
+                    "action": "update_role",
+                    "data": {
+                        "role": new_role,
+                        "role_display": dict(Profile.ROLE_CHOICES).get(new_role, new_role)
+                    },
+                    "sender_id": request.user.id
+                }
+            )
+            return JsonResponse({'status': 'success', 'message': message})
+        else:
+            return JsonResponse({'status': 'error', 'message': message}, status=400)
+
     if success:
         messages.success(request, message)
         log_action(request, 'update', f"user_role {user_id} -> {new_role}")
@@ -163,11 +189,38 @@ def team_member_add_project(request, user_id):
         
     project_id = request.POST.get('project_id')
     if not project_id:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': "Please select a project"}, status=400)
         messages.error(request, "Please select a project")
         return redirect('reports:teams')
 
     success, message = team_service.add_member_to_project(user_id, project_id, changed_by=request.user)
     
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
+        if success:
+            # Get updated project list
+            User = get_user_model()
+            target_user = get_object_or_404(User, pk=user_id)
+            projects = [{
+                'id': p.id, 'name': p.name, 'code': p.code
+            } for p in target_user.project_memberships.all()]
+            
+            # Broadcast
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "team_updates_global",
+                {
+                    "type": "team_update",
+                    "user_id": user_id,
+                    "action": "add_project",
+                    "data": {'projects': projects},
+                    "sender_id": request.user.id
+                }
+            )
+            return JsonResponse({'status': 'success', 'message': message, 'projects': projects})
+        else:
+            return JsonResponse({'status': 'error', 'message': message}, status=400)
+
     if success:
         messages.success(request, message)
         log_action(request, 'update', f"user_project_add {user_id} -> {project_id}")
@@ -184,6 +237,31 @@ def team_member_remove_project(request, user_id, project_id):
         
     success, message = team_service.remove_member_from_project(user_id, project_id, changed_by=request.user)
     
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
+        if success:
+            # Get updated project list
+            User = get_user_model()
+            target_user = get_object_or_404(User, pk=user_id)
+            projects = [{
+                'id': p.id, 'name': p.name, 'code': p.code
+            } for p in target_user.project_memberships.all()]
+            
+            # Broadcast
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "team_updates_global",
+                {
+                    "type": "team_update",
+                    "user_id": user_id,
+                    "action": "remove_project",
+                    "data": {'projects': projects},
+                    "sender_id": request.user.id
+                }
+            )
+            return JsonResponse({'status': 'success', 'message': message, 'projects': projects})
+        else:
+            return JsonResponse({'status': 'error', 'message': message}, status=400)
+
     if success:
         messages.success(request, message)
         log_action(request, 'update', f"user_project_remove {user_id} -> {project_id}")

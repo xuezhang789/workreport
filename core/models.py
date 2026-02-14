@@ -18,9 +18,27 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile', verbose_name="用户")
     position = models.CharField(max_length=10, choices=ROLE_CHOICES, default='dev', verbose_name="职位")
 
+    # HR Fields / 人事管理字段
+    EMPLOYMENT_STATUS_CHOICES = [('active', '在职'), ('terminated', '离职')]
+    employment_status = models.CharField(max_length=20, choices=EMPLOYMENT_STATUS_CHOICES, default='active', verbose_name="是否在职")
+    hire_date = models.DateField(null=True, blank=True, verbose_name="入职时间")
+    probation_months = models.PositiveIntegerField(default=3, verbose_name="试用时长(月)") # 1-6
+    probation_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="试用薪资")
+    official_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="正式薪资")
+    CURRENCY_CHOICES = [('CNY', 'CNY'), ('USDT', 'USDT')]
+    salary_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="货币单位")
+    intermediary_company = models.CharField(max_length=255, blank=True, null=True, verbose_name="中介公司")
+    intermediary_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="中介费用")
+    intermediary_fee_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="中介费用货币单位")
+    resignation_date = models.DateField(null=True, blank=True, verbose_name="离职时间")
+    hr_note = models.CharField(max_length=500, blank=True, verbose_name="备注")
+
     class Meta:
         verbose_name = "用户资料"
         verbose_name_plural = "用户资料"
+        indexes = [
+            models.Index(fields=['intermediary_company', 'intermediary_fee_currency'], name='idx_intermediary'),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.get_position_display()}"

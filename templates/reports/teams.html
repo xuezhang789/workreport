@@ -1,6 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load reports_filters %}
 {% load core_tags %}
+{% load humanize %}
 {% block title %}团队管理 / Team Management{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="团队管理 / Team Management" nav_subtitle="管理所有成员、角色分配与项目归属 / Manage members, roles and project assignments" %}{% endblock %}
 
@@ -86,6 +87,26 @@
         justify-content: flex-end;
         margin-top: 16px;
     }
+
+    /* --- Tables --- */
+    .table-container {
+        overflow-x: auto;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        background: white;
+    }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th {
+        background: #f8fafc; padding: 12px 16px; text-align: left;
+        font-weight: 600; color: var(--text-secondary); white-space: nowrap;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .table td {
+        padding: 12px 16px; border-bottom: 1px solid var(--border-color);
+        color: var(--text-main); vertical-align: middle;
+    }
+    .table tr:last-child td { border-bottom: none; }
+    .table tr:hover { background: #f8fafc; }
 
     /* --- Team Grid --- */
     .team-grid {
@@ -608,26 +629,46 @@
     <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
     <script>function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }</script>
 
-    <!-- Team Grid -->
+    <!-- Team List (Table View) -->
     {% if users %}
-    <div class="team-grid">
-        {% for user in users %}
-        <div class="team-card">
-            <div class="card-body">
-                <div class="user-header">
-                    <div class="user-avatar">
-                        {% with avatar_url=user|get_avatar_url %}
-                            {% if avatar_url %}
-                                <img src="{{ avatar_url }}" alt="{{ user.get_full_name|default:user.username }}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">
-                            {% else %}
-                                {{ user.get_full_name|default:user.username|slice:":1"|upper }}
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="user-info">
-                        <h3 class="user-name">{{ user.get_full_name|default:user.username }} <span style="font-size: 0.85em; font-weight: normal; color: var(--text-secondary);">@{{ user.username }}</span></h3>
-                    </div>
-                    <div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 250px;">成员 / Member</th>
+                    <th>角色 / Role</th>
+                    <th>项目 / Projects</th>
+                    <th>状态 / Status</th>
+                    {% if request.user.is_superuser %}
+                        <th>入职 / Hire</th>
+                        <th>试用 / Prob.</th>
+                        <th>薪资 (P/O)</th>
+                        <th>备注 / Note</th>
+                    {% endif %}
+                    <th style="text-align: right;">操作 / Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr id="row-{{ user.id }}">
+                    <td>
+                        <div class="user-header" style="gap: 10px;">
+                            <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">
+                                {% with avatar_url=user|get_avatar_url %}
+                                    {% if avatar_url %}
+                                        <img src="{{ avatar_url }}" alt="{{ user.get_full_name }}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">
+                                    {% else %}
+                                        {{ user.get_full_name|default:user.username|slice:":1"|upper }}
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">{{ user.get_full_name|default:user.username }}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
                         {% if user.profile.position == 'dev' %}
                             <span class="role-badge badge-dev">Dev</span>
                         {% elif user.profile.position == 'qa' %}
@@ -643,55 +684,87 @@
                         {% else %}
                             <span class="role-badge badge-default">--</span>
                         {% endif %}
-                    </div>
-                </div>
-
-                <div class="meta-list">
-                    <div class="meta-item">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                        {% if request.user.is_staff or has_manage_permission %}
-                            {{ user.email|default:"No Email" }}
-                        {% else %}
-                            {{ user.email|default:"No Email"|mask_email }}
-                        {% endif %}
-                    </div>
-                    <div class="meta-item" style="align-items: flex-start;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 3px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        <div style="flex: 1;">
-                            <div style="margin-bottom: 4px;">参与项目 / Projects ({{ user.project_memberships.all|length }})</div>
-                            <div class="project-tags">
-                                {% for proj in user.project_memberships.all|slice:":4" %}
-                                    <span class="project-tag">{{ proj.code }}</span>
-                                {% endfor %}
-                                {% if user.project_memberships.all|length > 4 %}
-                                    <span class="project-tag">+{{ user.project_memberships.all|length|add:"-4" }}</span>
-                                {% endif %}
-                                {% if user.project_memberships.all|length == 0 %}
-                                    <span class="text-muted" style="font-size: 12px;">--</span>
-                                {% endif %}
-                            </div>
+                    </td>
+                    <td>
+                        <div class="project-tags">
+                            {% for proj in user.project_memberships.all|slice:":3" %}
+                                <span class="project-tag">{{ proj.code }}</span>
+                            {% endfor %}
+                            {% if user.project_memberships.all|length > 3 %}
+                                <span class="project-tag">+{{ user.project_memberships.all|length|add:"-3" }}</span>
+                            {% endif %}
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card-footer">
-                <div class="status-indicator">
-                    {% if user.is_active %}
-                        <span class="status-dot status-active"></span> 正常
-                    {% else %}
-                        <span class="status-dot status-inactive"></span> 停用
+                    </td>
+                    <td>
+                        {% if request.user.is_superuser %}
+                            <!-- Admin sees detailed employment status -->
+                            {% if user.profile.employment_status == 'active' %}
+                                <span class="status-indicator"><span class="status-dot status-active"></span> 在职</span>
+                            {% else %}
+                                <span class="status-indicator"><span class="status-dot status-inactive"></span> 离职</span>
+                            {% endif %}
+                        {% else %}
+                            <!-- Regular user sees active/inactive -->
+                            {% if user.is_active %}
+                                <span class="status-indicator"><span class="status-dot status-active"></span> Active</span>
+                            {% else %}
+                                <span class="status-indicator"><span class="status-dot status-inactive"></span> Inactive</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    {% if request.user.is_superuser %}
+                        <td data-field="hire_date">{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
+                        <td data-field="probation">{{ user.profile.probation_months }} Mo.</td>
+                        <td>
+                            <div style="font-size: 12px;">
+                                <div>P: {{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
+                                <div>O: {{ user.profile.official_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
+                            </div>
+                        </td>
+                        <td data-field="note" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
+                            {{ user.profile.hr_note|default:"--" }}
+                        </td>
                     {% endif %}
-                    <span style="color: var(--border-color); margin: 0 4px;">|</span>
-                    {{ user.date_joined|date:"Y-m-d" }}
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.position }}', JSON.parse('{{ user.project_memberships.all|to_project_json|escapejs }}'))">
-                    管理 / Manage
-                </button>
-            </div>
-        </div>
-        {% endfor %}
+                    <td style="text-align: right;">
+                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.position }}', JSON.parse('{{ user.project_memberships.all|to_project_json|escapejs }}'))">
+                                权限
+                            </button>
+                            {% if request.user.is_superuser %}
+                            <button type="button" class="btn btn-primary btn-sm" onclick='openHRModal({{ user.id }}, "{{ user.get_full_name|default:user.username|escapejs }}", {
+                                employment_status: "{{ user.profile.employment_status }}",
+                                hire_date: "{{ user.profile.hire_date|date:"Y-m-d" }}",
+                                probation_months: {{ user.profile.probation_months }},
+                                probation_salary: "{{ user.profile.probation_salary|default:"" }}",
+                                official_salary: "{{ user.profile.official_salary|default:"" }}",
+                                salary_currency: "{{ user.profile.salary_currency }}",
+                                resignation_date: "{{ user.profile.resignation_date|date:"Y-m-d" }}",
+                                hr_note: "{{ user.profile.hr_note|escapejs }}",
+                                intermediary_company: "{{ user.profile.intermediary_company|default:""|escapejs }}",
+                                intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
+                                intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}"
+                            })'>
+                                人事
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">未找到匹配成员 / No members found</h3>
+        <p style="margin-bottom: 24px;">请尝试调整搜索关键词或筛选条件。/ Please adjust search or filters.</p>
+        <a href="{% url 'reports:teams' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
+    </div>
+    {% endif %}
 
     <!-- Pagination -->
     {% if page_obj.has_other_pages %}
@@ -741,17 +814,6 @@
     </div>
     {% endif %}
 
-    {% else %}
-    <!-- Empty State -->
-    <div class="empty-state">
-        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-        </svg>
-        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">未找到匹配成员 / No members found</h3>
-        <p style="margin-bottom: 24px;">请尝试调整搜索关键词或筛选条件。/ Please adjust search or filters.</p>
-        <a href="{% url 'reports:teams' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
-    </div>
-    {% endif %}
 
     </div> <!-- End tab-members -->
 
@@ -969,17 +1031,257 @@
     </div>
 </div>
 
+{% if request.user.is_superuser %}
+<!-- HR Manage Modal -->
+<div id="hr-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeHRModal()">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="hr-modal-title">编辑成员人事信息</h3>
+            <button type="button" class="close-btn" onclick="closeHRModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="hr-form" onsubmit="saveHRInfo(event)">
+                <input type="hidden" id="hr-user-id">
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">是否在职 / Employment Status</label>
+                    <select id="hr-status" class="form-select" required>
+                        <option value="active">在职 / Active</option>
+                        <option value="terminated">离职 / Terminated</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">入职时间 / Hire Date</label>
+                        <input type="date" id="hr-hire-date" class="form-input">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">离职时间 / Resignation Date</label>
+                        <input type="date" id="hr-resignation-date" class="form-input">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">试用时长 (月) / Probation (Months)</label>
+                        <input type="number" id="hr-probation-months" class="form-input" min="1" max="6" value="3" required>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">试用薪资 / Probation Salary</label>
+                        <input type="number" id="hr-probation-salary" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">正式薪资 / Official Salary</label>
+                        <input type="number" id="hr-official-salary" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="width: 80px;">
+                        <label class="form-label">单位 / Unit</label>
+                        <select id="hr-salary-currency" class="form-select" required>
+                            <option value="CNY">CNY</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-section-title" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">中介信息 / Intermediary Info</div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">中介公司 / Intermediary Company</label>
+                    <input type="text" id="hr-intermediary-company" class="form-input" placeholder="请输入中介公司名称">
+                </div>
+
+                <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">中介费用 / Intermediary Fee</label>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="number" id="hr-intermediary-fee-amount" class="form-input" step="0.01" min="0" style="padding-right: 30px;">
+                            <span id="hr-fee-symbol" style="position: absolute; right: 10px; color: var(--text-muted); font-weight: 600;">¥</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="width: 80px;">
+                        <label class="form-label">单位 / Unit</label>
+                        <select id="hr-intermediary-fee-currency" class="form-select" onchange="updateFeeSymbol(this.value)">
+                            <option value="CNY">CNY</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">备注 / Note</label>
+                    <textarea id="hr-note" class="form-input" rows="3" maxlength="500"></textarea>
+                </div>
+                
+                <div id="hr-error-msg" class="alert-box warning" style="display: none; margin-bottom: 16px;"></div>
+                
+                <div style="text-align: right;">
+                    <button type="button" class="btn btn-secondary" onclick="closeHRModal()">取消 / Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="hr-save-btn">保存 / Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Toast Notification Container -->
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+
 <script>
+    // === WebSocket & Real-time Sync ===
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const teamWs = new WebSocket(`${wsScheme}://${window.location.host}/ws/team-updates/`);
+    
+    teamWs.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if(data.type === 'team_update') {
+            handleTeamUpdate(data);
+        }
+    };
+    
+    function handleTeamUpdate(msg) {
+        const userId = msg.user_id;
+        const senderId = msg.sender_id;
+        const currentUserId = {{ request.user.id }};
+        
+        // Update Table Row
+        if(msg.action === 'update_role') {
+            updateRowRole(userId, msg.data.role, msg.data.role_display);
+        } else if(msg.action === 'add_project' || msg.action === 'remove_project') {
+            updateRowProjects(userId, msg.data.projects);
+        }
+        
+        // Update Modal if open for this user
+        if(currentManageUserId == userId) {
+            // Conflict detection/Sync
+            if(senderId !== currentUserId) {
+                showToast(`⚠️ 此用户的权限已被其他管理员修改 / User permissions modified by another admin`, 'warning');
+            }
+            
+            if(msg.action === 'add_project' || msg.action === 'remove_project') {
+                renderModalProjects(msg.data.projects);
+            } else if(msg.action === 'update_role') {
+                 // Update select box if not focused? Or just let it be.
+                 const select = document.getElementById('umm-role-select');
+                 if(select && document.activeElement !== select) {
+                     select.value = msg.data.role;
+                 }
+            }
+        }
+    }
+
+    // === UI Helpers ===
+    function showToast(message, type='success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            padding: 12px 20px; border-radius: 8px; color: white; font-size: 14px; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out;
+            display: flex; align-items: center; gap: 8px; min-width: 250px;
+        `;
+        
+        if(type === 'success') toast.style.background = '#10b981';
+        else if(type === 'error') toast.style.background = '#ef4444';
+        else if(type === 'warning') toast.style.background = '#f59e0b';
+        
+        toast.innerHTML = `<span>${message}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            toast.style.transition = 'all 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function updateRowRole(userId, role, roleDisplay) {
+        const row = document.getElementById(`row-${userId}`);
+        if(!row) return;
+        
+        const cell = row.cells[1];
+        // Map role to badge class
+        const badgeMap = {
+            'dev': 'badge-dev', 'qa': 'badge-qa', 'pm': 'badge-pm',
+            'ui': 'badge-ui', 'ops': 'badge-ops', 'mgr': 'badge-mgr'
+        };
+        const badgeClass = badgeMap[role] || 'badge-default';
+        cell.innerHTML = `<span class="role-badge ${badgeClass}">${roleDisplay}</span>`;
+        
+        // Update modal trigger data
+        const btn = row.cells[row.cells.length-1].querySelector('.btn-secondary');
+        if(btn) {
+            // Update onclick params regex replace
+             const oldOnClick = btn.getAttribute('onclick');
+             // Param 3 is role. 
+             // openUserManageModal('id', 'name', 'ROLE', ...)
+             const newOnClick = oldOnClick.replace(/'[^']+', JSON/, `'${role}', JSON`);
+             btn.setAttribute('onclick', newOnClick);
+        }
+    }
+    
+    function updateRowProjects(userId, projects) {
+        const row = document.getElementById(`row-${userId}`);
+        if(!row) return;
+        
+        const cell = row.cells[2];
+        let html = '<div class="project-tags">';
+        projects.slice(0, 3).forEach(p => {
+            html += `<span class="project-tag">${p.code}</span>`;
+        });
+        if(projects.length > 3) {
+            html += `<span class="project-tag">+${projects.length - 3}</span>`;
+        }
+        html += '</div>';
+        cell.innerHTML = html;
+        
+        // Update modal trigger data
+        const btn = row.cells[row.cells.length-1].querySelector('.btn-secondary');
+        if(btn) {
+            // Param 4 is JSON
+            // We need to replace JSON.parse('...') with new JSON
+            // But replacing complex string in onclick is fragile. 
+            // Better: Store data in data attributes or fetch fresh on open.
+            // For now, let's try to update the attribute carefully or just rely on fetch-on-open if we change strategy.
+            // Given the complexity of replacing JSON in onclick string, we will switch `openUserManageModal` 
+            // to fetch latest data or use the `projects` array passed in if we can.
+            // Hack: Update the attribute by finding the JSON part.
+            // Actually, `projects` is passed as JSON.parse('...').
+            const jsonStr = JSON.stringify(projects).replace(/"/g, '&quot;');
+            // Regex to find the JSON.parse part
+            const newOnClick = btn.getAttribute('onclick').replace(/JSON\.parse\('.*?'\)/, `JSON.parse('${jsonStr}')`);
+            btn.setAttribute('onclick', newOnClick);
+        }
+    }
+
+    // === User Manage Modal Logic ===
+    let currentManageUserId = null;
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
     function openUserManageModal(userId, userName, currentRole, projects) {
-        // Set Title
+        currentManageUserId = userId;
         document.getElementById('umm-title').innerText = `管理成员 / Manage Member: ${userName}`;
         
         // Setup Role Form
-        const roleForm = document.getElementById('umm-role-form');
-        roleForm.action = `/reports/teams/${userId}/role/`; // Ensure this matches URL pattern
-        document.getElementById('umm-role-select').value = currentRole;
+        const roleSelect = document.getElementById('umm-role-select');
+        roleSelect.value = currentRole;
         
-        // Setup Projects List
+        // Render Projects
+        renderModalProjects(projects);
+        
+        // Reset Add Form
+        document.getElementById('umm-add-project-form').reset();
+        
+        openModal('user-manage-modal');
+    }
+    
+    function renderModalProjects(projects) {
         const projectList = document.getElementById('umm-project-list');
         projectList.innerHTML = '';
         document.getElementById('umm-projects-title').innerText = `参与项目 / Projects (${projects.length})`;
@@ -992,28 +1294,136 @@
                 div.className = 'project-item-modal';
                 div.innerHTML = `
                     <span style="font-weight: 500;">${p.name} <span style="color: var(--text-muted); font-weight: normal;">(${p.code})</span></span>
-                    <form action="/reports/teams/${userId}/project/${p.id}/remove/" method="post" style="margin:0;" onsubmit="return handleProjectRemove(this);">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF_TOKEN}">
-                        <button type="submit" class="btn-remove" title="移除项目">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                    </form>
+                    <button type="button" class="btn-remove" title="移除项目" onclick="handleProjectRemove(${p.id}, this)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 `;
                 projectList.appendChild(div);
             });
         }
-        
-        // Setup Add Project Form
-        const addForm = document.getElementById('umm-add-project-form');
-        addForm.action = `/reports/teams/${userId}/project/add/`;
-        addForm.reset();
-        
-        // Open Modal
-        document.getElementById('user-manage-modal').classList.add('open');
     }
 
     function closeUserManageModal() {
-        document.getElementById('user-manage-modal').classList.remove('open');
+        closeModal('user-manage-modal');
+        currentManageUserId = null;
+    }
+
+    // === AJAX Handlers ===
+    
+    // Role Update
+    document.getElementById('umm-role-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        const originalText = btn.innerText;
+        btn.innerText = 'Updating...';
+        btn.disabled = true;
+        
+        const role = document.getElementById('umm-role-select').value;
+        const formData = new FormData();
+        formData.append('role', role);
+        
+        try {
+            const res = await fetchWithRetry(`/reports/teams/${currentManageUserId}/role/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const data = await res.json();
+            
+            if(data.status === 'success') {
+                showToast('角色更新成功 / Role updated successfully');
+                // Row update handled by WebSocket usually, but do it here for immediate feedback
+                // updateRowRole(currentManageUserId, role, ...); // We need display name, wait for WS or use local map
+            } else {
+                showToast(data.message || 'Error updating role', 'error');
+            }
+        } catch(e) {
+            showToast('Network error', 'error');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    });
+    
+    // Add Project
+    document.getElementById('umm-add-project-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        const select = this.querySelector('select');
+        const projectId = select.value;
+        if(!projectId) return;
+        
+        const originalText = btn.innerText;
+        btn.innerText = 'Adding...';
+        btn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('project_id', projectId);
+        
+        try {
+            const res = await fetchWithRetry(`/reports/teams/${currentManageUserId}/project/add/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const data = await res.json();
+            
+            if(data.status === 'success') {
+                showToast('项目添加成功 / Project added');
+                renderModalProjects(data.projects); // Immediate update from response
+                select.value = '';
+            } else {
+                showToast(data.message || 'Error adding project', 'error');
+            }
+        } catch(e) {
+            showToast('Network error', 'error');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    });
+    
+    // Remove Project
+    async function handleProjectRemove(projectId, btn) {
+        if(!confirm('确定要移除该项目吗？/ Remove this project?')) return;
+        
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetchWithRetry(`/reports/teams/${currentManageUserId}/project/${projectId}/remove/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            
+            if(data.status === 'success') {
+                showToast('项目已移除 / Project removed');
+                renderModalProjects(data.projects);
+            } else {
+                showToast(data.message || 'Error removing project', 'error');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        } catch(e) {
+            showToast('Network error', 'error');
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    }
+    
+    // Fetch Helper with Retry
+    async function fetchWithRetry(url, options, retries = 3) {
+        try {
+            return await fetch(url, options);
+        } catch(e) {
+            if(retries > 0) {
+                await new Promise(r => setTimeout(r, 500));
+                return fetchWithRetry(url, options, retries - 1);
+            }
+            throw e;
+        }
     }
 
     function openModal(id) {
@@ -1022,44 +1432,23 @@
     function closeModal(id) {
         document.getElementById(id).classList.remove('open');
     }
-    // Close modal on escape key
     document.addEventListener('keydown', function(event) {
         if (event.key === "Escape") {
             const openModals = document.querySelectorAll('.modal-overlay.open');
             openModals.forEach(modal => modal.classList.remove('open'));
+            currentManageUserId = null;
         }
     });
 
-    function handleProjectRemove(form) {
-        if(!confirm('确定要移除该项目吗？')) return false;
-        
-        const btn = form.querySelector('button');
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
-        btn.disabled = true;
-        btn.style.cursor = 'not-allowed';
-        return true;
-    }
-
-    function showAdding(form) {
-        const btn = form.querySelector('button[type="submit"]');
-        const originalText = btn.innerText;
-        btn.innerText = '添加中... / Adding...';
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
-        return true;
-    }
-    // === PROJECT MANAGEMENT MODAL LOGIC ===
+    // === Existing Project Management Modal Logic (Keep as is but add CSRF) ===
+    // (Preserved logic for Project Management Modal to ensure no regression)
     let currentPmProjectId = null;
     let searchDebounce = null;
-    const CSRF_TOKEN = '{{ csrf_token }}';
 
     function openProjectManageModal(projectId, projectName) {
         currentPmProjectId = projectId;
         document.getElementById('pm-modal-title').innerText = `管理团队 / Team: ${projectName}`;
         document.getElementById('project-manage-modal').classList.add('open');
-        
-        // Reset state
         switchPmTab('members');
         loadProjectUsers();
     }
@@ -1070,59 +1459,42 @@
     }
 
     function switchPmTab(tabName) {
-        // Hide all views
         document.querySelectorAll('.pm-view').forEach(el => el.style.display = 'none');
         document.getElementById(`pm-view-${tabName}`).style.display = 'block';
-        
-        // Update tabs
         document.querySelectorAll('.pm-tab').forEach(el => el.classList.remove('active'));
         document.getElementById(`pm-tab-${tabName}`).classList.add('active');
     }
 
     async function loadProjectUsers() {
         if(!currentPmProjectId) return;
-        
-        // Show loading state if needed
-        // fetch data
         try {
             const res = await fetch(`/projects/api/${currentPmProjectId}/users/`);
             if(!res.ok) throw new Error('Failed to load users');
             const data = await res.json();
-            
             renderUserList('members', data.members, true);
             renderUserList('managers', data.managers, true);
             renderOwner(data.owner);
-            
         } catch (e) {
             console.error(e);
-            alert('加载失败 / Load failed');
+            showToast('加载失败 / Load failed', 'error');
         }
     }
 
     function renderUserList(type, users, isRemovable=false) {
         const container = document.getElementById(`pm-list-${type}`);
         container.innerHTML = '';
-        
         if(!users || users.length === 0) {
             container.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text-muted); font-size:13px;">暂无人员 / Empty</div>';
             return;
         }
-        
         users.forEach(u => {
             const div = document.createElement('div');
             div.className = 'user-list-item';
-            
             let actionHtml = '';
             if(isRemovable) {
-                // Determine API action
                 const apiAction = type === 'managers' ? 'remove_manager' : 'remove_member';
-                actionHtml = `
-                    <button class="btn-remove" onclick="updateProjectMember('${apiAction}', ${u.id})">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                `;
+                actionHtml = `<button class="btn-remove" onclick="updateProjectMember('${apiAction}', ${u.id})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
             }
-            
             div.innerHTML = `
                 <div class="user-list-info">
                     <div class="user-list-avatar">${u.avatar_char}</div>
@@ -1140,12 +1512,7 @@
     function renderOwner(user) {
         const container = document.getElementById('pm-current-owner');
         if(user) {
-            container.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
-                    <div class="user-list-avatar" style="width:40px; height:40px; font-size:16px;">${user.avatar_char}</div>
-                    <div>${user.full_name} (@${user.username})</div>
-                </div>
-            `;
+            container.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:10px;"><div class="user-list-avatar" style="width:40px; height:40px; font-size:16px;">${user.avatar_char}</div><div>${user.full_name} (@${user.username})</div></div>`;
         } else {
             container.innerHTML = '<span style="color:var(--text-muted)">None</span>';
         }
@@ -1154,33 +1521,23 @@
     function handleUserSearch(type, query) {
         if(searchDebounce) clearTimeout(searchDebounce);
         const container = document.getElementById(`pm-results-${type}`);
-        
-        if(!query.trim()) {
-            container.style.display = 'none';
-            return;
-        }
+        if(!query.trim()) { container.style.display = 'none'; return; }
         
         searchDebounce = setTimeout(async () => {
             try {
                 const res = await fetch(`{% url 'core:user_search_api' %}?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                
                 container.innerHTML = '';
                 if(data.results && data.results.length > 0) {
                     data.results.forEach(u => {
                         const div = document.createElement('div');
                         div.className = 'search-result-item';
-                        div.innerHTML = `
-                            <div class="user-list-avatar" style="width:24px; height:24px; font-size:10px;">${(u.full_name||u.username)[0].toUpperCase()}</div>
-                            <div>${u.full_name || u.username} <span style="color:var(--text-muted)">@${u.username}</span></div>
-                        `;
+                        div.innerHTML = `<div class="user-list-avatar" style="width:24px; height:24px; font-size:10px;">${(u.full_name||u.username)[0].toUpperCase()}</div><div>${u.full_name || u.username} <span style="color:var(--text-muted)">@${u.username}</span></div>`;
                         div.onclick = () => {
-                            // Determine Action
                             let apiAction = '';
                             if(type === 'members') apiAction = 'add_member';
                             else if(type === 'managers') apiAction = 'add_manager';
                             else if(type === 'owner') apiAction = 'set_owner';
-                            
                             updateProjectMember(apiAction, u.id);
                             container.style.display = 'none';
                             document.getElementById(`pm-search-${type}`).value = '';
@@ -1192,41 +1549,172 @@
                     container.innerHTML = '<div style="padding:8px; font-size:12px; color:var(--text-muted); text-align:center;">No users found</div>';
                     container.style.display = 'block';
                 }
-            } catch(e) {
-                console.error(e);
-            }
+            } catch(e) { console.error(e); }
         }, 300);
     }
 
     async function updateProjectMember(action, userId) {
         if(action === 'set_owner' && !confirm('确定要转移项目负责人吗？此操作不可逆（除非管理员干预）。\nAre you sure to transfer ownership?')) return;
-        
         const formData = new FormData();
         formData.append('action', action);
         formData.append('user_id', userId);
-        
         try {
             const res = await fetch(`/projects/api/${currentPmProjectId}/manage-members/`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': CSRF_TOKEN
-                },
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
                 body: formData
             });
-            
             const data = await res.json();
             if(data.status === 'success') {
-                // Reload data
                 loadProjectUsers();
-                if(data.message) alert(data.message);
+                if(data.message) showToast(data.message);
             } else {
-                alert(data.error || 'Operation failed');
+                showToast(data.error || 'Operation failed', 'error');
             }
         } catch(e) {
             console.error(e);
-            alert('Request failed');
+            showToast('Request failed', 'error');
         }
     }
+
+    // HR Modal Logic
+    {% if request.user.is_superuser %}
+    function updateFeeSymbol(currency) {
+        const symbol = currency === 'USDT' ? '₮' : '¥';
+        document.getElementById('hr-fee-symbol').innerText = symbol;
+    }
+
+    function openHRModal(userId, userName, data) {
+        document.getElementById('hr-modal-title').innerText = `编辑成员人事信息 - ${userName}`;
+        document.getElementById('hr-user-id').value = userId;
+        document.getElementById('hr-status').value = data.employment_status;
+        document.getElementById('hr-hire-date').value = data.hire_date || '';
+        document.getElementById('hr-probation-months').value = data.probation_months;
+        document.getElementById('hr-probation-salary').value = data.probation_salary || '';
+        document.getElementById('hr-official-salary').value = data.official_salary || '';
+        document.getElementById('hr-salary-currency').value = data.salary_currency || 'CNY';
+        document.getElementById('hr-resignation-date').value = data.resignation_date || '';
+        document.getElementById('hr-note').value = data.hr_note || '';
+        
+        // Intermediary fields
+        document.getElementById('hr-intermediary-company').value = data.intermediary_company || '';
+        document.getElementById('hr-intermediary-fee-amount').value = data.intermediary_fee_amount || '';
+        document.getElementById('hr-intermediary-fee-currency').value = data.intermediary_fee_currency || 'CNY';
+        updateFeeSymbol(data.intermediary_fee_currency || 'CNY');
+
+        document.getElementById('hr-error-msg').style.display = 'none';
+        // Reset field highlights
+        document.querySelectorAll('#hr-form .form-input, #hr-form .form-select').forEach(el => el.style.borderColor = '');
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('hr-hire-date').max = today;
+        document.getElementById('hr-manage-modal').classList.add('open');
+    }
+
+    function closeHRModal() {
+        document.getElementById('hr-manage-modal').classList.remove('open');
+    }
+
+    async function saveHRInfo(e) {
+        e.preventDefault();
+        const btn = document.getElementById('hr-save-btn');
+        const originalText = btn.innerText;
+        btn.innerText = '保存中... / Saving...';
+        btn.disabled = true;
+        
+        // Reset field highlights
+        document.querySelectorAll('#hr-form .form-input, #hr-form .form-select').forEach(el => el.style.borderColor = '');
+        
+        const userId = document.getElementById('hr-user-id').value;
+        const data = {
+            employment_status: document.getElementById('hr-status').value,
+            hire_date: document.getElementById('hr-hire-date').value,
+            probation_months: document.getElementById('hr-probation-months').value,
+            probation_salary: document.getElementById('hr-probation-salary').value,
+            official_salary: document.getElementById('hr-official-salary').value,
+            salary_currency: document.getElementById('hr-salary-currency').value,
+            resignation_date: document.getElementById('hr-resignation-date').value,
+            hr_note: document.getElementById('hr-note').value,
+            intermediary_company: document.getElementById('hr-intermediary-company').value,
+            intermediary_fee_amount: document.getElementById('hr-intermediary-fee-amount').value,
+            intermediary_fee_currency: document.getElementById('hr-intermediary-fee-currency').value
+        };
+
+        // Client side joint validation
+        let clientErrors = [];
+        const hasCompany = data.intermediary_company.trim() !== '';
+        const hasFee = data.intermediary_fee_amount !== '' && parseFloat(data.intermediary_fee_amount) > 0;
+        
+        if ((hasCompany && !hasFee) || (!hasCompany && hasFee)) {
+            clientErrors.push('填写中介费用时，必须同时填写中介公司与货币单位');
+            document.getElementById('hr-intermediary-company').style.borderColor = 'var(--danger)';
+            document.getElementById('hr-intermediary-fee-amount').style.borderColor = 'var(--danger)';
+        }
+
+        if (clientErrors.length > 0) {
+            const errorDiv = document.getElementById('hr-error-msg');
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = clientErrors.join('<br>');
+            btn.innerText = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        try {
+            const res = await fetchWithRetry(`/reports/api/admin/members/${userId}/hr-info/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                const row = document.getElementById(`row-${userId}`);
+                if (row) {
+                    // ... existing row update logic ...
+                     const statusCell = row.cells[3];
+                     const statusText = data.employment_status === 'active' ? '在职' : '离职';
+                     const statusClass = data.employment_status === 'active' ? 'status-active' : 'status-inactive';
+                     statusCell.innerHTML = `<span class="status-indicator"><span class="status-dot ${statusClass}"></span> ${statusText}</span>`;
+                     row.cells[4].innerText = data.hire_date || '--';
+                     row.cells[5].innerText = data.probation_months + ' Mo.';
+                     const pSal = data.probation_salary ? parseFloat(data.probation_salary).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
+                     const oSal = data.official_salary ? parseFloat(data.official_salary).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
+                     row.cells[6].innerHTML = `<div style="font-size: 12px;"><div>P: ${pSal} ${data.salary_currency}</div><div>O: ${oSal} ${data.salary_currency}</div></div>`;
+                     row.cells[7].innerText = data.hr_note || '--';
+                     row.cells[7].title = data.hr_note || '';
+                     const btn = row.cells[8].querySelector('.btn-primary');
+                     if(btn) {
+                        const oldOnclick = btn.getAttribute('onclick');
+                        const match = oldOnclick.match(/openHRModal\(\d+, "(.*?)",/);
+                        if(match) {
+                            const name = match[1];
+                            const jsonStr = JSON.stringify(data).replace(/"/g, "&quot;");
+                            btn.setAttribute('onclick', `openHRModal(${userId}, "${name}", ${jsonStr})`);
+                        }
+                     }
+                }
+                closeHRModal();
+                showToast('人事信息已保存 / HR Info Saved');
+            } else {
+                const errorDiv = document.getElementById('hr-error-msg');
+                errorDiv.style.display = 'block';
+                if (result.errors) {
+                    let msg = '';
+                    for (const [key, val] of Object.entries(result.errors)) { msg += `${val}<br>`; }
+                    errorDiv.innerHTML = msg;
+                } else {
+                    errorDiv.innerText = result.error || '保存失败 / Save failed';
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('网络错误 / Network error', 'error');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+    {% endif %}
 
 </script>
 {% endblock %}
