@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Command Palette Test Suite</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .topbar { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+        .admin-menu { display: none; }
+        .test-log { margin-top: 20px; border: 1px solid #eee; padding: 10px; background: #f9f9f9; }
+        .pass { color: green; }
+        .fail { color: red; font-weight: bold; }
+        
+        /* Command Palette CSS Mock */
+        .cmd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: start; padding-top: 100px; }
+        .cmd-modal { background: white; width: 600px; min-height: 300px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .cmd-item { padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .cmd-item.selected { background: #f0f9ff; color: #0284c7; }
+        .cmd-category { padding: 5px 10px; font-size: 12px; color: #888; background: #eee; }
+    </style>
+</head>
+<body>
+    <h1>Command Palette Automated Tests</h1>
+    
+    <!-- Mock DOM for Crawler -->
+    <header class="topbar">
+        <a href="/reports/workbench/">工作台 / Workbench</a>
+        <a href="/projects/">项目 / Projects</a>
+        <a href="/tasks/">任务 / Tasks</a>
+        <div class="admin-menu">
+            <a href="/admin/tasks/">任务管理 / Tasks Admin</a>
+            <a href="/admin/reports/">日报管理 / Reports Admin</a>
+        </div>
+        <!-- Logout Form Mock -->
+        <form id="logout-form" action="/logout"></form>
+    </header>
+
+    <div id="test-output" class="test-log"></div>
+
+    <!-- Script Under Test -->
+    <script src="../../static/js/command_palette.js"></script>
+
+    <!-- Test Runner -->
+    <script>
+        const output = document.getElementById('test-output');
+        function log(msg, success) {
+            const div = document.createElement('div');
+            div.className = success ? 'pass' : 'fail';
+            div.textContent = (success ? '✓ ' : '✗ ') + msg;
+            output.appendChild(div);
+            console.log(msg);
+        }
+
+        function assert(condition, message) {
+            log(message, condition);
+            if (!condition) throw new Error(message);
+        }
+
+        async function runTests() {
+            log('Starting Tests...', true);
+            
+            // Wait for DOMContentLoaded to initialize palette
+            await new Promise(r => setTimeout(r, 500));
+
+            const overlay = document.getElementById('command-palette-overlay');
+            const input = document.getElementById('cmd-input');
+            const list = document.getElementById('cmd-list');
+
+            // Test 1: Initialization
+            assert(overlay, 'Overlay should exist in DOM');
+            assert(overlay.style.display === 'none', 'Overlay should be hidden initially');
+
+            // Test 2: Open Palette (Cmd+K)
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+            assert(overlay.style.display === 'flex', 'Cmd+K should open overlay');
+            assert(document.body.style.overflow === 'hidden', 'Body scroll should be locked');
+            
+            // Test 3: Command Collection
+            const items = list.querySelectorAll('.cmd-item');
+            assert(items.length >= 5, `Should collect at least 5 items (Found ${items.length})`);
+            
+            // Verify Advanced Reports is GONE
+            const allText = Array.from(items).map(i => i.innerText).join(' ');
+            assert(!allText.includes('高级报表') && !allText.includes('Advanced Reports'), 'Advanced Reports should be filtered out');
+
+            const firstItemText = items[0].innerText;
+            assert(firstItemText.includes('工作台') || firstItemText.includes('Workbench'), 'First item should be Workbench (or sorted first)');
+
+            // Test 4: Filtering
+            input.value = 'Admin';
+            input.dispatchEvent(new Event('input'));
+            
+            const filteredItems = list.querySelectorAll('.cmd-item');
+            assert(filteredItems.length > 0 && filteredItems.length < items.length, 'Filtering "Admin" should show subset of items');
+            assert(filteredItems[0].innerText.includes('Admin') || filteredItems[0].innerText.includes('管理'), 'Filtered item should contain "Admin"');
+
+            // Test 5: Keyboard Navigation
+            // Reset filter
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+            
+            // Initial selection
+            assert(list.querySelectorAll('.cmd-item')[0].classList.contains('selected'), 'First item should be selected by default');
+            
+            // Arrow Down
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            assert(list.querySelectorAll('.cmd-item')[1].classList.contains('selected'), 'ArrowDown should select second item');
+            
+            // Arrow Up
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+            assert(list.querySelectorAll('.cmd-item')[0].classList.contains('selected'), 'ArrowUp should loop back or go up');
+
+            // Test 6: Close Palette (Escape)
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            assert(overlay.style.display === 'none', 'Escape should close overlay');
+            assert(document.body.style.overflow === '', 'Body scroll should be unlocked');
+
+            log('All Tests Passed!', true);
+        }
+
+        // Run
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTests);
+        } else {
+            runTests();
+        }
+    </script>
+</body>
+</html>

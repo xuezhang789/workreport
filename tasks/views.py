@@ -1768,11 +1768,13 @@ def task_view(request, pk: int):
     ).prefetch_related(
         'collaborators',
         'collaborators__profile', # For collaborator avatars
+        'collaborators__preferences', # For collaborator avatars (user.preferences)
         'attachments',
         'attachments__user',
         'comments',
         'comments__user',
-        'comments__user__profile' # For comment author avatars
+        'comments__user__profile', # For comment author avatars
+        'comments__user__preferences' # For comment author avatars
     )
     
     task = get_object_or_404(task_qs, pk=pk)

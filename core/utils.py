@@ -16,7 +16,7 @@ UPLOAD_MAX_SIZE = 50 * 1024 * 1024  # 50MB
 UPLOAD_ALLOWED_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
     '.txt', '.md', '.csv',
-    '.jpg', '.jpeg', '.png', '.gif', '.svg',
+    '.jpg', '.jpeg', '.png', '.gif',
     '.zip', '.rar', '.7z', '.tar', '.gz'
 }
 

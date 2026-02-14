@@ -1,72 +1,108 @@
 # WorkReport 项目技术文档
 
 ## 1. 项目概述
-WorkReport 是一个基于 Django 的企业级项目协作与日报管理系统。它集成了项目管理、任务追踪、SLA 监控、RBAC 权限控制及多维绩效报表等功能，旨在提升团队协作效率与透明度。
+**WorkReport** 是一个基于 Django 的企业级工时汇报与项目管理系统。它提供了日报管理、任务跟踪、项目协作、SLA 服务水平监控以及绩效统计等核心功能。系统采用前后端混合架构（Django Templates + HTMX + Vue.js/jQuery），支持多语言（中/英）和多角色（普通员工、经理、管理员）权限控制。
 
 ## 2. 系统架构
 
 ### 2.1 技术栈
-- **后端**: Python 3.12+, Django 5.x
-- **数据库**: SQLite (开发环境) / PostgreSQL, MySQL (生产环境支持)
-- **前端**: Django Templates, HTMX (局部刷新), Bootstrap 5 (UI框架), Chart.js/ApexCharts (图表)
-- **异步任务**: Celery + Redis (邮件发送、报表导出)
-- **服务器**: Daphne (ASGI) / Gunicorn (WSGI)
+- **后端框架**: Django 4.2+ (Python 3.9+)
+- **数据库**: SQLite (开发) / MySQL (生产)
+- **前端技术**: 
+  - Django Templates (服务端渲染)
+  - HTMX (局部刷新/AJAX)
+  - CSS Variables (主题定制)
+  - Vanilla JS (交互逻辑)
+- **实时通信**: Django Channels (WebSocket) - 用于通知推送
+- **任务队列**: 
+  - 简单异步: `threading` (当前实现)
+  - 扩展支持: Celery (架构预留)
+- **缓存**: Django Cache (LocMemCache/Redis)
 
-### 2.2 模块划分
-系统采用模块化设计，核心应用如下：
+### 2.2 目录结构
+```
+workreport/
+├── core/               # 核心模块 (用户, 认证, 通用工具)
+├── tasks/              # 任务管理 (CRUD, SLA, 评论, 附件)
+├── projects/           # 项目管理 (团队, 权限, 成员)
+├── reports/            # 汇报与统计 (日报, 看板, 通知)
+├── audit/              # 审计日志 (操作记录, 历史追踪)
+├── work_logs/          # 日报模型定义
+├── static/             # 静态资源 (CSS, JS, Images)
+├── templates/          # HTML 模板
+└── manage.py           # CLI 入口
+```
 
-| 应用名称 | 职责描述 | 关键模型 |
-| :--- | :--- | :--- |
-| **core** | 基础设施 | `Profile`, `SystemSetting`, `Notification`, `ExportJob` (及 RBAC 核心模型) |
-| **projects** | 项目管理 | `Project`, `ProjectPhaseConfig`, `ProjectMemberPermission` |
-| **tasks** | 任务协作 | `Task`, `TaskComment`, `TaskSlaTimer`, `TaskAttachment` |
-| **work_logs** | 日报数据 | `DailyReport`, `ReportMiss`, `ReminderRule`, `RoleTemplate` |
-| **reports** | 统计与视图 | (主要包含 View 逻辑，数据模型复用 `work_logs`) |
-| **audit** | 审计日志 | `AuditLog`, `TaskHistory` |
+## 3. 核心功能模块
 
-## 3. 核心功能与业务流程
+### 3.1 核心模块 (Core)
+- **职责**: 处理用户认证、个人资料 (`Profile`)、系统设置 (`SystemSetting`) 和通用权限控制。
+- **关键组件**:
+  - `Profile`: 扩展 User 模型，包含职位、部门、头像等信息。
+  - `utils.py`: 提供 `_admin_forbidden`, `_validate_file` 等通用工具。
+  - `permissions.py`: 定义 `has_manage_permission` 等权限判定逻辑。
 
-### 3.1 权限控制 (RBAC)
-系统实现了基于资源的访问控制 (RBAC)，支持全局角色与项目级角色。
-- **模型设计**: 通过 `UserRole` 关联 `User` 与 `Role`，并可指定 `scope`（如特定项目 ID）。
-- **权限校验**: `core.services.rbac` 提供 `has_permission(user, action, resource)` 接口，支持层级权限判断。
+### 3.2 任务管理 (Tasks)
+- **职责**: 全生命周期的任务追踪。
+- **特性**:
+  - **SLA 监控**: 基于 `SystemSetting` 中的阈值计算任务剩余时间（正常/紧张/逾期）。
+  - **状态机**: 定义任务状态流转规则 (Todo -> In Progress -> Review -> Done)。
+  - **协作**: 支持 `@提及`、评论、附件上传。
+  - **批量操作**: 批量完成、删除、指派、导出。
+  - **HTMX 集成**: 任务列表支持无刷新筛选和分页。
 
-### 3.2 项目全生命周期
-1. **立项**: 管理员创建项目，配置 `ProjectPhaseConfig`（定义项目阶段流转）。
-2. **执行**: 项目经理分配成员，更新 `overall_progress` 和 `current_phase`。
-3. **监控**: 自动记录 `ProjectPhaseChangeLog`，通过甘特图与燃尽图可视化进度。
+### 3.3 项目管理 (Projects)
+- **职责**: 项目维度的资源与权限隔离。
+- **权限模型**:
+  - **Owner**: 项目创建者，拥有最高权限。
+  - **Manager**: 被指派的管理者，可编辑项目和管理任务。
+  - **Member**: 普通成员，仅可见和编辑相关任务。
+- **逻辑**: `get_accessible_projects(user)` 是权限过滤的核心函数。
 
-### 3.3 任务与 SLA 监控
-- **SLA 引擎**: 任务创建时启动计时器 (`TaskSlaTimer`)。
-  - 支持 **暂停** (On Hold) 与 **恢复**，系统自动扣除暂停时长计算实际耗时。
-  - 根据剩余时间自动标记状态：正常 (Green)、预警 (Amber)、逾期 (Red)。
-- **协作**: 支持富文本评论、@提及通知及文件附件。
+### 3.4 汇报与统计 (Reports)
+- **职责**: 个人日报提交与管理层绩效分析。
+- **流程**:
+  1. 用户每日提交 `DailyReport`。
+  2. 系统自动计算“连签” (Streak)。
+  3. 管理员通过 `Performance Board` 查看团队效率、任务完成率和逾期率。
+- **通知**: 集成 WebSocket 和邮件通知，支持“一键催报”。
 
-### 3.4 日报与绩效体系
-- **智能填报**: 用户创建日报时，系统自动聚合其当日 `Done` 状态的任务作为“今日产出”。
-- **缺报管理**: 定时任务检测未提交人员，生成 `ReportMiss` 记录并触发提醒。
-- **绩效看板**:
-  - **个人维度**: 任务完成率、平均响应时间、代码/文档产出量。
-  - **团队维度**: 部门人效对比、SLA 达标率趋势。
+### 3.5 审计系统 (Audit)
+- **职责**: 记录系统内关键操作，用于合规与回溯。
+- **实现**: 
+  - `AuditLog` 模型存储操作人、动作、目标对象及 JSON 格式的变更详情 (`diff`)。
+  - 通过 Django Signals (`post_save`, `m2m_changed`) 自动捕获数据变更。
 
-### 3.5 审计与合规
-- **全链路追踪**: 关键模型的 `save` 和 `delete` 信号触发 `AuditLog` 记录。
-- **Diff 记录**: 审计日志详细存储字段变更前后的值 (Old Value vs New Value)。
+## 4. 业务流程示例
 
-## 4. 关键实现细节
+### 4.1 任务创建与分配
+1. 用户进入“创建任务”页面。
+2. 系统根据用户权限过滤可选项目（仅显示有权限的项目）。
+3. 用户填写标题、描述、指派给成员。
+4. 提交后，触发 `post_save` 信号：
+   - 记录 `AuditLog` (Create)。
+   - 触发 `NotificationService` 向被指派人发送站内信/邮件。
 
-### 4.1 异步导出机制
-为避免大文件导出阻塞主线程，采用 `ExportJob` + Celery 模式：
-1. 用户发起导出请求，系统创建 `ExportJob` (状态: Pending)。
-2. Celery Worker 后台生成 Excel/CSV，上传至存储。
-3. 任务完成后更新 Job 状态，并通过 WebSocket/邮件通知用户下载。
+### 4.2 日报提交
+1. 用户访问工作台，系统检查今日是否已提交。
+2. 用户填写本日工作内容、工时。
+3. 保存后，系统更新用户的“连签”统计。
+4. 每日定时任务（或管理员手动）扫描未提交人员，发送提醒。
 
-### 4.2 性能优化策略
-- **N+1 查询优化**: 在 `ListView` 中广泛使用 `select_related` (外键) 和 `prefetch_related` (M2M)。
-- **缓存策略**: 用户的权限列表 (`user_permissions`) 在 Session 或 Redis 中缓存，减少 DB 命中。
-- **HTMX**: 在任务看板拖拽、评论加载等高频交互场景使用 HTMX 实现局部刷新，减少全页重载。
+## 5. 安全与权限
 
-## 5. 部署与运维
-- **配置管理**: 使用 `python-dotenv` 加载环境变量 (.env)。
-- **静态文件**: 生产环境建议使用 Whitenoise 或 Nginx 托管 `STATIC_ROOT`。
-- **定时任务**: 使用 Celery Beat 调度日报提醒与缺报检查。
+### 5.1 认证与授权
+- 基于 Django Auth 系统。
+- 装饰器: `@login_required` 强制登录。
+- 函数级权限: `can_manage_project(user, project)`。
+- 对象级权限: 在 Views 中通过 `filter(project__in=get_accessible_projects(user))` 隔离数据。
+
+### 5.2 数据安全
+- **CSRF**: 全站启用 CSRF 保护。
+- **XSS**: 模板自动转义，Markdown 渲染使用白名单标签过滤。
+- **文件安全**: 严格限制上传文件后缀（禁止 `.exe`, `.svg`, `.html` 等）。
+
+## 6. 部署与环境
+- **配置**: `settings.py` 读取 `.env` 环境变量。
+- **静态文件**: `WhiteNoise` (建议) 或 Nginx 托管。
+- **数据库**: 默认 SQLite，生产环境建议切换至 MySQL/PostgreSQL。

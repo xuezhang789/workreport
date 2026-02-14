@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     `;
     
-    document.body.insertAdjacentHTML('beforeend', paletteHtml);
+    if (!document.getElementById('command-palette-overlay')) {
+        document.body.insertAdjacentHTML('beforeend', paletteHtml);
+    }
 
     // State
     const overlay = document.getElementById('command-palette-overlay');
@@ -42,41 +44,119 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let isOpen = false;
     let selectedIndex = 0;
+    let baseCommands = [];
     let filteredCommands = [];
 
-    // Define Commands
-    // We can grab some from the DOM or define static ones. 
-    // Static ensures they work even if not currently visible in nav.
-    const baseCommands = [
-        { category: '导航 / Navigation', title: '个人工作台 / Personal Workbench', url: '/reports/workbench/', icon: '🏠' },
-        { category: '导航 / Navigation', title: '我的日报 / My Reports', url: '/reports/my/', icon: '📄' },
-        { category: '导航 / Navigation', title: '新建日报 / Create Daily Report', url: '/reports/new/', icon: '✏️' },
-        { category: '导航 / Navigation', title: '我的任务 / My Tasks', url: '/reports/tasks/', icon: '✅' },
-        { category: '导航 / Navigation', title: '项目列表 / Projects List', url: '/reports/projects/', icon: '📂' },
-        { category: '导航 / Navigation', title: '账户设置 / Account Settings', url: '/account/settings/', icon: '⚙️' },
+    // Icon Mapper
+    function getIconForTitle(title, url) {
+        const t = title.toLowerCase();
+        const u = url.toLowerCase();
+        if (t.includes('work') || t.includes('工作台')) return '🏠';
+        if (t.includes('project') || t.includes('项目')) return '📂';
+        if (t.includes('task') || t.includes('任务')) return '✅';
+        if (t.includes('report') || t.includes('日报')) return '📄';
+        if (t.includes('admin') || t.includes('管理')) return '🔧';
+        if (t.includes('setting') || t.includes('设置') || t.includes('center') || t.includes('中心')) return '⚙️';
+        if (t.includes('logout') || t.includes('退出')) return '🚪';
+        if (t.includes('search') || t.includes('搜索')) return '🔍';
+        if (t.includes('team') || t.includes('团队')) return '👥';
+        if (t.includes('stats') || t.includes('统计') || t.includes('board') || t.includes('看板')) return '📊';
+        if (t.includes('template') || t.includes('模板')) return '📋';
+        if (t.includes('audit') || t.includes('审计')) return '🛡️';
+        return '🔗';
+    }
+
+    // Collect Commands from DOM
+    function collectCommands() {
+        const commands = [];
         
-        // Admin - only if links exist or we just show them (server will handle 403 if clicked)
-        // Better to check if they exist in DOM or just include them as "System"
-        { category: '管理 / Admin', title: '团队管理 / Team Management', url: '/reports/teams/', icon: '👥' },
-        { category: '管理 / Admin', title: '管理员日报 / Admin Reports', url: '/reports/admin/reports/', icon: '📊' },
-        { category: '管理 / Admin', title: '任务管理 / Task Administration', url: '/reports/tasks/admin/', icon: '🔧' },
-        { category: '管理 / Admin', title: '绩效看板 / Performance Board', url: '/reports/performance/', icon: '📈' },
-        { category: '管理 / Admin', title: '高级报表 / Advanced Reports', url: '/reports/advanced/', icon: '🚀' },
-        { category: '管理 / Admin', title: '模板中心 / Template Center', url: '/reports/templates/center/', icon: '📋' },
-        { category: '管理 / Admin', title: '审计日志 / Audit Logs', url: '/reports/audit/', icon: '🛡️' },
-    ];
+        // 1. Topbar Links (Main Navigation)
+        const navLinks = document.querySelectorAll('.topbar a:not(.admin-menu a)');
+        navLinks.forEach(link => {
+            if (link.offsetParent === null) return; // Skip hidden
+            const title = link.innerText.trim();
+            const url = link.href;
+            if (title && url && !url.includes('#') && !url.includes('javascript')) {
+                commands.push({
+                    category: '导航 / Navigation',
+                    title: title,
+                    url: url,
+                    icon: getIconForTitle(title, url)
+                });
+            }
+        });
+
+        // 2. Admin Menu Links
+        const adminLinks = document.querySelectorAll('.admin-menu a');
+        adminLinks.forEach(link => {
+            const title = link.innerText.trim();
+            const url = link.href;
+            if (title && url) {
+                commands.push({
+                    category: '管理 / Admin',
+                    title: title,
+                    url: url,
+                    icon: getIconForTitle(title, url)
+                });
+            }
+        });
+
+        // 3. System / Actions
+        commands.push({ category: '系统 / System', title: '切换深色模式 / Toggle Dark Mode', action: toggleDarkMode, icon: '🌓' });
+        commands.push({ category: '系统 / System', title: '刷新页面 / Reload Page', action: () => window.location.reload(), icon: '🔄' });
+        
+        // 4. Logout (Special case if not found in links)
+        const logoutForm = document.getElementById('logout-form');
+        if (logoutForm) {
+             commands.push({ 
+                 category: '账户 / Account', 
+                 title: '退出登录 / Logout', 
+                 action: () => logoutForm.submit(), 
+                 icon: '🚪' 
+             });
+        }
+
+        // Deduplicate by URL
+        const uniqueCommands = [];
+        const seenUrls = new Set();
+        commands.forEach(cmd => {
+            // Remove 'Advanced Reports' / '高级报表'
+            if (cmd.title && (cmd.title.includes('高级报表') || cmd.title.includes('Advanced Reports'))) {
+                return;
+            }
+
+            if (cmd.url) {
+                if (!seenUrls.has(cmd.url)) {
+                    seenUrls.add(cmd.url);
+                    uniqueCommands.push(cmd);
+                }
+            } else {
+                uniqueCommands.push(cmd); // Actions always added
+            }
+        });
+
+        baseCommands = uniqueCommands;
+    }
+
+    function toggleDarkMode() {
+        // Simple mock implementation or hook into existing theme logic
+        document.documentElement.classList.toggle('dark');
+        alert('Dark mode toggled (implementation depends on CSS)');
+    }
 
     // Functions
     function togglePalette() {
         isOpen = !isOpen;
-        overlay.style.display = isOpen ? 'flex' : 'none';
         
         if (isOpen) {
+            collectCommands(); // Refresh commands on open to respect current permissions/DOM state
             input.value = '';
             filterCommands('');
+            overlay.style.display = 'flex';
             input.focus();
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
         } else {
+            overlay.style.display = 'none';
             document.body.style.overflow = '';
         }
     }
@@ -94,6 +174,13 @@ document.addEventListener('DOMContentLoaded', function() {
             cmd.category.toLowerCase().includes(q)
         );
         
+        // Sort: Category > Title
+        filteredCommands.sort((a, b) => {
+            if (a.category < b.category) return -1;
+            if (a.category > b.category) return 1;
+            return a.title.localeCompare(b.title);
+        });
+
         selectedIndex = 0;
         renderList();
     }
@@ -111,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let lastCategory = '';
         
         filteredCommands.forEach((cmd, index) => {
-            // Add Category Header if needed
             if (cmd.category !== lastCategory) {
                 const catHeader = document.createElement('div');
                 catHeader.className = 'cmd-category';
@@ -129,13 +215,23 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             item.addEventListener('click', () => {
-                window.location.href = cmd.url;
-                closePalette();
+                executeCommand(cmd);
             });
             
             item.addEventListener('mouseenter', () => {
+                // Update selection visually but don't auto-scroll
+                const prev = list.querySelector('.cmd-item.selected');
+                if (prev) {
+                    prev.classList.remove('selected');
+                    const hint = prev.querySelector('.cmd-enter-hint');
+                    if (hint) hint.remove();
+                }
+                
                 selectedIndex = index;
-                renderSelectionOnly(); // Optimization: don't re-render whole list
+                item.classList.add('selected');
+                if (!item.querySelector('.cmd-enter-hint')) {
+                   item.insertAdjacentHTML('beforeend', '<span class="cmd-enter-hint">↵</span>');
+                }
             });
             
             list.appendChild(item);
@@ -145,6 +241,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderSelectionOnly() {
+        // Re-implementing correctly to handle the category headers which disrupt index mapping
+        // Actually, renderList is fast enough for < 100 items. 
+        // But for "Arrow" navigation, we want to update classes.
+        // The issue is `list.children` includes category headers, so index doesn't match `filteredCommands`.
+        // Better to query only .cmd-item
         const items = list.querySelectorAll('.cmd-item');
         items.forEach((item, index) => {
             if (index === selectedIndex) {
@@ -152,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!item.querySelector('.cmd-enter-hint')) {
                    item.insertAdjacentHTML('beforeend', '<span class="cmd-enter-hint">↵</span>');
                 }
+                item.scrollIntoView({ block: 'nearest' });
             } else {
                 item.classList.remove('selected');
                 const hint = item.querySelector('.cmd-enter-hint');
@@ -167,10 +269,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function executeSelected() {
-        if (filteredCommands[selectedIndex]) {
-            window.location.href = filteredCommands[selectedIndex].url;
-            closePalette();
+    function executeCommand(cmd) {
+        closePalette();
+        if (cmd.action) {
+            cmd.action();
+        } else if (cmd.url) {
+            window.location.href = cmd.url;
         }
     }
 
@@ -185,20 +289,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isOpen) return;
 
         if (e.key === 'Escape') {
+            e.preventDefault();
             closePalette();
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             selectedIndex = (selectedIndex + 1) % filteredCommands.length;
             renderSelectionOnly();
-            scrollToSelected();
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             selectedIndex = (selectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
             renderSelectionOnly();
-            scrollToSelected();
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            executeSelected();
+            if (filteredCommands[selectedIndex]) {
+                executeCommand(filteredCommands[selectedIndex]);
+            }
         }
     });
 

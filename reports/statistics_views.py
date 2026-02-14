@@ -26,6 +26,10 @@ import json
 
 DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def _send_weekly_digest(recipient, stats):
     """
     发送周报邮件给指定收件人。
@@ -71,7 +75,7 @@ def _send_weekly_digest(recipient, stats):
         return True
     except Exception as e:
         # Log error in production
-        print(f"Failed to send weekly digest: {e}")
+        logger.error(f"Failed to send weekly digest: {e}")
         return False
 
 @login_required

@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 def get_field_verbose_name(model, field_name):
     try:
         return str(model._meta.get_field(field_name).verbose_name)
-    except:
+    except Exception:
         return field_name
 
 from django.core.cache import cache
@@ -101,7 +101,7 @@ def log_model_changes(sender, instance, created, **kwargs):
                             return str(obj)
                         except model.DoesNotExist:
                             return f"Deleted {model._meta.verbose_name} ({pk})"
-                        except:
+                        except Exception:
                             return str(pk)
                     if old_val: old_display = get_obj_str(related_model, old_val)
                     if new_val: new_display = get_obj_str(related_model, new_val)

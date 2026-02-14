@@ -8,7 +8,10 @@ from reports.models import Notification
 from core.services.notification_template import NotificationContent, NotificationTemplateService
 
 import threading
+import logging
 from django.core.mail import send_mail
+
+logger = logging.getLogger(__name__)
 
 def _send_email_async(subject, body, from_email, recipient_list, html_message):
     try:
@@ -21,7 +24,7 @@ def _send_email_async(subject, body, from_email, recipient_list, html_message):
             fail_silently=True
         )
     except Exception as e:
-        print(f"Failed to send email async: {e}")
+        logger.error(f"Failed to send email async: {e}")
 
 def send_notification(user, title, message, notification_type, data=None, priority='normal', content: NotificationContent = None):
     # ... (DB and WebSocket logic remains same) ...
@@ -57,7 +60,7 @@ def send_notification(user, title, message, notification_type, data=None, priori
             notification.is_pushed = True
             notification.save(update_fields=['is_pushed'])
         except Exception as e:
-            print(f"Failed to push notification to {user.username}: {e}")
+            logger.error(f"Failed to push notification to {user.username}: {e}")
 
     # 3. 发送电子邮件（异步）
     if content and user.email:
@@ -75,6 +78,6 @@ def send_notification(user, title, message, notification_type, data=None, priori
             email_thread.start()
             
         except Exception as e:
-            print(f"Failed to trigger email to {user.email}: {e}")
+            logger.error(f"Failed to trigger email to {user.email}: {e}")
     
     return notification

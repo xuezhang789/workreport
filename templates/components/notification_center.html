@@ -275,7 +275,7 @@
 
             socket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
-                console.log('New notification:', data);
+                // console.log('New notification:', data);
                 
                 // Show badge increment
                 const current = parseInt(badge.textContent) || 0;

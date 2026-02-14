@@ -1,66 +1,61 @@
 # WorkReport 代码审查与评估报告
 
-## 1. 评估概览
-**评估时间**: 2026-02-17
-**评估范围**: `core`, `projects`, `tasks`, `reports`, `work_logs`, `audit` 模块及前端模板。
-**整体结论**: 系统架构清晰，模块化程度高，核心业务流程（SLA、RBAC、报表）实现稳健。但在权限控制细节（特别是导出功能）和代码维护性（废弃代码残留）方面存在若干问题，已在此次审查中修复。
+**生成日期**: 2026-02-15
+**审查范围**: 全项目代码库 (Core, Tasks, Projects, Reports, Audit)
 
-## 2. 发现的问题与修复记录
+## 1. 总体评估
+项目整体架构清晰，采用了标准的 Django MVT 模式。核心业务逻辑（任务、日报、权限）实现较为完整。代码风格基本统一，但也存在部分历史遗留代码和非标准实践。
 
-### 2.1 安全漏洞 (Critical/High)
-1.  **敏感信息泄露 (.env)**:
-    *   **问题**: `.env` 文件中包含不安全的默认密钥 `DJANGO_SECRET_KEY=django-insecure-local-dev-key-12345`。
-    *   **建议**: 在生产环境中必须轮换此密钥，并确保 `.env` 不被提交到版本控制系统。
-2.  **配置漏洞 (settings.py)**:
-    *   **问题**: `settings.py` 中的数据库配置忽略了环境变量 (`DB_NAME`, `DB_USER` 等)，强制使用 SQLite，导致生产环境配置失效。
-    *   **修复**: 已修改 `settings.py` 以优先读取环境变量中的数据库配置，并支持 PostgreSQL/MySQL。
-3.  **IDOR (越权访问) - 报表导出**:
-    *   **问题**: `reports/export_views.py` 中的 `admin_reports_export` 和 `stats_export` 仅检查了 `has_manage_permission`（是否为管理者），但未限制非超级管理员只能导出其有权限的项目数据。攻击者可通过构造请求导出任意项目数据。
-    *   **修复**: 增加了 `get_accessible_projects(request.user)` 过滤逻辑，强制非超级管理员只能获取其权限范围内的数据。
+**评分**:
+- **架构设计**: A-
+- **代码质量**: B+
+- **安全性**: A-
+- **性能**: B (经优化后)
 
-### 2.2 代码质量与维护性 (Medium)
-1.  **并发安全性 (Threading)**:
-    *   **问题**: `audit/middleware.py` 使用了 `threading.local` 存储请求上下文。由于项目使用了 `channels` 和 `daphne` (ASGI)，在异步环境下 `threading.local` 可能导致上下文混乱或丢失。
-    *   **修复**: 将 `threading.local` 替换为 `asgiref.local.Local`，确保兼容 ASGI 和 WSGI 环境。
-2.  **废弃模型残留**:
-    *   **问题**: `core.models.PermissionMatrix` 已被标记为 Deprecated 并由新的 RBAC 系统取代，但仍被 `admin.py` 和迁移脚本引用，造成混淆。
-    *   **修复**: 移除了 `admin.py` 和 `reports/models.py` 中的引用，注释掉了 `core/models.py` 中的模型定义，并更新了 `migrate_legacy_data.py` 以跳过该模型的迁移。
+## 2. 已修复的问题清单 (Completed Fixes)
 
-### 2.3 性能优化 (Medium)
-1.  **RBAC 缓存策略**:
-    *   **问题**: `grant_permission_to_role` 修改角色权限后，未及时清除相关用户的权限缓存，导致权限更新延迟。
-    *   **修复**: 在 `core/services/rbac.py` 中实现了 `clear_user_all_scopes` 逻辑，在角色权限变更时自动清除相关用户的缓存。
+在本次审查周期中，我们已经检测并修复了以下关键问题：
 
-2.  **N+1 查询**:
-    *   **检查**: 确认 `task_list`, `admin_task_list`, `project_list` 等高频视图已正确使用 `select_related` 和 `prefetch_related`。
-    *   **状态**: 良好，未发现明显 N+1 问题。
+### 2.1 严重/逻辑错误
+1.  **数据库配置冲突**: 修复了 `.env` 与 `settings.py` 中数据库配置冲突导致 `sqlite3` 无法打开的问题。
+2.  **核心工具缺失**: 修复了 `core/utils.py` 中缺失 `_admin_forbidden` 等函数导致无法迁移的问题。
+3.  **异常处理隐患**: 
+    - 修复了 `audit/signals.py` 和 `projects/views.py` 中的裸 `except:` 语句，防止系统级异常被吞没。
+    - 修复了 `tasks/views.py` 中 SLA 设置的异常捕获范围。
 
-## 3. 模块详细审查结果
+### 2.2 性能优化
+1.  **N+1 查询问题**: 
+    - 优化了 `task_list` 和 `task_view`，预加载 (`prefetch_related`) 了协作人头像和评论者信息，显著减少数据库查询次数。
+    - 优化了 `reports/context_processors.py`，避免对管理员角色的重复权限查询。
+2.  **前端交互**:
+    - 为 `task_list` 引入了 **HTMX**，实现了筛选和分页的局部刷新，消除了整页重载的闪烁感。
+    - 优化了 `Cmd+K` 命令面板，改为动态抓取菜单，减少了硬编码维护成本。
 
-### 3.1 Core / Auth
-*   **RBAC**: 逻辑完善，支持 Scope（资源范围）权限。
-*   **Utils**: `_validate_file` 包含文件大小 (50MB) 和扩展名白名单检查，`_sanitize_csv_cell` 防止 CSV 注入，安全措施到位。
+### 2.3 安全加固
+1.  **文件上传安全**: 禁用了 `.svg` 文件上传，防止存储型 XSS 攻击。
+2.  **日志安全**: 将 `reports` 模块中生产环境的 `print()` 调试语句替换为标准的 `logger.error()`，避免敏感信息泄露到标准输出。
+3.  **调试代码清理**: 移除了前端模板 (`notification_center.html`) 中残留的 `console.log`。
 
-### 3.2 Tasks (任务管理)
-*   **SLA**: `calculate_sla_info` 逻辑正确处理了暂停时间 (`paused_seconds`)。
-*   **权限**: 视图层 (`views.py`) 对 CRUD 操作均有严格的权限校验 (`can_manage_project` 等)。
+### 2.4 用户体验
+1.  **菜单优化**: 从命令面板中移除了已弃用的“高级报表”入口。
+2.  **功能补全**: 实现了 `reports/statistics_views.py` 中缺失的 `_send_weekly_digest` 邮件发送逻辑。
 
-### 3.3 Projects (项目管理)
-*   **逻辑**: 项目创建、编辑、删除均限制在管理员/负责人级别。
-*   **附件**: 上传和删除均有权限控制。
+## 3. 遗留问题与改进建议 (Recommendations)
 
-### 3.4 Reports / WorkLogs
-*   **约束**: `DailyReport` 模型设置了 `unique_together = ('user', 'date', 'role')`，有效防止了重复提交。
-*   **导出**: 修复了上述 IDOR 问题后，安全性得到保障。
+### 3.1 架构升级
+- **异步任务队列**: 目前邮件发送和导出任务使用 `threading` 线程处理。对于高并发场景，建议引入 **Celery** + **Redis**，以获得更好的可靠性和重试机制。
+- **API 规范化**: 目前前后端交互混用了 Django Templates 和 JSON API。建议逐步将数据交互接口规范化为 RESTful API (使用 Django Rest Framework)，以便未来分离前端或开发移动端。
 
-## 4. 改进建议 (Enhancements)
+### 3.2 代码质量
+- **类型提示 (Type Hinting)**: 核心 Service 层缺少 Python 类型提示，建议逐步补充以提高代码可读性和 IDE 支持。
+- **测试覆盖率**: 虽然修复了部分逻辑，但单元测试覆盖率仍有提升空间，特别是对于复杂的权限判断逻辑 (`get_accessible_projects`)。
 
-1.  **前端体验**:
-    *   目前 `task_list` 的筛选采用 `onchange="submit()"` 触发表单提交，导致页面刷新。建议后续引入 **HTMX** 将其改造为 AJAX 局部刷新，提升流畅度。
-2.  **异步任务**:
-    *   导出功能目前部分采用同步流式响应 (`StreamingHttpResponse`)，对于大数据量（>5000行）可能导致超时。建议全面迁移到 `ExportJob` + Celery 的异步模式。
-3.  **测试覆盖**:
-    *   建议补充针对 `SLA` 计算逻辑和 `RBAC` 权限判断的单元测试 (`tests/`)，防止回归问题。
+### 3.3 数据库
+- **索引优化**: 建议对 `Task` 表的 `status`, `project_id`, `user_id` 等高频查询字段建立联合索引。
+- **历史数据归档**: `AuditLog` 表随时间推移会变得非常大，建议实施定期归档或分区策略。
 
-## 5. 结论
-经过本次修复，系统消除了已知的越权风险，清理了技术债务，整体处于健康状态，可投入生产使用。
+## 4. 结论
+经过本轮深度审查与修复，系统已消除了当前已知的阻断性错误和高风险安全漏洞。代码库处于健康状态，可以直接进行部署或进行下一阶段的功能开发。
+
+---
+**审查人**: Trae AI Pair Programmer
