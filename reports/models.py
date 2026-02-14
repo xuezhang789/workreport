@@ -12,7 +12,6 @@ from core.models import (
     ExportJob,
     UserPreference,
     Notification,
-    PermissionMatrix,
     default_export_expiry
 )
 from projects.models import (

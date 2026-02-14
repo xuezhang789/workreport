@@ -142,38 +142,38 @@ class Notification(models.Model):
         return f"{self.user.username} - {self.title}"
 
 
-class PermissionMatrix(models.Model):
-    """
-    Deprecated: Replaced by RBAC system (Role, Permission, RolePermission).
-    Kept for migration reference.
-    已弃用：被 RBAC 系统（Role, Permission, RolePermission）替代。
-    保留以供迁移参考。
-    """
-    ROLE_CHOICES = Profile.ROLE_CHOICES
-    PERMISSION_CHOICES = [
-        ('view_project', '查看项目'),
-        ('edit_project', '编辑项目'),
-        ('delete_project', '删除项目'),
-        ('manage_members', '管理成员'),
-        ('view_reports', '查看报表'),
-        ('manage_tasks', '管理任务'),
-        ('view_tasks', '查看任务'),
-        ('manage_phases', '管理阶段'),
-    ]
-
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, verbose_name="角色")
-    permission = models.CharField(max_length=50, choices=PERMISSION_CHOICES, verbose_name="权限标识")
-    description = models.CharField(max_length=200, blank=True, verbose_name="描述")
-    is_active = models.BooleanField(default=True, verbose_name="是否启用")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-
-    class Meta:
-        unique_together = ('role', 'permission')
-        verbose_name = "权限矩阵"
-        verbose_name_plural = "权限矩阵"
-
-    def __str__(self):
-        return f"{self.get_role_display()} - {self.get_permission_display()}"
+# class PermissionMatrix(models.Model):
+#     """
+#     Deprecated: Replaced by RBAC system (Role, Permission, RolePermission).
+#     Kept for migration reference.
+#     已弃用：被 RBAC 系统（Role, Permission, RolePermission）替代。
+#     保留以供迁移参考。
+#     """
+#     ROLE_CHOICES = Profile.ROLE_CHOICES
+#     PERMISSION_CHOICES = [
+#         ('view_project', '查看项目'),
+#         ('edit_project', '编辑项目'),
+#         ('delete_project', '删除项目'),
+#         ('manage_members', '管理成员'),
+#         ('view_reports', '查看报表'),
+#         ('manage_tasks', '管理任务'),
+#         ('view_tasks', '查看任务'),
+#         ('manage_phases', '管理阶段'),
+#     ]
+#
+#     role = models.CharField(max_length=10, choices=ROLE_CHOICES, verbose_name="角色")
+#     permission = models.CharField(max_length=50, choices=PERMISSION_CHOICES, verbose_name="权限标识")
+#     description = models.CharField(max_length=200, blank=True, verbose_name="描述")
+#     is_active = models.BooleanField(default=True, verbose_name="是否启用")
+#     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+#
+#     class Meta:
+#         unique_together = ('role', 'permission')
+#         verbose_name = "权限矩阵"
+#         verbose_name_plural = "权限矩阵"
+#
+#     def __str__(self):
+#         return f"{self.get_role_display()} - {self.get_permission_display()}"
 
 
 # --- New RBAC Models / 新 RBAC 模型 ---

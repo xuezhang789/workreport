@@ -5,7 +5,6 @@ from .models import (
     ExportJob,
     UserPreference,
     Notification,
-    PermissionMatrix,
 )
 
 @admin.register(Profile)
@@ -34,8 +33,3 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ('notification_type', 'is_read', 'created_at')
     search_fields = ('title', 'message', 'user__username')
 
-@admin.register(PermissionMatrix)
-class PermissionMatrixAdmin(admin.ModelAdmin):
-    list_display = ('role', 'permission', 'is_active', 'description')
-    list_filter = ('role', 'is_active')
-    search_fields = ('description',)

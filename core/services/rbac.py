@@ -224,16 +224,46 @@ class RBACService:
     @transaction.atomic
     def grant_permission_to_role(cls, role, permission):
         RolePermission.objects.get_or_create(role=role, permission=permission)
-        # Invalidate cache for all users with this role? 
-        # This is expensive (scan UserRole). 
-        # For now, we accept eventual consistency or implement a versioning strategy.
-        # Or clear all RBAC cache if role definition changes (simple but heavy).
-        # Better: Do nothing and let TTL expire, or provide a 'flush_all' admin tool.
-        # For critical updates, we can bump a global version key in cache keys.
-        # 使拥有此角色的所有用户的缓存失效？
-        # 这很昂贵（扫描 UserRole）。
-        # 目前，我们接受最终一致性或实施版本控制策略。
-        # 或者如果角色定义发生变化，清除所有 RBAC 缓存（简单但繁重）。
-        # 更好：什么也不做，让 TTL 过期，或提供 'flush_all' 管理工具。
-        # 对于关键更新，我们可以在缓存键中增加全局版本密钥。
+        # Optimization: Clear cache for all users holding this role
+        # We find users with this role (in any scope) and clear their cache.
+        user_ids = UserRole.objects.filter(role=role).values_list('user_id', flat=True).distinct()
+        for uid in user_ids:
+            # We don't know the exact scopes, so we clear all scopes for this user?
+            # clear_user_cache only clears specific scope if provided, or global if scope=None.
+            # But get_cache_key uses specific scope.
+            # To be safe, we can iterate commonly used scopes or use a wildcard delete if backend supports it.
+            # Standard Django cache doesn't support wildcard delete easily.
+            # So we rely on the fact that role permissions affect `get_user_permissions` result.
+            # `get_user_permissions` cache key depends on user_id and scope.
+            # If we don't know the scope, we can't clear specific keys easily without scanning.
+            # Simple approach: Since role definition change is rare, we can accept TTL (1h) or manual flush.
+            # But let's implement a 'clear_all_for_user' helper.
+            cls.clear_user_all_scopes(uid)
+
+    @classmethod
+    def clear_user_all_scopes(cls, user_id):
+        """Clears RBAC cache for a user across all scopes (best effort)"""
+        # Since we can't list keys, we iterate known scopes for this user?
+        # Or just clear global and let others expire.
+        # Actually, if we change a Role permission, it affects all scopes where this role is used.
+        # So finding UserRoles for this role gives us the (user_id, scope) pairs.
         pass
+
+    @classmethod
+    @transaction.atomic
+    def revoke_permission_from_role(cls, role, permission):
+        RolePermission.objects.filter(role=role, permission=permission).delete()
+        # Same cache invalidation logic as grant
+        user_ids = UserRole.objects.filter(role=role).values_list('user_id', flat=True).distinct()
+        for uid in user_ids:
+            cls.clear_user_all_scopes(uid)
+
+    @classmethod
+    def clear_user_all_scopes(cls, user_id):
+        # Helper to clear main cache keys.
+        # Note: This is an approximation. If user has many scopes, we might miss some if we don't query DB.
+        # But we CAN query DB.
+        scopes = UserRole.objects.filter(user_id=user_id).values_list('scope', flat=True).distinct()
+        cls.clear_user_cache(user_id, None) # Global
+        for scope in scopes:
+            cls.clear_user_cache(user_id, scope)

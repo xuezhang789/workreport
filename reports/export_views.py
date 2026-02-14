@@ -90,6 +90,11 @@ def admin_reports_export(request):
         return _admin_forbidden(request)
 
     reports, role, start_date, end_date = _filtered_reports(request)
+    
+    # Security Fix: Filter by accessible projects for non-superusers
+    if not request.user.is_superuser:
+        accessible_projects = get_accessible_projects(request.user)
+        reports = reports.filter(projects__in=accessible_projects).distinct()
 
     if not start_date or not end_date:
         return HttpResponse("请提供开始和结束日期后再导出。", status=400)
@@ -167,10 +172,20 @@ def stats_export(request):
 
     export_type = (request.GET.get('type') or 'missing').strip()
     target_date = parse_date(request.GET.get('date') or '') or timezone.localdate()
+    
+    # Security Fix: Filter projects
+    projects_qs = Project.objects.filter(is_active=True)
+    if not request.user.is_superuser:
+        accessible_projects = get_accessible_projects(request.user)
+        projects_qs = projects_qs.filter(id__in=accessible_projects).distinct()
 
     if export_type == 'project_sla':
         tasks_qs = Task.objects.select_related('project')
-        projects = Project.objects.filter(is_active=True).order_by('name')
+        # Filter tasks by accessible projects
+        if not request.user.is_superuser:
+            tasks_qs = tasks_qs.filter(project__in=projects_qs)
+            
+        projects = projects_qs.order_by('name')
         rows = []
         for p in projects:
             total = tasks_qs.filter(project=p).count()
@@ -197,6 +212,9 @@ def stats_export(request):
 
     elif export_type == 'user_sla':
         tasks_qs = Task.objects.select_related('user')
+        if not request.user.is_superuser:
+            tasks_qs = tasks_qs.filter(project__in=projects_qs)
+            
         grouped = tasks_qs.values('user__username', 'user__first_name', 'user__last_name').annotate(
             total=Count('id'),
             completed=Count('id', filter=Q(status='completed')),
@@ -223,7 +241,7 @@ def stats_export(request):
         # missing
         qs = DailyReport.objects.filter(date=target_date)
         todays_user_ids = set(qs.values_list('user_id', flat=True))
-        active_projects = Project.objects.filter(is_active=True).prefetch_related('members', 'managers')
+        active_projects = projects_qs.prefetch_related('members', 'managers')
         rows = []
         for p in active_projects:
             expected_users = set(p.members.values_list('id', flat=True)) | set(p.managers.values_list('id', flat=True))

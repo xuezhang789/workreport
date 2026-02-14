@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction, connection
 from reports.models import (
     Profile as OldProfile, SystemSetting as OldSystemSetting, Notification as OldNotification,
-    UserPreference as OldUserPreference, PermissionMatrix as OldPermissionMatrix, ExportJob as OldExportJob,
+    UserPreference as OldUserPreference, ExportJob as OldExportJob,
     ProjectPhaseConfig as OldProjectPhaseConfig, Project as OldProject, ProjectAttachment as OldProjectAttachment,
     ProjectPhaseChangeLog as OldProjectPhaseChangeLog, ReminderRule as OldReminderRule,
     ProjectMemberPermission as OldProjectMemberPermission,
@@ -12,7 +12,7 @@ from reports.models import (
     ReportTemplateVersion as OldReportTemplateVersion, AuditLog as OldAuditLog
 )
 from core.models import (
-    Profile, SystemSetting, Notification, UserPreference, PermissionMatrix, ExportJob
+    Profile, SystemSetting, Notification, UserPreference, ExportJob
 )
 from projects.models import (
     ProjectPhaseConfig, Project, ProjectAttachment, ProjectPhaseChangeLog, ReminderRule, ProjectMemberPermission
@@ -34,7 +34,7 @@ class Command(BaseCommand):
 
         # 1. Core
         self.migrate_model(OldSystemSetting, SystemSetting)
-        self.migrate_model(OldPermissionMatrix, PermissionMatrix)
+        # self.migrate_model(OldPermissionMatrix, PermissionMatrix) # Removed deprecated model
         self.migrate_model(OldProfile, Profile)
         self.migrate_model(OldUserPreference, UserPreference)
         self.migrate_model(OldNotification, Notification)
