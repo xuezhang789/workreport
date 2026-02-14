@@ -73,7 +73,10 @@
                 </div>
                 <span class="user-chevron" aria-hidden="true">→</span>
             </a>
-            <a class="pill" href="{% url 'core:logout' %}">退出登录 / Logout</a>
+            <a class="pill" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">退出登录 / Logout</a>
+            <form id="logout-form" action="{% url 'core:logout' %}" method="post" style="display: none;">
+                {% csrf_token %}
+            </form>
         {% endif %}
     </div>
 </header>
@@ -102,7 +105,7 @@
 
 <style>
     .topbar {
-        position: relative;
+        /* position: relative;  Removed to allow sticky from base_topbar */
         z-index: 40;
         overflow: visible;
     }
