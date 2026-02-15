@@ -1,85 +1,38 @@
+# 功能增强建议 / Functional Suggestions
 
-# Functional Enhancement Suggestions / 功能增强建议
+基于对现有代码库的深入分析，提出以下 5 个可落地的功能增强建议。
 
-**Date:** 2026-02-04
-**Based On:** Codebase Analysis & Enterprise Best Practices
+## 1. SLA 计算性能优化与持久化
+*   **现状**: 任务列表的 SLA 状态（是否逾期、紧急）是在 Python 内存中实时计算的。对于 "Hot" (热门/紧急) 筛选，需要加载所有任务到内存进行过滤，这在数据量大时是严重的性能瓶颈。
+*   **建议**:
+    *   在 `Task` 模型中新增 `sla_deadline` (DateTime) 和 `sla_status` (Index) 字段。
+    *   在任务创建、更新或系统 SLA 配置变更时，自动重新计算并存储这些字段。
+    *   **预期效果**: 数据库层面的直接索引查询，查询速度提升 100倍+，彻底解决分页性能问题。
 
-## 1. Real-time Notification Center (WebSockets)
-### Context
-Currently, the system uses `channels` with `InMemoryChannelLayer` (not prod-ready) or relies on page refreshes/polling for updates. `Notification` model exists but is passive.
-### Proposal
-Implement a full WebSocket-based notification system using `django-channels` and `Redis`.
-### Implementation Path
-1.  **Infrastructure**: Replace `InMemoryChannelLayer` with `RedisChannelLayer`.
-2.  **Backend**: Create a `NotificationConsumer` that listens to a user-specific group.
-3.  **Signals**: On `Task.save()` or `DailyReport.save()`, trigger an async group send to the relevant users.
-4.  **Frontend**: Add a WebSocket client in `base_topbar.html` to receive events and update the notification bell badge in real-time.
-### Benefits
--   Immediate feedback for task assignments and mentions.
--   Reduced server load (no polling).
-### Workload
--   Backend: 2 days
--   Frontend: 1 day
+## 2. 增强的文件上传安全校验
+*   **现状**: 目前仅通过文件扩展名 (`.jpg`, `.pdf`) 校验文件类型，攻击者可轻易绕过（如将 `.exe` 重命名为 `.jpg` 上传）。
+*   **建议**:
+    *   引入文件内容头 (Magic Number) 校验机制。
+    *   读取文件前 2048 字节，匹配二进制签名来确定真实的 MIME 类型。
+    *   **预期效果**: 即使攻击者修改扩展名，也能拦截恶意可执行文件，显著提升系统安全性。
 
-## 2. Advanced Role-Based Access Control (RBAC) UI
-### Context
-The backend has powerful RBAC models (`Role`, `Permission`, `UserRole`) and logic (`core.services.rbac`), but there is no visible UI for administrators to configure these dynamically. They likely rely on Django Admin or database scripts.
-### Proposal
-Develop a "System Administration > Permission Management" module.
-### Implementation Path
-1.  **Role Management View**: CRUD for `Role` model (Create custom roles like "External Auditor").
-2.  **Permission Matrix UI**: A grid view mapping Roles to Permissions (checkboxes).
-3.  **User Assignment UI**: A view to assign Roles to Users, with "Scope" selection (Global vs Project-specific).
-### Benefits
--   Self-service for admins to create custom roles without code changes.
--   Better visibility into who has access to what.
-### Workload
--   Full Stack: 3-4 days
+## 3. 细粒度的任务权限配置
+*   **现状**: 系统权限策略较为严格，仅允许管理员和项目经理创建任务。普通成员即使是项目参与者也无法创建任务，这在敏捷协作场景下可能降低效率。
+*   **建议**:
+    *   在 `Project` 模型中增加 `allow_member_create_task` 布尔开关。
+    *   修改 `admin_task_create` 视图，根据此配置动态放开权限。
+    *   **预期效果**: 在保持管控的同时提供灵活性，适应不同团队的管理风格。
 
-## 3. Automated Report Aggregation & Intelligence
-### Context
-Managers currently read individual reports. The `stats` view provides numbers but not qualitative insights.
-### Proposal
-Implement an "AI Weekly Summary" or "Project Pulse" feature.
-### Implementation Path
-1.  **Data Collection**: Celery task runs weekly, collecting all `DailyReport.today_work` and `progress_issues` for a project.
-2.  **Processing**: (Optional) Send text to an LLM API (if policy allows) to summarize key achievements and risks. Or use simple NLP (keyword extraction) to highlight "Blocker", "Delay", "Urgent".
-3.  **Delivery**: Email the summary to the Project Manager every Monday morning.
-### Benefits
--   Saves hours of reading time for managers.
--   Early detection of risks hidden in free-text reports.
-### Workload
--   Backend (Celery + Logic): 3 days
--   Integration: 1 day
+## 4. 用户活跃度与贡献度看板
+*   **现状**: 现有的统计主要关注任务的完成情况，缺乏对成员具体贡献度的量化展示。
+*   **建议**:
+    *   新增 "成员贡献" 报表，展示：任务完成数、代码/文档提交量（如有）、评论互动数、SLA 达标率。
+    *   提供 "最近活跃" 视图，帮助管理者识别潜在的资源瓶颈或空闲人员。
+    *   **预期效果**: 提供更全面的人力资源洞察，辅助绩效评估。
 
-## 4. Task Dependency & Gantt Chart V2
-### Context
-The previous `advanced_reporting` module (now removed) contained a basic Gantt chart, but the `Task` model doesn't explicitly store dependencies (Predecessor/Successor), only `project`.
-### Proposal
-Add explicit dependencies to support Critical Path Analysis.
-### Implementation Path
-1.  **Model**: Add `dependencies = ManyToManyField('self', symmetrical=False, related_name='blocked_by')` to `Task`.
-2.  **Validation**: Prevent circular dependencies on save.
-3.  **API**: Update Task APIs to return dependency graph.
-4.  **Frontend**: Upgrade the Gantt chart library to render lines between dependent tasks.
-### Benefits
--   True project management capability.
--   Auto-calculation of schedule slippage impact.
-### Workload
--   Backend: 2 days
--   Frontend: 3 days
-
-## 5. Mobile Progressive Web App (PWA)
-### Context
-The current UI is responsive but lacks mobile-native feel (offline support, home screen install).
-### Proposal
-Convert the existing Django templates into a PWA.
-### Implementation Path
-1.  **Manifest**: Add `manifest.json`.
-2.  **Service Worker**: Cache static assets (CSS/JS) and critical read-only API responses (e.g., "My Tasks").
-3.  **Offline Mode**: Allow drafting reports offline and syncing when online.
-### Benefits
--   Better experience for field workers or commuters.
--   Zero-install mobile app.
-### Workload
--   Frontend: 2 days
+## 5. 异步导出中心
+*   **现状**: 虽然已有 `ExportJob` 模型，但部分导出操作仍可能在请求线程中同步执行或阻塞较久。
+*   **建议**:
+    *   全面推行异步导出模式：前端点击导出 -> 后端创建任务并立即返回 -> 前端轮询状态或等待 WebSocket 通知。
+    *   增加导出历史记录下载功能，允许用户重新下载过去 3 天生成的报表。
+    *   **预期效果**: 提升大文件导出时的用户体验，避免浏览器超时。

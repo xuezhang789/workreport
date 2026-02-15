@@ -468,7 +468,7 @@
         {% if task.content %}
             <div class="content-box">
                 <span class="info-label" style="display: block; margin-bottom: 8px;">任务内容 / Content</span>
-                {{ task.content|escape|safe_md }}
+                {{ task.content|safe_md }}
             </div>
         {% endif %}
         
@@ -541,7 +541,7 @@
                                     <span style="font-weight: 600; font-size: 13px;">{{ c.user.get_full_name|default:c.user.username|escape }}</span>
                                     <span style="color: var(--text-secondary); font-size: 12px;">{{ c.created_at|localtime|date:"m-d H:i" }}</span>
                                 </div>
-                                <div class="comment-body">{{ c.content|escape|safe_md }}</div>
+                                <div class="comment-body">{{ c.content|safe_md }}</div>
                                 {% if c.mentions %}
                                     <div style="font-size: 12px; color: var(--primary); margin-top: 4px;">@{{ c.mentions|join:", "|escape }}</div>
                                 {% endif %}

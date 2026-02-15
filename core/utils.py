@@ -24,6 +24,27 @@ UPLOAD_ALLOWED_EXTENSIONS = {
 AVATAR_MAX_SIZE = 2 * 1024 * 1024 # 2MB
 AVATAR_ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif'}
 
+# Basic File Signatures (Magic Numbers)
+# format: extension (without dot) -> list of valid signatures (bytes)
+FILE_SIGNATURES = {
+    'jpg':  [b'\xff\xd8\xff'],
+    'jpeg': [b'\xff\xd8\xff'],
+    'png':  [b'\x89\x50\x4e\x47\x0d\x0a\x1a\x0a'],
+    'gif':  [b'\x47\x49\x46\x38'],
+    'pdf':  [b'\x25\x50\x44\x46'],
+    'zip':  [b'\x50\x4b\x03\x04'],
+    'rar':  [b'\x52\x61\x72\x21\x1a\x07\x00'],
+    '7z':   [b'\x37\x7a\xbc\xaf\x27\x1c'],
+    'mp4':  [b'\x00\x00\x00\x18\x66\x74\x79\x70', b'\x00\x00\x00\x20\x66\x74\x79\x70'],
+    'mov':  [b'\x00\x00\x00\x14\x66\x74\x79\x70'],
+}
+
+# Office Open XML formats (docx, xlsx, pptx) are essentially ZIP files
+FILE_SIGNATURES['docx'] = FILE_SIGNATURES['zip']
+FILE_SIGNATURES['xlsx'] = FILE_SIGNATURES['zip']
+FILE_SIGNATURES['pptx'] = FILE_SIGNATURES['zip']
+
+
 MANAGER_ROLES = {'mgr', 'pm'}
 
 # has_manage_permission moved to core.permissions
@@ -48,6 +69,45 @@ def _friendly_forbidden(request, message):
     """统一的友好 403 返回，带双语提示。 / Unified friendly 403 response with bilingual message."""
     return render(request, '403.html', {'detail': message}, status=403)
 
+def _validate_file_content(file):
+    """
+    Check file content using magic numbers (file signature).
+    Returns (True, None) if valid or unknown (text files), (False, error) if invalid.
+    """
+    ext = os.path.splitext(file.name)[1].lower().lstrip('.')
+    
+    # Skip checks for text files (difficult to validate signature without robust mime lib)
+    if ext in ['txt', 'md', 'csv']:
+        # Basic check: ensure no null bytes in first 1KB (prevent binary injection)
+        try:
+            initial_data = file.read(1024)
+            file.seek(0) # Reset pointer
+            if b'\x00' in initial_data:
+                return False, "Text file appears to contain binary data"
+            return True, None
+        except Exception:
+            file.seek(0)
+            return True, None # Fallback
+            
+    # Check binary signatures
+    signatures = FILE_SIGNATURES.get(ext)
+    if signatures:
+        try:
+            # Read enough bytes for the longest signature
+            max_len = max(len(sig) for sig in signatures)
+            header = file.read(max_len)
+            file.seek(0) # Reset pointer!
+            
+            is_valid = any(header.startswith(sig) for sig in signatures)
+            if not is_valid:
+                 return False, f"文件内容与扩展名 ({ext}) 不匹配 / File content does not match extension"
+        except Exception as e:
+            file.seek(0)
+            # Log error but don't block if read fails (shouldn't happen for UploadedFile)
+            return False, f"File validation error: {str(e)}"
+            
+    return True, None
+
 def _validate_file(file, max_size=UPLOAD_MAX_SIZE, allowed_extensions=UPLOAD_ALLOWED_EXTENSIONS):
     """
     Validates file size and extension.
@@ -60,6 +120,11 @@ def _validate_file(file, max_size=UPLOAD_MAX_SIZE, allowed_extensions=UPLOAD_ALL
     ext = os.path.splitext(file.name)[1].lower()
     if ext not in allowed_extensions:
         return False, f"不支持的文件类型: {ext}"
+    
+    # Content validation (Magic Number)
+    is_valid_content, error_msg = _validate_file_content(file)
+    if not is_valid_content:
+        return False, error_msg
         
     return True, None
 
