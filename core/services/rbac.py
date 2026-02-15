@@ -228,26 +228,7 @@ class RBACService:
         # We find users with this role (in any scope) and clear their cache.
         user_ids = UserRole.objects.filter(role=role).values_list('user_id', flat=True).distinct()
         for uid in user_ids:
-            # We don't know the exact scopes, so we clear all scopes for this user?
-            # clear_user_cache only clears specific scope if provided, or global if scope=None.
-            # But get_cache_key uses specific scope.
-            # To be safe, we can iterate commonly used scopes or use a wildcard delete if backend supports it.
-            # Standard Django cache doesn't support wildcard delete easily.
-            # So we rely on the fact that role permissions affect `get_user_permissions` result.
-            # `get_user_permissions` cache key depends on user_id and scope.
-            # If we don't know the scope, we can't clear specific keys easily without scanning.
-            # Simple approach: Since role definition change is rare, we can accept TTL (1h) or manual flush.
-            # But let's implement a 'clear_all_for_user' helper.
             cls.clear_user_all_scopes(uid)
-
-    @classmethod
-    def clear_user_all_scopes(cls, user_id):
-        """Clears RBAC cache for a user across all scopes (best effort)"""
-        # Since we can't list keys, we iterate known scopes for this user?
-        # Or just clear global and let others expire.
-        # Actually, if we change a Role permission, it affects all scopes where this role is used.
-        # So finding UserRoles for this role gives us the (user_id, scope) pairs.
-        pass
 
     @classmethod
     @transaction.atomic

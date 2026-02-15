@@ -1,6 +1,6 @@
 {% extends "base_topbar.html" %}
 {% load static %}
-{% load tz %}
+{% load tz permission_tags %}
 {% block title %}项目详情 / Project Detail{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情 / Project Detail" nav_subtitle="查看项目基本信息与近期动态 / View basics & activities" %}{% endblock %}
 {% block extra_styles %}
@@ -338,6 +338,7 @@
 {% endblock %}
 
 {% block content %}
+{% can_manage_project project as can_manage %}
 <div class="page-container">
     
     <!-- Header / Overview -->

@@ -1,5 +1,5 @@
 {% extends "base_topbar.html" %}
-{% load core_tags %}
+{% load core_tags permission_tags %}
 {% block title %}项目列表 / Projects{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表 / Projects" nav_subtitle="浏览、筛选与管理项目 / Browse, filter & manage projects" %}{% endblock %}
 
@@ -301,7 +301,8 @@
                             <span>End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            {% if p.id in manageable_ids %}
+                            {% can_manage_project p as user_can_manage %}
+                            {% if user_can_manage %}
                                 <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑</a>
                             {% endif %}
                             <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入</a>
@@ -376,7 +377,8 @@
                             </td>
                             <td style="text-align: right;">
                                 <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                    {% if p.id in manageable_ids %}
+                                    {% can_manage_project p as user_can_manage %}
+                                    {% if user_can_manage %}
                                         <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-ghost btn-sm" title="编辑 / Edit">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                         </a>

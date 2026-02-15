@@ -35,8 +35,6 @@ from reports.services.notification_service import send_notification
 MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
 
-# has_manage_permission and has_project_manage_permission moved to core.permissions
-
 def _filtered_projects(request):
     q = (request.GET.get('q') or '').strip()
     start_date = parse_date(request.GET.get('start_date') or '')
@@ -54,7 +52,8 @@ def _filtered_projects(request):
         # 仅超级管理员可见所有项目。
         # 普通用户（包括非超级管理员的 PM/Manager）仅可见有权限的项目。
         accessible = get_accessible_projects(request.user)
-        qs = qs.filter(id__in=accessible.values('id'))
+        # accessible is already a filtered QuerySet based on cached IDs
+        qs = qs & accessible
 
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(description__icontains=q))
@@ -155,7 +154,7 @@ def project_list(request):
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     
     # Permission Check for Create Button
-    can_create_project = request.user.is_superuser
+    can_create_project = has_manage_permission(request.user)
     
     context = {
         'projects': page_obj,
@@ -308,7 +307,7 @@ def project_detail(request, pk: int):
 
 @login_required
 def project_create(request):
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
     
     if request.method == 'POST':
@@ -441,7 +440,7 @@ def project_export(request):
 
 @login_required
 def project_phase_config_list(request):
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
         
     phases = ProjectPhaseConfig.objects.all()
@@ -450,7 +449,7 @@ def project_phase_config_list(request):
 
 @login_required
 def project_phase_config_create(request):
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
         
     if request.method == 'POST':
@@ -466,7 +465,7 @@ def project_phase_config_create(request):
 
 @login_required
 def project_phase_config_update(request, pk):
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
         
     phase = get_object_or_404(ProjectPhaseConfig, pk=pk)
@@ -483,7 +482,7 @@ def project_phase_config_update(request, pk):
 
 @login_required
 def project_phase_config_delete(request, pk):
-    if not request.user.is_superuser:
+    if not has_manage_permission(request.user):
         return _admin_forbidden(request)
         
     phase = get_object_or_404(ProjectPhaseConfig, pk=pk)

@@ -1,6 +1,6 @@
 {% extends "base_topbar.html" %}
 {% load static %}
-{% load tz safe_md file_utils %}
+{% load tz safe_md file_utils permission_tags %}
 {% block title %}任务详情 / Task Detail{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="任务详情 / Task Detail" nav_subtitle="查看任务内容或跳转链接 / View task content or external link" %}{% endblock %}
 {% block extra_styles %}
@@ -372,7 +372,8 @@
                 {% endif %}
                 
                 <!-- Status Actions -->
-                {% if request.user == task.user or request.user.is_staff %}
+                {% can_manage_project task.project as is_manager %}
+                {% if request.user == task.user or is_manager %}
                     {% if task.status == 'done' or task.status == 'closed' %}
                         <form method="post" style="display: inline;">{% csrf_token %}
                             <button type="submit" name="action" value="reopen" class="btn btn-secondary">重新打开 / Reopen</button>
@@ -600,7 +601,7 @@
                             </div>
                             <div class="attachment-actions">
                                 <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
-                                {% if request.user.is_superuser or request.user == task.user or request.user == attachment.user %}
+                                {% if is_manager or request.user == task.user or request.user == attachment.user %}
                                     <button class="btn-xs btn-delete" data-url="{% url 'tasks:task_delete_attachment' attachment.id %}" onclick="deleteAttachment({{ attachment.id }}, this.dataset.url)">删除 / Delete</button>
                                 {% endif %}
                             </div>

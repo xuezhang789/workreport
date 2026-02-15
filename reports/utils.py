@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db.models import Q
 from projects.models import Project
 from tasks.models import Task
@@ -17,7 +18,7 @@ def _get_projects_by_permission(user, permission_code):
     
     # If None (Global) is in scopes, return all active projects
     # 如果 scopes 中包含 None（全局），则返回所有活动项目
-    if None in scopes:
+    if None in scopes or '' in scopes:
         return Project.objects.filter(is_active=True)
         
     # Extract project IDs from scopes like 'project:123'
@@ -38,12 +39,21 @@ def get_accessible_projects(user):
     Returns a QuerySet of projects accessible to the user (view permission).
     返回用户可访问（查看权限）的项目查询集。
     """
+    if not user.is_authenticated:
+        return Project.objects.none()
+
+    if user.is_superuser:
+        return Project.objects.filter(is_active=True)
+
+    cache_key = f"accessible_projects_ids:{user.id}"
+    cached_ids = cache.get(cache_key)
+
+    if cached_ids is not None:
+        return Project.objects.filter(id__in=cached_ids, is_active=True)
+
     # Base RBAC access
     rbac_projects = _get_projects_by_permission(user, 'project.view')
     
-    if user.is_superuser:
-        return rbac_projects
-        
     # Combine with Model fields (Owner, Managers, Members)
     # 结合模型字段（负责人，管理员，成员）
     # Note: RBAC is powerful but we must respect the direct database relationships too.
@@ -52,7 +62,14 @@ def get_accessible_projects(user):
         is_active=True
     )
     
-    return (rbac_projects | direct_access).distinct()
+    # Combine and distinct
+    final_qs = (rbac_projects | direct_access).distinct()
+    
+    # Cache the IDs
+    ids = list(final_qs.values_list('id', flat=True))
+    cache.set(cache_key, ids, 300) # Cache for 5 minutes
+    
+    return Project.objects.filter(id__in=ids)
 
 def can_manage_project(user, project):
     """
@@ -65,17 +82,27 @@ def can_manage_project(user, project):
     if user.is_superuser:
         return True
         
+    # Cache key for this specific check
+    cache_key = f"can_manage_project:{user.id}:{project.id}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    result = False
     # Check Project model fields directly (Owner/Managers)
     # 检查 Project 模型字段（负责人/管理员）
     if user == project.owner:
-        return True
+        result = True
+    elif project.managers.filter(pk=user.pk).exists():
+        result = True
+    else:
+        # Check RBAC permissions (if assigned via Role)
+        scope = f"project:{project.id}"
+        if RBACService.has_permission(user, 'project.manage', scope=scope):
+            result = True
     
-    if project.managers.filter(pk=user.pk).exists():
-        return True
-        
-    # Check RBAC permissions (if assigned via Role)
-    scope = f"project:{project.id}"
-    return RBACService.has_permission(user, 'project.manage', scope=scope)
+    cache.set(cache_key, result, 300)
+    return result
 
 def get_manageable_projects(user):
     """
@@ -125,3 +152,25 @@ def get_accessible_reports(user):
     # Reports that are linked to any of the accessible projects
     # 链接到任何可访问项目的日报
     return DailyReport.objects.filter(projects__in=projects).distinct()
+
+def clear_project_permission_cache(user, project=None):
+    """
+    Clear permission caches for a user.
+    If project is provided, clears specific project permission cache.
+    Always clears the list of accessible projects.
+    """
+    if not user:
+        return
+        
+    # Clear accessible projects list cache
+    cache.delete(f"accessible_projects_ids:{user.id}")
+    
+    # Clear specific project permission cache
+    if project:
+        cache.delete(f"can_manage_project:{user.id}:{project.id}")
+    else:
+        # If no project specified, we can't easily clear all specific project keys 
+        # unless we use a pattern match which django cache doesn't always support efficiently.
+        # Ideally, we should iterate if we knew which projects.
+        # For now, we rely on the short TTL (5 mins) or specific calls.
+        pass

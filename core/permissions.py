@@ -22,16 +22,4 @@ def has_project_manage_permission(user, project):
     scope = f"project:{project.id}"
     return RBACService.has_permission(user, 'project.manage', scope=scope)
 
-class ProjectAccessMixin:
-    """
-    Mixin for Class Based Views to enforce project access.
-    用于基于类的视图（CBV）以强制执行项目访问控制的 Mixin。
-    """
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.is_superuser:
-            return qs
-        
-        from reports.utils import get_accessible_projects
-        accessible = get_accessible_projects(self.request.user)
-        return qs.filter(project__in=accessible)
+
