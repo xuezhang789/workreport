@@ -25,20 +25,10 @@ class ModulePermissionTests(TestCase):
         resp = self.client.get('/reports/teams/')
         self.assertEqual(resp.status_code, 200)
         
-        # Owner -> 403 (Strict superuser only for global list)
+        # Owner -> 200 (Accessible projects only)
         self.client.force_login(self.u_owner)
         resp = self.client.get('/reports/teams/')
-        # Usually _admin_forbidden adds message and renders current page or redirect? 
-        # _admin_forbidden implementation: messages.error + return? 
-        # Actually it calls messages.error(request, ...) then what?
-        # Let's check _admin_forbidden implementation again.
-        # It was: messages.error; return None? No.
-        # It was: messages.error(request, message)
-        # If it doesn't return response, view continues?
-        # Wait, I saw: return _admin_forbidden(request)
-        # So it returns something.
-        # Let's check _admin_forbidden code.
-        self.assertNotEqual(resp.status_code, 200) 
+        self.assertEqual(resp.status_code, 200) 
         
     def test_template_center_permission(self):
         # Superuser -> 200
@@ -54,12 +44,12 @@ class ModulePermissionTests(TestCase):
     def test_sla_settings_permission(self):
         # Superuser -> 200
         self.client.force_login(self.superuser)
-        resp = self.client.get('/reports/sla/settings/')
+        resp = self.client.get('/tasks/sla/settings/')
         self.assertEqual(resp.status_code, 200)
         
         # Owner -> 403
         self.client.force_login(self.u_owner)
-        resp = self.client.get('/reports/sla/settings/')
+        resp = self.client.get('/tasks/sla/settings/')
         self.assertNotEqual(resp.status_code, 200)
         
     def test_audit_logs_permission(self):

@@ -1,4 +1,5 @@
 {% extends "base_topbar.html" %}
+{% load file_utils %}
 {% block title %}{% if task %}编辑任务 / Edit Task{% else %}发布任务 / New Task{% endif %}{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title=task|yesno:"编辑任务 / Edit Task,发布任务 / New Task" nav_subtitle="仅管理员或相关人员可操作 / Restricted Access" %}{% endblock %}
 {% block extra_styles %}
@@ -639,12 +640,12 @@
                             <label class="form-label">附件 / Attachments</label>
                             
                             {% if not is_collaborator_only %}
-                            <div class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px;">
+                            <label for="file-input" class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px; display: block;">
                                 <input type="file" id="file-input" name="attachments" multiple style="display: none;">
                                 <div class="upload-placeholder">
                                     <div class="upload-text">点击或拖拽文件上传 / Click or Drag</div>
                                 </div>
-                            </div>
+                            </label>
                             {% else %}
                             <p class="help-text" style="color: var(--text-muted);">协作人无法上传附件 / Upload disabled</p>
                             {% endif %}
@@ -657,7 +658,7 @@
                                         <div class="attachment-card" id="attachment-{{ attachment.id }}">
                                             <div class="attachment-header">
                                                 <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                                                <span class="attachment-name" title="{{ attachment.file.name }}">{{ attachment.file.name }}</span>
+                                                <span class="attachment-name" title="{{ attachment.file.name|basename }}">{{ attachment.file.name|basename }}</span>
                                             </div>
                                             <div class="attachment-meta">
                                                 <span>{{ attachment.file.size|filesizeformat }}</span>
@@ -1293,7 +1294,7 @@
         let globalDataTransfer = new DataTransfer();
         
         if (uploadZone && fileInput) {
-            uploadZone.addEventListener('click', () => fileInput.click());
+            // Note: Click handled natively by label->input
             
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();

@@ -634,12 +634,12 @@
                             <label class="form-label">附件 / Attachments</label>
                             
                             <!-- Upload Zone (Shared for Create & Edit) -->
-                            <div class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px;">
+                            <label for="file-input" class="file-upload-container" id="file-upload-zone" style="padding: 16px; margin-bottom: 12px; display: block;">
                                 <input type="file" id="file-input" name="files" multiple style="display: none;">
                                 <div class="upload-placeholder">
                                     <div class="upload-text">点击或拖拽文件上传 / Click or Drag</div>
                                 </div>
-                            </div>
+                            </label>
                             
                             <!-- Attachment List -->
                             <div class="attachment-grid" id="file-list">
@@ -909,8 +909,8 @@
         
         if (uploadZone && fileInput) {
             // Common Event Listeners (Click & Drag Visuals)
-            uploadZone.addEventListener('click', () => fileInput.click());
-            
+            // Note: Click handled natively by label->input
+
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.classList.add('drag-over');

@@ -5,6 +5,10 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
+
 from projects.models import Project, ProjectPhaseConfig, ProjectPhaseChangeLog
 from tasks.models import Task, TaskComment
 from work_logs.models import DailyReport
@@ -61,7 +65,7 @@ def audit_post_save(sender, instance, created, **kwargs):
         except Exception as e:
             # 当 AuditLog 表不存在时的回退（例如在初始迁移/创建期间）
             # 这对于“createsuperuser”在全新数据库上工作至关重要
-            print(f"Warning: Failed to log audit creation (likely table missing): {e}")
+            logger.warning(f"Failed to log audit creation (likely table missing): {e}")
     else:
         # Update
         if hasattr(instance, '_audit_diff') and instance._audit_diff:
@@ -74,7 +78,7 @@ def audit_post_save(sender, instance, created, **kwargs):
                     changes=instance._audit_diff
                 )
             except Exception as e:
-                print(f"Warning: Failed to log audit update: {e}")
+                logger.warning(f"Failed to log audit update: {e}")
 
 @receiver(post_delete)
 def audit_post_delete(sender, instance, **kwargs):
@@ -90,7 +94,7 @@ def audit_post_delete(sender, instance, **kwargs):
     try:
         AuditService.log_change(user, 'delete', instance, ip=ip)
     except Exception as e:
-        print(f"Warning: Failed to log audit delete: {e}")
+        logger.warning(f"Failed to log audit delete: {e}")
 
 @receiver(post_save, sender=Task)
 def notify_task_assignment(sender, instance, created, **kwargs):

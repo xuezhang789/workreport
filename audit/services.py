@@ -99,10 +99,11 @@ class AuditLogService:
         }
         
         # Helper to add item
-        def add_item(type_, field, old, new, action, desc=None):
+        def add_item(type_, field, old, new, action, desc=None, field_key=None):
             entry['items'].append({
                 'type': type_,
                 'field': field,
+                'field_key': field_key or field,
                 'action': action,
                 'old': old,
                 'new': new,
@@ -132,7 +133,8 @@ class AuditLogService:
                         add_item('field', change.get('verbose_name', field), 
                                  values_str if action_verb == 'Removed' else None,
                                  values_str if action_verb == 'Added' else None,
-                                 action_verb)
+                                 action_verb,
+                                 field_key=field)
                     else:
                         # 标准字段变更
                         old_val = change.get('old')
@@ -140,10 +142,11 @@ class AuditLogService:
                         add_item('field', change.get('verbose_name', field),
                                  str(old_val) if old_val is not None else None,
                                  str(new_val) if new_val is not None else None,
-                                 'Changed')
+                                 'Changed',
+                                 field_key=field)
                 else:
                     # 兼容旧日志
-                    add_item('field', field, str(change), None, 'Changed')
+                    add_item('field', field, str(change), None, 'Changed', field_key=field)
 
         # 2. 附件
         should_show_attachments = not field_filter or field_filter == 'attachment'

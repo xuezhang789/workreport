@@ -78,6 +78,8 @@ class TaskComment(models.Model):
         return f"Comment by {self.user.username} on {self.task_id}"
 
 
+from core.services.storage.router import RouterStorage
+
 class TaskAttachment(models.Model):
     """
     任务附件：支持上传文件或添加外部链接。
@@ -85,7 +87,7 @@ class TaskAttachment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='attachments', verbose_name="任务")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_attachments', verbose_name="用户")
     url = models.URLField(blank=True, verbose_name="链接")
-    file = models.FileField(upload_to='task_attachments/', null=True, blank=True, verbose_name="文件")
+    file = models.FileField(upload_to='task_attachments/', storage=RouterStorage(biz_type='task_attachment'), null=True, blank=True, verbose_name="文件")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
 
     class Meta:
@@ -95,6 +97,14 @@ class TaskAttachment(models.Model):
 
     def __str__(self):
         return f"Attachment for {self.task_id}"
+
+    @property
+    def is_image(self):
+        if not self.file:
+            return False
+        import os
+        ext = os.path.splitext(self.file.name)[1].lower()
+        return ext in ['.jpg', '.jpeg', '.png', '.gif']
 
 
 class TaskSlaTimer(models.Model):

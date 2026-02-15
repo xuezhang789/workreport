@@ -1,4 +1,5 @@
 {% extends "base_topbar.html" %}
+{% load static %}
 {% load tz %}
 {% block title %}项目详情 / Project Detail{% endblock %}
 {% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情 / Project Detail" nav_subtitle="查看项目基本信息与近期动态 / View basics & activities" %}{% endblock %}
@@ -192,6 +193,10 @@
     }
     
     /* Attachments */
+    .card.drag-over {
+        border: 2px dashed var(--primary) !important;
+        background: #eff6ff !important;
+    }
     .attachment-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -426,23 +431,34 @@
     </div>
 
     <!-- Attachments Module -->
-    <div class="card">
+    <div class="card" id="attachments-card">
     <div class="card-header">
         <div class="card-title">
             <span>📎</span> 附件 / Attachments
         </div>
         {% if can_manage %}
-            <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
+            <label for="attachment-upload-input" id="add-attachment-btn" class="btn btn-primary" style="cursor: pointer;">+ 添加附件 / Add Attachment</label>
             <input type="file" id="attachment-upload-input" multiple style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.tar,.gz">
         {% endif %}
     </div>
 
+        <!-- Upload Progress Container -->
+        <div id="upload-progress-container" style="padding: 0 16px; display: none;">
+            <!-- Dynamic progress bars will be inserted here -->
+        </div>
+
         <div class="attachment-grid" id="attachment-list">
             {% for attachment in project.attachments.all %}
                 <div class="attachment-card" id="attachment-{{ attachment.id }}">
-                    <div class="attachment-header">
-                        <svg class="attachment-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                        <span class="attachment-name" title="{{ attachment.original_filename }}">{{ attachment.original_filename }}</span>
+                    <div class="attachment-header" style="flex-direction: column; align-items: flex-start;">
+                        {% if attachment.is_image %}
+                            <a href="{{ attachment.file.url }}" target="_blank" style="width: 100%; display: block; overflow: hidden; border-radius: 4px; margin-bottom: 8px;">
+                                <img src="{{ attachment.file.url }}" alt="{{ attachment.original_filename }}" style="width: 100%; height: 120px; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            </a>
+                        {% else %}
+                            <svg class="attachment-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        {% endif %}
+                        <span class="attachment-name" title="{{ attachment.original_filename }}" style="width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{{ attachment.original_filename }}</span>
                     </div>
                     <div class="attachment-meta">
                         <span>{{ attachment.file_size|filesizeformat }}</span>
@@ -737,54 +753,160 @@
     </div>
 
 </div>
+{% endblock %}
 
+{% block extra_scripts %}
+<script src="{% static 'js/upload_manager.js' %}"></script>
 <script>
-    // Attachment Logic
-    const addAttachmentBtn = document.getElementById('add-attachment-btn');
-    const attachmentInput = document.getElementById('attachment-upload-input');
-    
-    if (addAttachmentBtn && attachmentInput) {
-        addAttachmentBtn.addEventListener('click', () => attachmentInput.click());
+    // --- Upload Logic ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const addAttachmentBtn = document.getElementById('add-attachment-btn');
+        const attachmentInput = document.getElementById('attachment-upload-input');
+        const progressContainer = document.getElementById('upload-progress-container');
         
-        attachmentInput.addEventListener('change', function(e) {
-            if (this.files.length === 0) return;
-            
-            const formData = new FormData();
-            Array.from(this.files).forEach(file => {
-                formData.append('files', file);
-            });
-            
-            // Show uploading state
-            const originalText = addAttachmentBtn.textContent;
-            addAttachmentBtn.disabled = true;
-            addAttachmentBtn.textContent = 'Uploading...';
-            
-            fetch("{% url 'projects:project_upload_attachment' project.pk %}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+        if (addAttachmentBtn && attachmentInput) {
+            if (typeof UploadManager === 'undefined') {
+                console.error('UploadManager not loaded. Check static files.');
+                alert('上传组件加载失败，请刷新页面重试。 / Upload component failed to load. Please refresh.');
+                return;
+            }
+
+            // Initialize UploadManager
+            const uploader = new UploadManager({
+                type: 'project',
+                chunkSize: 2 * 1024 * 1024, // 2MB
+                maxSize: 10 * 1024 * 1024, // 10MB limit for Project
+                api: {
+                    init: '/core/api/upload/init/',
+                    chunk: '/core/api/upload/chunk/',
+                    complete: '/core/api/upload/complete/'
                 },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Reload to show new files or append to DOM
-                    window.location.reload();
-                } else {
-                    alert('Upload failed: ' + (data.message || 'Unknown error'));
-                    addAttachmentBtn.disabled = false;
-                    addAttachmentBtn.textContent = originalText;
+                onProgress: (file, percentage) => {
+                    updateProgress(file, percentage);
+                },
+                onSuccess: (file, data) => {
+                    finalizeUpload(file, data.upload_id);
+                },
+                onError: (file, error) => {
+                    updateStatus(file, 'error', error);
+                    alert(`Upload failed for ${file.name}: ${error}`);
                 }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Upload failed: Network error');
-                addAttachmentBtn.disabled = false;
-                addAttachmentBtn.textContent = originalText;
             });
-        });
-    }
+
+            // Drag & Drop Support
+            const dropZone = document.getElementById('attachments-card');
+            if (dropZone) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }, false);
+                });
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        progressContainer.style.display = 'block';
+                        Array.from(files).forEach(file => {
+                            createProgressItem(file);
+                            uploader.upload(file).catch(err => console.error(err));
+                        });
+                    }
+                }, false);
+            }
+
+            addAttachmentBtn.style.cursor = 'pointer'; // Ensure cursor feedback
+            // Note: Click handled natively by label->input
+             
+            
+            attachmentInput.addEventListener('change', function(e) {
+                if (this.files.length === 0) return;
+                
+                progressContainer.style.display = 'block';
+                
+                Array.from(this.files).forEach(file => {
+                    createProgressItem(file);
+                    uploader.upload(file).catch(err => {
+                        console.error("Upload error:", err);
+                    });
+                });
+                
+                // Reset input
+                this.value = '';
+            });
+
+            function createProgressItem(file) {
+                const id = 'prog-' + file.name.replace(/[^a-zA-Z0-9]/g, '');
+                const html = `
+                    <div id="${id}" style="margin-bottom: 12px; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>${file.name}</span>
+                            <span class="status-text">0%</span>
+                        </div>
+                        <div style="background: #eee; height: 4px; border-radius: 2px; overflow: hidden;">
+                            <div class="progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.2s;"></div>
+                        </div>
+                    </div>
+                `;
+                progressContainer.insertAdjacentHTML('beforeend', html);
+            }
+
+            function updateProgress(file, percentage) {
+                const id = 'prog-' + file.name.replace(/[^a-zA-Z0-9]/g, '');
+                const el = document.getElementById(id);
+                if (el) {
+                    el.querySelector('.progress-bar').style.width = percentage + '%';
+                    el.querySelector('.status-text').textContent = percentage + '%';
+                }
+            }
+
+            function updateStatus(file, status, msg) {
+                const id = 'prog-' + file.name.replace(/[^a-zA-Z0-9]/g, '');
+                const el = document.getElementById(id);
+                if (el) {
+                    const color = status === 'error' ? 'red' : 'green';
+                    el.querySelector('.status-text').innerHTML = `<span style="color: ${color}">${msg || status}</span>`;
+                }
+            }
+
+            function finalizeUpload(file, uploadId) {
+                updateStatus(file, 'processing', 'Finalizing...');
+                
+                const formData = new FormData();
+                formData.append('upload_id', uploadId);
+                
+                fetch("{% url 'projects:project_upload_attachment' project.pk %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateStatus(file, 'success', 'Done');
+                        // Reload after short delay to show success
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        updateStatus(file, 'error', data.message);
+                    }
+                })
+                .catch(err => {
+                    updateStatus(file, 'error', 'Network Error');
+                    console.error(err);
+                });
+            }
+        }
+    });
 
     window.deleteAttachment = function(id, url) {
         if (!confirm('确定删除该附件吗？ / Are you sure to delete this attachment?')) return;

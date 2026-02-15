@@ -35,6 +35,6 @@ class UIRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'tasks/admin_task_stats.html')
         # Check for new CSS classes
-        self.assertContains(response, 'summary-grid') # Updated from dashboard-grid
-        self.assertContains(response, 'summary-card') # Updated from kpi-card
-        self.assertContains(response, 'tabs-nav')
+        self.assertContains(response, 'kpi-row') # Updated from dashboard-grid
+        self.assertContains(response, 'kpi-card') # Updated from kpi-card
+        self.assertContains(response, 'table-tabs')

@@ -134,5 +134,5 @@ class SLACalculationTest(TestCase):
         task.save()
         
         info = calculate_sla_info(task, as_of=now)
-        self.assertEqual(info['status'], 'overdue')
+        self.assertEqual(info['status'], 'completed_late')
         self.assertEqual(info['level'], 'red')

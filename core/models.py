@@ -248,3 +248,32 @@ class UserRole(models.Model):
     def __str__(self):
         scope_str = self.scope if self.scope else "Global"
         return f"{self.user.username} - {self.role.name} [{scope_str}]"
+
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+
+class ChunkedUpload(models.Model):
+    """
+    Tracks chunked file uploads for resumability.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chunked_uploads')
+    filename = models.CharField(max_length=255)
+    file_size = models.BigIntegerField()
+    uploaded_size = models.BigIntegerField(default=0)
+    chunk_count = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, default='uploading', choices=[
+        ('uploading', 'Uploading'),
+        ('complete', 'Complete'),
+        ('failed', 'Failed')
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Store temp file path or use a convention based on ID
+    temp_path = models.CharField(max_length=512, blank=True)
+
+    class Meta:
+        verbose_name = "分片上传"
+        verbose_name_plural = "分片上传"

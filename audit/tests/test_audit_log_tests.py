@@ -184,9 +184,6 @@ class AuditLogTests(TestCase):
         # Let's test 'create' duplication? (e.g. if signal fires twice?)
         # Or test a scenario where we manually trigger signal?
         
-        # Let's try to mock a situation where we have a log, and we try to create another one.
-        # But we are testing the signal logic.
-        
         # Let's assume we have two separate requests/threads trying to do the same update?
         # Actually, standard Django save() workflow:
         # 1. pre_save: loads old from DB (Duplicate Check)

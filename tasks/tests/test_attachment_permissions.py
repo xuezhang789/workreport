@@ -7,6 +7,7 @@ from core.models import Profile
 
 class TaskAttachmentPermissionTest(TestCase):
     def setUp(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
         # Users
         self.superuser = User.objects.create_superuser('super', 'super@test.com', 'password')
         self.owner = User.objects.create_user('owner', 'owner@test.com', 'password') # Task Responsible
@@ -30,20 +31,23 @@ class TaskAttachmentPermissionTest(TestCase):
         
         # Attachments
         # 1. Uploaded by uploader
+        f1 = SimpleUploadedFile("test1.txt", b"content")
         self.att_by_uploader = TaskAttachment.objects.create(
             task=self.task,
             user=self.uploader,
-            file='test1.txt'
+            file=f1
         )
         
         # 2. Uploaded by owner
+        f2 = SimpleUploadedFile("test2.txt", b"content")
         self.att_by_owner = TaskAttachment.objects.create(
             task=self.task,
             user=self.owner,
-            file='test2.txt'
+            file=f2
         )
 
     def test_delete_permission(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
         c = Client()
         
         # 1. Superuser should delete any
@@ -53,7 +57,11 @@ class TaskAttachmentPermissionTest(TestCase):
         self.assertFalse(TaskAttachment.objects.filter(id=self.att_by_uploader.id).exists())
         
         # Reset
-        self.att_by_uploader = TaskAttachment.objects.create(task=self.task, user=self.uploader, file='test1.txt')
+        self.att_by_uploader = TaskAttachment.objects.create(
+            task=self.task, 
+            user=self.uploader, 
+            file=SimpleUploadedFile("test1.txt", b"content")
+        )
 
         # 2. Task Owner (Responsible) should delete any
         c.login(username='owner', password='password')
@@ -61,7 +69,11 @@ class TaskAttachmentPermissionTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         
         # Reset
-        self.att_by_uploader = TaskAttachment.objects.create(task=self.task, user=self.uploader, file='test1.txt')
+        self.att_by_uploader = TaskAttachment.objects.create(
+            task=self.task, 
+            user=self.uploader, 
+            file=SimpleUploadedFile("test1.txt", b"content")
+        )
 
         # 3. Uploader should delete own
         c.login(username='uploader', password='password')

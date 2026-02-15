@@ -42,7 +42,7 @@ class OptimizationTest(TestCase):
         # 12. UserPreference
         # 13. Managed projects
         # 14. Recent reports
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(13):
             response = self.client.get('/reports/workbench/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Test Project')

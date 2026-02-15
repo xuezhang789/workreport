@@ -592,7 +592,10 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_scripts %}
+<script src="{% static 'js/upload_manager.js' %}"></script>
 <script>
     // --- Tabs Logic ---
     function switchTab(tabName) {
@@ -712,9 +715,36 @@
 
         // --- Avatar Upload ---
         if (avatarInput) {
+            const uploader = new UploadManager({
+                type: 'avatar',
+                chunkSize: 2 * 1024 * 1024,
+                maxSize: 2 * 1024 * 1024, // 2MB for Avatar
+                compress: true, // Enable compression
+                api: {
+                    init: '/core/api/upload/init/',
+                    chunk: '/core/api/upload/chunk/',
+                    complete: '/core/api/upload/complete/'
+                },
+                onProgress: (file, percentage) => {
+                    if (avatarPreview) {
+                        // Simple overlay for progress
+                        avatarPreview.style.opacity = 0.5;
+                    }
+                },
+                onSuccess: (file, data) => {
+                    finalizeAvatar(data.upload_id);
+                },
+                onError: (file, error) => {
+                    alert('Avatar upload failed: ' + error);
+                    if (avatarPreview) avatarPreview.style.opacity = 1;
+                }
+            });
+
             avatarInput.addEventListener('change', function() {
                 const file = this.files && this.files[0];
                 if (!file) return;
+                
+                // Client-side preview first
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const dataUrl = e.target.result;
@@ -723,7 +753,35 @@
                     if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
                 };
                 reader.readAsDataURL(file);
+                
+                // Upload
+                uploader.upload(file);
             });
+            
+            function finalizeAvatar(uploadId) {
+                fetch('{% url "core:upload_avatar_complete" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ upload_id: uploadId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (avatarPreview) avatarPreview.style.opacity = 1;
+                        // Update preview with final URL to ensure it works
+                        const imgTag = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                        avatarPreview.innerHTML = imgTag;
+                        if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
+                        alert('Avatar updated!');
+                    } else {
+                        alert('Avatar finalize failed: ' + data.message);
+                    }
+                })
+                .catch(e => {
+                    console.error(e);
+                    alert('Network error');
+                });
+            }
         }
 
         // --- Other Prefs ---

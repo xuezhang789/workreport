@@ -71,10 +71,12 @@ class ProjectPhaseChangeLog(models.Model):
         return f"{self.project.name}: {self.old_phase} -> {self.new_phase}"
 
 
+from core.services.storage.router import RouterStorage
+
 class ProjectAttachment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='attachments', verbose_name="项目")
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects_attachments', verbose_name="上传人")
-    file = models.FileField(upload_to='project_attachments/', verbose_name="文件")
+    file = models.FileField(upload_to='project_attachments/', storage=RouterStorage(biz_type='project_attachment'), verbose_name="文件")
     original_filename = models.CharField(max_length=255, verbose_name="原始文件名")
     file_size = models.PositiveIntegerField(default=0, verbose_name="文件大小(Bytes)")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
@@ -86,6 +88,14 @@ class ProjectAttachment(models.Model):
 
     def __str__(self):
         return f"{self.original_filename} ({self.project.name})"
+
+    @property
+    def is_image(self):
+        if not self.file:
+            return False
+        import os
+        ext = os.path.splitext(self.file.name)[1].lower()
+        return ext in ['.jpg', '.jpeg', '.png', '.gif']
 
 
 class ProjectMemberPermission(models.Model):

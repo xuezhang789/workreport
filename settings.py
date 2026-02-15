@@ -1,3 +1,4 @@
+
 import os
 from pathlib import Path
 
@@ -192,3 +193,40 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # SLA 阈值（小时）：可通过 SystemSetting.sla_thresholds 覆盖
 SLA_TIGHT_HOURS_DEFAULT = 6
 SLA_CRITICAL_HOURS_DEFAULT = 2
+
+# Attachment Storage Configuration
+# 附件存储配置
+ATTACHMENT_STORAGE_CONFIG = {
+    'default': 'local',
+    'strategies': {
+        'task_attachment': 'local',    # 任务附件存储策略
+        'project_attachment': 'local', # 项目附件存储策略
+    },
+    'backends': {
+        'local': {
+            'type': 'local',
+            'OPTIONS': {
+                'location': str(MEDIA_ROOT),
+                'base_url': MEDIA_URL,
+            }
+        },
+        'oss': {
+            'type': 'oss',
+            'OPTIONS': {
+                'bucket': os.environ.get('OSS_BUCKET', 'workreport-oss'),
+                'endpoint': os.environ.get('OSS_ENDPOINT', 'oss-cn-hangzhou.aliyuncs.com'),
+                'access_key': os.environ.get('OSS_ACCESS_KEY'),
+                'secret_key': os.environ.get('OSS_SECRET_KEY'),
+            }
+        },
+        's3': {
+            'type': 's3',
+            'OPTIONS': {
+                'bucket': os.environ.get('S3_BUCKET', 'workreport-s3'),
+                'region': os.environ.get('S3_REGION', 'us-east-1'),
+                'access_key': os.environ.get('S3_ACCESS_KEY'),
+                'secret_key': os.environ.get('S3_SECRET_KEY'),
+            }
+        }
+    }
+}

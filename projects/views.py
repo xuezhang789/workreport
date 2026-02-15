@@ -614,6 +614,9 @@ def project_history(request, project_id):
         'users': users
     })
 
+from core.services.upload_service import UploadService
+from core.models import ChunkedUpload
+
 @login_required
 def project_upload_attachment(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
@@ -627,30 +630,70 @@ def project_upload_attachment(request, project_id):
     if not can_upload:
         return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
     
-    if request.method == 'POST' and request.FILES.getlist('files'):
+    if request.method == 'POST':
         uploaded_files = []
-        for file in request.FILES.getlist('files'):
-            is_valid, error_msg = _validate_file(file)
-            if not is_valid:
-                return JsonResponse({'status': 'error', 'message': error_msg}, status=400)
+        
+        # 1. Handle Chunked Upload Completion (via upload_id)
+        if request.POST.get('upload_id'):
+            upload_id = request.POST.get('upload_id')
+            try:
+                # Verify ownership
+                chunk_upload = ChunkedUpload.objects.get(id=upload_id)
+                if chunk_upload.user != request.user:
+                    return JsonResponse({'status': 'error', 'message': 'Permission denied for this upload'}, status=403)
                 
-            attachment = ProjectAttachment.objects.create(
-                project=project,
-                uploaded_by=request.user,
-                file=file,
-                original_filename=file.name,
-                file_size=file.size
-            )
-            uploaded_files.append({
-                'id': attachment.id,
-                'name': attachment.original_filename,
-                'size': attachment.file_size,
-                'url': attachment.file.url,
-                'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
-                'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
-            })
+                # Finalize
+                content_file, error = UploadService.complete_chunked_upload(upload_id)
+                if error:
+                    return JsonResponse({'status': 'error', 'message': error}, status=400)
+                
+                # Create Attachment
+                attachment = ProjectAttachment.objects.create(
+                    project=project,
+                    uploaded_by=request.user,
+                    file=content_file,
+                    original_filename=content_file.name,
+                    file_size=content_file.size
+                )
+                uploaded_files.append({
+                    'id': attachment.id,
+                    'name': attachment.original_filename,
+                    'size': attachment.file_size,
+                    'url': attachment.file.url,
+                    'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
+                    'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+                })
+                
+            except ChunkedUpload.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Upload session not found'}, status=404)
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+        # 2. Handle Standard File Upload (via FILES)
+        elif request.FILES.getlist('files'):
+            for file in request.FILES.getlist('files'):
+                is_valid, error_msg = _validate_file(file)
+                if not is_valid:
+                    return JsonResponse({'status': 'error', 'message': error_msg}, status=400)
+                    
+                attachment = ProjectAttachment.objects.create(
+                    project=project,
+                    uploaded_by=request.user,
+                    file=file,
+                    original_filename=file.name,
+                    file_size=file.size
+                )
+                uploaded_files.append({
+                    'id': attachment.id,
+                    'name': attachment.original_filename,
+                    'size': attachment.file_size,
+                    'url': attachment.file.url,
+                    'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
+                    'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+                })
             
-        return JsonResponse({'status': 'success', 'files': uploaded_files})
+        if uploaded_files:
+            return JsonResponse({'status': 'success', 'files': uploaded_files})
         
     return JsonResponse({'status': 'error', 'message': 'No files provided'}, status=400)
 

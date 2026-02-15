@@ -4,3 +4,6 @@ class TasksConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'tasks'
     verbose_name = '任务管理'
+
+    def ready(self):
+        import tasks.signals

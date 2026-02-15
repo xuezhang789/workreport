@@ -12,13 +12,17 @@ from core.models import ExportJob, Profile
 from core.permissions import has_manage_permission # Import from new location
 
 # File Upload Settings
-UPLOAD_MAX_SIZE = 50 * 1024 * 1024  # 50MB
+UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB (Updated per requirement)
 UPLOAD_ALLOWED_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
     '.txt', '.md', '.csv',
     '.jpg', '.jpeg', '.png', '.gif',
-    '.zip', '.rar', '.7z', '.tar', '.gz'
+    '.zip', '.rar', '.7z', '.tar', '.gz',
+    '.mp4', '.mov' # Added common video formats just in case
 }
+
+AVATAR_MAX_SIZE = 2 * 1024 * 1024 # 2MB
+AVATAR_ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif'}
 
 MANAGER_ROLES = {'mgr', 'pm'}
 
@@ -44,17 +48,17 @@ def _friendly_forbidden(request, message):
     """统一的友好 403 返回，带双语提示。 / Unified friendly 403 response with bilingual message."""
     return render(request, '403.html', {'detail': message}, status=403)
 
-def _validate_file(file):
+def _validate_file(file, max_size=UPLOAD_MAX_SIZE, allowed_extensions=UPLOAD_ALLOWED_EXTENSIONS):
     """
     Validates file size and extension.
     验证文件大小和扩展名。
     Returns (is_valid, error_message)
     """
-    if file.size > UPLOAD_MAX_SIZE:
-        return False, f"文件大小超过限制 (Max {UPLOAD_MAX_SIZE // (1024*1024)}MB): {file.name}"
+    if file.size > max_size:
+        return False, f"文件大小超过限制 (Max {max_size // (1024*1024)}MB): {file.name}"
         
     ext = os.path.splitext(file.name)[1].lower()
-    if ext not in UPLOAD_ALLOWED_EXTENSIONS:
+    if ext not in allowed_extensions:
         return False, f"不支持的文件类型: {ext}"
         
     return True, None
