@@ -427,15 +427,15 @@
 
     <!-- Attachments Module -->
     <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <span>📎</span> 附件 / Attachments
-            </div>
-            {% if can_manage %}
-                <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
-                <input type="file" id="attachment-upload-input" multiple style="display: none;">
-            {% endif %}
+    <div class="card-header">
+        <div class="card-title">
+            <span>📎</span> 附件 / Attachments
         </div>
+        {% if can_manage %}
+            <button id="add-attachment-btn" class="btn btn-primary">+ 添加附件 / Add Attachment</button>
+            <input type="file" id="attachment-upload-input" multiple style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.tar,.gz">
+        {% endif %}
+    </div>
 
         <div class="attachment-grid" id="attachment-list">
             {% for attachment in project.attachments.all %}

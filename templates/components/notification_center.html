@@ -270,7 +270,7 @@
             socket = new WebSocket(protocol + '//' + window.location.host + '/ws/notifications/');
 
             socket.onopen = function(e) {
-                console.log('Notification WebSocket connected');
+                // console.log('Notification WebSocket connected');
             };
 
             socket.onmessage = function(e) {
