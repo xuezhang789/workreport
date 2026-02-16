@@ -1,5 +1,6 @@
 from django import template
 from reports.utils import can_manage_project as check_manage_project
+from core.services.rbac import RBACService
 
 register = template.Library()
 
@@ -24,5 +25,12 @@ def has_perm(context, permission_code, scope=None):
     if not request or not request.user.is_authenticated:
         return False
         
-    from core.services.rbac import RBACService
     return RBACService.has_permission(request.user, permission_code, scope=scope)
+
+@register.simple_tag(takes_context=True)
+def has_permission(context, permission_code):
+    """
+    Alias for has_perm without scope (for backward compatibility or simpler usage).
+    Usage: {% has_permission 'project.create' as can_create %}
+    """
+    return has_perm(context, permission_code, scope=None)

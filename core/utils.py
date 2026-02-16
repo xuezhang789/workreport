@@ -9,7 +9,6 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.conf import settings
 from core.models import ExportJob, Profile
-from core.permissions import has_manage_permission # Import from new location
 
 # File Upload Settings
 UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB (Updated per requirement)
@@ -48,9 +47,7 @@ FILE_SIGNATURES['pptx'] = FILE_SIGNATURES['zip']
 MANAGER_ROLES = {'mgr', 'pm'}
 
 # has_manage_permission moved to core.permissions
-# Keeping this for backward compatibility if other apps import it directly, 
-# but they should migrate to core.permissions
-# We imported it above, so it is available in this namespace.
+
 
 def _throttle(request, key: str, min_interval=0.8):
     """简单接口节流，基于 session/key。 / Simple API throttle based on session/key."""

@@ -15,7 +15,8 @@ from projects.models import Project
 from core.models import Profile
 from reports.forms import ReportTemplateForm
 from reports.utils import get_accessible_projects, get_accessible_reports, can_manage_project
-from core.utils import _admin_forbidden, _friendly_forbidden, has_manage_permission
+from core.utils import _admin_forbidden, _friendly_forbidden
+from core.permissions import has_manage_permission
 from audit.utils import log_action
 
 def _filtered_reports(request):

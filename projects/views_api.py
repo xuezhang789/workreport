@@ -6,7 +6,6 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from projects.models import Project
-from core.utils import has_manage_permission
 from reports.utils import can_manage_project
 from audit.utils import log_action
 

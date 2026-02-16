@@ -12,7 +12,8 @@ from tasks.models import TaskTemplateVersion
 from core.models import Profile
 from reports.forms import ReportTemplateForm
 from tasks.forms import TaskTemplateForm
-from core.utils import _admin_forbidden, has_manage_permission
+from core.utils import _admin_forbidden
+from core.permissions import has_manage_permission
 from audit.utils import log_action
 from audit.models import AuditLog
 from reports.signals import _invalidate_stats_cache

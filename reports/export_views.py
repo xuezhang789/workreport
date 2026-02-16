@@ -12,7 +12,8 @@ from tasks.models import Task
 from projects.models import Project
 from core.models import Profile
 
-from core.utils import _stream_csv, _create_export_job, _generate_export_file, _admin_forbidden, has_manage_permission
+from core.utils import _stream_csv, _create_export_job, _generate_export_file, _admin_forbidden
+from core.permissions import has_manage_permission
 from reports.utils import get_accessible_projects, get_accessible_reports
 from audit.utils import log_action
 from reports.services.stats import get_performance_stats as _performance_stats

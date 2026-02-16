@@ -17,7 +17,8 @@ from core.models import Profile, SystemSetting
 from reports.services.stats import get_performance_stats as _performance_stats
 from reports.services.guidance import generate_workbench_guidance
 from reports.utils import get_accessible_projects
-from core.utils import _admin_forbidden, has_manage_permission
+from core.utils import _admin_forbidden
+from core.permissions import has_manage_permission
 from tasks.services.sla import calculate_sla_info, get_sla_thresholds, get_sla_hours
 from audit.utils import log_action
 from datetime import timedelta

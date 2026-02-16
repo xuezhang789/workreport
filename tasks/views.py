@@ -44,6 +44,7 @@ from tasks.services.sla import (
 from tasks.services.export import TaskExportService
 from reports.utils import get_accessible_projects, can_manage_project, get_manageable_projects
 from reports.signals import _invalidate_stats_cache
+from reports.services.notification_service import send_notification
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ DEFAULT_SLA_REMIND = getattr(settings, 'SLA_REMIND_HOURS', 24)
 def admin_task_list(request):
     # 统一任务列表：超级管理员查看所有，其他用户查看有权限项目中的任务
     accessible_projects = get_accessible_projects(request.user)
-    if not request.user.is_superuser and not accessible_projects.exists():
+    if not accessible_projects.exists():
         return _admin_forbidden(request, "需要相关项目权限 / Project access required")
 
     status = (request.GET.get('status') or '').strip()
@@ -88,8 +89,9 @@ def admin_task_list(request):
         due_at__lte=now + timedelta(hours=default_sla_hours)
     ).values_list('id', flat=True))
     
-    if not request.user.is_superuser:
-        tasks_qs = tasks_qs.filter(project__in=accessible_projects)
+    # Filter by accessible projects (Superuser sees all active)
+    tasks_qs = tasks_qs.filter(project__in=accessible_projects)
+
     if status in dict(Task.STATUS_CHOICES):
         tasks_qs = tasks_qs.filter(status=status)
     if category in dict(Task.CATEGORY_CHOICES):
@@ -98,7 +100,7 @@ def admin_task_list(request):
         tasks_qs = tasks_qs.filter(priority=priority)
     if project_id and project_id.isdigit():
         pid = int(project_id)
-        if request.user.is_superuser or accessible_projects.filter(id=pid).exists():
+        if accessible_projects.filter(id=pid).exists():
             tasks_qs = tasks_qs.filter(project_id=pid)
         else:
             tasks_qs = tasks_qs.none()
@@ -110,13 +112,6 @@ def admin_task_list(request):
     if hot:
         # 优化：在数据库层面过滤以减少内存使用
         # 'hot' 意味着 '逾期' 或 '紧急' (剩余时间 < amber_threshold)
-        # 调整后的截止时间 = due_at + total_paused_seconds
-        # 条件: adjusted_due < cutoff_time
-        # 因为 paused_seconds >= 0, 所以 adjusted_due >= due_at.
-        # 如果 adjusted_due < cutoff_time, 那么 due_at < cutoff_time.
-        # 我们可以安全地通过 due_at < cutoff_time 过滤得到一个超集，
-        # 避免在某些数据库上导致问题的复杂 DB 运算 (ExpressionWrapper)。
-        
         amber_hours = get_sla_thresholds(sla_thresholds_val).get('amber', 4)
         cutoff_time = now + timedelta(hours=amber_hours)
         
@@ -168,17 +163,14 @@ def admin_task_list(request):
             t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
 
     User = get_user_model()
-    if request.user.is_superuser:
-        user_objs = User.objects.all().order_by('username')
-        project_choices = Project.objects.filter(is_active=True).order_by('name')
-    else:
-        project_choices = accessible_projects.order_by('name')
-        # 可访问项目中的用户
-        user_objs = User.objects.filter(
-            Q(project_memberships__in=accessible_projects) |
-            Q(managed_projects__in=accessible_projects) |
-            Q(owned_projects__in=accessible_projects)
-        ).distinct().order_by('username')
+    project_choices = accessible_projects.order_by('name')
+    # 可访问项目中的用户
+    user_objs = User.objects.filter(
+        Q(project_memberships__in=accessible_projects) |
+        Q(managed_projects__in=accessible_projects) |
+        Q(owned_projects__in=accessible_projects)
+    ).distinct().order_by('username')
+    
     return render(request, 'tasks/admin_task_list.html', {
         'tasks': page_obj,
         'page_obj': page_obj,
@@ -204,9 +196,10 @@ def admin_task_list(request):
 
 @login_required
 def admin_task_bulk_action(request):
-    manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
-    is_admin = request.user.is_superuser
-    if not is_admin and not manageable_project_ids:
+    manageable_projects = get_manageable_projects(request.user)
+    manageable_project_ids = set(manageable_projects.values_list('id', flat=True))
+    
+    if not manageable_project_ids:
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
     if request.method != 'POST':
         return _admin_forbidden(request, "仅允许 POST / POST only")
@@ -222,8 +215,10 @@ def admin_task_bulk_action(request):
 
     total_requested = len(ids)
     tasks = Task.objects.filter(id__in=ids)
-    if not is_admin:
-        tasks = tasks.filter(project_id__in=manageable_project_ids)
+    
+    # Filter by manageable projects (handles superuser too)
+    tasks = tasks.filter(project_id__in=manageable_project_ids)
+    
     skipped_perm = max(0, total_requested - tasks.count())
     total_selected = tasks.count()
     updated = 0
@@ -321,7 +316,7 @@ def admin_task_bulk_action(request):
             if parsed_due and (t.due_at != parsed_due):
                 t.due_at = parsed_due
                 update_fields.append('due_at')
-            if assign_user and assign_user.id != t.user_id and (is_admin or t.project_id in manageable_project_ids):
+            if assign_user and assign_user.id != t.user_id:
                 t.user = assign_user
                 update_fields.append('user')
             if update_fields:
@@ -357,9 +352,10 @@ def admin_task_bulk_action(request):
 
 @login_required
 def admin_task_export(request):
-    manageable_project_ids = set(Project.objects.filter(managers=request.user, is_active=True).values_list('id', flat=True))
-    is_admin = request.user.is_superuser
-    if not is_admin and not manageable_project_ids:
+    manageable_projects = get_manageable_projects(request.user)
+    manageable_project_ids = set(manageable_projects.values_list('id', flat=True))
+    
+    if not manageable_project_ids:
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     status = (request.GET.get('status') or '').strip()
@@ -379,15 +375,15 @@ def admin_task_export(request):
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
     
-    if not is_admin:
-        tasks = tasks.filter(project_id__in=manageable_project_ids)
+    tasks = tasks.filter(project_id__in=manageable_project_ids)
+
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
     if priority in dict(Task.PRIORITY_CHOICES):
         tasks = tasks.filter(priority=priority)
     if project_id and project_id.isdigit():
         pid = int(project_id)
-        if is_admin or pid in manageable_project_ids:
+        if pid in manageable_project_ids:
             tasks = tasks.filter(project_id=pid)
         else:
             tasks = tasks.none()
@@ -493,7 +489,7 @@ def admin_task_stats(request):
     """
     User = get_user_model()
     accessible_projects = get_accessible_projects(request.user)
-    if not request.user.is_superuser and not accessible_projects.exists():
+    if not accessible_projects.exists():
         return _admin_forbidden(request, "需要相关项目权限 / Project access required")
 
     # --- 1. 过滤上下文和日期范围 ---
@@ -543,9 +539,8 @@ def admin_task_stats(request):
     base_tasks = Task.objects.all()
     base_reports = DailyReport.objects.all()
     
-    if not request.user.is_superuser:
-        base_tasks = base_tasks.filter(project__in=accessible_projects)
-        base_reports = base_reports.filter(projects__in=accessible_projects)
+    base_tasks = base_tasks.filter(project__in=accessible_projects)
+    base_reports = base_reports.filter(projects__in=accessible_projects)
 
     # 应用非日期过滤器
     project_id = request.GET.get('project')
@@ -555,7 +550,7 @@ def admin_task_stats(request):
 
     if project_id and project_id.isdigit():
         pid = int(project_id)
-        if request.user.is_superuser or accessible_projects.filter(id=pid).exists():
+        if accessible_projects.filter(id=pid).exists():
             base_tasks = base_tasks.filter(project_id=pid)
             base_reports = base_reports.filter(projects__id=pid)
     
@@ -723,8 +718,7 @@ def admin_task_stats(request):
         
         # 相关用户
         target_projs = Project.objects.filter(is_active=True)
-        if not request.user.is_superuser:
-            target_projs = target_projs.filter(id__in=accessible_projects)
+        target_projs = target_projs.filter(id__in=accessible_projects)
         if project_id and project_id.isdigit():
             target_projs = target_projs.filter(id=int(project_id))
             
@@ -843,7 +837,7 @@ def admin_task_stats(request):
         'users_data': user_stats,
         
         # Filters
-        'projects': Project.objects.filter(is_active=True).order_by('name') if request.user.is_superuser else accessible_projects,
+        'projects': accessible_projects.order_by('name'),
         'role_choices': Profile.ROLE_CHOICES,
         'current_filters': {
             'project': int(project_id) if project_id and project_id.isdigit() else '',
@@ -858,7 +852,7 @@ def admin_task_stats(request):
 @login_required
 def admin_task_stats_export(request):
     accessible_projects = get_accessible_projects(request.user)
-    if not request.user.is_superuser and not accessible_projects.exists():
+    if not accessible_projects.exists():
         return _admin_forbidden(request, "需要管理员或项目管理员权限 / Admin or project manager required")
 
     project_id = request.GET.get('project')
@@ -873,11 +867,11 @@ def admin_task_stats_export(request):
     end_date = parse_date(end_str) if end_str else None
 
     tasks = Task.objects.select_related('project', 'user')
-    if not request.user.is_superuser:
-        tasks = tasks.filter(project__in=accessible_projects)
+    tasks = tasks.filter(project__in=accessible_projects)
+
     if project_id and project_id.isdigit():
         pid = int(project_id)
-        if request.user.is_superuser or accessible_projects.filter(id=pid).exists():
+        if accessible_projects.filter(id=pid).exists():
             tasks = tasks.filter(project_id=pid)
         else:
             tasks = tasks.none()
@@ -935,15 +929,13 @@ def admin_task_create(request):
     
     # 权限检查：任何可访问的项目
     accessible_projects = get_accessible_projects(user)
-    if not user.is_superuser and not accessible_projects.exists():
+    if not accessible_projects.exists():
         return _admin_forbidden(request, "您没有权限创建任务 / No accessible projects")
 
-    projects_qs = Project.objects.filter(is_active=True)
-    if not user.is_superuser:
-        # 筛选下拉菜单的项目：仅显示用户可以管理的项目
-        # 因为普通成员不能创建任务。
-        manageable_projects = get_manageable_projects(user)
-        projects_qs = projects_qs.filter(id__in=manageable_projects.values('id'))
+    # 筛选下拉菜单的项目：仅显示用户可以管理的项目
+    # 因为普通成员不能创建任务。
+    manageable_projects = get_manageable_projects(user)
+    projects_qs = Project.objects.filter(id__in=manageable_projects.values('id'))
         
     projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
@@ -1000,7 +992,7 @@ def admin_task_create(request):
         
         if not project:
             errors.append("请选择项目")
-        elif not request.user.is_superuser:
+        else:
             # 检查用户是否可以管理此项目（以创建任务）
             if not can_manage_project(request.user, project):
                  errors.append("您没有权限在此项目发布任务 (需管理员或负责人权限)")
@@ -1095,8 +1087,7 @@ def admin_task_edit(request, pk):
     #    - 任务拥有者/协作者：是。
     #    如果 否 -> 404。
     
-    can_see = user.is_superuser or \
-              get_accessible_projects(user).filter(id=task.project.id).exists() or \
+    can_see = get_accessible_projects(user).filter(id=task.project.id).exists() or \
               task.user == user or \
               task.collaborators.filter(pk=user.pk).exists()
               
@@ -1106,8 +1097,7 @@ def admin_task_edit(request, pk):
     # 检查权限（超级用户，项目拥有者/管理者，任务拥有者，或协作者）
     # 注意：普通成员可以编辑他们自己的任务或如果他们是协作者。
     # 但他们不能编辑与他们无关的任务，即使是在同一个项目中。
-    can_manage = user.is_superuser or \
-                 can_manage_project(user, task.project) or \
+    can_manage = can_manage_project(user, task.project) or \
                  task.user == user or \
                  task.collaborators.filter(pk=user.pk).exists()
                  
@@ -1115,16 +1105,12 @@ def admin_task_edit(request, pk):
         return _admin_forbidden(request)
 
     # 权限检查：仅限协作者的限制
-    can_full_edit = user.is_superuser or \
-                    can_manage_project(user, task.project) or \
+    can_full_edit = can_manage_project(user, task.project) or \
                     task.user == user
     is_collaborator_only = not can_full_edit and task.collaborators.filter(pk=user.pk).exists()
 
-    projects_qs = Project.objects.filter(is_active=True)
-    if not user.is_superuser:
-        # 简化：显示可访问的项目，但在保存时验证。
-        accessible_projects = get_accessible_projects(user)
-        projects_qs = projects_qs.filter(id__in=accessible_projects.values('id'))
+    manageable_projects = get_manageable_projects(user)
+    projects_qs = Project.objects.filter(id__in=manageable_projects.values('id'))
         
     projects = projects_qs.annotate(task_count=Count('tasks')).order_by('-task_count', 'name')
     User = get_user_model()
@@ -1180,7 +1166,7 @@ def admin_task_edit(request, pk):
                 project = Project.objects.filter(id=int(project_id)).first()
             if not project:
                 errors.append("请选择项目")
-            elif not user.is_superuser:
+            else:
                  if project.id != task.project.id:
                      if not can_manage_project(user, project):
                          errors.append("您没有权限移动任务到此项目 (需目标项目管理权限)")
@@ -1293,8 +1279,7 @@ def task_upload_attachment(request, task_id):
     
     # 权限检查
     # 超级用户，项目拥有者/管理者，任务拥有者，或协作者
-    can_upload = request.user.is_superuser or \
-                 can_manage_project(request.user, task.project) or \
+    can_upload = can_manage_project(request.user, task.project) or \
                  task.user == request.user or \
                  task.collaborators.filter(pk=request.user.pk).exists()
     
@@ -1371,8 +1356,8 @@ def task_delete_attachment(request, attachment_id):
     task = attachment.task
     
     # 权限检查
-    # 超级用户，任务负责人 (Assigned To)，或上传者
-    can_delete = request.user.is_superuser or \
+    # 超级用户，任务负责人 (Assigned To)，或上传者 (if still has access)
+    can_delete = can_manage_project(request.user, task.project) or \
                  task.user == request.user or \
                  attachment.user == request.user
     
@@ -1391,8 +1376,7 @@ def api_task_detail(request, pk: int):
     task = get_object_or_404(Task, pk=pk)
     
     # 权限检查 (重用 admin_task_edit 的逻辑)
-    can_see = request.user.is_superuser or \
-              get_accessible_projects(request.user).filter(id=task.project.id).exists() or \
+    can_see = get_accessible_projects(request.user).filter(id=task.project.id).exists() or \
               task.user == request.user or \
               task.collaborators.filter(pk=request.user.pk).exists()
               
@@ -1432,10 +1416,9 @@ def task_list(request):
     )
 
     # Permission check: Show tasks from accessible projects
-    if not request.user.is_superuser:
-        # 现：可访问项目中的所有任务
-        accessible_projects = get_accessible_projects(request.user)
-        tasks_qs = tasks_qs.filter(project__in=accessible_projects)
+    # 现：可访问项目中的所有任务
+    accessible_projects = get_accessible_projects(request.user)
+    tasks_qs = tasks_qs.filter(project__in=accessible_projects)
     
     # 优化：移除不必要的 distinct() 调用，它会显著增加查询开销
     tasks_qs = tasks_qs.order_by('-created_at')
@@ -1496,10 +1479,6 @@ def task_list(request):
     }
     sort_field = allowed_sorts.get(sort_by, '-created_at')
     
-    # 如果是按优先级排序，因为优先级是文本字段且有特定顺序(high, medium, low)，
-    # 简单的字母排序可能不符合预期。通常建议使用 Case/When，但这里为简化保持字段排序。
-    # 实际项目中建议在 Model 定义 Integer choices 或使用 Case/When 排序。
-    # 这里保持简单字段排序。
     tasks_qs = tasks_qs.order_by(sort_field)
 
     # 分页
@@ -1513,9 +1492,7 @@ def task_list(request):
 
     # 获取项目列表用于筛选
     projects = Project.objects.filter(is_active=True)
-    if not request.user.is_superuser:
-        accessible_projects = get_accessible_projects(request.user)
-        projects = projects.filter(id__in=accessible_projects.values('id'))
+    projects = projects.filter(id__in=accessible_projects.values('id'))
     
     projects = projects.order_by('name')
 
@@ -1551,9 +1528,8 @@ def task_export(request):
 
     tasks = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').prefetch_related('collaborators')
     
-    if not request.user.is_superuser:
-        accessible_projects = get_accessible_projects(request.user)
-        tasks = tasks.filter(project__in=accessible_projects)
+    accessible_projects = get_accessible_projects(request.user)
+    tasks = tasks.filter(project__in=accessible_projects)
     
     tasks = tasks.distinct().order_by('-created_at')
     
@@ -1825,7 +1801,10 @@ def task_view(request, pk: int):
     can_manage = can_manage_project(request.user, task.project)
     is_owner = task.user == request.user
     is_collab = task.collaborators.filter(pk=request.user.pk).exists()
-    is_member = task.project.members.filter(pk=request.user.pk).exists()
+    
+    # Check if user is a member of the project (via RBAC)
+    # Using accessible_projects check is equivalent to checking if they have project.view
+    is_member = get_accessible_projects(request.user).filter(pk=task.project.id).exists()
     
     # 可见性：管理者（包括超级用户），拥有者，协作者，和项目成员
     if not (can_manage or is_owner or is_collab or is_member):
@@ -1972,11 +1951,8 @@ def task_history(request, pk: int):
     
     # 权限检查 (同 task_view)
     can_view = (
-        request.user.is_superuser or 
-        request.user == task.user or 
-        task.project.members.filter(id=request.user.id).exists() or
-        task.project.managers.filter(id=request.user.id).exists() or
-        task.project.owner == request.user or
+        get_accessible_projects(request.user).filter(id=task.project.id).exists() or
+        task.user == request.user or 
         task.collaborators.filter(id=request.user.id).exists()
     )
     

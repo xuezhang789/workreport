@@ -80,20 +80,17 @@ class RBACService:
 
         # Collect permissions
         # 收集权限
-        perms = set()
-        for role in all_roles:
-            # Optimize: This loop might cause N+1 if not careful. 
-            # Ideally we'd fetch all RolePermissions for these roles in one go.
-            # 优化：如果不小心，此循环可能会导致 N+1 问题。
-            # 理想情况下，我们应该一次性获取这些角色的所有 RolePermissions。
-            pass
-        
         if all_roles:
             role_ids = [r.id for r in all_roles]
+            # Optimized query: fetch all permission codes for these roles in one go
+            # 优化查询：一次性获取这些角色的所有权限代码
             permission_codes = Permission.objects.filter(
-                rolepermission__role_id__in=role_ids
+                roles__id__in=role_ids
             ).values_list('code', flat=True).distinct()
-            perms.update(permission_codes)
+            
+            perms = set(permission_codes)
+        else:
+            perms = set()
 
         cache.set(cache_key, perms, cls.CACHE_TIMEOUT)
         return perms

@@ -26,7 +26,7 @@ from core.utils import (
     _stream_csv,
     _throttle
 )
-from core.permissions import has_manage_permission, has_project_manage_permission
+from core.permissions import has_manage_permission
 from reports.utils import get_accessible_projects, can_manage_project
 from tasks.services.sla import calculate_sla_info
 from reports.signals import _invalidate_stats_cache
@@ -46,14 +46,10 @@ def _filtered_projects(request):
     # 基础查询集
     qs = Project.objects.select_related('owner', 'owner__preferences', 'current_phase').filter(is_active=True)
     
-    if not request.user.is_superuser:
-        # Only Super Admin sees all.
-        # Ordinary users (including PMs/Managers who are not superuser) see only accessible projects.
-        # 仅超级管理员可见所有项目。
-        # 普通用户（包括非超级管理员的 PM/Manager）仅可见有权限的项目。
-        accessible = get_accessible_projects(request.user)
-        # accessible is already a filtered QuerySet based on cached IDs
-        qs = qs & accessible
+    # Filter by accessible projects (Superuser check is handled inside)
+    # 过滤可访问的项目（超级用户检查在内部处理）
+    accessible = get_accessible_projects(request.user)
+    qs = qs & accessible
 
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(description__icontains=q))
@@ -174,16 +170,15 @@ def project_list(request):
 
 @login_required
 def project_detail(request, pk: int):
-    # Check permission first
+    # Check permission
     # 1. Superuser: All
     # 2. Others: Must be accessible (Owner/Manager/Member)
     # 首先检查权限
     # 1. 超级用户：所有权限
     # 2. 其他：必须是可访问的项目（负责人/经理/成员）
-    if not request.user.is_superuser:
-        accessible = get_accessible_projects(request.user)
-        if not accessible.filter(pk=pk).exists():
-            return _admin_forbidden(request, "您没有权限查看此项目 / You do not have permission to view this project")
+    accessible = get_accessible_projects(request.user)
+    if not accessible.filter(pk=pk).exists():
+        return _admin_forbidden(request, "您没有权限查看此项目 / You do not have permission to view this project")
 
     project = get_object_or_404(Project.objects.select_related('owner', 'current_phase').prefetch_related('members__profile', 'managers__profile'), pk=pk)
     
@@ -391,7 +386,7 @@ def project_edit(request, pk: int):
 @login_required
 def project_delete(request, pk: int):
     project = get_object_or_404(Project, pk=pk)
-    if not has_project_manage_permission(request.user, project):
+    if not can_manage_project(request.user, project):
         return _admin_forbidden(request, "需要管理员权限 / Admin or project manager required")
     if request.method == 'POST':
         project.is_active = False
@@ -563,10 +558,9 @@ def project_update_phase(request, project_id):
 def project_history(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     
-    if not request.user.is_superuser:
-        accessible = get_accessible_projects(request.user)
-        if not accessible.filter(id=project.id).exists():
-             raise Http404
+    accessible = get_accessible_projects(request.user)
+    if not accessible.filter(id=project.id).exists():
+         raise Http404
 
     # Filters
     filters = {
@@ -769,7 +763,7 @@ def project_search_api(request):
         from reports.utils import get_manageable_projects
         manageable_ids = get_manageable_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=manageable_ids)
-    elif not user.is_superuser:
+    else:
         accessible_ids = get_accessible_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=accessible_ids)
 

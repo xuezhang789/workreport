@@ -22,7 +22,8 @@ from core.forms import (
     EmailVerificationRequestForm, 
     EmailVerificationConfirmForm
 )
-from core.utils import _throttle, _admin_forbidden, _friendly_forbidden, has_manage_permission
+from core.utils import _throttle, _admin_forbidden, _friendly_forbidden
+from core.permissions import has_manage_permission
 from work_logs.models import DailyReport
 from core.models import ExportJob
 from projects.models import Project
@@ -272,7 +273,8 @@ def user_search_api(request):
         
         # Security: Check if user has access to this project
         accessible_projects = get_accessible_projects(request.user)
-        if not request.user.is_superuser and not accessible_projects.filter(id=project_id).exists():
+        # accessible_projects already filters by permission (including superuser check)
+        if not accessible_projects.filter(id=project_id).exists():
             return JsonResponse({'error': 'Project not accessible'}, status=403)
             
         try:

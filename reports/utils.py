@@ -1,3 +1,4 @@
+
 from django.core.cache import cache
 from django.db.models import Q
 from projects.models import Project
@@ -6,8 +7,10 @@ from work_logs.models import DailyReport
 from core.services.rbac import RBACService
 
 def _get_projects_by_permission(user, permission_code):
-    """Helper to get projects where user has specific permission"""
-    """获取用户拥有特定权限的项目的辅助函数"""
+    """
+    Helper to get projects where user has specific permission via RBAC.
+    获取用户拥有特定权限的项目的辅助函数。
+    """
     if not user.is_authenticated:
         return Project.objects.none()
     
@@ -17,12 +20,10 @@ def _get_projects_by_permission(user, permission_code):
     scopes = RBACService.get_scopes_with_permission(user, permission_code)
     
     # If None (Global) is in scopes, return all active projects
-    # 如果 scopes 中包含 None（全局），则返回所有活动项目
     if None in scopes or '' in scopes:
         return Project.objects.filter(is_active=True)
         
     # Extract project IDs from scopes like 'project:123'
-    # 从类似 'project:123' 的 scope 中提取项目 ID
     project_ids = []
     for s in scopes:
         if s and s.startswith('project:'):
@@ -51,19 +52,9 @@ def get_accessible_projects(user):
     if cached_ids is not None:
         return Project.objects.filter(id__in=cached_ids, is_active=True)
 
-    # Base RBAC access
-    rbac_projects = _get_projects_by_permission(user, 'project.view')
-    
-    # Combine with Model fields (Owner, Managers, Members)
-    # 结合模型字段（负责人，管理员，成员）
-    # Note: RBAC is powerful but we must respect the direct database relationships too.
-    direct_access = Project.objects.filter(
-        Q(members=user) | Q(managers=user) | Q(owner=user),
-        is_active=True
-    )
-    
-    # Combine and distinct
-    final_qs = (rbac_projects | direct_access).distinct()
+    # Pure RBAC access (Model fields are synced to Roles via Signals)
+    # 纯 RBAC 访问（模型字段通过信号同步到角色）
+    final_qs = _get_projects_by_permission(user, 'project.view')
     
     # Cache the IDs
     ids = list(final_qs.values_list('id', flat=True))
@@ -88,18 +79,9 @@ def can_manage_project(user, project):
     if cached_result is not None:
         return cached_result
 
-    result = False
-    # Check Project model fields directly (Owner/Managers)
-    # 检查 Project 模型字段（负责人/管理员）
-    if user == project.owner:
-        result = True
-    elif project.managers.filter(pk=user.pk).exists():
-        result = True
-    else:
-        # Check RBAC permissions (if assigned via Role)
-        scope = f"project:{project.id}"
-        if RBACService.has_permission(user, 'project.manage', scope=scope):
-            result = True
+    # Pure RBAC Check
+    scope = f"project:{project.id}"
+    result = RBACService.has_permission(user, 'project.manage', scope=scope)
     
     cache.set(cache_key, result, 300)
     return result
@@ -112,15 +94,7 @@ def get_manageable_projects(user):
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
 
-    rbac_projects = _get_projects_by_permission(user, 'project.manage')
-    
-    # Combine with direct Model ownership/management
-    direct_manage = Project.objects.filter(
-        Q(managers=user) | Q(owner=user),
-        is_active=True
-    )
-    
-    return (rbac_projects | direct_manage).distinct()
+    return _get_projects_by_permission(user, 'project.manage')
 
 def get_accessible_tasks(user):
     """
@@ -150,7 +124,6 @@ def get_accessible_reports(user):
     projects = get_accessible_projects(user)
     
     # Reports that are linked to any of the accessible projects
-    # 链接到任何可访问项目的日报
     return DailyReport.objects.filter(projects__in=projects).distinct()
 
 def clear_project_permission_cache(user, project=None):
@@ -169,8 +142,5 @@ def clear_project_permission_cache(user, project=None):
     if project:
         cache.delete(f"can_manage_project:{user.id}:{project.id}")
     else:
-        # If no project specified, we can't easily clear all specific project keys 
-        # unless we use a pattern match which django cache doesn't always support efficiently.
-        # Ideally, we should iterate if we knew which projects.
-        # For now, we rely on the short TTL (5 mins) or specific calls.
+        # If no project specified, we rely on TTL or specific subsequent calls
         pass

@@ -7,7 +7,8 @@ from django.views.decorators.http import require_POST
 from django.db import models
 from reports.models import Profile, Project
 from reports.services import teams as team_service
-from core.utils import has_manage_permission, _admin_forbidden
+from core.utils import _admin_forbidden
+from core.permissions import has_manage_permission
 from audit.utils import log_action
 from django.utils import timezone
 from channels.layers import get_channel_layer

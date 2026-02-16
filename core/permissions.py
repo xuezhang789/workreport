@@ -14,12 +14,4 @@ def has_manage_permission(user):
     # 检查全局 'project.manage' 权限
     return RBACService.has_permission(user, 'project.manage', scope=None)
 
-def has_project_manage_permission(user, project):
-    """
-    Check if user can manage a specific project.
-    检查用户是否可以管理指定项目。
-    """
-    scope = f"project:{project.id}"
-    return RBACService.has_permission(user, 'project.manage', scope=scope)
-
 
