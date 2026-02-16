@@ -3,12 +3,21 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from tasks.models import Task
 from projects.models import Project
-from core.models import Profile
+from core.models import Profile, Role, Permission, RolePermission
 from core.constants import TaskStatus, TaskCategory
 from tasks.services.state import TaskStateService
 
 class TaskCategoryTests(TestCase):
     def setUp(self):
+        # Setup RBAC Roles and Permissions
+        self.role_owner = Role.objects.create(code='project_owner', name='Project Owner')
+        self.perm_view = Permission.objects.create(code='project.view', name='View Project')
+        self.perm_manage = Permission.objects.create(code='project.manage', name='Manage Project')
+        
+        # Grant permissions to owner role
+        RolePermission.objects.create(role=self.role_owner, permission=self.perm_view)
+        RolePermission.objects.create(role=self.role_owner, permission=self.perm_manage)
+
         self.user = User.objects.create_user(username='testuser', password='password')
         self.project = Project.objects.create(name='Test Project', owner=self.user)
         self.client.force_login(self.user)

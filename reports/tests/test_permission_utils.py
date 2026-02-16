@@ -8,6 +8,23 @@ from django.core.cache import cache
 
 class PermissionUtilsTest(TestCase):
     def setUp(self):
+        # Create Standard Roles & Permissions (Mocking core data)
+        self.role_owner = RBACService.create_role('Project Owner', 'project_owner')
+        self.role_manager = RBACService.create_role('Project Manager', 'project_manager')
+        self.role_member = RBACService.create_role('Project Member', 'project_member')
+        
+        self.perm_view = RBACService.create_permission('View Project', 'project.view', 'project')
+        self.perm_manage = RBACService.create_permission('Manage Project', 'project.manage', 'project')
+        
+        # Grant permissions
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_member, self.perm_view)
+
         # Users
         self.superuser = User.objects.create_superuser('admin', 'admin@example.com', 'password')
         self.owner = User.objects.create_user('owner', 'owner@example.com', 'password')
@@ -17,19 +34,22 @@ class PermissionUtilsTest(TestCase):
         self.rbac_user = User.objects.create_user('rbac_user', 'rbac@example.com', 'password')
 
         # Project
+        # Note: Signals will auto-assign 'project_owner' role to owner
         self.project = Project.objects.create(
             name="Test Project",
             code="TP-001",
             owner=self.owner,
             is_active=True
         )
+        # Note: Signals will auto-assign 'project_manager' role
         self.project.managers.add(self.manager)
+        # Note: Signals will auto-assign 'project_member' role
         self.project.members.add(self.member)
         
-        # Setup RBAC for rbac_user
+        # Setup custom RBAC for rbac_user
         # Create a role with project.manage permission
         self.role = RBACService.create_role('Project Admin', 'project_admin')
-        self.perm = RBACService.create_permission('Manage Project', 'project.manage')
+        self.perm = self.perm_manage # Reuse
         RBACService.grant_permission_to_role(self.role, self.perm)
         
         # Assign role to user for this project scope

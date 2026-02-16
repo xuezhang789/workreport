@@ -3,9 +3,26 @@ from django.contrib.auth.models import User
 from reports.models import Project, Profile
 from django.urls import reverse
 from django.utils import timezone
+from core.services.rbac import RBACService
 
 class ProjectEditPermissionTest(TestCase):
     def setUp(self):
+        # Create Standard Roles
+        self.role_owner = RBACService.create_role('Project Owner', 'project_owner')
+        self.role_manager = RBACService.create_role('Project Manager', 'project_manager')
+        self.role_member = RBACService.create_role('Project Member', 'project_member')
+        
+        self.perm_view = RBACService.create_permission('View Project', 'project.view', 'project')
+        self.perm_manage = RBACService.create_permission('Manage Project', 'project.manage', 'project')
+        
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_member, self.perm_view)
+
         # Users
         self.superuser = User.objects.create_superuser('admin', 'admin@example.com', 'password')
         self.owner = User.objects.create_user('owner', 'owner@example.com', 'password')
@@ -22,7 +39,7 @@ class ProjectEditPermissionTest(TestCase):
         )
         self.project.managers.add(self.manager)
         self.project.members.add(self.member)
-
+        
         self.client = Client()
         self.url = reverse('projects:project_edit', args=[self.project.id])
 

@@ -11,6 +11,22 @@ class PermissionUtilsTest(TestCase):
         cache.clear()
         self.factory = RequestFactory()
         
+        # Create Standard Roles
+        self.role_owner = RBACService.create_role('Project Owner', 'project_owner')
+        self.role_manager = RBACService.create_role('Project Manager', 'project_manager')
+        self.role_member = RBACService.create_role('Project Member', 'project_member')
+        
+        self.perm_view = RBACService.create_permission('View Project', 'project.view', 'project')
+        self.perm_manage = RBACService.create_permission('Manage Project', 'project.manage', 'project')
+        
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_owner, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_view)
+        RBACService.grant_permission_to_role(self.role_manager, self.perm_manage)
+        
+        RBACService.grant_permission_to_role(self.role_member, self.perm_view)
+
         # Users
         self.superuser = User.objects.create_superuser('admin', 'admin@example.com', 'password')
         self.owner = User.objects.create_user('owner', 'owner@example.com', 'password')
@@ -18,17 +34,15 @@ class PermissionUtilsTest(TestCase):
         self.member = User.objects.create_user('member', 'member@example.com', 'password')
         self.outsider = User.objects.create_user('outsider', 'outsider@example.com', 'password')
         
-        # Project
+        # Project (Signals will assign roles)
         self.project = Project.objects.create(name="Test Project", code="TP", owner=self.owner)
         self.project.managers.add(self.manager)
         self.project.members.add(self.member)
         
-        # RBAC Setup
-        self.perm_manage = RBACService.create_permission('Manage Project', 'project.manage', 'project')
-        self.role_manager = RBACService.create_role('Project Manager', 'project_manager')
-        RBACService.grant_permission_to_role(self.role_manager, self.perm_manage)
-        
+        # Additional manual assignment for test specific scenario
         # Assign RBAC Role to Member (upgrade to Manager via RBAC)
+        # Note: The member already has 'project_member' via signal.
+        # We add 'project_manager' manually here.
         RBACService.assign_role(self.member, self.role_manager, scope=f"project:{self.project.id}")
 
     def test_can_manage_project_superuser(self):

@@ -8,8 +8,17 @@ from core.services.rbac import RBACService
 
 def _get_projects_by_permission(user, permission_code):
     """
-    Helper to get projects where user has specific permission via RBAC.
-    获取用户拥有特定权限的项目的辅助函数。
+    内部辅助函数：获取用户拥有特定 RBAC 权限的所有项目查询集。
+    
+    Args:
+        user (User): 用户对象
+        permission_code (str): 权限代码 (如 'project.view')
+        
+    Returns:
+        QuerySet: Project 对象的查询集。
+                  如果用户未登录，返回空查询集。
+                  如果用户拥有全局该权限，返回所有活跃项目。
+                  否则返回具有该权限的特定项目集合。
     """
     if not user.is_authenticated:
         return Project.objects.none()
@@ -19,11 +28,11 @@ def _get_projects_by_permission(user, permission_code):
         
     scopes = RBACService.get_scopes_with_permission(user, permission_code)
     
-    # If None (Global) is in scopes, return all active projects
+    # 如果 scopes 中包含 None 或空字符串，表示拥有全局权限
     if None in scopes or '' in scopes:
         return Project.objects.filter(is_active=True)
         
-    # Extract project IDs from scopes like 'project:123'
+    # 解析 scope 字符串 (格式: 'project:123') 提取项目 ID
     project_ids = []
     for s in scopes:
         if s and s.startswith('project:'):
@@ -37,8 +46,17 @@ def _get_projects_by_permission(user, permission_code):
 
 def get_accessible_projects(user):
     """
-    Returns a QuerySet of projects accessible to the user (view permission).
-    返回用户可访问（查看权限）的项目查询集。
+    获取用户有权访问（查看权限）的项目列表。
+    
+    该函数使用了缓存机制来提高性能。
+    缓存键: accessible_projects_ids:{user_id}
+    缓存时间: 300秒 (5分钟)
+    
+    Args:
+        user (User): 用户对象
+        
+    Returns:
+        QuerySet: 用户可查看的 Project 查询集
     """
     if not user.is_authenticated:
         return Project.objects.none()
@@ -52,20 +70,30 @@ def get_accessible_projects(user):
     if cached_ids is not None:
         return Project.objects.filter(id__in=cached_ids, is_active=True)
 
-    # Pure RBAC access (Model fields are synced to Roles via Signals)
-    # 纯 RBAC 访问（模型字段通过信号同步到角色）
+    # 纯 RBAC 权限检查
+    # 获取拥有 'project.view' 权限的项目
     final_qs = _get_projects_by_permission(user, 'project.view')
     
-    # Cache the IDs
+    # 缓存结果 ID 列表
     ids = list(final_qs.values_list('id', flat=True))
-    cache.set(cache_key, ids, 300) # Cache for 5 minutes
+    cache.set(cache_key, ids, 300) # 缓存5分钟
     
     return Project.objects.filter(id__in=ids)
 
 def can_manage_project(user, project):
     """
-    Check if user has edit/manage permission for a specific project.
-    检查用户是否拥有特定项目的编辑/管理权限。
+    检查用户是否拥有特定项目的管理/编辑权限。
+    
+    该函数使用了缓存机制。
+    缓存键: can_manage_project:{user_id}:{project_id}
+    缓存时间: 300秒
+    
+    Args:
+        user (User): 用户对象
+        project (Project): 项目对象
+        
+    Returns:
+        bool: 如果有管理权限返回 True，否则 False
     """
     if not user.is_authenticated:
         return False
@@ -73,13 +101,13 @@ def can_manage_project(user, project):
     if user.is_superuser:
         return True
         
-    # Cache key for this specific check
+    # 优先检查缓存
     cache_key = f"can_manage_project:{user.id}:{project.id}"
     cached_result = cache.get(cache_key)
     if cached_result is not None:
         return cached_result
 
-    # Pure RBAC Check
+    # RBAC 权限检查
     scope = f"project:{project.id}"
     result = RBACService.has_permission(user, 'project.manage', scope=scope)
     
@@ -88,8 +116,13 @@ def can_manage_project(user, project):
 
 def get_manageable_projects(user):
     """
-    Returns QuerySet of projects the user can manage (edit/update).
-    返回用户可以管理（编辑/更新）的项目查询集。
+    获取用户可以管理（编辑/更新）的项目查询集。
+    
+    Args:
+        user (User): 用户对象
+        
+    Returns:
+        QuerySet: 用户可管理的 Project 查询集
     """
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
@@ -98,8 +131,14 @@ def get_manageable_projects(user):
 
 def get_accessible_tasks(user):
     """
-    Returns a QuerySet of tasks in accessible projects.
-    返回可访问项目中的任务查询集。
+    获取用户可访问的所有任务查询集。
+    逻辑：只要用户能访问该任务所属的项目，就能访问该任务。
+    
+    Args:
+        user (User): 用户对象
+        
+    Returns:
+        QuerySet: Task 查询集
     """
     if not user.is_authenticated:
         return Task.objects.none()
@@ -112,8 +151,14 @@ def get_accessible_tasks(user):
 
 def get_accessible_reports(user):
     """
-    Returns daily reports visible to the user.
-    返回用户可见的日报。
+    获取用户可见的日报查询集。
+    逻辑：日报关联的项目如果用户可访问，则日报可见。
+    
+    Args:
+        user (User): 用户对象
+        
+    Returns:
+        QuerySet: DailyReport 查询集
     """
     if not user.is_authenticated:
         return DailyReport.objects.none()
@@ -123,24 +168,28 @@ def get_accessible_reports(user):
 
     projects = get_accessible_projects(user)
     
-    # Reports that are linked to any of the accessible projects
+    # 筛选关联了用户可访问项目的日报
     return DailyReport.objects.filter(projects__in=projects).distinct()
 
 def clear_project_permission_cache(user, project=None):
     """
-    Clear permission caches for a user.
-    If project is provided, clears specific project permission cache.
-    Always clears the list of accessible projects.
+    清除用户的项目权限相关缓存。
+    
+    在用户权限变更、项目成员变更时应调用此函数。
+    
+    Args:
+        user (User): 用户对象
+        project (Project, optional): 特定项目对象。如果提供，将清除针对该项目的管理权限缓存。
     """
     if not user:
         return
         
-    # Clear accessible projects list cache
+    # 清除可访问项目列表缓存
     cache.delete(f"accessible_projects_ids:{user.id}")
     
-    # Clear specific project permission cache
+    # 清除特定项目权限缓存
     if project:
         cache.delete(f"can_manage_project:{user.id}:{project.id}")
     else:
-        # If no project specified, we rely on TTL or specific subsequent calls
+        # 如果未指定项目，仅依靠 TTL 过期或后续特定调用
         pass

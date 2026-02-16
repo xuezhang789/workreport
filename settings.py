@@ -2,34 +2,41 @@
 import os
 from pathlib import Path
 
+# 项目根目录 (包含此 settings 文件的目录)
 # Project root (directory containing this settings file)
 BASE_DIR = Path(__file__).resolve().parent
 
+# 安全警告：生产环境使用的密钥必须保密！
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
+# 检查是否运行在开发服务器环境
 # Check if we are running in a development server environment
 import sys
 IS_DEV_SERVER = 'runserver' in sys.argv
 
+# 默认 DEBUG 设置：如果是开发服务器则为 True，否则为 False (默认为安全)
 # Default DEBUG to True if running via runserver, otherwise False (secure by default)
 DEFAULT_DEBUG = 'True' if IS_DEV_SERVER else 'False'
 DEBUG = os.environ.get('DJANGO_DEBUG', DEFAULT_DEBUG) == 'True'
 
 if not SECRET_KEY:
     if DEBUG:
+        # 仅开发环境的回退密钥
         # Fallback for dev only
         SECRET_KEY = 'django-insecure-replace-this-with-a-random-secret-key-for-dev'
     else:
+        # 生产环境 (DEBUG=False) 必须配置 SECRET_KEY
         # In production (DEBUG=False), we must have a secret key
         raise ValueError("DJANGO_SECRET_KEY environment variable is required in production.")
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
+# 应用配置
 # Trigger reload for new templatetags
 INSTALLED_APPS = [
-    'daphne', # Must be first
+    'daphne', # 必须放在首位以支持 ASGI/Channels
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -37,26 +44,26 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'channels',
-    'reports',
-    'core',
-    'projects',
-    'tasks',
-    'work_logs',
-    'audit',
+    'channels', # WebSocket 支持
+    'reports',  # 核心报表应用
+    'core',     # 核心基础应用 (RBAC, Utils)
+    'projects', # 项目管理应用
+    'tasks',    # 任务管理应用
+    'work_logs',# 日志记录应用
+    'audit',    # 审计日志应用
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # 静态文件服务
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'reports.middleware.TimingMiddleware',
-    'audit.middleware.AuditMiddleware',
+    'reports.middleware.TimingMiddleware', # 自定义性能计时中间件
+    'audit.middleware.AuditMiddleware',    # 自定义审计日志中间件
 ]
 
 ROOT_URLCONF = 'urls'
@@ -72,7 +79,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'reports.context_processors.admin_flags',
+                'reports.context_processors.admin_flags', # 自定义管理员标志
             ],
         },
     },
@@ -81,16 +88,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'wsgi.application'
 ASGI_APPLICATION = 'asgi.application'
 
+# Channels / WebSocket 配置
 CHANNEL_LAYERS = {
     "default": {
+        # 生产环境建议使用 Redis:
         # "BACKEND": "channels_redis.core.RedisChannelLayer",
         # "CONFIG": {
         #     "hosts": [("127.0.0.1", 6379)],
         # },
+        # 开发环境使用内存层:
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 
+# 数据库配置
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -98,6 +109,7 @@ DATABASES = {
     }
 }
 
+# 如果环境变量配置了数据库，则使用 MySQL/PostgreSQL
 # Use MySQL/PostgreSQL if configured in environment
 DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3')
 DB_NAME = os.environ.get('DB_NAME')
@@ -142,6 +154,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# Whitenoise 静态文件存储配置
 # Whitenoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
@@ -194,8 +207,8 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 SLA_TIGHT_HOURS_DEFAULT = 6
 SLA_CRITICAL_HOURS_DEFAULT = 2
 
-# Attachment Storage Configuration
-# 附件存储配置
+# 附件存储配置 (Attachment Storage Configuration)
+# 支持本地存储 (local) 和云存储 (oss, s3)
 ATTACHMENT_STORAGE_CONFIG = {
     'default': 'local',
     'strategies': {
