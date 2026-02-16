@@ -331,7 +331,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" novalidate id="register-form">
+                    <form method="post" action="{% url 'core:register' %}" novalidate id="register-form">
                         {% csrf_token %}
                         
                         <div class="form-group">
@@ -539,11 +539,34 @@
                     const username = this.value.trim();
                     if (username && username.length < 3) {
                         this.setCustomValidity('用户名至少需要3个字符');
+                        this.reportValidity();
                     } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
                         this.setCustomValidity('用户名只能包含字母、数字和下划线');
+                        this.reportValidity();
+                    } else if (username) {
+                        // Check availability via API
+                        fetch(`{% url 'core:username_check_api' %}?username=${encodeURIComponent(username)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (!data.available) {
+                                    this.setCustomValidity(data.reason || '用户名已存在');
+                                    this.reportValidity();
+                                    this.style.borderColor = 'var(--danger)';
+                                } else {
+                                    this.setCustomValidity('');
+                                    this.style.borderColor = 'var(--success)';
+                                }
+                            })
+                            .catch(error => console.error('Error checking username:', error));
                     } else {
                         this.setCustomValidity('');
+                        this.style.borderColor = '';
                     }
+                });
+                
+                usernameInput.addEventListener('input', function() {
+                    this.setCustomValidity('');
+                    this.style.borderColor = '';
                 });
             }
         });

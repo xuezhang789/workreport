@@ -427,7 +427,7 @@
                     {% for c in task.collaborators.all %}
                         <div style="display: flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-size: 13px;">
                             {% include "partials/user_avatar.html" with user=c size="16px" font_size="8px" %}
-                            {{ c.get_full_name|default:c.username }}
+                            {{ c.get_full_name|default:c.username }} @{{ c.username }}
                         </div>
                     {% empty %}
                         <span style="color: var(--text-secondary); font-size: 13px;">--</span>

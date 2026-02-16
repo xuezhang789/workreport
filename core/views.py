@@ -28,17 +28,16 @@ from core.models import ExportJob
 from projects.models import Project
 from reports.utils import get_accessible_projects, get_manageable_projects
 
-@login_required
 def register(request):
     if request.user.is_authenticated:
-        return redirect('reports:daily_report_create')
+        return redirect('reports:workbench')
 
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect('reports:daily_report_create')
+            return redirect('reports:workbench')
     else:
         form = RegistrationForm()
 
@@ -341,11 +340,9 @@ def user_search_api(request):
     return JsonResponse({'results': data})
 
 
-@login_required
 def username_check_api(request):
     """实时检查用户名是否可用。"""
-    if not has_manage_permission(request.user):
-         return JsonResponse({'available': False, 'reason': 'Permission denied'}, status=403)
+    # Allow anonymous users to check username availability for registration
          
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")

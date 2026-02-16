@@ -268,7 +268,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" novalidate>
+                    <form method="post" action="{% url 'core:login' %}" novalidate>
                         {% csrf_token %}
                         <div class="form-group">
                             <label for="{{ form.username.id_for_label }}" class="form-label">用户名 / Username</label>

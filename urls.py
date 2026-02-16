@@ -11,8 +11,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/users/<int:user_id>/responsible-projects', project_api_views.get_user_responsible_projects),
-    path('accounts/', include('core.urls')),
     path('core/', include('core.urls')), # Allow /core/api/upload/...
+    path('accounts/', include('core.urls')),
     path('projects/', include('projects.urls')),
     path('tasks/', include('tasks.urls')),
     path('reports/', include('reports.urls')),
