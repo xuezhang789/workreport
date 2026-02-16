@@ -26,8 +26,9 @@ from core.utils import _throttle, _admin_forbidden, _friendly_forbidden, has_man
 from work_logs.models import DailyReport
 from core.models import ExportJob
 from projects.models import Project
-from reports.utils import get_accessible_projects
+from reports.utils import get_accessible_projects, get_manageable_projects
 
+@login_required
 def register(request):
     if request.user.is_authenticated:
         return redirect('reports:daily_report_create')
@@ -263,12 +264,34 @@ def user_search_api(request):
     if _throttle(request, 'user_search_ts', min_interval=0.2):
         return JsonResponse({'error': '请求过于频繁'}, status=429)
     q = (request.GET.get('q') or '').strip()
+    project_id = request.GET.get('project_id')
     User = get_user_model()
     
-    if has_manage_permission(request.user):
+    if project_id and project_id.isdigit():
+        # Project specific search
+        from projects.models import Project
+        from reports.utils import get_accessible_projects
+        
+        # Security: Check if user has access to this project
+        accessible_projects = get_accessible_projects(request.user)
+        if not request.user.is_superuser and not accessible_projects.filter(id=project_id).exists():
+            return JsonResponse({'error': 'Project not accessible'}, status=403)
+            
+        try:
+            project = Project.objects.get(pk=project_id)
+            # Members + Managers + Owner
+            qs = User.objects.filter(
+                Q(project_memberships=project) |
+                Q(managed_projects=project) |
+                Q(owned_projects=project)
+            ).distinct()
+        except Project.DoesNotExist:
+             qs = User.objects.none()
+    elif has_manage_permission(request.user) or get_manageable_projects(request.user).exists():
         qs = User.objects.all()
     else:
         # Limit to users in accessible projects
+        accessible_projects = get_accessible_projects(request.user)
         qs = User.objects.filter(
             Q(project_memberships__in=accessible_projects) |
             Q(managed_projects__in=accessible_projects) |
@@ -282,19 +305,39 @@ def user_search_api(request):
             Q(last_name__icontains=q) |
             Q(email__icontains=q)
         )
-    users = qs.order_by('username')[:20]
+        
+    users = qs.select_related('profile').order_by('username')[:20]
     data = []
+    
+    # Pre-fetch roles if project_id is provided?
+    # Or just use general profile info. Requirement: Avatar, Name, Role Tag (Owner/Admin/Member), Dept
+    
     for u in users:
         full_name = u.get_full_name()
         display_name = f"{full_name} ({u.username})" if full_name else u.username
         if u.email:
             display_name += f" - {u.email}"
+            
+        role_label = 'Member'
+        if project_id and project_id.isdigit():
+            if u.id == project.owner_id:
+                role_label = 'Owner'
+            elif project.managers.filter(id=u.id).exists():
+                role_label = 'Admin'
+                
+        # Department
+        dept = u.profile.department if hasattr(u, 'profile') else ''
+        avatar = u.profile.avatar.url if hasattr(u, 'profile') and u.profile.avatar else ''
+        
         data.append({
             'id': u.id,
             'name': full_name or u.username,
             'username': u.username,
             'email': u.email,
-            'text': display_name  # For standard frontend components
+            'text': display_name,
+            'role': role_label,
+            'department': dept,
+            'avatar': avatar
         })
     return JsonResponse({'results': data})
 

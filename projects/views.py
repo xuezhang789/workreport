@@ -764,11 +764,16 @@ def project_search_api(request):
     user = request.user
     project_filter = Q(is_active=True)
     
-    if not user.is_superuser:
+    # Filter by manageable projects if requested
+    if request.GET.get('manageable_only') == 'true':
+        from reports.utils import get_manageable_projects
+        manageable_ids = get_manageable_projects(user).values_list('id', flat=True)
+        project_filter &= Q(id__in=manageable_ids)
+    elif not user.is_superuser:
         accessible_ids = get_accessible_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=accessible_ids)
 
-    qs = Project.objects.filter(project_filter)
+    qs = Project.objects.filter(project_filter).select_related('owner', 'current_phase')
 
     if q:
         # Pinyin match simulation: matches code (often abbr) or name
@@ -798,9 +803,23 @@ def project_search_api(request):
     if mode == 'lite':
         # Return all (or large limit) lightweight objects for client-side indexing
         # Limit to 20000 to be safe
-        projects = qs.values('id', 'name', 'code')[:20000]
-        data = list(projects)
-        # Add simple pinyin field placeholder if we had a lib, otherwise frontend handles it.
+        projects = qs.values('id', 'name', 'code', 'overall_progress', 'end_date', 'is_active')[:20000]
+        data = []
+        for p in projects:
+            # Format date and status for lite mode too if needed by frontend, or let frontend handle it.
+            # Frontend requirements: "Project Name, Progress %, Status Label, Due Date"
+            data.append({
+                'id': p['id'],
+                'name': p['name'],
+                'code': p['code'],
+                'progress': p['overall_progress'],
+                'end_date': p['end_date'].isoformat() if p['end_date'] else '',
+                'status': 'active' if p['is_active'] else 'inactive', # Simplified status
+                # Note: 'status label' in requirement might mean Phase or Active/Archived. 
+                # Let's assume Active/Archived + Phase if available, but lite mode implies minimal db hits.
+                # values() doesn't support traversing to current_phase.phase_name easily without extra queries or explicit select_related which values() ignores partly.
+                # We will stick to basic info. Frontend can map is_active.
+            })
         return JsonResponse({'results': data})
 
     # Normal mode: Detailed results with pagination
@@ -813,6 +832,9 @@ def project_search_api(request):
             'code': p.code,
             'owner_name': p.owner.get_full_name() or p.owner.username if p.owner else 'N/A',
             'created_at': p.created_at.isoformat(),
+            'progress': p.overall_progress,
+            'end_date': p.end_date.isoformat() if p.end_date else '',
+            'status_label': p.current_phase.phase_name if p.current_phase else ('Active' if p.is_active else 'Inactive'),
         })
         
     return JsonResponse({'results': data})
