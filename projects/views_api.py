@@ -120,3 +120,40 @@ def project_users_api(request, project_id):
         'managers': [_format_user(u) for u in project.managers.all()],
         'members': [_format_user(u) for u in project.members.all()]
     })
+
+@login_required
+def get_user_responsible_projects(request, user_id):
+    """
+    Get list of projects where user is owner or manager.
+    Path: /api/v1/users/{userId}/responsible-projects
+    """
+    # Permission Check: Self or Superuser
+    if request.user.id != user_id and not request.user.is_superuser:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+    try:
+        user = get_user_model().objects.get(pk=user_id)
+    except get_user_model().DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+        
+    from django.db.models import Q
+    
+    # Query projects where user is owner or manager
+    # Also check if project is active? Usually yes for task creation.
+    projects = Project.objects.filter(
+        (Q(owner=user) | Q(managers=user)) & Q(is_active=True)
+    ).distinct().order_by('name')
+    
+    data = []
+    for p in projects:
+        data.append({
+            'projectId': p.id,
+            'projectName': p.name,
+            'projectCode': p.code,
+            'ownerName': p.owner.get_full_name() or p.owner.username if p.owner else '未分配',
+            'phase': p.current_phase.phase_name if p.current_phase else '',
+            'progress': float(p.overall_progress),
+            'isActive': p.is_active,
+        })
+        
+    return JsonResponse(data, safe=False)

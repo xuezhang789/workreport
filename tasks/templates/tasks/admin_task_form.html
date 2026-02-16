@@ -11,6 +11,89 @@
         padding: 24px;
     }
 
+    /* Project Selector Styles */
+    .ps-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 12px;
+    }
+    .ps-item:last-child { border-bottom: none; }
+    .ps-item:hover, .ps-item.highlighted { background-color: #f8fafc; }
+
+    .ps-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
+        text-transform: uppercase;
+    }
+
+    .ps-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .ps-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ps-meta {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .ps-badge {
+        background: #f1f5f9;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    .ps-stats {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+
+    .ps-progress {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .ps-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #cbd5e1;
+    }
+    .ps-dot.active { background-color: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
+    
     .form-card {
         background: #ffffff;
         border: 1px solid var(--border-color);
@@ -181,7 +264,7 @@
     .role-card {
         border: 1px solid var(--border-color);
         border-radius: 16px;
-        overflow: hidden;
+        /* overflow: hidden; Removed to allow dropdowns to overflow */
         background: #fff;
         transition: all 0.2s;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -199,6 +282,7 @@
         justify-content: space-between;
         align-items: center;
         border-bottom: 1px solid var(--border-color);
+        border-radius: 15px 15px 0 0; /* Added rounded corners since overflow is removed */
     }
 
     .role-header.member {
@@ -535,7 +619,7 @@
 
                     <div class="form-group" style="margin-bottom: 0;" id="project-selector-wrapper">
                         <label class="form-label">所属项目 / Project <span style="color:red">*</span></label>
-                        <!-- Custom Virtual Select Component -->
+                        <!-- Custom Project Select Component -->
                         <div class="vs-wrapper" style="position: relative;">
                             <input type="text" id="vs-input" class="form-input" placeholder="输入项目名、拼音或代码... / Search name, pinyin..." autocomplete="off" {% if is_collaborator_only %}disabled readonly style="background-color: #f1f5f9; color: #64748b;"{% endif %}>
                             <input type="hidden" name="project" id="vs-hidden" required value="{{ form_values.project_id|default:'' }}">
@@ -546,16 +630,15 @@
                             </div>
 
                             <div id="vs-dropdown" class="vs-dropdown">
-                                <div id="vs-loading" class="vs-status">加载中... / Loading...</div>
-                                <div id="vs-history-label" class="vs-label" style="display:none;">最近搜索 / Recent</div>
-                                <div id="vs-history-list"></div>
-                                <div id="vs-list-container" class="vs-list-container">
-                                    <div id="vs-virtual-spacer"></div>
-                                    <div id="vs-virtual-content"></div>
+                                <div id="vs-loading" class="vs-status" style="display:none; padding:12px; text-align:center; color:#94a3b8;">
+                                    <div class="skeleton" style="width:20px;height:20px;margin:0 auto;border-radius:50%;"></div>
+                                    <div style="margin-top:4px;font-size:12px;">加载中... / Loading...</div>
                                 </div>
-                                <div id="vs-empty" class="vs-status" style="display:none;">
-                                    <span>未找到项目 / No project found</span>
-                                    <a href="{% url 'projects:project_create' %}" target="_blank" style="display:block; margin-top:4px; color:var(--primary);">+ 新建项目 / Create New</a>
+                                <div id="vs-list-container" class="vs-list-container" style="display:none;">
+                                    <!-- List items will be injected here -->
+                                </div>
+                                <div id="vs-empty" class="vs-status" style="display:none; padding:16px; text-align:center;">
+                                    <span style="color:#94a3b8; display:block; margin-bottom:4px;">未找到项目 / No project found</span>
                                 </div>
                             </div>
                         </div>
@@ -740,262 +823,6 @@
         const isCollaboratorOnly = {{ is_collaborator_only|yesno:"true,false" }};
         const csrfToken = '{{ csrf_token }}';
         
-        // --- Virtual Project Select ---
-        class VirtualProjectSelect {
-            constructor() {
-                this.input = document.getElementById('vs-input');
-                this.hidden = document.getElementById('vs-hidden');
-                this.dropdown = document.getElementById('vs-dropdown');
-                this.listContainer = document.getElementById('vs-list-container');
-                this.virtualSpacer = document.getElementById('vs-virtual-spacer');
-                this.virtualContent = document.getElementById('vs-virtual-content');
-                this.loading = document.getElementById('vs-loading');
-                this.empty = document.getElementById('vs-empty');
-                this.display = document.getElementById('vs-selected-display');
-                
-                this.historyList = document.getElementById('vs-history-list');
-                this.historyLabel = document.getElementById('vs-history-label');
-
-                this.allProjects = []; 
-                this.filteredProjects = [];
-                this.itemHeight = 58; // Increased for extra info
-                this.highlightIndex = -1;
-                this.searchDebounce = null;
-                this.dataLoaded = false;
-                
-                if (this.input) this.init();
-            }
-
-            async init() {
-                // Event Listeners
-                this.input.addEventListener('focus', () => this.onFocus());
-                this.input.addEventListener('blur', () => setTimeout(() => this.close(), 200));
-                this.input.addEventListener('input', (e) => this.onInput(e.target.value));
-                this.input.addEventListener('keydown', (e) => this.onKeydown(e));
-                this.listContainer.addEventListener('scroll', () => this.renderVirtual());
-                
-                // Prefetch on hover or focus (Optimization)
-                this.input.addEventListener('mouseenter', () => this.loadData());
-                
-                // If value exists (Edit Mode), trigger dependency updates
-                if (this.hidden.value) {
-                    this.onProjectSelected(this.hidden.value, false);
-                }
-            }
-            
-            async loadData() {
-                if (this.dataLoaded) return;
-                this.dataLoaded = true; // Prevent double fetch
-                
-                this.loading.style.display = 'block';
-                try {
-                    // Cache check
-                    const cached = sessionStorage.getItem('vs_projects_cache');
-                    const cacheTime = sessionStorage.getItem('vs_projects_ts');
-                    const now = Date.now();
-                    
-                    if (cached && cacheTime && (now - cacheTime < 5 * 60 * 1000)) {
-                        this.allProjects = JSON.parse(cached);
-                    } else {
-                        // Fetch manageable projects only
-                        const res = await fetch("{% url 'projects:project_search_api' %}?mode=lite&limit=5000&manageable_only=true");
-                        const data = await res.json();
-                        this.allProjects = data.results || [];
-                        sessionStorage.setItem('vs_projects_cache', JSON.stringify(this.allProjects));
-                        sessionStorage.setItem('vs_projects_ts', now);
-                    }
-                    
-                    this.filteredProjects = this.allProjects;
-                    this.loading.style.display = 'none';
-                    this.renderVirtual();
-                } catch (e) {
-                    console.error('Failed to load projects', e);
-                    this.loading.textContent = '加载失败 / Load failed';
-                }
-            }
-
-            onFocus() {
-                this.loadData();
-                this.dropdown.classList.add('open');
-                this.renderHistory();
-                if (!this.input.value.trim()) {
-                    this.filteredProjects = this.allProjects;
-                    this.renderVirtual();
-                } else {
-                    this.filter(this.input.value);
-                }
-            }
-
-            close() {
-                this.dropdown.classList.remove('open');
-            }
-
-            onInput(q) {
-                clearTimeout(this.searchDebounce);
-                this.searchDebounce = setTimeout(() => {
-                    this.filter(q);
-                }, 300);
-            }
-
-            filter(q) {
-                if (!q) {
-                    this.filteredProjects = this.allProjects;
-                } else {
-                    const lowerQ = q.toLowerCase();
-                    // Multi-dimension search
-                    this.filteredProjects = this.allProjects.filter(p => 
-                        (p.name && p.name.toLowerCase().includes(lowerQ)) || 
-                        (p.code && p.code.toLowerCase().includes(lowerQ)) ||
-                        String(p.id) === lowerQ
-                    );
-                }
-                
-                this.highlightIndex = -1;
-                this.listContainer.scrollTop = 0;
-                this.renderVirtual();
-                
-                if (this.filteredProjects.length === 0) {
-                    this.empty.style.display = 'block';
-                    this.listContainer.style.display = 'none';
-                } else {
-                    this.empty.style.display = 'none';
-                    this.listContainer.style.display = 'block';
-                }
-            }
-
-            renderVirtual() {
-                const total = this.filteredProjects.length;
-                const scrollTop = this.listContainer.scrollTop;
-                const containerHeight = this.listContainer.clientHeight;
-                
-                this.virtualSpacer.style.height = `${total * this.itemHeight}px`;
-                
-                const startIndex = Math.floor(scrollTop / this.itemHeight);
-                const endIndex = Math.min(total, Math.ceil((scrollTop + containerHeight) / this.itemHeight) + 2); 
-                
-                let html = '';
-                for (let i = startIndex; i < endIndex; i++) {
-                    const p = this.filteredProjects[i];
-                    const isHighlight = i === this.highlightIndex ? 'highlighted' : '';
-                    const progressColor = p.progress >= 100 ? '#10b981' : (p.progress > 80 ? '#f59e0b' : '#3b82f6');
-                    const statusClass = p.status === 'active' ? 'active' : 'inactive';
-                    
-                    html += `
-                        <div class="vs-item ${isHighlight}" style="height:${this.itemHeight}px; transform: translateY(${i * this.itemHeight}px); position: absolute; width: 100%;" 
-                             onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
-                            <div class="vs-row-main">
-                                <span class="name" style="font-weight:600;">${this.highlightMatch(p.name, this.input.value)}</span>
-                                <span class="code" style="font-family:monospace;">${this.highlightMatch(p.code, this.input.value)}</span>
-                            </div>
-                            <div class="vs-row-meta">
-                                <div style="display:flex; align-items:center; gap:4px; width: 80px;">
-                                    <div style="flex:1; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
-                                        <div style="width:${p.progress}%; height:100%; background:${progressColor};"></div>
-                                    </div>
-                                    <span>${p.progress}%</span>
-                                </div>
-                                <span class="vs-badge ${statusClass}">${p.status === 'active' ? '进行中' : '已归档'}</span>
-                                <span>📅 ${p.end_date ? p.end_date.slice(0,10) : 'No Date'}</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                this.virtualContent.innerHTML = html;
-            }
-            
-            escape(str) { return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
-            
-            highlightMatch(text, q) {
-                if (!text || !q) return text || '';
-                const reg = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                return text.replace(reg, '<span style="color:var(--primary);font-weight:bold;">$1</span>');
-            }
-
-            select(id, name, code) {
-                // Check if project changed
-                const oldId = this.hidden.value;
-                if (oldId && String(oldId) !== String(id)) {
-                    // Clear User selections if project changes
-                    if (window.userSearchManager) window.userSearchManager.clearAll();
-                }
-
-                this.input.value = ''; 
-                this.hidden.value = id;
-                this.display.textContent = `已选择: ${name} (${code})`;
-                this.display.style.display = 'block';
-                
-                this.addToHistory({id, name, code});
-                this.close();
-                
-                this.onProjectSelected(id, true);
-                
-                if (window.loadTaskRecommendations) window.loadTaskRecommendations(); 
-            }
-            
-            onProjectSelected(projectId, isUserAction) {
-                if (window.userSearchManager) {
-                    window.userSearchManager.enable(projectId);
-                }
-            }
-            
-            addToHistory(item) {
-                let hist = JSON.parse(localStorage.getItem('vs_history') || '[]');
-                hist = hist.filter(i => i.id !== item.id);
-                hist.unshift(item);
-                if (hist.length > 5) hist.pop();
-                localStorage.setItem('vs_history', JSON.stringify(hist));
-            }
-            
-            renderHistory() {
-                const hist = JSON.parse(localStorage.getItem('vs_history') || '[]');
-                if (hist.length > 0 && !this.input.value) {
-                    this.historyLabel.style.display = 'block';
-                    this.historyList.innerHTML = hist.map(p => `
-                        <div class="vs-history-item" onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
-                            <span style="font-size:16px;">🕒</span> 
-                            <span>${p.name} <span style="color:#94a3b8;font-size:12px;">(${p.code})</span></span>
-                        </div>
-                    `).join('');
-                } else {
-                    this.historyLabel.style.display = 'none';
-                    this.historyList.innerHTML = '';
-                }
-            }
-
-            onKeydown(e) {
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    this.highlightIndex = Math.min(this.highlightIndex + 1, this.filteredProjects.length - 1);
-                    this.renderVirtual();
-                    // Scroll logic omitted for brevity, assume simple scroll
-                    const top = this.highlightIndex * this.itemHeight;
-                    this.listContainer.scrollTop = top;
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
-                    this.renderVirtual();
-                    const top = this.highlightIndex * this.itemHeight;
-                    this.listContainer.scrollTop = top;
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (this.highlightIndex >= 0 && this.filteredProjects[this.highlightIndex]) {
-                        const p = this.filteredProjects[this.highlightIndex];
-                        this.select(p.id, p.name, p.code);
-                    }
-                }
-            }
-            
-            setProject(id) {
-                // Used by Template System
-                this.hidden.value = id;
-                this.onProjectSelected(id, false);
-            }
-        }
-        
-        window.vsSelect = function(id, name, code) {
-             if (window.virtualProjectSelect) window.virtualProjectSelect.select(id, name, code);
-        };
-
         // --- User Search Manager (Handles both Owner and Collaborators) ---
         class UserSearchManager {
             constructor() {
@@ -1186,7 +1013,280 @@
         }
         
         window.userSearchManager = new UserSearchManager();
-        window.virtualProjectSelect = new VirtualProjectSelect();
+
+        // --- Project Select (Refactored) ---
+        class ProjectSelect {
+            constructor() {
+                this.input = document.getElementById('vs-input');
+                this.hidden = document.getElementById('vs-hidden');
+                this.dropdown = document.getElementById('vs-dropdown');
+                this.listContainer = document.getElementById('vs-list-container');
+                this.loading = document.getElementById('vs-loading');
+                this.empty = document.getElementById('vs-empty');
+                this.display = document.getElementById('vs-selected-display');
+                
+                this.allProjects = []; 
+                this.filteredProjects = [];
+                this.highlightIndex = -1;
+                this.isLoading = false;
+                
+                if (this.input) this.init();
+            }
+
+            init() {
+                // 1. Click/Focus -> Open & Fetch
+                const openHandler = () => {
+                    if (this.dropdown.classList.contains('open')) {
+                        this.loadData(); // Refresh if already open
+                    } else {
+                        this.open();
+                        this.loadData();
+                    }
+                };
+
+                this.input.addEventListener('click', openHandler);
+                this.input.addEventListener('focus', () => {
+                     if (!this.dropdown.classList.contains('open')) openHandler();
+                });
+
+                // Input -> Filter
+                this.input.addEventListener('input', (e) => this.filter(e.target.value));
+                
+                // Keydown navigation
+                this.input.addEventListener('keydown', (e) => this.onKeydown(e));
+                
+                // Close handlers
+                document.addEventListener('click', (e) => {
+                    if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
+                        this.close();
+                    }
+                });
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') this.close();
+                });
+
+                // Edit Mode: Trigger dependency updates if value exists
+                if (this.hidden.value) {
+                    this.onProjectSelected(this.hidden.value, false);
+                }
+            }
+            
+            async loadData() {
+                this.isLoading = true;
+                this.loading.style.display = 'block';
+                this.listContainer.style.display = 'none';
+                this.empty.style.display = 'none';
+
+                try {
+                    // Fetch Responsible Projects
+                    const res = await fetch("/api/v1/users/{{ request.user.id }}/responsible-projects");
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await res.json();
+                    
+                    // Map API Data
+                    this.allProjects = data.map(p => ({
+                        id: p.projectId,
+                        name: p.projectName,
+                        code: p.projectCode,
+                        owner: p.ownerName,
+                        phase: p.phase,
+                        progress: p.progress || 0,
+                        isActive: p.isActive
+                    }));
+                    
+                    // Sort by name
+                    this.allProjects.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+                    this.filteredProjects = this.allProjects;
+                    this.isLoading = false;
+                    this.loading.style.display = 'none';
+                    
+                    if (this.allProjects.length === 0) {
+                         this.empty.style.display = 'block';
+                         this.empty.textContent = '暂无负责项目 / No responsible projects';
+                    } else {
+                        this.listContainer.style.display = 'block';
+                        // Re-apply filter if input has value
+                        if (this.input.value.trim()) {
+                            this.filter(this.input.value);
+                        } else {
+                            this.render();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to load projects', e);
+                    this.isLoading = false;
+                    this.loading.style.display = 'block';
+                    this.loading.innerHTML = `
+                        <div style="color: #ef4444; margin-bottom: 8px;">加载失败 / Load failed</div>
+                        <button type="button" class="btn-xs" style="background:#fff; border:1px solid #ccc;" onclick="window.projectSelect.loadData()">重试 / Retry</button>
+                    `;
+                }
+            }
+
+            open() {
+                this.dropdown.classList.add('open');
+            }
+
+            close() {
+                this.dropdown.classList.remove('open');
+                this.highlightIndex = -1;
+            }
+
+            filter(q) {
+                if (!q) {
+                    this.filteredProjects = this.allProjects;
+                } else {
+                    const lowerQ = q.toLowerCase();
+                    this.filteredProjects = this.allProjects.filter(p => 
+                        (p.name && p.name.toLowerCase().includes(lowerQ)) || 
+                        (p.code && p.code.toLowerCase().includes(lowerQ))
+                    );
+                }
+                
+                this.highlightIndex = -1;
+                this.render();
+                
+                if (this.filteredProjects.length === 0 && !this.isLoading) {
+                    this.empty.style.display = 'block';
+                    this.empty.textContent = '未找到匹配项目 / No matching project';
+                    this.listContainer.style.display = 'none';
+                } else if (!this.isLoading) {
+                    this.empty.style.display = 'none';
+                    this.listContainer.style.display = 'block';
+                }
+            }
+
+            render() {
+                if (this.isLoading) return;
+                
+                let html = '';
+                this.filteredProjects.forEach((p, i) => {
+                    const isHighlight = i === this.highlightIndex ? 'highlighted' : '';
+                    
+                    // Avatar Color
+                    const colorHash = (p.id * 12345) % 360;
+                    const avatarColor = `hsl(${colorHash}, 65%, 45%)`;
+                    const avatarChar = (p.name || '?')[0].toUpperCase();
+                    
+                    // Status Badge
+                    const statusLabel = p.isActive ? (p.phase || '进行中') : '已归档';
+                    
+                    html += `
+                        <div class="ps-item ${isHighlight}" 
+                             onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')"
+                             onmouseenter="window.projectSelect.setHighlight(${i})">
+                             
+                            <div class="ps-avatar" style="background-color: ${avatarColor}">
+                                ${avatarChar}
+                            </div>
+                            
+                            <div class="ps-content">
+                                <div class="ps-name">
+                                    ${this.highlightMatch(p.name, this.input.value)}
+                                </div>
+                                <div class="ps-meta">
+                                    <span style="font-family:monospace; color: var(--text-secondary);">${this.highlightMatch(p.code, this.input.value)}</span>
+                                    <span>•</span>
+                                    <span>${p.owner}</span>
+                                    <span class="ps-badge">${statusLabel}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="ps-stats">
+                                <span class="ps-progress">${p.progress}%</span>
+                                <span class="ps-dot ${p.isActive ? 'active' : ''}"></span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                this.listContainer.innerHTML = html;
+                
+                // Scroll highlighted into view if needed
+                if (this.highlightIndex >= 0) {
+                     const el = this.listContainer.children[this.highlightIndex];
+                     if (el) el.scrollIntoView({block: 'nearest'});
+                }
+            }
+            
+            setHighlight(index) {
+                this.highlightIndex = index;
+                const items = this.listContainer.children;
+                for (let i = 0; i < items.length; i++) {
+                    if (i === index) items[i].classList.add('highlighted');
+                    else items[i].classList.remove('highlighted');
+                }
+            }
+            
+            escape(str) { return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+            
+            highlightMatch(text, q) {
+                if (!text || !q) return text || '';
+                try {
+                    const reg = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    return text.replace(reg, '<span style="color:var(--primary);font-weight:bold;">$1</span>');
+                } catch(e) { return text; }
+            }
+
+            select(id, name, code) {
+                const oldId = this.hidden.value;
+                if (oldId && String(oldId) !== String(id)) {
+                    if (window.userSearchManager) window.userSearchManager.clearAll();
+                }
+
+                this.input.value = name;
+                this.hidden.value = id;
+                this.display.textContent = `已选择: ${name} (${code})`;
+                this.display.style.display = 'block';
+                
+                this.close();
+                this.onProjectSelected(id, true);
+                
+                if (window.loadTaskRecommendations) window.loadTaskRecommendations(); 
+            }
+            
+            onProjectSelected(projectId, isUserAction) {
+                if (window.userSearchManager) {
+                    window.userSearchManager.enable(projectId);
+                }
+            }
+            
+            onKeydown(e) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.highlightIndex = Math.min(this.highlightIndex + 1, this.filteredProjects.length - 1);
+                    this.render(); // Re-render to update highlight class
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
+                    this.render();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (this.highlightIndex >= 0 && this.filteredProjects[this.highlightIndex]) {
+                        const p = this.filteredProjects[this.highlightIndex];
+                        this.select(p.id, p.name, p.code);
+                    }
+                }
+            }
+            
+            setProject(id) {
+                this.hidden.value = id;
+                this.onProjectSelected(id, false);
+            }
+        }
+        
+        window.vsSelect = function(id, name, code) {
+             if (window.projectSelect) window.projectSelect.select(id, name, code);
+        };
+        
+        // Init
+        window.projectSelect = new ProjectSelect();
+        // Alias for template compatibility
+        window.virtualProjectSelect = window.projectSelect;
+
         
         // --- Form & Other Logic (Keep existing) ---
         const form = document.querySelector('form');

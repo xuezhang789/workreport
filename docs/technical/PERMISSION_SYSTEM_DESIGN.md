@@ -81,8 +81,9 @@ def my_view(request, project_id):
 
 ### 4.4 User Search Policy
 - **Global Managers**: Can search all users.
-- **Project Owners/Managers**: Can search all users (to add new members).
-- **Regular Members**: Can only search users within their accessible projects (to assign tasks).
+- **Project Owners/Managers**: Can search all users (to add new members) in global context.
+- **Task Assignment (Scoped)**: When `project_id` is provided (e.g., Create Task), search is strictly limited to **existing project members** (Owner, Managers, Members).
+- **Regular Members**: Can only search users within their accessible projects.
 - **API**: `core.views.user_search_api` implements this logic.
 
 ## 5. Performance Optimization

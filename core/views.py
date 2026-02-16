@@ -270,7 +270,6 @@ def user_search_api(request):
     if project_id and project_id.isdigit():
         # Project specific search
         from projects.models import Project
-        from reports.utils import get_accessible_projects
         
         # Security: Check if user has access to this project
         accessible_projects = get_accessible_projects(request.user)
@@ -326,8 +325,8 @@ def user_search_api(request):
                 role_label = 'Admin'
                 
         # Department
-        dept = u.profile.department if hasattr(u, 'profile') else ''
-        avatar = u.profile.avatar.url if hasattr(u, 'profile') and u.profile.avatar else ''
+        dept = u.profile.get_position_display() if hasattr(u, 'profile') else ''
+        avatar = u.profile.avatar.url if hasattr(u, 'profile') and hasattr(u.profile, 'avatar') and u.profile.avatar else ''
         
         data.append({
             'id': u.id,
