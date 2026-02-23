@@ -46,9 +46,40 @@ class ProjectForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['owner'].queryset = User.objects.filter(is_active=True).order_by('username')
-        self.fields['members'].queryset = User.objects.filter(is_active=True).order_by('username')
-        self.fields['managers'].queryset = User.objects.filter(is_active=True).order_by('username')
+        
+        # Performance Optimization: Don't load all users initially
+        # 性能优化：初始化时不加载所有用户，避免大量数据导致页面卡顿
+        
+        # 1. Default: Empty QuerySet
+        self.fields['owner'].queryset = User.objects.none()
+        self.fields['members'].queryset = User.objects.none()
+        self.fields['managers'].queryset = User.objects.none()
+
+        # 2. Edit Mode: Load existing relations
+        if self.instance.pk:
+            self.fields['owner'].queryset = User.objects.filter(pk=self.instance.owner_id)
+            self.fields['members'].queryset = self.instance.members.all()
+            self.fields['managers'].queryset = self.instance.managers.all()
+
+        # 3. POST / Validation Mode: Allow submitted IDs
+        if self.data:
+            owner_id = self.data.get('owner')
+            member_ids = self.data.getlist('members')
+            manager_ids = self.data.getlist('managers')
+
+            # Use union of existing and submitted to ensure validation passes and data is preserved
+            # Note: For simple validation, just filtering by submitted IDs is enough.
+            # Django will validate that the submitted ID exists in the queryset.
+            
+            if owner_id:
+                self.fields['owner'].queryset = User.objects.filter(pk=owner_id)
+            
+            if member_ids:
+                self.fields['members'].queryset = User.objects.filter(pk__in=member_ids)
+                
+            if manager_ids:
+                self.fields['managers'].queryset = User.objects.filter(pk__in=manager_ids)
+
         # 显式启用多选并设置易于识别的 id，避免前端样式或组件覆盖成单选
         self.fields['members'].widget.attrs.update({'id': 'members-select', 'multiple': 'multiple'})
         self.fields['managers'].widget.attrs.update({'id': 'managers-select', 'multiple': 'multiple'})

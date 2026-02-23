@@ -714,18 +714,18 @@
                                             </label>
                                         </div>
                                         <div class="options-container">
-                                            {% for user in form.managers.field.queryset %}
-                                                <label class="option-item">
-                                                    <div class="checkbox-label">
-                                                        <input type="checkbox" name="managers" value="{{ user.pk }}" class="manager-checkbox" data-name="{{ user.get_full_name|default:user.username }}">
-                                                        <div class="user-info">
-                                                            <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                                            <span class="user-username">@{{ user.username }}</span>
-                                                        </div>
+                                        {% for user in form.managers.field.queryset %}
+                                            <label class="option-item">
+                                                <div class="checkbox-label">
+                                                    <input type="checkbox" name="managers" value="{{ user.pk }}" class="manager-checkbox" data-name="{{ user.get_full_name|default:user.username }}" checked>
+                                                    <div class="user-info">
+                                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                                        <span class="user-username">@{{ user.username }}</span>
                                                     </div>
-                                                </label>
-                                            {% endfor %}
-                                        </div>
+                                                </div>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
                                     </div>
                                     <div class="selected-tags" id="selected-managers-tags" style="border: none; padding: 12px 0;"></div>
                                 </div>
@@ -765,13 +765,14 @@
                                     <div class="options-container">
                                         {% for user in form.members.field.queryset %}
                                             <label class="option-item">
-                                                <div class="checkbox-label">
-                                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }} @{{ user.username }}">
-                                                    <div class="user-info">
-                                                        <span class="user-name">{{ user.get_full_name|default:user.username }} <span class="user-username">@{{ user.username }}</span></span>
-                                                    </div>
-                                                </div>
-                                            </label>
+                                <div class="checkbox-label">
+                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }}" checked>
+                                    <div class="user-info">
+                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                                        <span class="user-username">@{{ user.username }}</span>
+                                    </div>
+                                </div>
+                            </label>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -794,6 +795,8 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const userSearchApiUrl = "{% url 'core:user_search_api' %}";
+
         // Description Character Counter
         const descInput = document.getElementById('{{ form.description.id_for_label }}');
         const descCounter = document.getElementById('desc-counter');
@@ -805,98 +808,17 @@
             updateCount();
         }
 
-        // --- API Data Fetching & Population ---
+        // --- API Data Fetching & Population (Disabled as Django form handles it) ---
+        /*
         const projectId = "{{ project.id|default:'' }}";
-        const pageMode = "{{ mode }}"; // Renamed to avoid conflict
+        const pageMode = "{{ mode }}";
         const apiEndpoint = pageMode === 'edit' && projectId ? "{% url 'projects:api_project_detail' 0 %}".replace('0', projectId) : null;
         
         if (pageMode === 'edit' && apiEndpoint) {
-            const form = document.querySelector('form');
-            const loadingOverlay = document.createElement('div');
-            
-            // Loading UI
-            loadingOverlay.style.cssText = `
-                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(255,255,255,0.8); z-index: 1000;
-                display: flex; align-items: center; justify-content: center;
-                border-radius: var(--radius-lg);
-            `;
-            loadingOverlay.innerHTML = `
-                <div style="text-align: center; color: var(--primary);">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-                    </svg>
-                    <div style="margin-top: 8px; font-weight: 600;">Loading project data...</div>
-                </div>
-                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
-            `;
-            
-            // Ensure container is relative
-            const card = document.querySelector('.form-card');
-            if (card) {
-                card.style.position = 'relative';
-                card.appendChild(loadingOverlay);
-            }
-
-            fetch(apiEndpoint)
-                .then(res => {
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    return res.json();
-                })
-                .then(data => {
-                    // Populate Standard Fields
-                    const setVal = (name, val) => {
-                        const el = document.querySelector(`[name="${name}"]`);
-                        if (el && val !== undefined && val !== null) {
-                             if (el.type === 'checkbox') el.checked = val;
-                             else el.value = val;
-                        }
-                    };
-
-                    setVal('name', data.name);
-                    setVal('code', data.code);
-                    setVal('description', data.description);
-                    setVal('start_date', data.start_date); // YYYY-MM-DD
-                    setVal('end_date', data.end_date);
-                    setVal('sla_hours', data.sla_hours);
-                    setVal('is_active', data.is_active); // Checkbox?
-                    
-                    // Handle Owner (Select)
-                    const ownerSelect = document.querySelector('[name="owner"]');
-                    if (ownerSelect && data.owner_id) {
-                         ownerSelect.value = data.owner_id;
-                    }
-
-                    // Handle Multi-selects (Members & Managers) using the MultiSelect class instance
-                    // We need to find the instances or manipulate DOM directly. 
-                    // Since MultiSelect class just manages checkboxes, we can check them.
-                    
-                    const setMulti = (name, ids) => {
-                        const checkboxes = document.querySelectorAll(`input[name="${name}"]`);
-                        checkboxes.forEach(cb => {
-                            if (ids.includes(parseInt(cb.value))) {
-                                cb.checked = true;
-                            } else {
-                                cb.checked = false;
-                            }
-                            // Trigger change to update UI tags
-                            cb.dispatchEvent(new Event('change'));
-                        });
-                    };
-
-                    if (data.member_ids) setMulti('members', data.member_ids);
-                    if (data.manager_ids) setMulti('managers', data.manager_ids);
-
-                })
-                .catch(err => {
-                    console.error('Failed to fetch project details:', err);
-                    alert('加载最新项目数据失败，使用缓存版本。 / Failed to load latest project data. Using cached version.');
-                })
-                .finally(() => {
-                    if (loadingOverlay.parentNode) loadingOverlay.parentNode.removeChild(loadingOverlay);
-                });
+             // Redundant JS fetching removed for performance.
+             // Server-side rendering handles initial state.
         }
-
+        */
 
         // File Upload Logic
         const uploadZone = document.getElementById('file-upload-zone');
@@ -908,9 +830,7 @@
         const isEditMode = "{{ mode }}" === 'edit';
         
         if (uploadZone && fileInput) {
-            // Common Event Listeners (Click & Drag Visuals)
-            // Note: Click handled natively by label->input
-
+            // ... (keep existing file upload logic) ...
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.classList.add('drag-over');
@@ -930,7 +850,6 @@
                         formData.append('files', file);
                     });
                     
-                    // Indicate loading (optional UI enhancement)
                     const placeholder = document.querySelector('.upload-text');
                     const originalText = placeholder.textContent;
                     placeholder.textContent = 'Uploading...';
@@ -949,7 +868,6 @@
                     .then(data => {
                         placeholder.textContent = originalText;
                         if (data.status === 'success') {
-                            // Reload to show new files (simplest way to ensure consistency)
                             window.location.reload();
                         } else {
                             alert('上传失败 / Upload failed: ' + (data.message || 'Unknown error'));
@@ -962,12 +880,9 @@
                     });
                  });
                  
-                 // Drag & Drop for Edit Mode
                  uploadZone.addEventListener('drop', (e) => {
                     e.preventDefault();
                     uploadZone.classList.remove('drag-over');
-                    
-                    // Create a fake input change event for consistency
                     fileInput.files = e.dataTransfer.files;
                     fileInput.dispatchEvent(new Event('change'));
                  });
@@ -975,8 +890,6 @@
              } else {
                  // Handle Create Mode: Accumulate in DataTransfer
                  function updateFileList() {
-                    // Only clear dynamic items, not the whole container if we want to support mixed content?
-                    // Actually for Create mode, list is empty initially.
                     fileList.innerHTML = '';
                     const dateStr = new Date().toISOString().slice(0, 10);
     
@@ -996,10 +909,6 @@
                                 <span>${sizeStr}</span>
                                 <span>${dateStr}</span>
                             </div>
-                            <div class="attachment-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-                                <span>Up:</span>
-                                <span style="font-weight: 500;">Me</span>
-                            </div>
                             <div class="attachment-actions">
                                 <button type="button" class="btn-xs btn-delete" onclick="removeFile(${index})">删除 / Remove</button>
                             </div>
@@ -1007,7 +916,6 @@
                         fileList.appendChild(item);
                     });
                     
-                    // Sync to input
                     fileInput.files = globalDataTransfer.files;
                 }
     
@@ -1034,15 +942,12 @@
              }
         }
         
-        // Delete Existing Attachment (Edit Mode)
+        // Delete Existing Attachment
         window.deleteExistingAttachment = function(id, url) {
             if (!confirm('确定删除该附件吗？')) return;
-            
             fetch(url, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
             .then(response => response.json())
             .then(data => {
@@ -1053,10 +958,7 @@
                     alert('删除失败 / Delete failed: ' + data.message);
                 }
             })
-            .catch(err => {
-                console.error(err);
-                alert('删除失败 / Delete failed');
-            });
+            .catch(err => alert('删除失败 / Delete failed'));
         };
 
         // Add classes to Django rendered fields
@@ -1069,97 +971,185 @@
             }
         });
 
-        // Multi-select Logic
+        // --- Multi-select Logic with AJAX (Updated) ---
         class MultiSelect {
-            constructor(containerId, filterId, selectAllId, countId, tagsId, checkboxClass) {
+            constructor(containerId, filterId, selectAllId, countId, tagsId, checkboxClass, fieldName) {
                 this.container = document.getElementById(containerId);
                 this.filterInput = document.getElementById(filterId);
                 this.selectAll = document.getElementById(selectAllId);
                 this.countDisplay = document.getElementById(countId);
                 this.tagsContainer = document.getElementById(tagsId);
+                this.optionsContainer = this.container ? this.container.querySelector('.options-container') : null;
                 this.checkboxClass = checkboxClass;
-                this.checkboxes = Array.from(document.querySelectorAll(`.${checkboxClass}`));
+                this.fieldName = fieldName;
                 
+                if (!this.container) return;
+
+                // Track existing values to avoid duplicates
+                this.existingValues = new Set();
+                Array.from(document.querySelectorAll(`.${checkboxClass}`)).forEach(cb => {
+                    this.existingValues.add(cb.value);
+                });
+
                 this.init();
             }
 
             init() {
-                if(!this.container) return;
+                // Debounced Filter
+                let timeout;
+                this.filterInput.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => this.filter(e.target.value), 300);
+                });
 
-                // Filter
-                this.filterInput.addEventListener('input', (e) => this.filter(e.target.value));
-
-                // Select All
+                // Select All (Only visible items)
                 this.selectAll.addEventListener('change', (e) => {
-                    const visibleCheckboxes = this.checkboxes.filter(cb => cb.closest('.option-item').style.display !== 'none');
-                    visibleCheckboxes.forEach(cb => cb.checked = e.target.checked);
+                    const visibleCheckboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`)).filter(cb => cb.closest('.option-item').style.display !== 'none');
+                    visibleCheckboxes.forEach(cb => {
+                        cb.checked = e.target.checked;
+                        cb.dispatchEvent(new Event('change'));
+                    });
                     this.updateState();
                 });
 
-                // Individual Checkboxes
-                this.checkboxes.forEach(cb => {
-                    cb.addEventListener('change', () => this.updateState());
+                // Delegate change events
+                this.optionsContainer.addEventListener('change', (e) => {
+                    if (e.target.classList.contains(this.checkboxClass)) {
+                        this.updateState();
+                    }
                 });
 
-                // Initial State
                 this.updateState();
             }
 
-            filter(query) {
-                const term = query.toLowerCase();
-                this.checkboxes.forEach(cb => {
+            async filter(query) {
+                const term = query.trim().toLowerCase();
+
+                // 1. Fetch new data if query is meaningful
+                if (term.length >= 1) {
+                    try {
+                        const res = await fetch(`${userSearchApiUrl}?q=${encodeURIComponent(term)}`);
+                        const data = await res.json();
+                        
+                        if (data.results) {
+                            data.results.forEach(user => {
+                                if (this.existingValues.has(String(user.id))) return;
+                                this.appendOption(user);
+                                this.existingValues.add(String(user.id));
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Search failed', err);
+                    }
+                }
+
+                // 2. Filter DOM
+                const checkboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`));
+                checkboxes.forEach(cb => {
                     const item = cb.closest('.option-item');
-                    const text = item.textContent.toLowerCase();
-                    item.style.display = text.includes(term) ? '' : 'none';
+                    const text = (cb.dataset.name || item.textContent).toLowerCase();
+                    const matches = text.includes(term);
+                    
+                    if (term.length === 0) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = matches ? '' : 'none';
+                    }
                 });
+            }
+            
+            appendOption(user) {
+                const label = document.createElement('label');
+                label.className = 'option-item';
+                label.innerHTML = `
+                    <div class="checkbox-label">
+                        <input type="checkbox" name="${this.fieldName}" value="${user.id}" class="${this.checkboxClass}" data-name="${user.text}">
+                        <div class="user-info">
+                            <span class="user-name">${user.text}</span>
+                        </div>
+                    </div>
+                `;
+                this.optionsContainer.appendChild(label);
             }
 
             updateState() {
-                const checked = this.checkboxes.filter(cb => cb.checked);
+                const checkboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`));
+                const checked = checkboxes.filter(cb => cb.checked);
                 this.countDisplay.textContent = checked.length;
                 
-                // Update Tags
                 this.tagsContainer.innerHTML = '';
                 checked.forEach(cb => {
                     const name = cb.dataset.name;
                     const tag = document.createElement('div');
                     tag.className = 'selected-tag';
-                    tag.innerHTML = `
-                        <span>${name}</span>
-                        <button type="button" class="remove-btn" onclick="document.querySelector('input[value=\\'${cb.value}\\'].${this.checkboxClass}').click()">×</button>
-                    `;
+                    tag.innerHTML = `<span>${name}</span><button type="button" class="remove-btn" data-value="${cb.value}">×</button>`;
+                    
+                    tag.querySelector('.remove-btn').addEventListener('click', (e) => {
+                        const val = e.currentTarget.dataset.value;
+                        const targetCb = document.querySelector(`input[value="${val}"].${this.checkboxClass}`);
+                        if (targetCb) {
+                            targetCb.checked = false;
+                            targetCb.dispatchEvent(new Event('change'));
+                            this.updateState();
+                        }
+                    });
                     this.tagsContainer.appendChild(tag);
                 });
             }
         }
 
-        new MultiSelect('members-container', 'member-filter', 'select-all-members', 'member-count', 'selected-members-tags', 'member-checkbox');
-        new MultiSelect('managers-container', 'manager-filter', 'select-all-managers', 'manager-count', 'selected-managers-tags', 'manager-checkbox');
+        new MultiSelect('members-container', 'member-filter', 'select-all-members', 'member-count', 'selected-members-tags', 'member-checkbox', 'members');
+        new MultiSelect('managers-container', 'manager-filter', 'select-all-managers', 'manager-count', 'selected-managers-tags', 'manager-checkbox', 'managers');
 
-        // Owner Search Logic
+        // --- Owner Search Logic (Updated) ---
         const ownerSearch = document.getElementById('owner-search');
         const ownerSelect = document.querySelector('select[name="owner"]');
         
         if (ownerSearch && ownerSelect) {
-            const originalOptions = Array.from(ownerSelect.options);
-            
+            let timeout;
             ownerSearch.addEventListener('input', function(e) {
-                const term = e.target.value.toLowerCase();
+                const term = e.target.value.trim();
+                clearTimeout(timeout);
                 
-                // Reset options
-                ownerSelect.innerHTML = '';
-                
-                // Filter and append options
-                originalOptions.forEach(opt => {
-                    if (opt.text.toLowerCase().includes(term) || opt.value === '') {
-                        ownerSelect.appendChild(opt);
+                timeout = setTimeout(async () => {
+                    if (term.length < 1) return; 
+                    
+                    try {
+                        const res = await fetch(`${userSearchApiUrl}?q=${encodeURIComponent(term)}`);
+                        const data = await res.json();
+                        
+                        const currentVal = ownerSelect.value;
+                        const currentText = ownerSelect.options[ownerSelect.selectedIndex]?.text;
+                        
+                        ownerSelect.innerHTML = ''; 
+                        
+                        // Restore current selection
+                        if (currentVal) {
+                             const opt = document.createElement('option');
+                             opt.value = currentVal;
+                             opt.text = currentText;
+                             opt.selected = true;
+                             ownerSelect.appendChild(opt);
+                        } else {
+                             const opt = document.createElement('option');
+                             opt.value = "";
+                             opt.text = "---------";
+                             ownerSelect.appendChild(opt);
+                        }
+                        
+                        if (data.results) {
+                            data.results.forEach(user => {
+                                if (user.id == currentVal) return;
+                                const opt = document.createElement('option');
+                                opt.value = user.id;
+                                opt.text = user.text;
+                                ownerSelect.appendChild(opt);
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Owner search failed', err);
                     }
-                });
-                
-                // If the currently selected value is filtered out, select the first available option (usually placeholder)
-                if (ownerSelect.selectedIndex === -1 && ownerSelect.options.length > 0) {
-                    ownerSelect.selectedIndex = 0;
-                }
+                }, 300);
             });
         }
     });
