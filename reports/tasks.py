@@ -1,7 +1,9 @@
 from celery import shared_task
 from django.core.mail import send_mail
 from django.conf import settings
-from reports.models import ExportJob, DailyReport, Task, Project
+from reports.models import ExportJob, DailyReport, Task, Project, Notification
+from audit.models import AuditLog
+from datetime import timedelta
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 import csv
@@ -18,6 +20,23 @@ def _sanitize_csv_cell(value):
     if text.startswith(CSV_DANGEROUS_PREFIXES):
         return "'" + text
     return text
+
+@shared_task
+def cleanup_old_logs_task(days=180):
+    """
+    清理旧的 AuditLog 和 Notification 记录。
+    默认保留最近 180 天的日志。
+    """
+    cutoff_date = timezone.now() - timedelta(days=days)
+    
+    # 清理 AuditLog
+    audit_count, _ = AuditLog.objects.filter(created_at__lt=cutoff_date).delete()
+    
+    # 清理 Notification (通知通常可以保留更短时间，例如 90 天，这里统一使用 days 参数)
+    # 对于未读通知，也许可以保留更久？目前策略是一视同仁。
+    notif_count, _ = Notification.objects.filter(created_at__lt=cutoff_date).delete()
+    
+    return f"Cleaned up {audit_count} AuditLogs and {notif_count} Notifications older than {days} days."
 
 @shared_task
 def send_email_async_task(subject, body, from_email, recipient_list, html_message=None):

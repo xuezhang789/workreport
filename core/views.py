@@ -252,6 +252,73 @@ def account_settings(request):
 
 
 @login_required
+def global_search(request):
+    """
+    全局搜索：搜索项目、任务和日报。
+    支持简单的数据库模糊查询。
+    """
+    q = request.GET.get('q', '').strip()
+    if not q:
+        return render(request, 'core/search_results.html', {'query': q, 'results': {}})
+        
+    results = {
+        'projects': [],
+        'tasks': [],
+        'reports': []
+    }
+    
+    # 1. Search Projects
+    # 仅搜索有权限的项目
+    accessible_projects = get_accessible_projects(request.user)
+    projects = accessible_projects.filter(
+        Q(name__icontains=q) | 
+        Q(code__icontains=q) |
+        Q(description__icontains=q)
+    ).select_related('owner', 'current_phase').distinct()[:10]
+    results['projects'] = projects
+    
+    # 2. Search Tasks
+    # 搜索用户可访问的任务：自己创建的、负责的、协作的、或所在项目的
+    # 简化逻辑：如果在可访问的项目中，就可以搜索到任务
+    from tasks.models import Task
+    tasks = Task.objects.filter(
+        project__in=accessible_projects
+    ).filter(
+        Q(title__icontains=q) |
+        Q(content__icontains=q) |
+        Q(id__icontains=q) # 支持搜 ID
+    ).select_related('project', 'user', 'status').distinct()[:20]
+    results['tasks'] = tasks
+    
+    # 3. Search Daily Reports
+    # 搜索自己提交的，或者管理的项目的日报
+    # 管理员可搜所有？或者按权限
+    # 简单起见，搜索自己能看到的日报
+    # 逻辑：如果是项目管理员，可以看到项目成员的日报；如果是普通成员，看自己和同项目？
+    # 复用 reports.utils.get_manageable_projects ?
+    
+    # 这里使用一个简化的权限：
+    # - 自己的日报
+    # - 自己管理的项目的日报
+    manageable_projects = get_manageable_projects(request.user)
+    
+    reports = DailyReport.objects.filter(
+        Q(user=request.user) |
+        Q(projects__in=manageable_projects)
+    ).filter(
+        Q(content__icontains=q) |
+        Q(plan_next_day__icontains=q)
+    ).select_related('user').prefetch_related('projects').distinct()[:10]
+    
+    results['reports'] = reports
+    
+    return render(request, 'core/search_results.html', {
+        'query': q,
+        'results': results,
+        'total_count': len(projects) + len(tasks) + len(reports)
+    })
+
+@login_required
 def user_search_api(request):
     """人员远程搜索，用于任务指派等场景。"""
     # Allow participants to search users if they have any accessible project

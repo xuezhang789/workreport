@@ -1,0 +1,79 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+{% load core_tags %}
+
+{% block title %}搜索结果 / Search Results{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1 class="page-title">搜索结果 / Search Results</h1>
+        <p class="page-subtitle">关键词 / Keyword: "{{ query }}" (共 {{ total_count }} 条结果)</p>
+    </div>
+
+    <!-- Projects -->
+    {% if results.projects %}
+    <section class="mb-4">
+        <h2 class="text-lg font-bold mb-2">项目 / Projects ({{ results.projects|length }})</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for project in results.projects %}
+            <a href="{% url 'projects:project_detail' project.id %}" class="block bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                <div class="font-bold text-gray-900">{{ project.name }}</div>
+                <div class="text-sm text-gray-500">{{ project.code }}</div>
+                <div class="mt-2 text-sm text-gray-600 truncate">{{ project.description|striptags }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Tasks -->
+    {% if results.tasks %}
+    <section class="mb-4">
+        <h2 class="text-lg font-bold mb-2">任务 / Tasks ({{ results.tasks|length }})</h2>
+        <div class="flex flex-col gap-2">
+            {% for task in results.tasks %}
+            <a href="{% url 'tasks:task_detail' task.id %}" class="flex items-center bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition gap-4">
+                <div class="w-2 h-12 rounded-l bg-{{ task.status_color }}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 truncate">{{ task.title }}</div>
+                    <div class="text-xs text-gray-500">
+                        {{ task.project.name }} • {{ task.user.get_full_name|default:task.user.username }}
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500 whitespace-nowrap">
+                    {{ task.get_status_display }}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Reports -->
+    {% if results.reports %}
+    <section class="mb-4">
+        <h2 class="text-lg font-bold mb-2">日报 / Reports ({{ results.reports|length }})</h2>
+        <div class="flex flex-col gap-2">
+            {% for report in results.reports %}
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="font-medium">{{ report.user.get_full_name|default:report.user.username }}</div>
+                    <div class="text-sm text-gray-500">{{ report.date }}</div>
+                </div>
+                <div class="text-sm text-gray-600 line-clamp-2">{{ report.content|striptags }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if not results.projects and not results.tasks and not results.reports %}
+    <div class="text-center py-12 text-gray-500">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">未找到相关结果</h3>
+        <p class="mt-1 text-sm text-gray-500">尝试使用不同的关键词或检查拼写。</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
