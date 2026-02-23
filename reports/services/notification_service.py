@@ -7,24 +7,10 @@ from channels.layers import get_channel_layer
 from reports.models import Notification
 from core.services.notification_template import NotificationContent, NotificationTemplateService
 
-import threading
 import logging
-from django.core.mail import send_mail
+from reports.tasks import send_email_async_task
 
 logger = logging.getLogger(__name__)
-
-def _send_email_async(subject, body, from_email, recipient_list, html_message):
-    try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=from_email,
-            recipient_list=recipient_list,
-            html_message=html_message,
-            fail_silently=True
-        )
-    except Exception as e:
-        logger.error(f"Failed to send email async: {e}")
 
 def send_notification(user, title, message, notification_type, data=None, priority='normal', content: NotificationContent = None):
     # ... (DB and WebSocket logic remains same) ...
@@ -69,13 +55,14 @@ def send_notification(user, title, message, notification_type, data=None, priori
             subject = content.email_subject
             from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
             
-            # Offload to thread (In production, use Celery)
-            email_thread = threading.Thread(
-                target=_send_email_async,
-                args=(subject, content.body, from_email, [user.email], html_message),
-                daemon=True
+            # Use Celery task instead of Thread
+            send_email_async_task.delay(
+                subject=subject,
+                body=content.body,
+                from_email=from_email,
+                recipient_list=[user.email],
+                html_message=html_message
             )
-            email_thread.start()
             
         except Exception as e:
             logger.error(f"Failed to trigger email to {user.email}: {e}")

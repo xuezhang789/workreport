@@ -112,7 +112,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                 message=f"您被分配了新任务：{instance.title}",
                 notification_type='task_assigned',
                 priority='high',
-                data={'task_id': instance.id, 'project_id': instance.project_id}
+                data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
             )
     else:
         # 更新场景
@@ -121,7 +121,39 @@ def notify_task_assignment(sender, instance, created, **kwargs):
             
             # 1. 用户重新分配
             if 'user' in diff:
-                new_user_username = diff['user']['new']
+                # 获取旧用户
+                # diff['user']['old'] 可能包含用户名（如果 AuditService 能够解析）或者 ID
+                # 我们需要更健壮的处理
+                
+                old_user_val = diff['user']['old']
+                new_user_val = diff['user']['new']
+                
+                old_user = None
+                
+                if old_user_val:
+                    # 尝试按用户名查找
+                    try:
+                        old_user = User.objects.get(username=old_user_val)
+                    except User.DoesNotExist:
+                        # 尝试按 ID 查找 (如果 diff 存的是 ID)
+                        try:
+                            if str(old_user_val).isdigit():
+                                old_user = User.objects.get(pk=int(old_user_val))
+                        except (User.DoesNotExist, ValueError):
+                            pass
+                
+                # 通知旧用户（任务被移除）
+                if old_user:
+                    if old_user != current_operator:
+                        send_notification(
+                            user=old_user,
+                            title="任务移除 / Task Removed",
+                            message=f"任务 {instance.title} 已从您的列表中移除。",
+                            notification_type='task_assigned',
+                            priority='normal',
+                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/projects/{instance.project_id}/tasks/'}
+                        )
+
                 # 通知新用户
                 if instance.user and instance.user != current_operator:
                     send_notification(
@@ -130,7 +162,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 已转交给您",
                         notification_type='task_assigned',
                         priority='high',
-                        data={'task_id': instance.id, 'project_id': instance.project_id}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
                     )
             
             # 2. 状态变更
@@ -146,7 +178,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 状态从 {old_status} 变更为 {new_status}",
                         notification_type='task_updated',
                         priority='normal',
-                        data={'task_id': instance.id, 'project_id': instance.project_id, 'diff': diff}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'diff': diff, 'action_url': f'/tasks/{instance.id}/'}
                     )
                 
                 # 通知协作者
@@ -158,7 +190,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                             message=f"您协作的任务 {instance.title} 状态更新为 {new_status}",
                             notification_type='task_updated',
                             priority='normal',
-                            data={'task_id': instance.id, 'project_id': instance.project_id}
+                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
                         )
 
             # 3. 优先级变更（高优先级警报）
@@ -171,8 +203,54 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 优先级调整为 高 (High)",
                         notification_type='task_updated',
                         priority='high',
-                        data={'task_id': instance.id, 'project_id': instance.project_id}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
                     )
+
+@receiver(m2m_changed, sender=Task.collaborators.through)
+def notify_task_collaborator_change(sender, instance, action, reverse, model, pk_set, **kwargs):
+    """
+    当任务协作人变更时发送通知。
+    """
+    if action not in ['post_add', 'post_remove', 'post_clear']:
+        return
+
+    if reverse:
+        pass
+    else:
+        task = instance
+        current_user = get_current_user()
+
+        if action == 'post_add':
+            for user_id in pk_set:
+                try:
+                    user = User.objects.get(pk=user_id)
+                    if user != current_user:
+                        send_notification(
+                            user=user,
+                            title="任务协作 / Task Collaboration",
+                            message=f"您已被添加为任务 {task.title} 的协作人。",
+                            notification_type='task_collaborator',
+                            priority='normal',
+                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/tasks/{task.id}/'}
+                        )
+                except User.DoesNotExist:
+                    continue
+
+        elif action == 'post_remove':
+            for user_id in pk_set:
+                try:
+                    user = User.objects.get(pk=user_id)
+                    if user != current_user:
+                        send_notification(
+                            user=user,
+                            title="协作移除 / Collaboration Ended",
+                            message=f"您已被移除任务 {task.title} 的协作人身份。",
+                            notification_type='task_collaborator',
+                            priority='normal',
+                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/projects/{task.project_id}/tasks/'}
+                        )
+                except User.DoesNotExist:
+                    continue
 
 @receiver(post_save, sender=Project)
 def notify_project_change(sender, instance, created, **kwargs):
@@ -324,7 +402,7 @@ def notify_project_change(sender, instance, created, **kwargs):
                 message=content.body,
                 notification_type='project_update',
                 priority='high',
-                data={'project_id': instance.id, 'diff': details},
+                data={'project_id': instance.id, 'diff': details, 'action_url': f'/projects/{instance.id}/'},
                 content=content
             )
 @receiver(post_save, sender=TaskComment)
@@ -352,7 +430,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
                 message=f"{instance.user.username} 在任务 {instance.task.title} 的评论中提到了您",
                 notification_type='task_mention',
                 priority='high',
-                data={'task_id': instance.task.id, 'comment_id': instance.id}
+                data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/#comment-{instance.id}'}
             )
         except User.DoesNotExist:
             pass
@@ -366,7 +444,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
             message=f"{instance.user.username} 评论了您的任务 {instance.task.title}",
             notification_type='task_updated',
             priority='normal',
-            data={'task_id': instance.task.id, 'comment_id': instance.id}
+            data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/#comment-{instance.id}'}
         )
 
 @receiver(m2m_changed)

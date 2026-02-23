@@ -73,6 +73,34 @@ class AuditService:
             field_name = field.name
             
             try:
+                # 对于外键，我们比较 ID 更准确。
+                if field.is_relation and field.many_to_one:
+                     old_val = getattr(old_instance, field.attname) # e.g. user_id
+                     new_val = getattr(new_instance, field.attname)
+                     
+                     if old_val != new_val:
+                        # 尝试获取关联对象的更友好表示
+                        # 例如：如果是 User，获取 username
+                        if field.related_model.__name__ == 'User':
+                             try:
+                                 old_obj = field.related_model.objects.get(pk=old_val) if old_val else None
+                                 new_obj = field.related_model.objects.get(pk=new_val) if new_val else None
+                                 
+                                 # 如果字段名是 'user'，直接使用
+                                 # 如果字段名是 'owner' (Project)，我们也希望在 signals.py 中使用 'owner'
+                                 # 但 reports/signals.py 中 Task 的逻辑是检查 'user' in diff
+                                 
+                                 diff[field_name] = {
+                                     'old': old_obj.username if old_obj else None,
+                                     'new': new_obj.username if new_obj else None
+                                 }
+                             except:
+                                 diff[field_name] = {'old': str(old_val), 'new': str(new_val)}
+                        else:
+                             # 如果是 Project, Task 等其他外键
+                             diff[field_name] = {'old': str(old_val), 'new': str(new_val)}
+                     continue
+
                 old_val = getattr(old_instance, field_name)
                 new_val = getattr(new_instance, field_name)
                 

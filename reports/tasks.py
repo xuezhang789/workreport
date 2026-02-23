@@ -20,6 +20,25 @@ def _sanitize_csv_cell(value):
     return text
 
 @shared_task
+def send_email_async_task(subject, body, from_email, recipient_list, html_message=None):
+    """
+    异步发送邮件的 Celery 任务。
+    """
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=from_email,
+            recipient_list=recipient_list,
+            html_message=html_message,
+            fail_silently=False  # Allow Celery to catch exceptions
+        )
+        return f"Email sent to {recipient_list}"
+    except Exception as e:
+        # 记录错误，也可以根据需要配置重试机制
+        return f"Failed to send email: {e}"
+
+@shared_task
 def send_weekly_digest_task(recipient, stats):
     """
     发送周报邮件的异步包装器。
