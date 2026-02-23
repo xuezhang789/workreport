@@ -413,64 +413,6 @@
     }
     .loading-overlay.active { opacity: 1; pointer-events: all; }
     
-    /* --- Toast Notifications --- */
-    .toast-container {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        z-index: 2000;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        pointer-events: none;
-    }
-
-    .toast {
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 12px 16px;
-        box-shadow: var(--shadow);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 300px;
-        transform: translateX(120%);
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        pointer-events: auto;
-    }
-
-    .toast.show {
-        transform: translateX(0);
-    }
-
-    .toast-icon {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        flex-shrink: 0;
-    }
-    .toast-success .toast-icon { background: rgba(16,185,129,0.1); color: var(--success); }
-    .toast-error .toast-icon { background: rgba(239,68,68,0.1); color: var(--blocked); }
-
-    .toast-content { flex: 1; }
-    .toast-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
-    .toast-msg { font-size: 13px; color: var(--text-secondary); }
-
-    .toast-undo {
-        background: none;
-        border: none;
-        color: var(--primary);
-        font-weight: 600;
-        font-size: 13px;
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-    }
-    .toast-undo:hover { background: rgba(59,130,246,0.1); }
-
     /* --- Media Queries for Responsive Design --- */
     @media (max-width: 768px) {
         .page-container {
@@ -684,47 +626,12 @@
     <div id="taskListContainer">
         {% include "tasks/partials/task_list_content.html" %}
     </div>
-
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
 </div>
 
 <script>
     // --- Global Helpers ---
     function showLoading() {
         document.getElementById('loadingOverlay').classList.add('active');
-    }
-
-    // --- Toast Logic ---
-    function showToast(type, title, message, undoAction = null) {
-        const container = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type} show`;
-        
-        let icon = type === 'success' 
-            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
-            
-        let undoHtml = undoAction 
-            ? `<button class="toast-undo" onclick="${undoAction}">撤销 / Undo</button>`
-            : '';
-
-        toast.innerHTML = `
-            <div class="toast-icon">${icon}</div>
-            <div class="toast-content">
-                <div class="toast-title">${title}</div>
-                <div class="toast-msg">${message}</div>
-            </div>
-            ${undoHtml}
-        `;
-        
-        container.appendChild(toast);
-        
-        // Auto remove
-        setTimeout(() => {
-            toast.style.transform = 'translateX(120%)';
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
     }
 
     // --- View Switcher Logic ---

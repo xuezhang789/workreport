@@ -50,9 +50,14 @@ class Task(models.Model):
         verbose_name_plural = "任务"
 
     def save(self, *args, **kwargs):
-        # 如果是新建的 BUG 类型任务且状态为默认的 TODO，自动修正为 NEW
-        if not self.pk and self.category == TaskCategory.BUG and self.status == TaskStatus.TODO:
-            self.status = TaskStatus.NEW
+        # 统一使用 TaskStateService 获取初始状态
+        if not self.pk:
+            from tasks.services.state import TaskStateService
+            initial_status = TaskStateService.get_initial_status(self.category)
+            # 仅当当前状态为默认值 (TODO) 且与应有的初始状态不同时才修正
+            if self.status == TaskStatus.TODO and initial_status != TaskStatus.TODO:
+                self.status = initial_status
+                
         super().save(*args, **kwargs)
 
     def __str__(self):

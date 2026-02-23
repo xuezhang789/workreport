@@ -99,6 +99,10 @@ class ProjectAttachment(models.Model):
 
 
 class ProjectMemberPermission(models.Model):
+    """
+    Deprecated: Replaced by RBACService (UserRole).
+    已弃用：被 RBACService (UserRole) 替代。
+    """
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='member_permissions', verbose_name="项目")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects_permissions', verbose_name="用户")
     permissions = models.JSONField(default=list, blank=True, help_text="权限列表，如 ['view_tasks', 'manage_tasks']", verbose_name="权限列表")
