@@ -327,11 +327,59 @@
     @media (max-width: 900px) {
         .details-grid { grid-template-columns: 1fr; }
     }
+
+    /* --- Toast Notifications (Copied from task_list) --- */
+    .toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        pointer-events: none;
+    }
+
+    .toast {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 300px;
+        transform: translateX(120%);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        pointer-events: auto;
+    }
+
+    .toast.show {
+        transform: translateX(0);
+    }
+
+    .toast-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+    }
+    .toast-success .toast-icon { background: rgba(16,185,129,0.1); color: #10b981; }
+    .toast-error .toast-icon { background: rgba(239,68,68,0.1); color: #ef4444; }
+
+    .toast-content { flex: 1; }
+    .toast-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .toast-msg { font-size: 13px; color: var(--text-secondary); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-container">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
     
     <!-- Header / Overview Card -->
     <div class="card">
@@ -380,16 +428,13 @@
                         </form>
                     {% else %}
                         <div style="display: flex; gap: 8px;">
-                            <form method="post">{% csrf_token %}
-                                <select name="status_value" class="filter-select" onchange="this.form.submit()">
-                                    <option value="" disabled selected>更新状态... / Update Status</option>
-                                    {% for val,label in task_status_choices %}
-                                        {% if val in allowed_statuses %}
-                                            <option value="{{ val }}">{{ label }}</option>
-                                        {% endif %}
+                            <form id="statusForm" onsubmit="return false;">
+                                <select id="statusSelect" name="status_value" class="filter-select">
+                                    <option value="" disabled>更新状态... / Update Status</option>
+                                    {% for val,label in status_choices %}
+                                        <option value="{{ val }}" {% if task.status == val %}selected{% endif %} {% if val not in allowed_statuses and val != task.status %}disabled style="color: #ccc;"{% endif %}>{{ label }}</option>
                                     {% endfor %}
                                 </select>
-                                <input type="hidden" name="action" value="set_status">
                             </form>
                         </div>
                     {% endif %}
@@ -637,6 +682,81 @@
 {% load static %}
 <script src="{% static 'js/upload_manager.js' %}"></script>
 <script>
+    // --- Toast Logic ---
+    function showToast(type, title, message) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type} show`;
+        
+        let icon = type === 'success' 
+            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icon}</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-msg">${message}</div>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto remove
+        setTimeout(() => {
+            toast.style.transform = 'translateX(120%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    // --- Status Update Logic ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSelect = document.getElementById('statusSelect');
+        if (statusSelect) {
+            // Store initial value to revert on error
+            statusSelect.dataset.original = statusSelect.value;
+            
+            statusSelect.addEventListener('change', function() {
+                const newValue = this.value;
+                const originalValue = this.dataset.original;
+                
+                // Optimistic UI? No, let's wait for server to ensure consistency with atomic transactions
+                
+                const formData = new FormData();
+                formData.append('action', 'set_status');
+                formData.append('status_value', newValue);
+                
+                fetch(window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => response.json().then(data => ({status: response.status, body: data})))
+                .then(({status, body}) => {
+                    if (status === 200 && body.status === 'success') {
+                        showToast('success', '成功 / Success', body.message || '状态已更新 / Status updated');
+                        // Update original value
+                        statusSelect.dataset.original = newValue;
+                        
+                        // Reload page shortly to update UI (buttons, badges, history)
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        throw new Error(body.message || 'Update failed');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('error', '错误 / Error', err.message);
+                    // Revert
+                    statusSelect.value = originalValue;
+                });
+            });
+        }
+    });
+
     // --- Upload Logic ---
     document.addEventListener('DOMContentLoaded', function() {
         const addAttachmentBtn = document.getElementById('add-attachment-btn');

@@ -1880,10 +1880,14 @@ def task_view(request, pk: int):
                 
         elif request.POST.get('action') == 'set_status':
             new_status = request.POST.get('status_value')
+            is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
             
             # 验证流转
             if not TaskStateService.validate_transition(task.category, task.status, new_status):
-                 messages.error(request, f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}")
+                 msg = f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}"
+                 if is_ajax:
+                     return JsonResponse({'status': 'error', 'message': msg}, status=400)
+                 messages.error(request, msg)
                  return redirect('tasks:task_view', pk=pk)
 
             if new_status in dict(Task.STATUS_CHOICES):
@@ -1903,26 +1907,16 @@ def task_view(request, pk: int):
                                 task.completed_at = None
                         task.save(update_fields=['status', 'completed_at'])
                     
-                    # BUG 状态通知
-                    if task.category == TaskCategory.BUG:
-                        if new_status == TaskStatus.VERIFYING:
-                            # 通知测试人员 (项目 QA)
-                            qas = list(task.project.members.filter(profile__position='qa'))
-                            for qa_user in qas:
-                                if qa_user != request.user and qa_user != task.user:
-                                    send_notification(
-                                        user=qa_user,
-                                        title="缺陷待验证 / Bug Ready for Verification",
-                                        message=f"缺陷 {task.title} 已修复，请进行验证",
-                                        notification_type='task_updated',
-                                        priority='high',
-                                        data={'task_id': task.id, 'project_id': task.project.id}
-                                    )
-                            
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
+                    
+                    if is_ajax:
+                        return JsonResponse({'status': 'success', 'message': '状态已更新 / Status updated'})
                     messages.success(request, "状态已更新 / Status updated")
                 except Exception as exc:
-                    messages.error(request, f"状态更新失败，请重试 / Failed to update status: {exc}")
+                    msg = f"状态更新失败，请重试 / Failed to update status: {exc}"
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': msg}, status=500)
+                    messages.error(request, msg)
         
         return redirect('tasks:task_view', pk=pk)
 
@@ -1933,6 +1927,14 @@ def task_view(request, pk: int):
     sla_ref_time = task.completed_at if task.completed_at else None
     
     allowed_statuses = TaskStateService.get_allowed_next_statuses(task.category, task.status)
+    category_statuses = TaskStateService.get_all_statuses_for_category(task.category)
+    
+    # 构建用于模板的状态选项列表 [(value, label), ...]
+    status_choices = []
+    full_choices = dict(Task.STATUS_CHOICES)
+    for s in category_statuses:
+        if s in full_choices:
+            status_choices.append((s, full_choices[s]))
     
     return render(request, 'tasks/task_detail.html', {
         'task': task,
@@ -1941,7 +1943,7 @@ def task_view(request, pk: int):
         'sla': calculate_sla_info(task, as_of=sla_ref_time),
         'can_edit': can_edit,
         'allowed_statuses': allowed_statuses,
-        'task_status_choices': Task.STATUS_CHOICES, # 用于映射的完整选项
+        'status_choices': status_choices, # 替换原来的 task_status_choices
     })
 
 

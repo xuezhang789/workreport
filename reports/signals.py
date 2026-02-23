@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from core.constants import TaskStatus, TaskCategory
 from projects.models import Project, ProjectPhaseConfig, ProjectPhaseChangeLog
 from tasks.models import Task, TaskComment
 from work_logs.models import DailyReport
@@ -170,6 +171,23 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                 old_status = diff['status']['old']
                 new_status = diff['status']['new']
                 
+                # BUG 状态通知 (QA 验证)
+                if instance.category == TaskCategory.BUG and new_status == TaskStatus.VERIFYING:
+                    # 通知测试人员 (项目 QA)
+                    # 假设 'qa' 是 Profile.ROLE_CHOICES 中的一个有效值，或者我们通过 UserRole 查找
+                    # 这里沿用 view 中的逻辑：project.members.filter(profile__position='qa')
+                    qas = list(instance.project.members.filter(profile__position='qa'))
+                    for qa_user in qas:
+                        if qa_user != current_operator and qa_user != instance.user:
+                            send_notification(
+                                user=qa_user,
+                                title="缺陷待验证 / Bug Ready for Verification",
+                                message=f"缺陷 {instance.title} 已修复，请进行验证",
+                                notification_type='task_updated',
+                                priority='high',
+                                data={'task_id': instance.id, 'project_id': instance.project.id, 'action_url': f'/tasks/{instance.id}/'}
+                            )
+
                 # 通知所有者（如果不是操作员）
                 if instance.user and instance.user != current_operator:
                     send_notification(

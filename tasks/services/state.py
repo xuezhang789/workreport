@@ -20,6 +20,33 @@ class TaskStateService:
         TaskStatus.CLOSED: [TaskStatus.NEW, TaskStatus.FIXING], # 关闭 -> 新建(重开) 或 修复中
     }
 
+    # 定义每种类型的完整状态集合
+    TASK_STATUS_SET = [
+        TaskStatus.TODO,
+        TaskStatus.IN_PROGRESS,
+        TaskStatus.BLOCKED,
+        TaskStatus.IN_REVIEW,
+        TaskStatus.DONE,
+        TaskStatus.CLOSED
+    ]
+
+    BUG_STATUS_SET = [
+        TaskStatus.NEW,
+        TaskStatus.CONFIRMED,
+        TaskStatus.FIXING,
+        TaskStatus.VERIFYING,
+        TaskStatus.CLOSED
+    ]
+
+    @classmethod
+    def get_all_statuses_for_category(cls, category):
+        """
+        获取指定分类下的所有可能状态列表（用于前端展示过滤）。
+        """
+        if category == TaskCategory.BUG:
+            return cls.BUG_STATUS_SET
+        return cls.TASK_STATUS_SET
+
     @classmethod
     def get_allowed_next_statuses(cls, category, current_status):
         """
