@@ -25,26 +25,121 @@ from core.forms import (
 from core.utils import _throttle, _admin_forbidden, _friendly_forbidden
 from core.permissions import has_manage_permission
 from work_logs.models import DailyReport
-from core.models import ExportJob
+from core.models import ExportJob, Invitation
 from projects.models import Project
 from reports.utils import get_accessible_projects, get_manageable_projects
+import uuid
+
+from django.db import transaction, IntegrityError
 
 def register(request):
+    """
+    Register with invitation code.
+    """
     if request.user.is_authenticated:
         return redirect('reports:workbench')
 
+    invitation_code = request.GET.get('code', '').strip()
+    invitation = None
+    
+    if invitation_code:
+        try:
+            invitation = Invitation.objects.get(code=invitation_code)
+            if not invitation.is_valid:
+                # UX: Provide specific feedback for GET request, but be careful
+                messages.error(request, "邀请码无效或已过期 / Invitation code invalid or expired")
+                invitation = None
+        except Invitation.DoesNotExist:
+            messages.error(request, "邀请码无效 / Invitation code invalid")
+            invitation = None
+
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('reports:workbench')
+        code_input = request.POST.get('invitation_code', '').strip()
+        
+        try:
+            with transaction.atomic():
+                # Fix Race Condition: Lock the row
+                try:
+                    valid_invite = Invitation.objects.select_for_update().get(code=code_input)
+                except Invitation.DoesNotExist:
+                    raise Invitation.DoesNotExist
+
+                if not valid_invite.is_valid:
+                    raise Invitation.DoesNotExist # Treat invalid as not found to prevent enumeration
+                
+                # Verify Email if invitation specifies one
+                email_input = form.data.get('email', '').strip()
+                if valid_invite.email and valid_invite.email.lower() != email_input.lower():
+                     form.add_error('email', "该邀请码仅限特定邮箱使用 / Invitation code is restricted to a specific email")
+                     raise ValueError("Email mismatch")
+
+                if form.is_valid():
+                    user = form.save()
+                    
+                    # Mark invitation as used
+                    valid_invite.status = 'used'
+                    valid_invite.used_at = timezone.now()
+                    valid_invite.registered_user = user
+                    valid_invite.save()
+                    
+                    login(request, user)
+                    messages.success(request, "注册成功！欢迎加入。 / Registration successful! Welcome.")
+                    return redirect('reports:workbench')
+                    
+        except Invitation.DoesNotExist:
+            form.add_error(None, "邀请码无效 / Invitation code invalid")
+        except ValueError:
+            pass # Form error already added
+        except Exception as e:
+            # Catch unexpected errors
+            form.add_error(None, "注册失败，请稍后重试 / Registration failed, please try again")
+            if settings.DEBUG:
+                print(f"Register Error: {e}")
+
     else:
-        form = RegistrationForm()
+        # Pre-fill email if invitation exists
+        initial_data = {}
+        if invitation and invitation.email:
+            initial_data['email'] = invitation.email
+        form = RegistrationForm(initial=initial_data)
 
     return render(request, 'registration/register.html', {
         'form': form,
+        'invitation_code': invitation_code if invitation else '',
         'password_min_score': getattr(settings, 'PASSWORD_MIN_SCORE', 3),
+    })
+
+@login_required
+def invitation_list(request):
+    """List and create invitations."""
+    # Check permission (e.g., admin or manager)
+    if not (request.user.is_superuser or has_manage_permission(request.user)):
+        return _friendly_forbidden(request, "无权管理邀请 / No permission to manage invitations")
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            email = request.POST.get('email', '').strip()
+            # Generate unique code with retry
+            max_retries = 5
+            for _ in range(max_retries):
+                code = uuid.uuid4().hex[:12].upper() # Increase length to 12 to prevent enumeration
+                if not Invitation.objects.filter(code=code).exists():
+                    Invitation.objects.create(
+                        code=code,
+                        inviter=request.user,
+                        email=email if email else None
+                    )
+                    messages.success(request, "邀请码已生成 / Invitation code generated")
+                    return redirect('core:invitation_list')
+            
+            messages.error(request, "生成邀请码失败，请重试 / Failed to generate code, please try again")
+
+    invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user').order_by('-created_at')
+    
+    return render(request, 'core/invitation_list.html', {
+        'invitations': invitations,
     })
 
 
@@ -424,9 +519,10 @@ def user_search_api(request):
     return JsonResponse({'results': data})
 
 
+@login_required
 def username_check_api(request):
     """实时检查用户名是否可用。"""
-    # Allow anonymous users to check username availability for registration
+    # Security Fix: Require login to prevent enumeration
          
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")

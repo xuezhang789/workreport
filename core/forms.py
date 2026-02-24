@@ -31,6 +31,11 @@ class RegistrationForm(UserCreationForm):
         label='姓名 / Full name',
         help_text='用于展示的姓名，可留空'
     )
+    email = forms.EmailField(
+        required=True,
+        label='邮箱 / Email',
+        help_text='用于接收通知和找回密码 / For notifications and password reset'
+    )
     position = forms.ChoiceField(
         choices=Profile.ROLE_CHOICES,
         initial='dev',
@@ -39,10 +44,11 @@ class RegistrationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "full_name", "position", "password1", "password2")
+        fields = ("username", "full_name", "email", "position", "password1", "password2")
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        user.email = self.cleaned_data["email"]
         full_name = (self.cleaned_data.get("full_name") or "").strip()
         if full_name:
             parts = full_name.split(None, 1)

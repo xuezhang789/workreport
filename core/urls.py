@@ -8,6 +8,7 @@ app_name = 'core'
 urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('register/', views.register, name='register'),
+    path('invitations/', views.invitation_list, name='invitation_list'),
     path('settings/', views.account_settings, name='account_settings'),
     path('api/username-check/', views.username_check_api, name='username_check_api'),
     path('api/email-code/', views.send_email_code_api, name='send_email_code_api'),

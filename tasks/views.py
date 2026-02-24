@@ -413,7 +413,7 @@ def admin_task_export(request):
 
     if hot:
         filtered = []
-        for t in tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+        for t in tasks: # Use default iteration to support prefetch_related
             info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info['status'] in ('tight', 'overdue'):
                 t.sla_info = info
@@ -427,10 +427,12 @@ def admin_task_export(request):
         
         job = _create_export_job(request.user, 'admin_tasks')
         try:
+            # For background job, we might still want iterator to save memory, 
+            # but we need to handle N+1. For now, since it's background, standard iteration is safer for correctness.
             path = _generate_export_file(
                 job,
                 TaskExportService.get_header(),
-                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+                TaskExportService.get_export_rows(tasks)
             )
             return JsonResponse({'queued': True, 'job_id': job.id})
         except Exception as e:
@@ -439,7 +441,8 @@ def admin_task_export(request):
             job.save(update_fields=['status', 'message', 'updated_at'])
             return JsonResponse({'error': 'export failed'}, status=500)
 
-    rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else tasks.iterator(chunk_size=EXPORT_CHUNK_SIZE))
+    # Security/Performance Fix: Remove iterator() to allow prefetch_related to work
+    rows = TaskExportService.get_export_rows(tasks)
     header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename=\"tasks_admin.csv\"'

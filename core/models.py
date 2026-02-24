@@ -277,3 +277,48 @@ class ChunkedUpload(models.Model):
     class Meta:
         verbose_name = "分片上传"
         verbose_name_plural = "分片上传"
+
+
+class Invitation(models.Model):
+    """邀请码模型 / Invitation Code Model"""
+    STATUS_CHOICES = [
+        ('unused', '未使用 / Unused'),
+        ('used', '已使用 / Used'),
+        ('expired', '已过期 / Expired'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, verbose_name="邀请码", db_index=True)
+    inviter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_invitations', verbose_name="邀请人")
+    email = models.EmailField(blank=True, null=True, verbose_name="受邀邮箱", help_text="可选，指定特定邮箱 / Optional, specific email")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unused', verbose_name="状态")
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    expires_at = models.DateTimeField(verbose_name="过期时间")
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name="使用时间")
+    
+    registered_user = models.OneToOneField(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='invitation_used', 
+        verbose_name="注册用户"
+    )
+
+    class Meta:
+        verbose_name = "邀请码"
+        verbose_name_plural = "邀请码"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} ({self.get_status_display()})"
+
+    @property
+    def is_valid(self):
+        return self.status == 'unused' and self.expires_at > timezone.now()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            # 默认 7 天有效期
+            self.expires_at = timezone.now() + timedelta(days=7)
+        super().save(*args, **kwargs)

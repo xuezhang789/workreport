@@ -1,0 +1,232 @@
+{% extends "base_topbar.html" %}
+{% load static %}
+
+{% block title %}邀请管理 / Invitation Management{% endblock %}
+
+{% block nav_header %}
+    {% include "partials/nav.html" with nav_title="邀请管理 / Invitations" nav_subtitle="生成与管理注册邀请码 / Generate and manage registration codes" %}
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background-color: #2563eb;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #1d4ed8;
+    }
+
+    .form-input {
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        width: 300px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .data-table th {
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .data-table td {
+        color: #334155;
+        font-size: 14px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-unused { background-color: #dcfce7; color: #166534; }
+    .status-used { background-color: #f1f5f9; color: #475569; }
+    .status-expired { background-color: #fee2e2; color: #991b1b; }
+
+    .code-box {
+        font-family: monospace;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+    
+    .copy-btn {
+        background: none;
+        border: none;
+        color: #2563eb;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+    
+    .copy-btn:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Generate Section -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">生成新邀请 / Generate New Invitation</h2>
+        </div>
+        <form method="post" action="{% url 'core:invitation_list' %}" style="display: flex; gap: 16px; align-items: flex-end;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+            
+            <div style="flex: 1; max-width: 400px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #64748b;">受邀人邮箱 (可选) / Invitee Email (Optional)</label>
+                <input type="email" name="email" class="form-input" placeholder="example@company.com" style="width: 100%;">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                生成邀请码 / Generate Code
+            </button>
+        </form>
+    </div>
+
+    <!-- History List -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">邀请记录 / Invitation History</h2>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>邀请码 / Code</th>
+                        <th>状态 / Status</th>
+                        <th>受邀邮箱 / Email</th>
+                        <th>注册用户 / Registered User</th>
+                        <th>生成时间 / Created At</th>
+                        <th>过期时间 / Expires At</th>
+                        <th>操作 / Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invite in invitations %}
+                    <tr>
+                        <td>
+                            <span class="code-box">{{ invite.code }}</span>
+                        </td>
+                        <td>
+                            {% if invite.status == 'unused' %}
+                                <span class="status-badge status-unused">未使用 / Active</span>
+                            {% elif invite.status == 'used' %}
+                                <span class="status-badge status-used">已使用 / Used</span>
+                            {% else %}
+                                <span class="status-badge status-expired">已过期 / Expired</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ invite.email|default:"-" }}</td>
+                        <td>
+                            {% if invite.registered_user %}
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    {% include "partials/user_avatar.html" with user=invite.registered_user size="sm" %}
+                                    <span>{{ invite.registered_user.get_full_name|default:invite.registered_user.username }}</span>
+                                </div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ invite.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ invite.expires_at|date:"Y-m-d" }}</td>
+                        <td>
+                            {% if invite.is_valid %}
+                                <button class="copy-btn" onclick="copyLink('{{ request.scheme }}://{{ request.get_host }}{% url 'core:register' %}?code={{ invite.code }}')">
+                                    复制链接 / Copy Link
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            暂无邀请记录 / No invitation history
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyLink(url) {
+        navigator.clipboard.writeText(url).then(function() {
+            alert('注册链接已复制到剪贴板！\nRegistration link copied to clipboard!');
+        }, function(err) {
+            console.error('Could not copy text: ', err);
+            prompt('请手动复制链接 / Please copy manually:', url);
+        });
+    }
+</script>
+{% endblock %}

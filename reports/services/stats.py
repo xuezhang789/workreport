@@ -44,7 +44,19 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
     # --- 预计算交付周期（优化）---
-    # Optimized: Fetch only necessary fields using values() to avoid model instantiation overhead
+    # Optimized: Use DB aggregation for lead time where possible
+    
+    # Calculate average lead time using DB (more efficient)
+    lead_time_agg = tasks.filter(
+        status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
+        completed_at__isnull=False
+    ).aggregate(
+        avg_duration=Avg(F('completed_at') - F('created_at'))
+    )
+    overall_avg_duration = lead_time_agg['avg_duration']
+    
+    # Still fetch individual durations for median (p50) calculation and distribution charts
+    # but restrict fields strictly
     completed_data = tasks.filter(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
         completed_at__isnull=False
