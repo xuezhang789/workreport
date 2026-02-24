@@ -686,6 +686,11 @@ def daily_report_batch_create(request):
         try:
             data = json.loads(request.body)
             reports_data = data.get('reports', [])
+            
+            # Security: Limit batch size to prevent DoS
+            if len(reports_data) > 50:
+                 return JsonResponse({'success': False, 'message': '批量创建限制单次最多 50 条 / Max 50 reports per batch'}, status=400)
+
             created_count = 0
             errors = []
             

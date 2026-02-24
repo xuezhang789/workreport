@@ -56,7 +56,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     overall_avg_duration = lead_time_agg['avg_duration']
     
     # Still fetch individual durations for median (p50) calculation and distribution charts
-    # but restrict fields strictly
+    # but restrict fields strictly and limit data size to avoid memory overflow
+    # 限制数据量：仅获取最近 5000 条完成记录用于中位数计算
     completed_data = tasks.filter(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
         completed_at__isnull=False
@@ -66,7 +67,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         'user__username', 
         'created_at', 
         'completed_at'
-    )
+    ).order_by('-completed_at')[:5000]
     
     project_durations = defaultdict(list)
     role_durations = defaultdict(list)

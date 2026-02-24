@@ -75,11 +75,8 @@ class AuditLogService:
 
         # 性能优化：根据目标对象类型减少冗余的关联查询
         # Performance Optimization: Reduce redundant joins based on target type
-        related_fields = ['user']
-        if target_type != 'Project':
-            related_fields.append('project')
-        if target_type != 'Task':
-            related_fields.append('task')
+        # Robustness Fix: Always include key relations to avoid issues if target_type logic is fragile
+        related_fields = ['user', 'project', 'task']
 
         return qs.select_related(*related_fields).order_by('-created_at')
 

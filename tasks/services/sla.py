@@ -9,6 +9,8 @@ from datetime import timedelta
 DEFAULT_SLA_HOURS = 48
 DEFAULT_THRESHOLDS = {'amber': 4, 'red': 0}
 
+from django.core.cache import cache
+
 def get_sla_hours(system_setting_value=None):
     """
     获取配置的 SLA 小时数，如果未提供则检查缓存或数据库。
@@ -16,11 +18,18 @@ def get_sla_hours(system_setting_value=None):
     if system_setting_value is not None:
         return system_setting_value
     
-    # 暂时不使用缓存进行简单获取，或者依赖调用者传递值
-    # 在生产环境中，建议缓存此值
+    # 优先检查缓存
+    cache_key = 'system_setting:sla_hours'
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
     try:
         setting = SystemSetting.objects.get(key='sla_hours')
-        return int(setting.value)
+        value = int(setting.value)
+        # 缓存 5 分钟
+        cache.set(cache_key, value, 300)
+        return value
     except (SystemSetting.DoesNotExist, ValueError):
         return DEFAULT_SLA_HOURS
 
@@ -34,9 +43,18 @@ def get_sla_thresholds(system_setting_value=None):
         except json.JSONDecodeError:
             pass
             
+    # 优先检查缓存
+    cache_key = 'system_setting:sla_thresholds'
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
     try:
         setting = SystemSetting.objects.get(key='sla_thresholds')
-        return json.loads(setting.value)
+        value = json.loads(setting.value)
+        # 缓存 5 分钟
+        cache.set(cache_key, value, 300)
+        return value
     except (SystemSetting.DoesNotExist, json.JSONDecodeError):
         return DEFAULT_THRESHOLDS
 
