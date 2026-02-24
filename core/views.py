@@ -334,6 +334,9 @@ def user_search_api(request):
     project_id = request.GET.get('project_id')
     User = get_user_model()
     
+    # Debug logging
+    # print(f"User Search: user={request.user}, superuser={request.user.is_superuser}, project_id={project_id}")
+    
     if project_id and project_id.isdigit():
         # Project specific search
         from projects.models import Project
@@ -354,16 +357,28 @@ def user_search_api(request):
             ).distinct()
         except Project.DoesNotExist:
              qs = User.objects.none()
-    elif has_manage_permission(request.user) or get_manageable_projects(request.user).exists():
-        qs = User.objects.all()
     else:
-        # Limit to users in accessible projects
-        accessible_projects = get_accessible_projects(request.user)
-        qs = User.objects.filter(
-            Q(project_memberships__in=accessible_projects) |
-            Q(managed_projects__in=accessible_projects) |
-            Q(owned_projects__in=accessible_projects)
-        ).distinct()
+        # Global search (context: adding members, or admin search)
+        # Determine if user has permission to search ALL users
+        can_search_all = (
+            request.user.is_superuser or
+            request.user.is_staff or
+            has_manage_permission(request.user) or 
+            get_manageable_projects(request.user).exists() or
+            request.user.owned_projects.exists() or
+            request.user.managed_projects.exists()
+        )
+        
+        if can_search_all:
+            qs = User.objects.all()
+        else:
+            # Limit to users in accessible projects
+            accessible_projects = get_accessible_projects(request.user)
+            qs = User.objects.filter(
+                Q(project_memberships__in=accessible_projects) |
+                Q(managed_projects__in=accessible_projects) |
+                Q(owned_projects__in=accessible_projects)
+            ).distinct()
 
     if q:
         qs = qs.filter(

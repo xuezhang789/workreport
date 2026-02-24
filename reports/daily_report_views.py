@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Case, When, IntegerField
+from django.db.models import Q, Count, Case, When, IntegerField, Exists, OuterRef
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -602,12 +602,24 @@ def admin_reports(request):
     # Unified Report View: Superuser sees all, others see accessible
     reports, role, start_date, end_date = _filtered_reports(request)
     
+    # 获取可访问项目列表（统一逻辑）
+    if request.user.is_superuser:
+        accessible_projects = Project.objects.filter(is_active=True)
+    else:
+        accessible_projects = get_accessible_projects(request.user)
+    
     # 权限控制：如果不是超级管理员，仅显示其有权管理的项目的日报
     if not request.user.is_superuser:
-        # Optimization: Filter directly by accessible projects to avoid nested subqueries
-        # 优化：直接通过可访问项目过滤，避免嵌套子查询
-        accessible_projects = get_accessible_projects(request.user)
-        reports = reports.filter(projects__in=accessible_projects).distinct()
+        # Optimization: Use Exists subquery instead of filter(...).distinct() to avoid expensive JOINs and deduplication
+        # 优化：使用 Exists 子查询替代 filter(...).distinct()，避免昂贵的 JOIN 和去重操作
+        reports = reports.filter(
+            Exists(
+                DailyReport.projects.through.objects.filter(
+                    dailyreport_id=OuterRef('pk'),
+                    project_id__in=accessible_projects.values('id')
+                )
+            )
+        )
 
     username = (request.GET.get('username') or '').strip()
     user_id = request.GET.get('user')
@@ -639,13 +651,14 @@ def admin_reports(request):
     draft_count = stats['draft']
 
     paginator = Paginator(reports, 28)
+    # Optimization: Set count manually to avoid extra COUNT(*) query by Paginator
+    # 优化：手动设置 count 以避免 Paginator 执行额外的 COUNT(*) 查询
+    paginator.count = total_count
+    
     page_obj = paginator.get_page(request.GET.get('page'))
     
-    # 获取项目列表：仅显示用户有权管理或参与的活跃项目
-    if request.user.is_superuser:
-        projects = Project.objects.filter(is_active=True).order_by('name')
-    else:
-        projects = accessible_projects.order_by('name')
+    # 获取项目列表用于筛选下拉框
+    projects = accessible_projects.order_by('name')
 
     log_action(request, 'access', f"admin_reports count={total_count} role={role} start={start_date} end={end_date} username={username} project={project_id} status={status}")
     context = {

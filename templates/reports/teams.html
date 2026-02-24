@@ -1532,7 +1532,7 @@
                     data.results.forEach(u => {
                         const div = document.createElement('div');
                         div.className = 'search-result-item';
-                        div.innerHTML = `<div class="user-list-avatar" style="width:24px; height:24px; font-size:10px;">${(u.full_name||u.username)[0].toUpperCase()}</div><div>${u.full_name || u.username} <span style="color:var(--text-muted)">@${u.username}</span></div>`;
+                        div.innerHTML = `<div class="user-list-avatar" style="width:24px; height:24px; font-size:10px;">${(u.name||u.username)[0].toUpperCase()}</div><div>${u.name} <span style="color:var(--text-muted)">@${u.username}</span></div>`;
                         div.onclick = () => {
                             let apiAction = '';
                             if(type === 'members') apiAction = 'add_member';
