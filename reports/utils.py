@@ -70,9 +70,16 @@ def get_accessible_projects(user):
     if cached_ids is not None:
         return Project.objects.filter(id__in=cached_ids, is_active=True)
 
-    # 纯 RBAC 权限检查
-    # 获取拥有 'project.view' 权限的项目
-    final_qs = _get_projects_by_permission(user, 'project.view')
+    # 1. RBAC 权限检查
+    rbac_qs = _get_projects_by_permission(user, 'project.view')
+    
+    # 2. 直接关联 (Members, Owner, Managers)
+    direct_qs = Project.objects.filter(
+        Q(members=user) | Q(owner=user) | Q(managers=user),
+        is_active=True
+    )
+    
+    final_qs = (rbac_qs | direct_qs).distinct()
     
     # 缓存结果 ID 列表
     ids = list(final_qs.values_list('id', flat=True))

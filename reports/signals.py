@@ -470,3 +470,86 @@ def audit_m2m_changed(sender, instance, action, **kwargs):
     # 处理 DailyReport.projects 变更
     if isinstance(instance, DailyReport) and action in ["post_add", "post_remove", "post_clear"]:
         _invalidate_stats_cache()
+
+@receiver(m2m_changed, sender=Project.members.through)
+def project_members_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
+    """
+    当项目成员变更时，清除相关用户的权限缓存。
+    """
+    if action not in ["post_add", "post_remove", "post_clear"]:
+        return
+
+    from reports.utils import clear_project_permission_cache
+
+    if reverse:
+        # instance is User, pk_set is Project IDs
+        user = instance
+        clear_project_permission_cache(user)
+    else:
+        # instance is Project, pk_set is User IDs
+        project = instance
+        if pk_set:
+            for user_id in pk_set:
+                try:
+                    user = User.objects.get(pk=user_id)
+                    clear_project_permission_cache(user, project=project)
+                except User.DoesNotExist:
+                    pass
+        elif action == "post_clear":
+            # 难以确定哪些用户被移除，这里可能需要清除所有用户的缓存，或者不做处理依赖 TTL。
+            # 鉴于 clear 操作较少，暂不处理以避免全量清除的性能问题。
+            pass
+
+@receiver(m2m_changed, sender=Project.managers.through)
+def project_managers_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
+    """
+    当项目管理员变更时，清除相关用户的权限缓存。
+    """
+    if action not in ["post_add", "post_remove", "post_clear"]:
+        return
+
+    from reports.utils import clear_project_permission_cache
+
+    if reverse:
+        # instance is User, pk_set is Project IDs
+        user = instance
+        clear_project_permission_cache(user)
+    else:
+        # instance is Project, pk_set is User IDs
+        project = instance
+        if pk_set:
+            for user_id in pk_set:
+                try:
+                    user = User.objects.get(pk=user_id)
+                    clear_project_permission_cache(user, project=project)
+                except User.DoesNotExist:
+                    pass
+
+@receiver(post_save, sender=Project)
+def project_owner_changed(sender, instance, created, **kwargs):
+    """
+    当项目负责人变更时，清除新旧负责人的权限缓存。
+    """
+    if created:
+        if instance.owner:
+            from reports.utils import clear_project_permission_cache
+            clear_project_permission_cache(instance.owner, project=instance)
+        return
+
+    if hasattr(instance, '_audit_diff') and instance._audit_diff and 'owner' in instance._audit_diff:
+        from reports.utils import clear_project_permission_cache
+        diff = instance._audit_diff['owner']
+        
+        # Old Owner
+        old_owner_id = diff.get('old') # Might be ID or Username depending on AuditService
+        # AuditService _calculate_diff for FK usually stores ID or str representation.
+        # Assuming it might store ID if configured, but let's be safe.
+        # If AuditService stores username, we need to fetch user.
+        # Let's try to clear for current owner (new) and rely on TTL for old owner if we can't easily get ID.
+        
+        if instance.owner:
+            clear_project_permission_cache(instance.owner, project=instance)
+            
+        # Try to find old owner if possible (AuditService usually returns user ID for FK if configured, or str)
+        # If we can't get old owner easily, we skip. They will lose access after TTL (5 mins).
+

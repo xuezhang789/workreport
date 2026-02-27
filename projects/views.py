@@ -763,6 +763,12 @@ def project_search_api(request):
         from reports.utils import get_manageable_projects
         manageable_ids = get_manageable_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=manageable_ids)
+    elif request.GET.get('scope') == 'my_involved':
+        # Strictly user's involved projects (Owner, Manager, Member)
+        # 严格限制为用户参与的项目（负责人、经理、成员）
+        # Even for superusers, this scopes down the list for daily reports
+        direct_filter = Q(owner=user) | Q(managers=user) | Q(members=user)
+        project_filter &= direct_filter
     else:
         accessible_ids = get_accessible_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=accessible_ids)
@@ -795,26 +801,60 @@ def project_search_api(request):
         qs = qs.order_by('-created_at')
 
     if mode == 'lite':
-        # Return all (or large limit) lightweight objects for client-side indexing
-        # Limit to 20000 to be safe
-        projects = qs.values('id', 'name', 'code', 'overall_progress', 'end_date', 'is_active')[:20000]
-        data = []
-        for p in projects:
-            # Format date and status for lite mode too if needed by frontend, or let frontend handle it.
-            # Frontend requirements: "Project Name, Progress %, Status Label, Due Date"
-            data.append({
-                'id': p['id'],
-                'name': p['name'],
-                'code': p['code'],
-                'progress': p['overall_progress'],
-                'end_date': p['end_date'].isoformat() if p['end_date'] else '',
-                'status': 'active' if p['is_active'] else 'inactive', # Simplified status
-                # Note: 'status label' in requirement might mean Phase or Active/Archived. 
-                # Let's assume Active/Archived + Phase if available, but lite mode implies minimal db hits.
-                # values() doesn't support traversing to current_phase.phase_name easily without extra queries or explicit select_related which values() ignores partly.
-                # We will stick to basic info. Frontend can map is_active.
-            })
-        return JsonResponse({'results': data})
+        try:
+            # Lite Mode: Client-side index optimization
+            # Lite 模式：客户端索引优化
+            
+            # 1. Base Query
+            base_qs = Project.objects.filter(is_active=True)
+            
+            # 2. Strict Scope Handling
+            # If scope is 'my_involved', we strictly return only directly involved projects
+            # regardless of superuser status. This is critical for the "Daily Report" dropdown.
+            if request.GET.get('scope') == 'my_involved':
+                 qs = base_qs.filter(
+                     Q(owner=user) | Q(managers=user) | Q(members=user)
+                 ).distinct()
+            else:
+                # Default behavior: Accessible projects (RBAC + Direct)
+                # Superuser sees all active projects
+                if user.is_superuser:
+                    qs = base_qs
+                else:
+                    # Get cached accessible IDs (from RBAC mostly)
+                    cached_accessible_qs = get_accessible_projects(user)
+                    cached_ids = list(cached_accessible_qs.values_list('id', flat=True))
+                    
+                    # Force add direct relations (Owner/Member/Manager) to bypass cache latency
+                    direct_filter = Q(owner=user) | Q(managers=user) | Q(members=user)
+                    qs = base_qs.filter(
+                        Q(id__in=cached_ids) | direct_filter
+                    ).distinct()
+
+            # Limit to 20000 to be safe
+            projects = qs.values('id', 'name', 'code', 'overall_progress', 'end_date', 'is_active').order_by('-created_at')[:20000]
+            
+            # Debug log
+            logger.info(f"Project Search API (Lite) for user {user.username}: Found {projects.count()} projects (Scope: {request.GET.get('scope')})")
+            
+            data = []
+            for p in projects:
+                # Format date and status for lite mode too if needed by frontend, or let frontend handle it.
+                data.append({
+                    'id': p['id'],
+                    'name': p['name'],
+                    'code': p['code'],
+                    'progress': p['overall_progress'],
+                    'end_date': p['end_date'].isoformat() if p['end_date'] else '',
+                    'status': 'active' if p['is_active'] else 'inactive',
+                    # Pinyin support: In a real env with pypinyin, we would generate it here.
+                    'pinyin': '', 
+                })
+            
+            return JsonResponse({'results': data})
+        except Exception as e:
+            logger.error(f"Project Search API Error: {e}", exc_info=True)
+            return JsonResponse({'error': str(e)}, status=500)
 
     # Normal mode: Detailed results with pagination
     projects = qs[:limit]

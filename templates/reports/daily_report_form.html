@@ -276,25 +276,26 @@
 
     /* --- Virtual Select Styles --- */
     .vs-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
+        position: absolute; /* Changed from fixed to absolute to allow page scrolling */
         background: white;
         border: 1px solid var(--border-color);
         border-radius: 8px;
         box-shadow: var(--shadow-lg);
-        z-index: 1000;
+        z-index: 9999; /* Ensure top level */
         display: none;
-        max-height: 400px;
-        overflow: hidden;
+        max-height: none; /* No max height */
+        overflow: visible; /* Show all content */
         margin-top: 4px;
+        padding-top: 0; /* Ensure no top padding */
+        /* Width will be set via JS */
     }
     .vs-dropdown.open { display: block; }
     .vs-list-container {
-        height: 250px;
-        overflow-y: auto;
+        /* Removed fixed height constraint to allow adaptive height */
+        overflow-y: visible; /* No internal scroll */
         position: relative;
+        margin-top: 0; /* Ensure no top margin */
+        padding-top: 0; /* Ensure no top padding */
     }
     .vs-item {
         padding: 8px 12px;
@@ -305,14 +306,22 @@
         align-items: center;
         box-sizing: border-box;
     }
+    .vs-item:first-child {
+        margin-top: 0; /* Ensure first item is at top */
+    }
     .vs-item:hover, .vs-item.highlighted {
         background: #f1f5f9;
     }
     .vs-item .code { color: var(--text-secondary); font-size: 12px; }
-    .vs-status { padding: 12px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+    .vs-status { 
+        padding: 8px 12px; 
+        text-align: center; 
+        color: var(--text-secondary); 
+        font-size: 12px; 
+        border-bottom: 1px solid #f1f5f9;
+        display: none; /* Hidden by default unless loading/empty */
+    }
     .vs-label { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-secondary); background: #f8fafc; }
-    .vs-history-item { padding: 8px 12px; cursor: pointer; color: var(--text-main); font-size: 13px; display: flex; align-items: center; gap: 8px; }
-    .vs-history-item:hover { background: #eff6ff; }
     
     .vs-tag {
         display: inline-flex;
@@ -459,16 +468,17 @@
                             <label class="form-label" for="projects">项目 / Projects</label>
                             <!-- Virtual Select Component -->
                             <div class="vs-wrapper" style="position: relative;">
-                                <input type="text" id="vs-input" class="form-input" placeholder="输入项目名、拼音或代码... / Search name, pinyin..." autocomplete="off">
+                                <div style="position:relative;">
+                                    <input type="text" id="vs-input" class="form-input" placeholder="输入项目名、拼音或代码... / Search name, pinyin..." autocomplete="off">
+                                    <div id="vs-indicator" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:12px; color:var(--text-muted); pointer-events:none;"></div>
+                                </div>
+                                <div id="vs-debug-msg" style="font-size:11px; color:var(--text-muted); margin-top:4px; display:none;"></div>
                                 <input type="hidden" name="projects" id="vs-hidden" value="{{ selected_project_ids|join:',' }}">
                                 
                                 <div id="vs-dropdown" class="vs-dropdown">
                                     <div id="vs-loading" class="vs-status">加载中... / Loading...</div>
-                                    <div id="vs-history-label" class="vs-label" style="display:none;">最近选择 / Recent</div>
-                                    <div id="vs-history-list"></div>
                                     <div id="vs-list-container" class="vs-list-container">
-                                        <div id="vs-virtual-spacer"></div>
-                                        <div id="vs-virtual-content"></div>
+                                        <!-- Items injected here -->
                                     </div>
                                     <div id="vs-empty" class="vs-status" style="display:none;">
                                         <span>未找到项目 / No project found</span>
@@ -476,17 +486,7 @@
                                 </div>
                             </div>
                             
-                            <!-- Selected Tags Display -->
-                            <div id="vs-selected-tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                                {% for p in projects %}
-                                    {% if p.id in selected_project_ids %}
-                                        <div class="vs-tag" data-id="{{ p.id }}">
-                                            {{ p.name }}
-                                            <span class="remove-tag" onclick="window.vsRemoveTag({{ p.id }})">×</span>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
+                            <!-- Selected Tags Display Removed for Single Select Mode -->
                         </div>
                     </div>
 
@@ -876,80 +876,173 @@
     // Project filtering - REMOVED (Replaced by Virtual Select)
     // Project search - REMOVED (Replaced by Virtual Select)
     
-    // --- Virtual Project Select ---
+    // --- Virtual Project Select (Lite Mode - Standard List) ---
     class VirtualProjectSelect {
         constructor() {
             this.input = document.getElementById('vs-input');
             this.hidden = document.getElementById('vs-hidden');
             this.dropdown = document.getElementById('vs-dropdown');
             this.listContainer = document.getElementById('vs-list-container');
-            this.virtualSpacer = document.getElementById('vs-virtual-spacer');
-            this.virtualContent = document.getElementById('vs-virtual-content');
             this.loading = document.getElementById('vs-loading');
             this.empty = document.getElementById('vs-empty');
-            this.tagContainer = document.getElementById('vs-selected-tags');
             
-            this.historyList = document.getElementById('vs-history-list');
-            this.historyLabel = document.getElementById('vs-history-label');
-
+            this.indicator = document.getElementById('vs-indicator');
+            this.debugMsg = document.getElementById('vs-debug-msg');
+            
             this.allProjects = []; // Local cache
             this.filteredProjects = [];
-            this.itemHeight = 36;
-            this.visibleItems = 10;
+            
             this.highlightIndex = -1;
             this.searchDebounce = null;
+            this.isOpen = false;
             
-            if (this.input) this.init();
+            if (this.input) {
+                // Ensure dropdown is hidden initially
+                this.dropdown.style.display = 'none';
+                this.init();
+            }
         }
 
         async init() {
+            // Remove initial style.maxHeight, let JS handle it dynamically
+            this.dropdown.style.maxHeight = ''; 
+            
+            // Append dropdown to body to avoid clipping/overflow issues in parents
+            if (this.dropdown.parentElement !== document.body) {
+                document.body.appendChild(this.dropdown);
+            }
+
             // Event Listeners
             this.input.addEventListener('focus', () => this.onFocus());
-            this.input.addEventListener('blur', () => setTimeout(() => this.close(), 200));
+            // Delay blur to allow click on item
+            this.input.addEventListener('blur', () => setTimeout(() => this.close(), 250));
             this.input.addEventListener('input', (e) => this.onInput(e.target.value));
             this.input.addEventListener('keydown', (e) => this.onKeydown(e));
+            this.input.addEventListener('click', () => {
+                if (!this.isOpen) this.onFocus();
+            });
             
-            this.listContainer.addEventListener('scroll', () => this.renderVirtual());
+            // Reposition on scroll/resize
+            window.addEventListener('scroll', () => { if (this.isOpen) this.reposition(); }, {passive: true});
+            window.addEventListener('resize', () => { if (this.isOpen) this.reposition(); }, {passive: true});
             
             // Fetch Data (Lite Mode)
-            this.loading.style.display = 'block';
+            this.setLoading(true);
+            this.updateDebug("正在加载项目数据... / Loading projects...");
+            
             try {
-                // Fetch top 5000 projects for client-side search (Lite Mode)
-                const res = await fetch("{% url 'projects:project_search_api' %}?mode=lite&limit=5000");
+                // Fetch projects for client-side search (Lite Mode)
+                const ts = new Date().getTime();
+                const res = await fetch(`{% url 'projects:project_search_api' %}?mode=lite&limit=5000&scope=my_involved&_t=${ts}`);
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 const data = await res.json();
                 this.allProjects = data.results || [];
-                this.filteredProjects = this.allProjects;
-                this.loading.style.display = 'none';
                 
-                // Initial render if dropdown is open (unlikely) or just pre-calc
-                this.renderVirtual();
+                // Sort by ID desc (recent first)
+                this.allProjects.sort((a, b) => b.id - a.id);
+                
+                // Debug logging
+                console.log(`[VirtualSelect] Loaded ${this.allProjects.length} projects`);
+                this.updateDebug(`已加载 ${this.allProjects.length} 个项目 (仅限负责/参与) / Loaded ${this.allProjects.length} projects (My Involved)`);
+                
+                this.filteredProjects = this.allProjects;
+                this.setLoading(false);
+                
+                if (this.allProjects.length === 0) {
+                     this.empty.innerHTML = '<span>未找到任何项目 (No projects found)</span><br><small style="color:#cbd5e1">请确认已被分配项目</small>';
+                     this.empty.style.display = 'block';
+                     this.updateDebug("⚠️ 未找到任何项目，请联系管理员分配项目 / No projects found");
+                } else {
+                     this.empty.style.display = 'none';
+                }
+                
+                // Initial render (limited)
+                this.renderList();
+                
+                // Restore initial value if present
+                if (this.hidden.value) {
+                     const initialId = parseInt(this.hidden.value);
+                     const p = this.allProjects.find(x => x.id === initialId);
+                     if (p) {
+                         this.input.value = `${p.name} [${p.code}]`;
+                     }
+                }
             } catch (e) {
                 console.error('Failed to load projects', e);
-                this.loading.textContent = '加载失败 / Load failed';
+                this.updateDebug(`❌ 加载失败 / Load failed: ${e.message}`);
+                this.loading.innerHTML = '加载失败 / Load failed <button type="button" class="btn btn-sm btn-ghost" onclick="window.virtualProjectSelect.init()">重试 / Retry</button>';
+            }
+        }
+        
+        updateDebug(msg) {
+            if (this.debugMsg) {
+                this.debugMsg.textContent = msg;
+                this.debugMsg.style.display = 'block';
+            }
+        }
+        
+        setLoading(isLoading) {
+            if (isLoading) {
+                this.loading.style.display = 'block';
+                this.listContainer.style.display = 'none';
+                if (this.indicator) this.indicator.textContent = '...';
+            } else {
+                this.loading.style.display = 'none';
+                this.listContainer.style.display = 'block';
+                if (this.indicator) this.indicator.textContent = '▼';
             }
         }
 
         onFocus() {
+            this.isOpen = true;
             this.dropdown.classList.add('open');
-            this.renderHistory();
-            if (!this.input.value.trim()) {
+            this.dropdown.style.display = 'block';
+            this.reposition();
+            
+            if (!this.input.value.trim() || this.input.value.includes('[')) {
+                // If empty or already selected, reset to full list (limited)
                 this.filteredProjects = this.allProjects;
-                this.renderVirtual();
+                this.renderList();
             } else {
                 this.filter(this.input.value);
             }
         }
 
         close() {
+            this.isOpen = false;
             this.dropdown.classList.remove('open');
+            this.dropdown.style.display = 'none';
+        }
+
+        reposition() {
+            if (!this.isOpen) return;
+            const rect = this.input.getBoundingClientRect();
+            
+            if (rect.width === 0 || rect.height === 0) {
+                this.close();
+                return;
+            }
+            
+            // Standard Absolute Positioning relative to Document Body
+            this.dropdown.style.position = 'absolute';
+            this.dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+            this.dropdown.style.left = `${rect.left + window.scrollX}px`;
+            this.dropdown.style.width = `${rect.width}px`;
+            this.dropdown.style.zIndex = '9999';
+            
+            // Allow full expansion downwards
+            this.dropdown.style.maxHeight = 'none';
+            this.dropdown.style.height = 'auto';
+            this.listContainer.style.maxHeight = 'none';
+            this.listContainer.style.height = 'auto';
+            this.dropdown.classList.remove('flipped');
         }
 
         onInput(q) {
             clearTimeout(this.searchDebounce);
-            // 300ms Debounce
             this.searchDebounce = setTimeout(() => {
                 this.filter(q);
-            }, 300);
+            }, 200);
         }
 
         filter(q) {
@@ -957,34 +1050,30 @@
                 this.filteredProjects = this.allProjects;
             } else {
                 const lowerQ = q.toLowerCase();
-                // Multi-dimension fuzzy matching: Name, Code, ID
                 this.filteredProjects = this.allProjects.filter(p => 
                     (p.name && p.name.toLowerCase().includes(lowerQ)) || 
                     (p.code && p.code.toLowerCase().includes(lowerQ)) ||
+                    (p.pinyin && p.pinyin.toLowerCase().includes(lowerQ)) ||
                     String(p.id) === lowerQ
                 );
                 
-                // Smart Sorting
                 this.filteredProjects.sort((a, b) => {
-                     // 1. Exact Match Code/Name
                      const aExact = (a.code && a.code.toLowerCase() === lowerQ) || (a.name && a.name.toLowerCase() === lowerQ);
                      const bExact = (b.code && b.code.toLowerCase() === lowerQ) || (b.name && b.name.toLowerCase() === lowerQ);
                      if (aExact && !bExact) return -1;
                      if (!aExact && bExact) return 1;
                      
-                     // 2. Starts With Code
                      const aStart = a.code && a.code.toLowerCase().startsWith(lowerQ);
                      const bStart = b.code && b.code.toLowerCase().startsWith(lowerQ);
                      if (aStart && !bStart) return -1;
                      if (!aStart && bStart) return 1;
                      
-                     return 0; // Maintain original order (created_at desc)
+                     return 0; 
                 });
             }
             
             this.highlightIndex = -1;
-            this.listContainer.scrollTop = 0;
-            this.renderVirtual();
+            this.renderList();
             
             if (this.filteredProjects.length === 0) {
                 this.empty.style.display = 'block';
@@ -993,35 +1082,45 @@
                 this.empty.style.display = 'none';
                 this.listContainer.style.display = 'block';
             }
+            this.reposition();
         }
 
-        renderVirtual() {
-            const total = this.filteredProjects.length;
-            const scrollTop = this.listContainer.scrollTop;
-            const containerHeight = this.listContainer.clientHeight;
-            
-            this.virtualSpacer.style.height = `${total * this.itemHeight}px`;
-            
-            const startIndex = Math.floor(scrollTop / this.itemHeight);
-            const endIndex = Math.min(total, Math.ceil((scrollTop + containerHeight) / this.itemHeight) + 5); 
+        renderList() {
+            // Limit to 50 items to keep DOM lightweight while appearing "full"
+            const limit = 50;
+            const items = this.filteredProjects.slice(0, limit);
+            const hasMore = this.filteredProjects.length > limit;
             
             let html = '';
-            const selectedIds = this.hidden.value.split(',').filter(Boolean).map(String);
+            const selectedId = this.hidden.value;
             
-            for (let i = startIndex; i < endIndex; i++) {
-                const p = this.filteredProjects[i];
+            items.forEach((p, i) => {
                 const isHighlight = i === this.highlightIndex ? 'highlighted' : '';
-                const isSelected = selectedIds.includes(String(p.id)) ? 'background:#e0f2fe;' : '';
+                const isSelected = String(p.id) === String(selectedId) ? 'background:#e0f2fe;' : '';
+                const progressColor = p.progress >= 100 ? '#10b981' : (p.progress > 80 ? '#f59e0b' : '#3b82f6');
                 
+                // Standard block layout, no absolute positioning
                 html += `
-                    <div class="vs-item ${isHighlight}" style="height:${this.itemHeight}px; transform: translateY(${i * this.itemHeight}px); position: absolute; width: 100%; ${isSelected}" 
+                    <div class="vs-item ${isHighlight}" style="${isSelected}" 
                          onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
-                        <span class="name">${this.highlightMatch(p.name, this.input.value)}</span>
-                        <span class="code">${this.highlightMatch(p.code, this.input.value)}</span>
+                        <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            <span class="name" style="font-weight:500;">${this.highlightMatch(p.name, this.input.value)}</span>
+                            <span class="code" style="margin-left:8px; color:#64748b;">${this.highlightMatch(p.code, this.input.value)}</span>
+                        </div>
+                        <div style="font-size:12px; color:${progressColor}; width:40px; text-align:right;">${p.progress}%</div>
                     </div>
                 `;
+            });
+            
+            if (hasMore) {
+                 html += `
+                    <div style="padding:8px; text-align:center; font-size:12px; color:#94a3b8; border-top:1px dashed #e2e8f0;">
+                        结果过多，仅显示前 ${limit} 条 / Showing top ${limit} results
+                    </div>
+                 `;
             }
-            this.virtualContent.innerHTML = html;
+            
+            this.listContainer.innerHTML = html;
         }
         
         escape(str) {
@@ -1031,80 +1130,35 @@
 
         highlightMatch(text, q) {
             if (!text) return '';
-            if (!q) return text;
-            const reg = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return text.replace(reg, '<span style="color:var(--primary);font-weight:bold;">$1</span>');
+            if (!q || q.includes('[')) return text;
+            try {
+                const reg = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                return text.replace(reg, '<span style="color:var(--primary);font-weight:bold;">$1</span>');
+            } catch(e) {
+                return text;
+            }
         }
 
         select(id, name, code) {
-            let currentIds = this.hidden.value.split(',').filter(Boolean);
-            const strId = String(id);
-            
-            // Single Select Mode logic (if required, currently multi as per template)
-            // But user requirement said "Single Select Limitation"? 
-            // "项目选择器必须实现单选限制" -> Wait, user asked for single select?
-            // "Create New Task" project selector is single.
-            // "Create Daily Report" usually supports multiple.
-            // User input: "项目选择器必须实现单选限制" (Must implement single selection limit).
-            // Okay, switching to Single Select logic for this requirement.
-            
-            this.hidden.value = strId;
-            this.tagContainer.innerHTML = `
-                <div class="vs-tag" data-id="${id}">
-                    ${name}
-                    <span class="remove-tag" onclick="window.vsRemoveTag(${id})">×</span>
-                </div>
-            `;
-            
-            this.input.value = ''; 
-            this.addToHistory({id, name, code});
+            this.hidden.value = id;
+            this.input.value = `${name} [${code}]`;
             this.close();
-            
-            // Trigger updates (e.g. template recommendation)
             if (window.loadTemplateRecommendations) window.loadTemplateRecommendations();
-        }
-        
-        removeTag(id) {
-            this.hidden.value = '';
-            const tag = this.tagContainer.querySelector(`.vs-tag[data-id="${id}"]`);
-            if (tag) tag.remove();
-            if (window.loadTemplateRecommendations) window.loadTemplateRecommendations();
-        }
-        
-        addToHistory(item) {
-            let hist = JSON.parse(localStorage.getItem('vs_history_report') || '[]');
-            hist = hist.filter(i => i.id !== item.id);
-            hist.unshift(item);
-            if (hist.length > 5) hist.pop();
-            localStorage.setItem('vs_history_report', JSON.stringify(hist));
-        }
-        
-        renderHistory() {
-            const hist = JSON.parse(localStorage.getItem('vs_history_report') || '[]');
-            if (hist.length > 0 && !this.input.value) {
-                this.historyLabel.style.display = 'block';
-                this.historyList.innerHTML = hist.map(p => `
-                    <div class="vs-history-item" onmousedown="window.vsSelect(${p.id}, '${this.escape(p.name)}', '${this.escape(p.code)}')">
-                        <span style="font-size:16px;">🕒</span> 
-                        <span>${p.name} <span style="color:#94a3b8;font-size:12px;">(${p.code})</span></span>
-                    </div>
-                `).join('');
-            } else {
-                this.historyLabel.style.display = 'none';
-                this.historyList.innerHTML = '';
-            }
         }
 
         onKeydown(e) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                this.highlightIndex = Math.min(this.highlightIndex + 1, this.filteredProjects.length - 1);
-                this.renderVirtual();
+                // Max index is displayed items count - 1
+                const limit = 50;
+                const maxIndex = Math.min(this.filteredProjects.length, limit) - 1;
+                this.highlightIndex = Math.min(this.highlightIndex + 1, maxIndex);
+                this.renderList();
                 this.scrollToHighlight();
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
-                this.renderVirtual();
+                this.renderList();
                 this.scrollToHighlight();
             } else if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1116,21 +1170,20 @@
         }
         
         scrollToHighlight() {
-            const top = this.highlightIndex * this.itemHeight;
-            if (top < this.listContainer.scrollTop) {
-                this.listContainer.scrollTop = top;
-            } else if (top + this.itemHeight > this.listContainer.scrollTop + this.listContainer.clientHeight) {
-                this.listContainer.scrollTop = top + this.itemHeight - this.listContainer.clientHeight;
+            // Since we are not scrolling internally, we might need to scroll the window?
+            // Or just ensure it's visible. 
+            // If the user said "no scrollbar inside", they scroll the page.
+            // Highlighted item will just change color.
+            // If it's off screen, we could scrollIntoView.
+            const highlighted = this.listContainer.querySelector('.vs-item.highlighted');
+            if (highlighted) {
+                highlighted.scrollIntoView({block: 'nearest', behavior: 'smooth'});
             }
         }
     }
     
     window.vsSelect = function(id, name, code) {
          if (window.virtualProjectSelect) window.virtualProjectSelect.select(id, name, code);
-    };
-    
-    window.vsRemoveTag = function(id) {
-         if (window.virtualProjectSelect) window.virtualProjectSelect.removeTag(id);
     };
 
     window.virtualProjectSelect = new VirtualProjectSelect();
@@ -1283,9 +1336,23 @@
         if (projectHidden && projectHidden.value) {
             // Get names from tags
             const tags = document.querySelectorAll('.vs-tag');
-            tags.forEach(tag => {
-                projectNames.push(tag.textContent.replace('×', '').trim());
-            });
+            if (tags.length > 0) {
+                tags.forEach(tag => {
+                    projectNames.push(tag.textContent.replace('×', '').trim());
+                });
+            } else {
+                // Single select fallback: Use input value
+                const inputVal = document.getElementById('vs-input').value;
+                if (inputVal) {
+                    // Try to extract name before [Code]
+                    const match = inputVal.match(/^(.*)\s+\[.*\]$/);
+                    if (match) {
+                        projectNames.push(match[1]);
+                    } else {
+                        projectNames.push(inputVal);
+                    }
+                }
+            }
         }
         
         if (!name || !date || !role) {
