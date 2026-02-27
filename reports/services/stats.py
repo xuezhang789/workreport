@@ -74,7 +74,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     user_durations = defaultdict(list)
     all_durations = []
     
-    for item in completed_data:
+    # Use iterator() to save memory
+    for item in completed_data.iterator():
         if item['completed_at'] and item['created_at']:
             duration = (item['completed_at'] - item['created_at']).total_seconds() / 3600
             all_durations.append(duration)

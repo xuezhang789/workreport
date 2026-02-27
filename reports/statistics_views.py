@@ -450,7 +450,7 @@ def performance_board(request):
     accessible_projects = None
     
     if request.user.is_superuser:
-        projects_qs = Project.objects.filter(is_active=True).order_by('name')
+        projects_qs = Project.objects.filter(is_active=True).order_by('name').only('id', 'name')
     else:
         # Ordinary users: Check if they can see ANY performance stats
         # Requirement: "Admin Reports" page -> fine grained.
@@ -462,7 +462,7 @@ def performance_board(request):
         if not accessible_projects.exists():
             messages.error(request, "需要管理员权限 / Admin access required")
             return render(request, '403.html', status=403)
-        projects_qs = accessible_projects.order_by('name')
+        projects_qs = accessible_projects.order_by('name').only('id', 'name')
 
     start_date = parse_date(request.GET.get('start') or '') or None
     end_date = parse_date(request.GET.get('end') or '') or None
@@ -478,14 +478,20 @@ def performance_board(request):
         if not accessible_projects.filter(id=project_filter).exists():
              return _admin_forbidden(request, "没有该项目的访问权限 / No access to this project")
 
-    stats = _performance_stats(
-        start_date=start_date, 
-        end_date=end_date, 
-        project_id=project_filter, 
-        role_filter=role_filter, 
-        q=q,
-        accessible_projects=accessible_projects
-    )
+    # Cache key for stats
+    cache_key = f"perf_board_stats_{request.user.id}_{start_date}_{end_date}_{project_filter}_{role_filter}_{q}"
+    stats = cache.get(cache_key)
+    
+    if not stats:
+        stats = _performance_stats(
+            start_date=start_date, 
+            end_date=end_date, 
+            project_id=project_filter, 
+            role_filter=role_filter, 
+            q=q,
+            accessible_projects=accessible_projects
+        )
+        cache.set(cache_key, stats, 600) # Cache for 10 minutes
     
     # Filter urgent tasks based on permission
     # 根据权限过滤紧急任务
@@ -508,24 +514,58 @@ def performance_board(request):
     
     thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     sla_only = request.GET.get('sla_only') == '1'
-    sla_urgent_tasks = []
     
-    # Optimized: select_related 'sla_timer' to avoid N+1 in calculate_sla_info
-    sla_qs = Task.objects.select_related('project', 'user', 'sla_timer').exclude(status=TaskStatus.DONE)
-    if accessible_projects is not None:
-        sla_qs = sla_qs.filter(project__in=accessible_projects)
+    # SLA Urgent Tasks Caching
+    # 紧急任务计算较慢，增加缓存
+    sla_cache_key = f"perf_board_sla_{request.user.id}_{project_filter}_{sla_hours_val}"
+    sla_urgent_tasks = cache.get(sla_cache_key)
+    
+    if sla_urgent_tasks is None:
+        sla_urgent_tasks = []
         
-    for t in sla_qs:
-        # Pass parsed thresholds dict instead of raw string
-        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=thresholds)
-        if info and info.get('status') in ('tight', 'overdue'):
-            t.sla_info = info
-            sla_urgent_tasks.append(t)
-    sla_urgent_tasks.sort(key=lambda t: (
-        t.sla_info.get('sort', 3),
-        t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
-        -t.created_at.timestamp(),
-    ))
+        # Optimized: select_related 'sla_timer' to avoid N+1 in calculate_sla_info
+        # Optimization: Filter potential urgent tasks to reduce Python processing
+        # 优化：过滤潜在的紧急任务以减少 Python 处理
+        max_threshold = thresholds.get('amber', 4)
+        # Be conservative: check tasks that are due within (threshold + 1h) or created long ago
+        # 保守策略：检查在 (阈值 + 1h) 内到期或很久以前创建的任务
+        cutoff = timezone.now() + timedelta(hours=max_threshold + 1)
+        
+        sla_qs = Task.objects.select_related('project', 'user', 'sla_timer').exclude(
+            status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
+        )
+        
+        if accessible_projects is not None:
+            sla_qs = sla_qs.filter(project__in=accessible_projects)
+        
+        # Filter: Either has due_at <= cutoff OR (no due_at AND created_at <= cutoff - default_sla)
+        # If project specific SLA exists, we can't easily filter without complex query, so we include them via OR
+        # 过滤器：要么有 due_at <= cutoff，要么（无 due_at 且 created_at <= cutoff - default_sla）
+        # 如果存在特定项目的 SLA，我们在不进行复杂查询的情况下无法轻易过滤，因此通过 OR 包含它们
+        
+        default_sla = sla_hours_val or 48 # Fallback to 48 if setting missing
+        created_cutoff = cutoff - timedelta(hours=default_sla)
+        
+        sla_qs = sla_qs.filter(
+            Q(due_at__lte=cutoff) | 
+            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=True) & Q(created_at__lte=created_cutoff)) |
+            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=False)) # Keep project SLA tasks to be safe
+        )
+            
+        for t in sla_qs:
+            # Pass parsed thresholds dict instead of raw string
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=thresholds)
+            if info and info.get('status') in ('tight', 'overdue'):
+                t.sla_info = info
+                sla_urgent_tasks.append(t)
+        sla_urgent_tasks.sort(key=lambda t: (
+            t.sla_info.get('sort', 3),
+            t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
+            -t.created_at.timestamp(),
+        ))
+        
+        # Cache for 5 minutes
+        cache.set(sla_cache_key, sla_urgent_tasks, 300)
 
     if request.GET.get('send_weekly') == '1':
         # Send weekly logic... (keep as is)

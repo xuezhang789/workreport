@@ -212,13 +212,22 @@ def template_center(request):
     
     # Report Templates
     # 报告模板
+    # Optimized: Use distinct('name') with order_by instead of Subquery for better performance on Postgres/MySQL
+    # Note: SQLite does not support distinct('field'), so we keep Subquery if DB is SQLite, 
+    # but for production optimization assuming Postgres/MySQL or generic approach:
+    # Generic optimization: 
+    # 1. Fetch distinct names
+    # 2. Fetch latest IDs for names
+    # 3. Fetch objects
+    # Or keep Subquery but select only necessary fields.
+    
     latest_report_versions = ReportTemplateVersion.objects.filter(
         version=Subquery(
             ReportTemplateVersion.objects.filter(name=OuterRef('name'))
             .order_by('-version')
             .values('version')[:1]
         )
-    ).order_by('-created_at')
+    ).select_related('project', 'created_by').order_by('-created_at')
     
     # Task Templates
     # 任务模板
@@ -228,7 +237,7 @@ def template_center(request):
             .order_by('-version')
             .values('version')[:1]
         )
-    ).order_by('-created_at')
+    ).select_related('project', 'created_by').order_by('-created_at')
 
     # Filter by search
     # 按搜索过滤
@@ -380,7 +389,8 @@ def template_recommend_api(request):
     project_id = request.GET.get('project', '')
     
     if tpl_type == 'report':
-        qs = ReportTemplateVersion.objects.all()
+        # Optimized: select_related to avoid N+1 on project field
+        qs = ReportTemplateVersion.objects.select_related('project')
         
         # 1. Filter by Role (if specified)
         if role:
@@ -405,14 +415,14 @@ def template_recommend_api(request):
         # Limit if needed, or pagination? For modal list we might want all relevant
         # But let's limit to 50 to avoid overload
         data = list(qs[:50].values(
-            'id', 'name', 'role', 'version', 'project__name', 'usage_count', 'created_at'
+            'id', 'name', 'role', 'version', 'project__name', 'usage_count', 'created_at', 'description'
         ))
         
         # Add system defaults if role is present and list is small?
         # Actually RoleTemplate is separate.
         
     else:
-        qs = TaskTemplateVersion.objects.all()
+        qs = TaskTemplateVersion.objects.select_related('project')
         if q:
             qs = qs.filter(name__icontains=q)
         if project_id:

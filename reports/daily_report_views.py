@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Case, When, IntegerField, Exists, OuterRef
+from django.db.models import Q, Count, Case, When, IntegerField, Exists, OuterRef, Prefetch
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -25,7 +25,9 @@ def _filtered_reports(request):
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
 
-    qs = DailyReport.objects.select_related('user').prefetch_related('projects').order_by('-date', '-created_at')
+    qs = DailyReport.objects.select_related('user').prefetch_related(
+        Prefetch('projects', queryset=Project.objects.only('name'))
+    ).order_by('-date', '-created_at')
     if role:
         qs = qs.filter(role=role)
     if start_date:
@@ -641,7 +643,8 @@ def admin_reports(request):
 
     # 聚合统计数据 / Aggregate stats
     # Optimization: Use one query instead of three count() queries
-    stats = reports.aggregate(
+    # Clear ordering to avoid overhead
+    stats = reports.order_by().aggregate(
         total=Count('id'),
         submitted=Count(Case(When(status='submitted', then=1), output_field=IntegerField())),
         draft=Count(Case(When(status='draft', then=1), output_field=IntegerField()))
@@ -650,7 +653,7 @@ def admin_reports(request):
     submitted_count = stats['submitted']
     draft_count = stats['draft']
 
-    paginator = Paginator(reports, 28)
+    paginator = Paginator(reports, 27)
     # Optimization: Set count manually to avoid extra COUNT(*) query by Paginator
     # 优化：手动设置 count 以避免 Paginator 执行额外的 COUNT(*) 查询
     paginator.count = total_count
@@ -658,7 +661,7 @@ def admin_reports(request):
     page_obj = paginator.get_page(request.GET.get('page'))
     
     # 获取项目列表用于筛选下拉框
-    projects = accessible_projects.order_by('name')
+    projects = accessible_projects.order_by('name').only('id', 'name')
 
     log_action(request, 'access', f"admin_reports count={total_count} role={role} start={start_date} end={end_date} username={username} project={project_id} status={status}")
     context = {
