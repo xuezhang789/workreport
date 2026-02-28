@@ -23,6 +23,10 @@ urlpatterns = [
     path('<int:project_id>/upload-attachment/', views.project_upload_attachment, name='project_upload_attachment'),
     path('attachments/<int:attachment_id>/delete/', views.project_delete_attachment, name='project_delete_attachment'),
 
+    # Repositories
+    path('<int:project_id>/add-repository/', views.project_add_repository, name='project_add_repository'),
+    path('repositories/<int:repo_id>/delete/', views.project_delete_repository, name='project_delete_repository'),
+
     # Phase Configuration (Admin)
     path('phases/', views.project_phase_config_list, name='project_phase_config_list'),
     path('phases/new/', views.project_phase_config_create, name='project_phase_config_create'),

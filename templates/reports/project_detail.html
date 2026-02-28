@@ -416,6 +416,34 @@
                     {% endif %}
                 </span>
             </div>
+            
+            <!-- Repository Section -->
+            <div class="info-item" style="grid-column: 1 / -1;">
+                <span class="info-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span>代码仓库 / Repositories</span>
+                    {% if can_manage %}
+                        <button onclick="showAddRepoModal()" class="btn-xs btn-primary" style="border: none; background: transparent; color: var(--primary); padding: 0;">+ 添加 / Add</button>
+                    {% endif %}
+                </span>
+                <div id="repo-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                    {% for repo in repositories %}
+                        <div class="repo-item" id="repo-{{ repo.id }}" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary);"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                                <a href="{{ repo.url }}" target="_blank" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">{{ repo.name }}</a>
+                                <span style="font-size: 12px; color: var(--text-secondary);">{{ repo.url }}</span>
+                            </div>
+                            {% if can_manage %}
+                                <button onclick="deleteRepo({{ repo.id }})" style="border: none; background: transparent; color: #991b1b; cursor: pointer; padding: 4px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div id="no-repo-msg" style="font-size: 13px; color: var(--text-secondary); font-style: italic;">暂无仓库 / No repositories</div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
         
         {% if project.description %}
@@ -930,6 +958,70 @@
         .catch(err => {
             console.error(err);
             alert('Delete failed');
+        });
+    };
+    
+    // --- Repository Logic ---
+    window.showAddRepoModal = function() {
+        const name = prompt("请输入仓库名称 / Enter Repository Name:");
+        if (!name) return;
+        const url = prompt("请输入仓库地址 / Enter Repository URL:");
+        if (!url) return;
+        
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('url', url);
+        
+        fetch("{% url 'projects:project_add_repository' project.pk %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const list = document.getElementById('repo-list');
+                const noMsg = document.getElementById('no-repo-msg');
+                if (noMsg) noMsg.remove();
+                
+                const html = `
+                    <div class="repo-item" id="repo-${data.id}" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary);"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                            <a href="${data.url}" target="_blank" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">${data.name}</a>
+                            <span style="font-size: 12px; color: var(--text-secondary);">${data.url}</span>
+                        </div>
+                        <button onclick="deleteRepo(${data.id})" style="border: none; background: transparent; color: #991b1b; cursor: pointer; padding: 4px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', html);
+            } else {
+                alert('Add failed: ' + data.message);
+            }
+        });
+    };
+    
+    window.deleteRepo = function(id) {
+        if (!confirm('确定删除该仓库吗？ / Are you sure to delete this repository?')) return;
+        
+        fetch(`/projects/repositories/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const el = document.getElementById(`repo-${id}`);
+                if (el) el.remove();
+            } else {
+                alert('Delete failed: ' + data.message);
+            }
         });
     };
 

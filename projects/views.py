@@ -271,6 +271,9 @@ def project_detail(request, pk: int):
 
     phases = ProjectPhaseConfig.objects.filter(is_active=True)
     
+    # Repositories
+    repositories = project.repositories.all()
+    
     # New Task Creation Permission in Project Detail:
     # 1. Superuser
     # 2. Project Manager / Owner
@@ -298,6 +301,7 @@ def project_detail(request, pk: int):
         'task_status': task_status,
         'task_sort': task_sort,
         'task_status_choices': Task.STATUS_CHOICES,
+        'repositories': repositories,
     })
 
 @login_required
@@ -872,3 +876,49 @@ def project_search_api(request):
         })
         
     return JsonResponse({'results': data})
+
+from django.views.decorators.http import require_POST
+from .models import ProjectRepository
+
+@login_required
+@require_POST
+def project_add_repository(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    
+    if not can_manage_project(request.user, project):
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+        
+    name = request.POST.get('name')
+    url = request.POST.get('url')
+    
+    if not name or not url:
+        return JsonResponse({'status': 'error', 'message': 'Name and URL are required'}, status=400)
+        
+    repo = ProjectRepository.objects.create(project=project, name=name, url=url)
+    
+    # Audit Log
+    log_action(request, 'create', f"repository {repo.name} for project {project.id}")
+    
+    return JsonResponse({
+        'status': 'success',
+        'id': repo.id,
+        'name': repo.name,
+        'url': repo.url
+    })
+
+@login_required
+@require_POST
+def project_delete_repository(request, repo_id):
+    repo = get_object_or_404(ProjectRepository, pk=repo_id)
+    project = repo.project
+    
+    if not can_manage_project(request.user, project):
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+        
+    repo_name = repo.name
+    repo.delete()
+    
+    # Audit Log
+    log_action(request, 'delete', f"repository {repo_name} from project {project.id}")
+    
+    return JsonResponse({'status': 'success'})
