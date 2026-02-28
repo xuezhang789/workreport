@@ -81,7 +81,7 @@ def teams_list(request):
     
     # 1. Lightweight query for Dropdowns (Filter & Modal)
     # No annotations needed here, just ID/Name/Code
-    dropdown_projects = manageable_projects.order_by('name')
+    dropdown_projects = manageable_projects.values('id', 'name', 'code').order_by('name')
     
     # 2. Heavy query for Project List (Cards)
     # Needs member/manager counts and owner
@@ -185,15 +185,19 @@ def team_member_update_role(request, user_id):
 @login_required
 @require_POST
 def team_member_add_project(request, user_id):
-    if not has_manage_permission(request.user):
-        return JsonResponse({'error': 'Permission denied'}, status=403)
-        
     project_id = request.POST.get('project_id')
     if not project_id:
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'status': 'error', 'message': "Please select a project"}, status=400)
         messages.error(request, "Please select a project")
         return redirect('reports:teams')
+
+    # Security Check: Verify if user can manage THIS specific project
+    from reports.utils import can_manage_project
+    project = get_object_or_404(Project, pk=project_id)
+    
+    if not can_manage_project(request.user, project):
+        return JsonResponse({'error': 'Permission denied for this project'}, status=403)
 
     success, message = team_service.add_member_to_project(user_id, project_id, changed_by=request.user)
     
@@ -234,8 +238,12 @@ def team_member_add_project(request, user_id):
 @login_required
 @require_POST
 def team_member_remove_project(request, user_id, project_id):
-    if not has_manage_permission(request.user):
-        return JsonResponse({'error': 'Permission denied'}, status=403)
+    # Security Check: Verify if user can manage THIS specific project
+    from reports.utils import can_manage_project
+    project = get_object_or_404(Project, pk=project_id)
+    
+    if not can_manage_project(request.user, project):
+        return JsonResponse({'error': 'Permission denied for this project'}, status=403)
         
     success, message = team_service.remove_member_from_project(user_id, project_id, changed_by=request.user)
     

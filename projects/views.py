@@ -365,7 +365,7 @@ def project_edit(request, pk: int):
         if form.is_valid():
             project = form.save()
             log_action(request, 'update', f"project {project.id} {project.code}")
-            _invalidate_stats_cache()
+            _invalidate_stats_cache(instance=project)
             return redirect('projects:project_detail', pk=project.pk)
     else:
         form = ProjectForm(instance=project)
@@ -392,7 +392,7 @@ def project_delete(request, pk: int):
         project.is_active = False
         project.save(update_fields=['is_active'])
         log_action(request, 'delete', f"project {project.id} {project.code}")
-        _invalidate_stats_cache()
+        _invalidate_stats_cache(instance=project)
         return redirect('projects:project_list')
     return render(request, 'reports/project_confirm_delete.html', {'project': project})
 

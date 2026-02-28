@@ -22,13 +22,28 @@ from core.services.notification_template import NotificationContent, Notificatio
 
 TRACKED_MODELS = [DailyReport, User]
 
-def _invalidate_stats_cache(sender=None, **kwargs):
+def _invalidate_stats_cache(sender=None, instance=None, **kwargs):
     """
     使统计缓存无效。可以用作信号接收器或助手。
     """
     try:
+        # 尝试针对特定项目进行精确清除
+        if instance:
+            project_id = None
+            if isinstance(instance, Project):
+                project_id = instance.id
+            elif isinstance(instance, Task):
+                project_id = instance.project_id
+            
+            if project_id:
+                # 清除该特定项目的统计缓存
+                # key 模式: project_stats_{pk}_{count}
+                cache.delete_pattern(f"project_stats_{project_id}_*")
+                return
+
         # 尝试使用模式删除（例如 django-redis）
         cache.delete_pattern("stats_*")
+        cache.delete_pattern("project_stats_*")
     except (AttributeError, Exception):
         # 对于不支持 delete_pattern 的后端的回退（例如测试中的 LocMemCache）
         cache.clear()
@@ -52,7 +67,7 @@ def audit_pre_save(sender, instance, **kwargs):
 def audit_post_save(sender, instance, created, **kwargs):
     # 核心模型的缓存失效
     if sender in [Project, Task, DailyReport]:
-        _invalidate_stats_cache()
+        _invalidate_stats_cache(sender=sender, instance=instance)
 
     if sender not in TRACKED_MODELS:
         return
@@ -84,7 +99,7 @@ def audit_post_save(sender, instance, created, **kwargs):
 @receiver(post_delete)
 def audit_post_delete(sender, instance, **kwargs):
     if sender in [Project, Task, DailyReport]:
-        _invalidate_stats_cache()
+        _invalidate_stats_cache(sender=sender, instance=instance)
 
     if sender not in TRACKED_MODELS:
         return
