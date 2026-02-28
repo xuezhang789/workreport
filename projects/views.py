@@ -44,7 +44,8 @@ def _filtered_projects(request):
 
     # Base QuerySet
     # 基础查询集
-    qs = Project.objects.select_related('owner', 'owner__preferences', 'current_phase').filter(is_active=True)
+    # Optimization: Select related profile for owner avatar
+    qs = Project.objects.select_related('owner', 'owner__preferences', 'owner__profile', 'current_phase').filter(is_active=True)
     
     # Filter by accessible projects (Superuser check is handled inside)
     # 过滤可访问的项目（超级用户检查在内部处理）

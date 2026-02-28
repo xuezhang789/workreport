@@ -70,7 +70,10 @@ def admin_task_list(request):
     hot = request.GET.get('hot') == '1'
     sort_by = request.GET.get('sort', '-created_at')
 
-    tasks_qs = Task.objects.select_related('project', 'user', 'sla_timer').prefetch_related('collaborators')
+    # Optimization: Select related profile and preferences for avatar rendering
+    tasks_qs = Task.objects.select_related(
+        'project', 'user', 'sla_timer', 'user__profile', 'user__preferences'
+    ).prefetch_related('collaborators', 'collaborators__profile')
     
     # 预取一次 SLA 设置
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -170,13 +173,14 @@ def admin_task_list(request):
             t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
 
     User = get_user_model()
-    project_choices = accessible_projects.order_by('name')
+    # Optimization: Fetch only necessary fields for dropdowns
+    project_choices = accessible_projects.order_by('name').only('id', 'name')
     # 可访问项目中的用户
     user_objs = User.objects.filter(
         Q(project_memberships__in=accessible_projects) |
         Q(managed_projects__in=accessible_projects) |
         Q(owned_projects__in=accessible_projects)
-    ).distinct().order_by('username')
+    ).distinct().order_by('username').only('id', 'username', 'first_name', 'last_name')
     
     return render(request, 'tasks/admin_task_list.html', {
         'tasks': page_obj,
@@ -1420,10 +1424,11 @@ def task_list(request):
 
     # 优化查询，使用select_related和prefetch_related减少数据库查询
     # 添加 user__preferences 以避免头像显示时的 N+1 查询
+    # Optimization: Add user__profile to select_related
     tasks_qs = Task.objects.select_related(
-        'project', 'user', 'sla_timer', 'user__preferences'
+        'project', 'user', 'sla_timer', 'user__preferences', 'user__profile'
     ).prefetch_related(
-        'collaborators'
+        'collaborators', 'collaborators__profile'
     )
 
     # Permission check: Show tasks from accessible projects
@@ -1512,7 +1517,8 @@ def task_list(request):
     projects = Project.objects.filter(is_active=True)
     projects = projects.filter(id__in=accessible_projects.values('id'))
     
-    projects = projects.order_by('name')
+    # Optimization: Fetch only ID and Name
+    projects = projects.order_by('name').only('id', 'name')
 
     context = {
         'tasks': tasks,

@@ -46,12 +46,24 @@ def personnel_list(request):
     
     # Calculate Stats
     # 计算统计数据
-    total_users = User.objects.select_related('profile')
+    # Optimization: Combine counts into a single query
+    from django.db.models import Count, Q
+    
+    total_users_qs = User.objects.all()
+    now = timezone.now()
+    
+    stats_agg = total_users_qs.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(profile__employment_status='active')),
+        terminated=Count('id', filter=Q(profile__employment_status='terminated')),
+        new_hires=Count('id', filter=Q(profile__hire_date__month=now.month, profile__hire_date__year=now.year))
+    )
+    
     stats = {
-        'total': total_users.count(),
-        'active': total_users.filter(profile__employment_status='active').count(),
-        'terminated': total_users.filter(profile__employment_status='terminated').count(),
-        'new_hires': total_users.filter(profile__hire_date__month=timezone.now().month, profile__hire_date__year=timezone.now().year).count(),
+        'total': stats_agg['total'],
+        'active': stats_agg['active'],
+        'terminated': stats_agg['terminated'],
+        'new_hires': stats_agg['new_hires'],
     }
     
     # Pagination
@@ -65,8 +77,8 @@ def personnel_list(request):
     paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))
     
-    # Projects for filter dropdown
-    projects = Project.objects.filter(is_active=True).order_by('name')
+    # Projects for filter dropdown - Optimization: fetch only id and name
+    projects = Project.objects.filter(is_active=True).order_by('name').only('id', 'name')
 
     return render(request, 'reports/personnel_list.html', {
         'users': page_obj,

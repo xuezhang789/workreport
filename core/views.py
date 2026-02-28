@@ -136,8 +136,9 @@ def invitation_list(request):
                     return redirect('core:invitation_list')
             
             messages.error(request, "生成邀请码失败，请重试 / Failed to generate code, please try again")
-
-    invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user').order_by('-created_at')
+    
+    # Optimization: Select related profile for avatar
+    invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user', 'registered_user__profile').order_by('-created_at')
     
     # Pagination
     try:

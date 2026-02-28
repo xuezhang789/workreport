@@ -25,7 +25,7 @@ def _filtered_reports(request):
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
 
-    qs = DailyReport.objects.select_related('user').prefetch_related(
+    qs = DailyReport.objects.select_related('user', 'user__profile').prefetch_related(
         Prefetch('projects', queryset=Project.objects.only('name'))
     ).order_by('-date', '-created_at')
     if role:
