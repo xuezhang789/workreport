@@ -3,6 +3,7 @@
 {% load core_tags %}
 {% load humanize %}
 {% block title %}人事管理 / Personnel Management{% endblock %}
+
 {% block nav_header %}{% include "partials/nav.html" with nav_title="人事管理 / Personnel Management" nav_subtitle="管理员工档案、薪资与人事信息 / Manage employee profiles, salary & HR info" %}{% endblock %}
 
 {% block extra_styles %}
@@ -249,6 +250,236 @@
 {% endblock %}
 
 {% block content %}
+<!-- Attendance Modal -->
+<div id="attendance-modal" class="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;" onclick="if(event.target === this) closeAttendanceModal()">
+    <div class="modal-content" style="background:#fff; border-radius:8px; width:90%; max-width:800px; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
+        <div class="modal-header" style="padding:16px 20px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="attendance-modal-title" style="margin:0; font-size:18px; font-weight:600;">考勤记录 / Attendance</h3>
+            <span class="close-btn" onclick="closeAttendanceModal()" style="font-size:24px; cursor:pointer; color:#64748b;">&times;</span>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <!-- Calendar Controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <span id="current-month-display" style="font-size:16px; font-weight:600;"></span>
+                    <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+                <div style="display:flex; gap:15px; font-size:14px;">
+                    <span style="display:flex; align-items:center;"><span style="width:10px; height:10px; background:var(--success-light); border:1px solid var(--success); border-radius:50%; margin-right:5px;"></span>出勤: <strong id="stat-present" style="margin-left:4px;">0</strong></span>
+                    <span style="display:flex; align-items:center;"><span style="width:10px; height:10px; background:var(--warning-light); border:1px solid var(--warning); border-radius:50%; margin-right:5px;"></span>补卡: <strong id="stat-makeup" style="margin-left:4px;">0</strong></span>
+                    <span style="display:flex; align-items:center;"><span style="width:10px; height:10px; background:var(--danger-light); border:1px solid var(--danger); border-radius:50%; margin-right:5px;"></span>请假: <strong id="stat-leave" style="margin-left:4px;">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- Days Header -->
+                <div class="calendar-day-header">Sun</div>
+                <div class="calendar-day-header">Mon</div>
+                <div class="calendar-day-header">Tue</div>
+                <div class="calendar-day-header">Wed</div>
+                <div class="calendar-day-header">Thu</div>
+                <div class="calendar-day-header">Fri</div>
+                <div class="calendar-day-header">Sat</div>
+                <!-- Days will be injected here -->
+            </div>
+            
+            <div id="attendance-loading" style="display:none; text-align:center; padding:20px; color:#64748b;">
+                加载中... / Loading...
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+    .calendar-day-header {
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-secondary);
+        padding: 8px 0;
+        font-size: 13px;
+    }
+    .calendar-day {
+        aspect-ratio: 1;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 6px;
+        font-size: 14px;
+        position: relative;
+        background: #fff;
+        min-height: 80px;
+    }
+    .calendar-day.empty {
+        background: transparent;
+        border: none;
+    }
+    .calendar-day.present {
+        background-color: #f0fdf4; /* var(--success-light) */
+        border-color: var(--success);
+    }
+    .calendar-day.makeup {
+        background-color: #fefce8; /* var(--warning-light) */
+        border-color: var(--warning);
+    }
+    .calendar-day.leave {
+        background-color: #fef2f2; /* var(--danger-light) */
+        border-color: var(--danger);
+    }
+    .calendar-day.today {
+        box-shadow: 0 0 0 2px var(--primary);
+    }
+    .day-number {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        font-weight: 500;
+    }
+    .day-status {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        font-size: 14px;
+    }
+</style>
+
+<script>
+let currentAttendanceUser = null;
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1; // 1-12
+
+function openAttendanceModal(userId, userName) {
+    currentAttendanceUser = userId;
+    document.getElementById('attendance-modal-title').textContent = `考勤记录 / Attendance - ${userName}`;
+    document.getElementById('attendance-modal').style.display = 'flex';
+    // Reset to current month when opening
+    const now = new Date();
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth() + 1;
+    loadAttendanceData();
+}
+
+function closeAttendanceModal() {
+    document.getElementById('attendance-modal').style.display = 'none';
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+    } else if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+    }
+    loadAttendanceData();
+}
+
+async function loadAttendanceData() {
+    const grid = document.getElementById('calendar-grid');
+    const loading = document.getElementById('attendance-loading');
+    const display = document.getElementById('current-month-display');
+    
+    // Clear grid but keep headers (re-add headers)
+    grid.innerHTML = `
+        <div class="calendar-day-header">Sun</div>
+        <div class="calendar-day-header">Mon</div>
+        <div class="calendar-day-header">Tue</div>
+        <div class="calendar-day-header">Wed</div>
+        <div class="calendar-day-header">Thu</div>
+        <div class="calendar-day-header">Fri</div>
+        <div class="calendar-day-header">Sat</div>
+    `;
+    
+    display.textContent = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    loading.style.display = 'block';
+
+    try {
+        const response = await fetch(`/reports/api/attendance/stats/?user_id=${currentAttendanceUser}&month=${currentYear}-${currentMonth}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            renderCalendar(result.data);
+        } else {
+            console.error(result.error);
+            showHRToast('Load failed: ' + result.error, 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showHRToast('Network error', 'error');
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+function renderCalendar(data) {
+    const { year, month } = { year: currentYear, month: currentMonth }; // Use current state
+    const firstDay = new Date(year, month - 1, 1).getDay(); // 0 (Sun) - 6 (Sat)
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    const grid = document.getElementById('calendar-grid');
+    
+    // Stats
+    document.getElementById('stat-present').textContent = data.present_days;
+    document.getElementById('stat-makeup').textContent = data.makeup_days;
+    document.getElementById('stat-leave').textContent = data.leave_days;
+
+    // Map records by date
+    const recordMap = {};
+    data.records.forEach(r => {
+        recordMap[r.date] = r;
+    });
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day empty';
+        grid.appendChild(cell);
+    }
+
+    // Days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const record = recordMap[dateStr];
+        
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        
+        if (record) {
+            cell.classList.add(record.status);
+            cell.title = `Status: ${record.status}`;
+            if (record.report_id) {
+                cell.style.cursor = 'pointer';
+                cell.onclick = () => window.open(`/reports/my/${record.report_id}/`, '_blank');
+            }
+        }
+
+        const today = new Date();
+        if (year === today.getFullYear() && month === today.getMonth() + 1 && d === today.getDate()) {
+            cell.classList.add('today');
+        }
+
+        cell.innerHTML = `<span class="day-number">${d}</span>`;
+        if (record) {
+             const icon = record.status === 'present' ? '✅' : 
+                          record.status === 'leave' ? '🏖️' : 
+                          record.status === 'makeup' ? '⚠️' : '';
+             cell.innerHTML += `<div class="day-status">${icon}</div>`;
+        }
+
+        grid.appendChild(cell);
+    }
+}
+</script>
 <div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
     <!-- Header -->
@@ -431,6 +662,10 @@
                                 })'>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                     编辑 / Edit
+                                </button>
+                                <button type="button" onclick="openAttendanceModal({{ user.id }}, '{{ user.get_full_name|default:user.username|escapejs }}'); event.stopPropagation();">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    考勤 / Attendance
                                 </button>
                                 <button type="button" onclick="openConfirmModal({{ user.id }}, '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.official_salary|default:"" }}')">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>

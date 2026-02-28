@@ -95,6 +95,68 @@ def personnel_list(request):
         'today_date': timezone.now().strftime('%Y-%m-%d'),
     })
 
+from work_logs.models import Attendance
+
+@login_required
+def attendance_stats(request):
+    """
+    API for monthly attendance statistics.
+    GET /api/attendance/stats/?user_id=123&month=2023-10
+    """
+    user_id = request.GET.get('user_id')
+    month_str = request.GET.get('month') # YYYY-MM
+
+    if not user_id or not month_str:
+        return JsonResponse({'error': 'Missing user_id or month'}, status=400)
+    
+    # Permission check (Simple: Superuser only for now as per view restriction)
+    if not request.user.is_superuser:
+         return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        year, month = map(int, month_str.split('-'))
+        from calendar import monthrange
+        start_date = date(year, month, 1)
+        _, last_day = monthrange(year, month)
+        end_date = date(year, month, last_day)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid month format'}, status=400)
+
+    attendances = Attendance.objects.filter(
+        user_id=user_id,
+        date__range=(start_date, end_date)
+    ).select_related('report')
+
+    records = []
+    present_days = 0
+    makeup_days = 0
+    leave_days = 0
+
+    for att in attendances:
+        records.append({
+            'date': att.date.isoformat(),
+            'status': att.status,
+            'report_id': att.report_id,
+        })
+        if att.status == 'present':
+            present_days += 1
+        elif att.status == 'makeup':
+            makeup_days += 1
+        elif att.status == 'leave':
+            leave_days += 1
+    
+    return JsonResponse({
+        'status': 'success',
+        'data': {
+            'user_id': user_id,
+            'month': month_str,
+            'present_days': present_days,
+            'makeup_days': makeup_days,
+            'leave_days': leave_days,
+            'records': records
+        }
+    })
+
 @user_passes_test(is_superuser)
 @require_http_methods(["PUT", "POST"]) # Allow POST for FormData
 def update_hr_info(request, user_id):

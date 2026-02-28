@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.http import JsonResponse
+from django.db import transaction
 import json
 from datetime import timedelta
 
@@ -115,6 +116,7 @@ def _report_initial(report: DailyReport | None):
     }
 
 @login_required
+@transaction.atomic
 def daily_report_create(request):
     user = request.user
     try:
@@ -527,6 +529,7 @@ def report_detail(request, pk: int):
 
 
 @login_required
+@transaction.atomic
 def report_submit(request, pk: int):
     report = get_object_or_404(DailyReport, pk=pk)
     if not (report.user == request.user or has_manage_permission(request.user)):

@@ -63,6 +63,7 @@ urlpatterns = [
     path('api/admin/members/<int:user_id>/contracts/', views_hr.contract_list, name='api_contract_list'),
     path('api/admin/members/<int:user_id>/contracts/upload/', views_hr.contract_upload, name='api_contract_upload'),
     path('api/admin/contracts/<int:contract_id>/delete/', views_hr.contract_delete, name='api_contract_delete'),
+    path('api/attendance/stats/', views_hr.attendance_stats, name='api_attendance_stats'),
     path('personnel/export/', export_views.personnel_export, name='personnel_export'),
 
     # Project Attachments - Moved

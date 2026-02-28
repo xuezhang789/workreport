@@ -183,3 +183,58 @@ class RoleTemplate(models.Model):
 
     def __str__(self):
         return f"Template for {self.get_role_display()}"
+
+
+class Attendance(models.Model):
+    """
+    考勤记录：与日报关联，用户每日提交日报即视为当日已考勤。
+    Attendance Record: Linked to daily report, submission implies attendance.
+    """
+    STATUS_CHOICES = [
+        ('present', '出勤 / Present'),
+        ('absent', '缺勤 / Absent'),
+        ('leave', '请假 / Leave'),
+        ('makeup', '补卡 / Make-up'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='attendances', verbose_name="用户")
+    date = models.DateField(verbose_name="日期")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present', verbose_name="状态")
+    report = models.OneToOneField('DailyReport', on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_record', verbose_name="关联日报")
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        unique_together = ('user', 'date')
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['user', 'date']),
+            models.Index(fields=['date']),
+            models.Index(fields=['status']),
+        ]
+        verbose_name = "考勤记录"
+        verbose_name_plural = "考勤记录"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.date} - {self.get_status_display()}"
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=DailyReport)
+def update_attendance_from_report(sender, instance, created, **kwargs):
+    """
+    Daily Report submission triggers attendance record.
+    If status is 'submitted', mark as present.
+    """
+    if instance.status == 'submitted':
+        Attendance.objects.update_or_create(
+            user=instance.user,
+            date=instance.date,
+            defaults={
+                'status': 'present',
+                'report': instance,
+            }
+        )
