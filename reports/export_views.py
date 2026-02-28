@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from django.db.models import Q, Count, F
+from django.db import models
+from django.db.models import Q, Count, F, Prefetch
 import json
 
-from work_logs.models import DailyReport
+from work_logs.models import DailyReport, Attendance
 from audit.models import AuditLog
 from tasks.models import Task
 from projects.models import Project
@@ -435,7 +436,19 @@ def personnel_export(request):
     
     # Corrected: project_memberships is a ManyToMany related_name returning Projects directly
     # 修正：project_memberships 是 ManyToMany related_name，直接返回 Project 对象
-    qs = get_user_model().objects.select_related('profile').prefetch_related('project_memberships').order_by('username')
+    # 考勤数据仅获取当月数据，使用 Prefetch 进行过滤
+    today = timezone.localdate()
+    current_month_start = today.replace(day=1)
+    # 下个月的第一天
+    if today.month == 12:
+        next_month_start = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month_start = today.replace(month=today.month + 1, day=1)
+        
+    qs = get_user_model().objects.select_related('profile').filter(profile__isnull=False).prefetch_related(
+        'project_memberships', 
+        Prefetch('attendances', queryset=Attendance.objects.filter(date__gte=current_month_start, date__lt=next_month_start), to_attr='current_month_attendances')
+    ).order_by('username')
 
     if q:
         qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q))
@@ -447,9 +460,31 @@ def personnel_export(request):
     qs = qs.distinct()
 
     def _iter_rows():
+        today = timezone.localdate()
         for u in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
             # u.project_memberships.all() returns Project objects
             projects = ", ".join([p.name for p in u.project_memberships.all()])
+            
+            # Calculate tenure
+            tenure_days = ""
+            if u.profile.hire_date:
+                end_date = u.profile.resignation_date if u.profile.resignation_date else today
+                if end_date >= u.profile.hire_date:
+                    tenure_days = (end_date - u.profile.hire_date).days
+
+            # Calculate attendance stats for current month
+            attendance_present = 0
+            attendance_makeup = 0
+            attendance_leave = 0
+            # 使用 prefetch 的结果
+            for att in getattr(u, 'current_month_attendances', []):
+                if att.status == 'present':
+                    attendance_present += 1
+                elif att.status == 'makeup':
+                    attendance_makeup += 1
+                elif att.status == 'leave':
+                    attendance_leave += 1
+
             yield [
                 u.id,
                 u.username,
@@ -457,22 +492,31 @@ def personnel_export(request):
                 u.email,
                 u.profile.get_position_display(),
                 u.profile.get_employment_status_display(),
+                "是" if u.is_active else "否",
                 projects,
+                attendance_present,
+                attendance_makeup,
+                attendance_leave,
                 str(u.profile.hire_date) if u.profile.hire_date else "",
+                tenure_days,
                 u.profile.probation_months,
                 u.profile.probation_salary or "",
                 u.profile.official_salary or "",
                 u.profile.salary_currency,
+                u.profile.usdt_address or "",
+                request.build_absolute_uri(u.profile.usdt_qr_code.url) if u.profile.usdt_qr_code else "",
                 str(u.profile.resignation_date) if u.profile.resignation_date else "",
+                u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "",
                 u.profile.intermediary_company or "",
                 f"{u.profile.intermediary_fee_amount} {u.profile.intermediary_fee_currency}" if u.profile.intermediary_fee_amount else "",
                 u.profile.hr_note or "",
             ]
 
     header = [
-        "ID", "用户名 / Username", "姓名 / Name", "邮箱 / Email", "职位 / Position", "状态 / Status", "参与项目 / Projects", 
-        "入职日期 / Hire Date", "试用期(月) / Probation", "试用薪资 / Probation Salary", "正式薪资 / Official Salary", "货币 / Currency", 
-        "离职日期 / Resignation", "中介公司 / Agency", "中介费用 / Agency Fee", "备注 / Note"
+        "ID", "用户名 / Username", "姓名 / Name", "邮箱 / Email", "职位 / Position", "状态 / Status", "激活 / Active", "参与项目 / Projects", 
+        "本月出勤天数 / Current Month Days Present", "本月补卡次数 / Current Month Makeups", "本月请假天数 / Current Month Days Leave",
+        "入职日期 / Hire Date", "在职天数 / Tenure(Days)", "试用期(月) / Probation", "试用薪资 / Probation Salary", "正式薪资 / Official Salary", "货币 / Currency", 
+        "USDT 地址 / USDT Address", "收款二维码 / Payment QR", "离职日期 / Resignation", "最近登录 / Last Login", "中介公司 / Agency", "中介费用 / Agency Fee", "备注 / Note"
     ]
     
     response = StreamingHttpResponse(_stream_csv(_iter_rows(), header), content_type="text/csv; charset=utf-8")
