@@ -21,7 +21,9 @@ from core.permissions import has_manage_permission
 from audit.utils import log_action
 
 def _filtered_reports(request):
-    """Return filtered queryset plus filter values."""
+    """
+    返回过滤后的查询集及过滤参数值。
+    """
     role = (request.GET.get('role') or '').strip()
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
@@ -135,45 +137,43 @@ def daily_report_create(request):
             Q(managers=user)
         )
     
-    # Optimization: Remove expensive annotate(Count). 
-    # Strategy: Load "Recent Projects" + "Assigned Projects" limited to 50.
-    # 优化：移除昂贵的 annotate(Count)。策略：加载“最近项目”+“分配项目”，限制为50个。
+    # 优化：移除昂贵的 annotate(Count)。
+    # 策略：加载“最近项目”+“分配项目”，限制为50个。
     
-    # 1. Recent project IDs from last 100 reports (efficient join)
+    # 1. 最近项目 ID（来自最近 100 份日报，高效连接）
     recent_pids = list(DailyReport.projects.through.objects.filter(
         dailyreport__user=user
     ).order_by('-dailyreport_id').values_list('project_id', flat=True)[:100])
     
-    # 2. Assigned projects (Member/Owner/Manager)
-    # If superuser, accessible_projects is All, so we might skip "Assigned" specific check 
-    # but strictly we should show what they are likely to use.
-    # For superuser, "Assigned" might be empty if they are just admin.
-    # So we stick to project_filter (which is All for superuser, Accessible for others).
+    # 2. 分配的项目（成员/负责人/经理）
+    # 如果是超级管理员，accessible_projects 是全部，但严格来说我们应该显示他们可能使用的项目。
+    # 对于超级管理员，“Assigned”可能为空，如果他们只是管理员。
+    # 所以我们坚持使用 project_filter（超级管理员为全部，其他人为可访问）。
     
-    # Let's get IDs from project_filter, but we can't fetch all IDs if there are 10k.
-    # So we fetch recent first.
+    # 我们从 project_filter 获取 ID，但如果超过 1万个则不能全部获取。
+    # 所以我们优先获取最近使用的。
     
     final_pids = []
     seen = set()
     
-    # Add recent valid projects first
-    # We need to ensure recent projects are still active and accessible
+    # 优先添加最近的有效项目
+    # 我们需要确保最近的项目仍然处于激活状态且可访问
     valid_recent = Project.objects.filter(project_filter, id__in=recent_pids).values_list('id', flat=True)
     valid_recent_set = set(valid_recent)
     
-    # Preserve recency order
+    # 保持最近顺序
     for pid in recent_pids:
         if pid in valid_recent_set and pid not in seen:
             final_pids.append(pid)
             seen.add(pid)
             
-    # Add other accessible projects (limit total to 50)
+    # 添加其他可访问项目（总数限制为 50）
     remaining_limit = 50 - len(final_pids)
     if remaining_limit > 0:
         others = Project.objects.filter(project_filter).exclude(id__in=seen).order_by('name').values_list('id', flat=True)[:remaining_limit]
         final_pids.extend(others)
         
-    # Fetch objects and preserve order
+    # 获取对象并保持顺序
     projects_map = {p.id: p for p in Project.objects.filter(id__in=final_pids)}
     projects_list = [projects_map[pid] for pid in final_pids if pid in projects_map]
 
@@ -550,10 +550,10 @@ def report_edit(request, pk: int):
     if not has_manage_permission(request.user):
         project_filter &= (Q(owner=request.user) | Q(members=request.user) | Q(managers=request.user))
     
-    # Optimization for Edit: Limit projects
+    # 编辑优化：限制加载的项目数量
     selected_project_ids = list(report.projects.values_list('id', flat=True))
     
-    # 1. Recent
+    # 1. 最近使用的项目
     recent_pids = list(DailyReport.projects.through.objects.filter(
         dailyreport__user=request.user
     ).order_by('-dailyreport_id').values_list('project_id', flat=True)[:50])
@@ -604,7 +604,7 @@ def report_edit(request, pk: int):
 
 @login_required
 def admin_reports(request):
-    # Unified Report View: Superuser sees all, others see accessible
+    # 统一日报视图：超级管理员查看所有，其他人仅查看可访问的
     reports, role, start_date, end_date = _filtered_reports(request)
     
     # 获取可访问项目列表（统一逻辑）
@@ -615,7 +615,6 @@ def admin_reports(request):
     
     # 权限控制：如果不是超级管理员，仅显示其有权管理的项目的日报
     if not request.user.is_superuser:
-        # Optimization: Use Exists subquery instead of filter(...).distinct() to avoid expensive JOINs and deduplication
         # 优化：使用 Exists 子查询替代 filter(...).distinct()，避免昂贵的 JOIN 和去重操作
         reports = reports.filter(
             Exists(
@@ -644,9 +643,9 @@ def admin_reports(request):
     if status in dict(DailyReport.STATUS_CHOICES):
         reports = reports.filter(status=status)
 
-    # 聚合统计数据 / Aggregate stats
-    # Optimization: Use one query instead of three count() queries
-    # Clear ordering to avoid overhead
+    # 聚合统计数据
+    # 优化：使用单次查询替代三次 count() 查询
+    # 清除排序以避免开销
     stats = reports.order_by().aggregate(
         total=Count('id'),
         submitted=Count(Case(When(status='submitted', then=1), output_field=IntegerField())),
@@ -664,7 +663,6 @@ def admin_reports(request):
         per_page = 20
 
     paginator = Paginator(reports, per_page)
-    # Optimization: Set count manually to avoid extra COUNT(*) query by Paginator
     # 优化：手动设置 count 以避免 Paginator 执行额外的 COUNT(*) 查询
     paginator.count = total_count
     
@@ -701,20 +699,20 @@ def daily_report_batch_create(request):
             data = json.loads(request.body)
             reports_data = data.get('reports', [])
             
-            # Security: Limit batch size to prevent DoS
+            # 安全：限制批量大小以防止 DoS
             if len(reports_data) > 50:
                  return JsonResponse({'success': False, 'message': '批量创建限制单次最多 50 条 / Max 50 reports per batch'}, status=400)
 
             created_count = 0
             errors = []
             
-            # Get user's role/position
+            # 获取用户的角色/职位
             try:
                 role = request.user.profile.position
             except (Profile.DoesNotExist, AttributeError):
                 role = 'dev'
 
-            # Pre-fetch existing reports to avoid N+1 queries
+            # 预获取现有日报以避免 N+1 查询
             dates_to_check = []
             for item in reports_data:
                 d_str = item.get('date')
@@ -756,7 +754,7 @@ def daily_report_batch_create(request):
                      errors.append(f"第 {index + 1} 行：{date_str} 的日报已存在")
                      continue
                 
-                # Create report
+                # 创建日报
                 report = DailyReport(
                     user=request.user,
                     date=report_date,
@@ -768,7 +766,7 @@ def daily_report_batch_create(request):
                 report.save()
                 
                 if project_ids:
-                    # Filter valid project IDs (must be accessible)
+                    # 过滤有效的项目 ID（必须是可访问的）
                     valid_projects = get_accessible_projects(request.user).filter(id__in=project_ids)
                     report.projects.set(valid_projects)
                 

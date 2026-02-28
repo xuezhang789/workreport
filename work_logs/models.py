@@ -6,7 +6,7 @@ from projects.models import Project
 
 class ReminderRule(models.Model):
     """日报提醒规则：按项目/角色配置提醒时间与渠道。"""
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='reminder_rules', verbose_name="项目")
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='reminder_rules', verbose_name="项目")
     role = models.CharField(max_length=10, choices=Profile.ROLE_CHOICES, null=True, blank=True, help_text="为空则对项目内全部角色生效", verbose_name="角色")
     cutoff_time = models.TimeField(default=time(20, 0), verbose_name="截止时间")
     channel = models.CharField(max_length=50, default='email', verbose_name="通知渠道")
@@ -96,7 +96,7 @@ class DailyReport(models.Model):
     @property
     def summary(self):
         """
-        Return the first non-empty summary-like field for display/export.
+        返回第一个非空的摘要字段，用于列表展示或导出。
         """
         for field in [
             'today_work',
@@ -188,7 +188,6 @@ class RoleTemplate(models.Model):
 class Attendance(models.Model):
     """
     考勤记录：与日报关联，用户每日提交日报即视为当日已考勤。
-    Attendance Record: Linked to daily report, submission implies attendance.
     """
     STATUS_CHOICES = [
         ('present', '出勤 / Present'),
@@ -226,8 +225,8 @@ from django.dispatch import receiver
 @receiver(post_save, sender=DailyReport)
 def update_attendance_from_report(sender, instance, created, **kwargs):
     """
-    Daily Report submission triggers attendance record.
-    If status is 'submitted', mark as present.
+    日报提交触发考勤记录。
+    如果状态为“已提交”，则标记为出勤。
     """
     if instance.status == 'submitted':
         Attendance.objects.update_or_create(

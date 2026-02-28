@@ -70,7 +70,7 @@ def admin_task_list(request):
     hot = request.GET.get('hot') == '1'
     sort_by = request.GET.get('sort', '-created_at')
 
-    # Optimization: Select related profile and preferences for avatar rendering
+    # 优化：为头像渲染选择关联的 profile 和 preferences
     tasks_qs = Task.objects.select_related(
         'project', 'user', 'sla_timer', 'user__profile', 'user__preferences'
     ).prefetch_related('collaborators', 'collaborators__profile')
@@ -92,7 +92,7 @@ def admin_task_list(request):
         due_at__lte=now + timedelta(hours=default_sla_hours)
     ).values_list('id', flat=True))
     
-    # Filter by accessible projects (Superuser sees all active)
+    # 按可访问项目过滤（超级管理员查看所有活动项目）
     tasks_qs = tasks_qs.filter(project__in=accessible_projects)
 
     if status in dict(Task.STATUS_CHOICES):
@@ -173,7 +173,7 @@ def admin_task_list(request):
             t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
 
     User = get_user_model()
-    # Optimization: Fetch only necessary fields for dropdowns
+    # 优化：仅获取下拉列表所需的字段
     project_choices = accessible_projects.order_by('name').only('id', 'name')
     # 可访问项目中的用户
     user_objs = User.objects.filter(
@@ -216,7 +216,7 @@ def admin_task_bulk_action(request):
     if request.method != 'POST':
         return _admin_forbidden(request, "仅允许 POST / POST only")
     ids = request.POST.getlist('task_ids')
-    action = request.POST.get('action')  # Fixed param name
+    action = request.POST.get('action')  # 修正后的参数名称
     redirect_to = request.POST.get('redirect_to')
     if redirect_to and not url_has_allowed_host_and_scheme(url=redirect_to, allowed_hosts={request.get_host()}):
         redirect_to = None
@@ -228,7 +228,7 @@ def admin_task_bulk_action(request):
     total_requested = len(ids)
     tasks = Task.objects.filter(id__in=ids)
     
-    # Filter by manageable projects (handles superuser too)
+    # 按可管理项目过滤（也处理超级管理员）
     tasks = tasks.filter(project_id__in=manageable_project_ids)
     
     skipped_perm = max(0, total_requested - tasks.count())
@@ -453,7 +453,7 @@ def admin_task_export(request):
             job.save(update_fields=['status', 'message', 'updated_at'])
             return JsonResponse({'error': 'export failed'}, status=500)
 
-    # Security/Performance Fix: Remove iterator() to allow prefetch_related to work
+    # 安全/性能修复：移除 iterator() 以允许 prefetch_related 工作
     rows = TaskExportService.get_export_rows(tasks)
     header = TaskExportService.get_header()
     response = StreamingHttpResponse(_stream_csv(rows, header), content_type="text/csv; charset=utf-8")
@@ -1424,14 +1424,14 @@ def task_list(request):
 
     # 优化查询，使用select_related和prefetch_related减少数据库查询
     # 添加 user__preferences 以避免头像显示时的 N+1 查询
-    # Optimization: Add user__profile to select_related
+    # 优化：添加 user__profile 到 select_related
     tasks_qs = Task.objects.select_related(
         'project', 'user', 'sla_timer', 'user__preferences', 'user__profile'
     ).prefetch_related(
         'collaborators', 'collaborators__profile'
     )
 
-    # Permission check: Show tasks from accessible projects
+    # 权限检查：显示可访问项目的任务
     # 现：可访问项目中的所有任务
     accessible_projects = get_accessible_projects(request.user)
     tasks_qs = tasks_qs.filter(project__in=accessible_projects)
@@ -1517,12 +1517,12 @@ def task_list(request):
     projects = Project.objects.filter(is_active=True)
     projects = projects.filter(id__in=accessible_projects.values('id'))
     
-    # Optimization: Fetch only ID and Name
+    # 优化：仅获取 ID 和名称
     projects = projects.order_by('name').only('id', 'name')
 
     context = {
         'tasks': tasks,
-        'page_obj': tasks, # Alias for consistency with other views
+        'page_obj': tasks, # 为了与其他视图保持一致的别名
         'per_page': per_page,
         'projects': projects,
         'selected_status': status,
@@ -1802,23 +1802,23 @@ def task_bulk_action(request):
 @login_required
 def task_view(request, pk: int):
     """View task content or redirect to URL."""
-    # Optimization: Prefetch all related data to minimize DB queries
+    # 优化：预取所有相关数据以最小化数据库查询
     task_qs = Task.objects.select_related(
         'project', 
         'user', 
-        'user__profile',  # For user avatar/position
-        'project__owner', # For permission checks
-        'sla_timer'       # For SLA calculation
+        'user__profile',  # 用于用户头像/职位
+        'project__owner', # 用于权限检查
+        'sla_timer'       # 用于 SLA 计算
     ).prefetch_related(
         'collaborators',
-        'collaborators__profile', # For collaborator avatars
-        'collaborators__preferences', # For collaborator avatars (user.preferences)
+        'collaborators__profile', # 用于协作者头像
+        'collaborators__preferences', # 用于协作者头像 (user.preferences)
         'attachments',
         'attachments__user',
         'comments',
         'comments__user',
-        'comments__user__profile', # For comment author avatars
-        'comments__user__preferences' # For comment author avatars
+        'comments__user__profile', # 用于评论作者头像
+        'comments__user__preferences' # 用于评论作者头像
     )
     
     task = get_object_or_404(task_qs, pk=pk)
@@ -1828,8 +1828,8 @@ def task_view(request, pk: int):
     is_owner = task.user == request.user
     is_collab = task.collaborators.filter(pk=request.user.pk).exists()
     
-    # Check if user is a member of the project (via RBAC)
-    # Using accessible_projects check is equivalent to checking if they have project.view
+    # 检查用户是否为项目成员（通过 RBAC）
+    # 使用 accessible_projects 检查等同于检查他们是否拥有 project.view
     is_member = get_accessible_projects(request.user).filter(pk=task.project.id).exists()
     
     # 可见性：管理者（包括超级用户），拥有者，协作者，和项目成员
@@ -1946,7 +1946,7 @@ def task_view(request, pk: int):
         
         return redirect('tasks:task_view', pk=pk)
 
-    # Pre-calculated in prefetch
+    # 在 prefetch 中预计算
     comments = task.comments.all() 
     attachments = task.attachments.all()
     
@@ -1987,7 +1987,7 @@ def task_history(request, pk: int):
     if not can_view:
         return _friendly_forbidden(request, "无权查看该任务历史 / No permission to view task history")
 
-    # Filters
+    # 过滤器
     filters = {
         'user_id': request.GET.get('user'),
         'start_date': request.GET.get('start_date'),
@@ -1999,23 +1999,22 @@ def task_history(request, pk: int):
 
     qs = AuditLogService.get_history(task, filters)
     
-    # Pagination
+    # 分页
     paginator = Paginator(qs, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Format logs for display
+    # 格式化日志以进行显示
     timeline = []
     for log in page_obj:
         entry = AuditLogService.format_log_entry(log, filters.get('field_name'))
         if entry:
             timeline.append(entry)
 
-    # AJAX / HTMX support for lazy loading
+    # AJAX / HTMX 支持懒加载
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render(request, 'audit/timeline.html', {'logs': timeline})
     
-    # Get users for filter - Optimization: Only fetch users who have history in this task
     # 获取用于筛选的用户 - 优化：仅获取在此任务中有历史记录的用户
     log_user_ids = AuditLog.objects.filter(
         target_type='Task', 

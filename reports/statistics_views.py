@@ -34,12 +34,11 @@ logger = logging.getLogger(__name__)
 def _send_weekly_digest(recipient, stats):
     """
     发送周报邮件给指定收件人。
-    Send weekly digest email to recipient.
     """
     try:
         subject = f"周报 / Weekly Digest: {timezone.localdate().isoformat()}"
         
-        # 简单构建邮件内容 (Simple plain text for now, can be HTML)
+        # 简单构建邮件内容 (目前为纯文本，可升级为 HTML)
         # 指标摘要
         total = stats.get('overall_total', 0)
         completed = stats.get('overall_completed', 0)
@@ -110,10 +109,9 @@ def workbench(request):
         due_at__date__lte=today.date() + timedelta(days=3)
     ).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
 
-    # daily report streak and today's report status
     # 日报连签和今日日报状态
     today_date = timezone.localdate()
-    # Optimized: Limit streak check to recent history (365 days) and use distinct
+    # 优化：将连胜检查限制在最近的历史记录（365天）并使用 distinct
     qs_reports = DailyReport.objects.filter(
         user=request.user, 
         status='submitted'
@@ -123,7 +121,7 @@ def workbench(request):
     streak = 0
     curr = today_date
     
-    # Check if today is submitted to start streak count, otherwise check yesterday
+    # 检查今天是否提交以开始连胜计数，否则检查昨天
     if curr in date_set:
         streak += 1
         curr = curr - timedelta(days=1)
@@ -137,17 +135,11 @@ def workbench(request):
             curr = curr - timedelta(days=1)
     
     # 检查今日是否已提交日报
-    # Check today using the set we already fetched (if today is in range) or explicit query if needed?
-    # Actually explicit query is safer for "status" object access if we needed the object, 
-    # but here we just need bool.
-    # However, existing code does: today_report = DailyReport.objects.filter(...).first()
-    # Let's optimize: has_today_report is True if today_date in date_set (since we filtered status='submitted')
+    # 优化：如果 today_date 在 date_set 中（因为我们过滤了 status='submitted'），则 has_today_report 为 True
     
     has_today_report = today_date in date_set
 
-    # project burndown with enhanced data
     # 增强数据的项目燃尽图
-    # Optimized: Query Task directly to avoid heavy Project Group By
     # 优化：直接查询任务以避免繁重的项目分组
     
     task_stats = Task.objects.filter(
@@ -235,7 +227,7 @@ def stats(request):
     generated_at = timezone.now()
 
     todays_user_ids = set(qs.filter(date=target_date).values_list('user_id', flat=True))
-    # Optimized: Removed 'reports' from prefetch as it loads all historical reports which is heavy and unused
+    # 优化：从 prefetch 中移除 'reports'，因为它会加载所有历史报告，这很重且未使用
     active_projects = Project.objects.filter(is_active=True).prefetch_related('members', 'managers')
     if project_filter and project_filter.isdigit():
         active_projects = active_projects.filter(id=int(project_filter))
@@ -247,20 +239,15 @@ def stats(request):
         missing_projects = []
         total_missing = 0
         
-        # Pre-fetch all needed data to avoid N+1 queries
-        # 1. Collect all missing user IDs across all active projects
         # 预取所有需要的数据以避免 N+1 查询
         # 1. 收集所有活动项目中所有缺失的用户 ID
         all_missing_ids = set()
         project_missing_map = {} # pid -> [uid, uid...]
         
-        # Ensure we use prefetched relations to avoid DB hits
-        # active_projects already prefetches 'members', 'managers'
         # 确保我们使用预取的关联以避免 DB 命中
         # active_projects 已经预取了 'members', 'managers'
         
         for p in active_projects:
-            # use .all() to hit the prefetch cache instead of .values_list() which hits DB
             # 使用 .all() 命中预取缓存，而不是 .values_list() 命中 DB
             member_ids = {u.id for u in p.members.all()}
             manager_ids = {u.id for u in p.managers.all()}
@@ -273,13 +260,11 @@ def stats(request):
                 all_missing_ids.update(missing_ids)
                 project_missing_map[p.id] = missing_ids
 
-        # 2. Fetch all missing users in one query
         # 2. 在一个查询中获取所有缺失的用户
         if all_missing_ids:
             users_qs = get_user_model().objects.select_related('profile').filter(id__in=all_missing_ids)
             users_map = {u.id: u for u in users_qs}
             
-            # 3. Fetch last report dates for all missing users in one query
             # 3. 在一个查询中获取所有缺失用户的最后日报日期
             last_report_dates = DailyReport.objects.filter(
                 user_id__in=all_missing_ids, 
@@ -291,7 +276,6 @@ def stats(request):
             users_map = {}
             last_map = {}
 
-        # 4. Build result structure
         # 4. 构建结果结构
         for p in active_projects:
             p_missing_ids = project_missing_map.get(p.id, [])
@@ -303,7 +287,6 @@ def stats(request):
                 u = users_map.get(uid)
                 if not u: continue
                 
-                # Apply role filter in memory
                 # 在内存中应用角色过滤器
                 if role_filter in dict(Profile.ROLE_CHOICES):
                     if not hasattr(u, 'profile') or u.profile.position != role_filter:
@@ -315,7 +298,6 @@ def stats(request):
                 
             total_missing += len(filtered_users)
             
-            # Prepare user list for this project
             # 为此项目准备用户列表
             user_list = []
             for u in filtered_users:
@@ -329,7 +311,7 @@ def stats(request):
                 'project_id': p.id,
                 'missing_count': len(filtered_users),
                 'users': user_list,
-                'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # For individual reminders if needed | 如果需要，用于个人提醒
+                'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # 如果需要，用于个人提醒
             })
             
         cache.set(cache_key, (missing_projects, total_missing), 300)
@@ -406,7 +388,6 @@ def stats(request):
         cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
     sla_urgent_tasks = []
     
-    # Pre-fetch SLA settings once
     # 预取 SLA 设置一次
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
@@ -452,9 +433,6 @@ def performance_board(request):
     if request.user.is_superuser:
         projects_qs = Project.objects.filter(is_active=True).order_by('name').only('id', 'name')
     else:
-        # Ordinary users: Check if they can see ANY performance stats
-        # Requirement: "Admin Reports" page -> fine grained.
-        # If I am a manager of P1, I can see P1 stats.
         # 普通用户：检查他们是否可以看到任何绩效统计数据
         # 需求：“管理报告”页面 -> 细粒度。
         # 如果我是 P1 的经理，我可以看到 P1 的统计数据。
@@ -472,13 +450,12 @@ def performance_board(request):
     project_filter = int(project_param) if project_param and project_param.isdigit() else None
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
 
-    # Security check for project filter
     # 项目过滤器的安全检查
     if project_filter and accessible_projects is not None:
         if not accessible_projects.filter(id=project_filter).exists():
              return _admin_forbidden(request, "没有该项目的访问权限 / No access to this project")
 
-    # Cache key for stats
+    # 统计数据缓存键
     cache_key = f"perf_board_stats_{request.user.id}_{start_date}_{end_date}_{project_filter}_{role_filter}_{q}"
     stats = cache.get(cache_key)
     
@@ -491,9 +468,8 @@ def performance_board(request):
             q=q,
             accessible_projects=accessible_projects
         )
-        cache.set(cache_key, stats, 600) # Cache for 10 minutes
+        cache.set(cache_key, stats, 600) # 缓存 10 分钟
     
-    # Filter urgent tasks based on permission
     # 根据权限过滤紧急任务
     urgent_tasks_qs = Task.objects.filter(status='overdue')
     total_tasks_qs = Task.objects.all()
@@ -505,7 +481,6 @@ def performance_board(request):
     urgent_tasks = stats.get('overall_overdue', urgent_tasks_qs.count())
     total_tasks = stats.get('overall_total', total_tasks_qs.count())
     
-    # Pre-fetch SLA settings once
     # 预取 SLA 设置一次
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
@@ -515,7 +490,6 @@ def performance_board(request):
     thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     sla_only = request.GET.get('sla_only') == '1'
     
-    # SLA Urgent Tasks Caching
     # 紧急任务计算较慢，增加缓存
     sla_cache_key = f"perf_board_sla_{request.user.id}_{project_filter}_{sla_hours_val}"
     sla_urgent_tasks = cache.get(sla_cache_key)
@@ -523,11 +497,9 @@ def performance_board(request):
     if sla_urgent_tasks is None:
         sla_urgent_tasks = []
         
-        # Optimized: select_related 'sla_timer' to avoid N+1 in calculate_sla_info
-        # Optimization: Filter potential urgent tasks to reduce Python processing
+        # 优化：select_related 'sla_timer' 以避免 calculate_sla_info 中的 N+1
         # 优化：过滤潜在的紧急任务以减少 Python 处理
         max_threshold = thresholds.get('amber', 4)
-        # Be conservative: check tasks that are due within (threshold + 1h) or created long ago
         # 保守策略：检查在 (阈值 + 1h) 内到期或很久以前创建的任务
         cutoff = timezone.now() + timedelta(hours=max_threshold + 1)
         
@@ -538,22 +510,20 @@ def performance_board(request):
         if accessible_projects is not None:
             sla_qs = sla_qs.filter(project__in=accessible_projects)
         
-        # Filter: Either has due_at <= cutoff OR (no due_at AND created_at <= cutoff - default_sla)
-        # If project specific SLA exists, we can't easily filter without complex query, so we include them via OR
         # 过滤器：要么有 due_at <= cutoff，要么（无 due_at 且 created_at <= cutoff - default_sla）
         # 如果存在特定项目的 SLA，我们在不进行复杂查询的情况下无法轻易过滤，因此通过 OR 包含它们
         
-        default_sla = sla_hours_val or 48 # Fallback to 48 if setting missing
+        default_sla = sla_hours_val or 48 # 如果设置缺失，默认为 48
         created_cutoff = cutoff - timedelta(hours=default_sla)
         
         sla_qs = sla_qs.filter(
             Q(due_at__lte=cutoff) | 
             (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=True) & Q(created_at__lte=created_cutoff)) |
-            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=False)) # Keep project SLA tasks to be safe
+            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=False)) # 为安全起见保留项目 SLA 任务
         )
             
         for t in sla_qs:
-            # Pass parsed thresholds dict instead of raw string
+            # 传递解析后的阈值字典而不是原始字符串
             info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=thresholds)
             if info and info.get('status') in ('tight', 'overdue'):
                 t.sla_info = info
@@ -564,7 +534,7 @@ def performance_board(request):
             -t.created_at.timestamp(),
         ))
         
-        # Cache for 5 minutes
+        # 缓存 5 分钟
         cache.set(sla_cache_key, sla_urgent_tasks, 300)
 
     if request.GET.get('send_weekly') == '1':

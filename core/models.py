@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 
-# --- Existing Models / 现有模型 ---
+# --- 现有模型 ---
 
 class Profile(models.Model):
     ROLE_CHOICES = [
@@ -18,7 +18,7 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile', verbose_name="用户")
     position = models.CharField(max_length=10, choices=ROLE_CHOICES, default='dev', verbose_name="职位")
 
-    # HR Fields / 人事管理字段
+    # 人事管理字段
     EMPLOYMENT_STATUS_CHOICES = [('active', '在职'), ('terminated', '离职')]
     employment_status = models.CharField(max_length=20, choices=EMPLOYMENT_STATUS_CHOICES, default='active', verbose_name="是否在职")
     hire_date = models.DateField(null=True, blank=True, verbose_name="入职时间")
@@ -50,7 +50,7 @@ class Profile(models.Model):
 
 
 class SalaryHistory(models.Model):
-    """记录员工薪资变更历史 / Track salary change history"""
+    """记录员工薪资变更历史"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salary_history', verbose_name="用户")
     old_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原试用薪资")
     new_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新试用薪资")
@@ -68,7 +68,7 @@ class SalaryHistory(models.Model):
 
 
 class Contract(models.Model):
-    """员工劳动合同 / Employee Contract"""
+    """员工劳动合同"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts', verbose_name="用户")
     file = models.FileField(upload_to='contracts/%Y/%m/', verbose_name="合同文件")
     original_filename = models.CharField(max_length=255, verbose_name="原始文件名")
@@ -84,7 +84,7 @@ class Contract(models.Model):
 
 
 class SystemSetting(models.Model):
-    """简单的键值配置存储，支持 SLA 等后台可调参数。 / Simple key-value store for system settings like SLA."""
+    """简单的键值配置存储，支持 SLA 等后台可调参数。"""
     key = models.CharField(max_length=100, unique=True, verbose_name="键")
     value = models.CharField(max_length=200, blank=True, verbose_name="值")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
@@ -103,7 +103,7 @@ def default_export_expiry():
 
 
 class ExportJob(models.Model):
-    """导出任务队列：记录状态与生成的文件路径。 / Export job queue: tracks status and file path."""
+    """导出任务队列：记录状态与生成的文件路径。"""
     STATUS_CHOICES = [
         ('pending', '待处理 / Pending'),
         ('running', '处理中 / Running'),
@@ -130,7 +130,7 @@ class ExportJob(models.Model):
 
 
 class UserPreference(models.Model):
-    """用户偏好，存储仪表卡片等设置。 / User preferences, stores dashboard cards etc."""
+    """用户偏好，存储仪表卡片等设置。"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences', verbose_name="用户")
     data = models.JSONField(default=dict, blank=True, verbose_name="偏好数据")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
@@ -215,13 +215,13 @@ class Notification(models.Model):
 #         return f"{self.get_role_display()} - {self.get_permission_display()}"
 
 
-# --- New RBAC Models / 新 RBAC 模型 ---
+# --- 新 RBAC 模型 ---
 
 class Permission(models.Model):
-    """RBAC 权限原子定义 / RBAC Atomic Permission Definition"""
-    code = models.CharField(max_length=100, unique=True, verbose_name="权限代码", help_text="e.g., project.view")
+    """RBAC 权限原子定义"""
+    code = models.CharField(max_length=100, unique=True, verbose_name="权限代码", help_text="例如：project.view")
     name = models.CharField(max_length=100, verbose_name="权限名称")
-    group = models.CharField(max_length=50, blank=True, verbose_name="权限分组", help_text="e.g., project, task")
+    group = models.CharField(max_length=50, blank=True, verbose_name="权限分组", help_text="例如：project, task")
     description = models.CharField(max_length=255, blank=True, verbose_name="描述")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -235,8 +235,8 @@ class Permission(models.Model):
 
 
 class Role(models.Model):
-    """RBAC 角色定义，支持继承 / RBAC Role Definition, supports inheritance"""
-    code = models.CharField(max_length=100, unique=True, verbose_name="角色代码", help_text="e.g., project_manager")
+    """RBAC 角色定义，支持继承"""
+    code = models.CharField(max_length=100, unique=True, verbose_name="角色代码", help_text="例如：project_manager")
     name = models.CharField(max_length=100, verbose_name="角色名称")
     description = models.TextField(blank=True, verbose_name="描述")
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='children', verbose_name="父角色")
@@ -254,7 +254,7 @@ class Role(models.Model):
 
 
 class RolePermission(models.Model):
-    """角色与权限的关联表 / Role-Permission Association Table"""
+    """角色与权限的关联表"""
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -266,7 +266,7 @@ class RolePermission(models.Model):
 
 
 class UserRole(models.Model):
-    """用户与角色的关联，支持资源范围（Scope） / User-Role Association, supports Resource Scope"""
+    """用户与角色的关联，支持资源范围（Scope）"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rbac_roles', verbose_name="用户")
     role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='users', verbose_name="角色")
     # scope definition: 'global' (None) or 'project:1', 'task:100', etc.
@@ -274,12 +274,11 @@ class UserRole(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # A user can have the same role in different scopes, or different roles in the same scope.
         # 用户可以在不同的范围内拥有相同的角色，或者在相同的范围内拥有不同的角色。
         unique_together = ('user', 'role', 'scope')
         indexes = [
-            models.Index(fields=['user', 'scope']),  # Fast lookup for "what roles does user have in this scope?" | 快速查找“用户在此范围内拥有哪些角色？”
-            models.Index(fields=['scope']),          # "Who has roles in this scope?" | “谁在此范围内拥有角色？”
+            models.Index(fields=['user', 'scope']),  # 快速查找“用户在此范围内拥有哪些角色？”
+            models.Index(fields=['scope']),          # “谁在此范围内拥有角色？”
         ]
         verbose_name = "RBAC用户角色"
         verbose_name_plural = "RBAC用户角色"
@@ -294,7 +293,7 @@ import uuid
 
 class ChunkedUpload(models.Model):
     """
-    Tracks chunked file uploads for resumability.
+    分片上传追踪，用于支持断点续传。
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chunked_uploads')
@@ -319,7 +318,7 @@ class ChunkedUpload(models.Model):
 
 
 class Invitation(models.Model):
-    """邀请码模型 / Invitation Code Model"""
+    """邀请码模型"""
     STATUS_CHOICES = [
         ('unused', '未使用 / Unused'),
         ('used', '已使用 / Used'),
@@ -328,7 +327,7 @@ class Invitation(models.Model):
 
     code = models.CharField(max_length=50, unique=True, verbose_name="邀请码", db_index=True)
     inviter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_invitations', verbose_name="邀请人")
-    email = models.EmailField(blank=True, null=True, verbose_name="受邀邮箱", help_text="可选，指定特定邮箱 / Optional, specific email")
+    email = models.EmailField(blank=True, null=True, verbose_name="受邀邮箱", help_text="可选，指定特定邮箱")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unused', verbose_name="状态")
     
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")

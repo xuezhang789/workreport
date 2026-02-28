@@ -31,7 +31,6 @@ class Project(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="是否激活")
     sla_hours = models.PositiveIntegerField(null=True, blank=True, help_text="项目级 SLA 提醒窗口（小时）", verbose_name="SLA时限(小时)")
     
-    # New fields for Phase Management
     # 阶段管理的新字段
     current_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects', verbose_name="当前阶段")
     overall_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="总体进度(%)")
@@ -58,7 +57,7 @@ class ProjectPhaseChangeLog(models.Model):
     new_phase = models.ForeignKey(ProjectPhaseConfig, on_delete=models.SET_NULL, null=True, blank=True, related_name='log_as_new', verbose_name="新阶段")
     old_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="原进度")
     new_progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name="新进度")
-    details = models.JSONField(default=dict, blank=True, verbose_name="变更详情") # Stores start_date, end_date, note diffs
+    details = models.JSONField(default=dict, blank=True, verbose_name="变更详情") # 存储开始日期、结束日期、备注的差异
     changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects_phase_logs', verbose_name="变更人")
     changed_at = models.DateTimeField(auto_now_add=True, verbose_name="变更时间")
 
@@ -100,7 +99,6 @@ class ProjectAttachment(models.Model):
 
 class ProjectMemberPermission(models.Model):
     """
-    Deprecated: Replaced by RBACService (UserRole).
     已弃用：被 RBACService (UserRole) 替代。
     """
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='member_permissions', verbose_name="项目")

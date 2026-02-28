@@ -31,22 +31,19 @@ def personnel_list(request):
     project_id = request.GET.get('project')
     project_filter = int(project_id) if project_id and project_id.isdigit() else None
     
-    # Get all members with filters
     # 获取成员列表
     qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
-    # Additional Filter: Status
     # 额外筛选：状态
     status = (request.GET.get('status') or 'active').strip()
     if status == 'active':
         qs = qs.filter(profile__employment_status='active')
     elif status == 'terminated':
         qs = qs.filter(profile__employment_status='terminated')
-    # if status == 'all', no filter
+    # 如果 status == 'all'，不过滤
     
-    # Calculate Stats
     # 计算统计数据
-    # Optimization: Combine counts into a single query
+    # 优化：将多次计数合并为单次查询
     from django.db.models import Count, Q
     
     total_users_qs = User.objects.all()
@@ -66,7 +63,7 @@ def personnel_list(request):
         'new_hires': stats_agg['new_hires'],
     }
     
-    # Pagination
+    # 分页处理
     try:
         per_page = int(request.GET.get('per_page', 20))
         if per_page not in [10, 20, 50, 100]:
@@ -77,7 +74,7 @@ def personnel_list(request):
     paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))
     
-    # Projects for filter dropdown - Optimization: fetch only id and name
+    # 筛选下拉框使用的项目列表 - 优化：仅获取 ID 和名称
     projects = Project.objects.filter(is_active=True).order_by('name').only('id', 'name')
 
     return render(request, 'reports/personnel_list.html', {
@@ -100,7 +97,7 @@ from work_logs.models import Attendance
 @login_required
 def attendance_stats(request):
     """
-    API for monthly attendance statistics.
+    月度考勤统计 API
     GET /api/attendance/stats/?user_id=123&month=2023-10
     """
     user_id = request.GET.get('user_id')
@@ -109,7 +106,7 @@ def attendance_stats(request):
     if not user_id or not month_str:
         return JsonResponse({'error': 'Missing user_id or month'}, status=400)
     
-    # Permission check (Simple: Superuser only for now as per view restriction)
+    # 权限检查（目前仅限超级管理员）
     if not request.user.is_superuser:
          return JsonResponse({'error': 'Permission denied'}, status=403)
 
@@ -177,12 +174,12 @@ def update_hr_info(request, user_id):
 
     errors = {}
 
-    # 1. Employment Status
+    # 1. 就职状态
     employment_status = data.get('employment_status')
     if employment_status not in ['active', 'terminated']:
         errors['employment_status'] = '无效的状态 / Invalid status'
 
-    # 2. Hire Date
+    # 2. 入职时间
     hire_date_str = data.get('hire_date')
     hire_date = None
     if hire_date_str:
@@ -193,13 +190,10 @@ def update_hr_info(request, user_id):
         except ValueError:
             errors['hire_date'] = '日期格式错误 (YYYY-MM-DD) / Invalid date format'
     else:
-        # Assuming hire_date is optional based on model (null=True), but requirements say "入职时间...需小于等于当前日期". 
-        # If it's mandatory for "HR managed" users, we should enforce it?
-        # Requirement: "入职时间（日期类型），格式YYYY-MM-DD，需小于等于当前日期" - implies it's required if set? 
-        # Let's enforce format if provided.
+        # 如果模型允许为空，则无需强制。但根据需求建议填写。
         pass
 
-    # 3. Probation Months
+    # 3. 试用期（月）
     probation_months = data.get('probation_months')
     if probation_months is not None:
         try:
@@ -209,7 +203,7 @@ def update_hr_info(request, user_id):
         except ValueError:
             errors['probation_months'] = '必须是整数 / Must be integer'
 
-    # 4. Probation Salary
+    # 4. 试用期薪资
     probation_salary = data.get('probation_salary')
     ps_val = None
     if probation_salary is not None:
@@ -220,19 +214,19 @@ def update_hr_info(request, user_id):
         except (InvalidOperation, ValueError):
             errors['probation_salary'] = '无效的金额 / Invalid amount'
 
-    # 5. Official Salary
+    # 5. 正式薪资
     official_salary = data.get('official_salary')
     os_val = None
     if official_salary is not None:
         try:
             os_val = Decimal(str(official_salary))
-            # Relaxed validation: Allow official salary to be anything >= 0
+            # 宽松验证：允许正式薪资 >= 0
             if os_val < 0:
                  errors['official_salary'] = '薪资必须大于等于 0 / Salary must be >= 0'
         except (InvalidOperation, ValueError):
             errors['official_salary'] = '无效的金额 / Invalid amount'
 
-    # 6. Resignation Date
+    # 6. 离职时间
     resignation_date_str = data.get('resignation_date')
     resignation_date = None
     if resignation_date_str:
@@ -243,24 +237,24 @@ def update_hr_info(request, user_id):
         except ValueError:
             errors['resignation_date'] = '日期格式错误 (YYYY-MM-DD) / Invalid date format'
 
-    # 7. Note
+    # 7. 备注
     hr_note = data.get('hr_note')
     append_note = data.get('append_note', False)
     
     if hr_note is not None and len(hr_note) > 500:
         errors['hr_note'] = '备注过长 (Max 500) / Note too long'
 
-    # 8. Currency
+    # 8. 货币单位
     salary_currency = data.get('salary_currency', 'CNY')
     if salary_currency not in ['CNY', 'USDT']:
         errors['salary_currency'] = '无效的货币 / Invalid currency'
 
-    # 9. Intermediary Validation
+    # 9. 中介信息验证
     intermediary_company = data.get('intermediary_company', '')
     intermediary_fee_amount = data.get('intermediary_fee_amount')
     intermediary_fee_currency = data.get('intermediary_fee_currency', 'CNY')
 
-    # Convert amount to Decimal or None
+    # 转换金额为 Decimal 或 None
     ifa_val = None
     if intermediary_fee_amount is not None and str(intermediary_fee_amount).strip() != '':
         try:
@@ -272,20 +266,19 @@ def update_hr_info(request, user_id):
         except (InvalidOperation, ValueError):
             errors['intermediary_fee_amount'] = '无效的金额 / Invalid amount'
     
-    # Joint Validation
+    # 联合验证
     has_company = bool(intermediary_company and intermediary_company.strip())
     has_fee = ifa_val is not None and ifa_val > 0
     
-    # If company is set, fee must be set (requirement: intermediary_fee_amount and currency required)
-    # Currency has default, so check amount.
+    # 如果填写了公司，必须填写费用（需求：费用与货币必填）
     if has_company:
         if ifa_val is None:
              errors['intermediary_fee_amount'] = '填写中介费用时，必须同时填写中介公司与货币单位'
-        # Currency check
+        # 货币检查
         if intermediary_fee_currency not in ['CNY', 'USDT']:
              errors['intermediary_fee_currency'] = '无效的货币 / Invalid currency'
 
-    # If fee > 0, company must be set
+    # 如果填写了费用，必须填写公司
     if has_fee:
         if not has_company:
             errors['intermediary_company'] = '填写中介费用时，必须同时填写中介公司与货币单位'
@@ -295,13 +288,13 @@ def update_hr_info(request, user_id):
     if errors:
         return JsonResponse({'status': 'error', 'errors': errors}, status=400)
 
-    # Capture old values for history
+    # 记录修改前的历史数据
     old_probation = profile.probation_salary
     old_official = profile.official_salary
     old_currency = profile.salary_currency
     old_status = profile.employment_status
 
-    # Save
+    # 保存数据
     if employment_status: profile.employment_status = employment_status
     if hire_date: profile.hire_date = hire_date
     if probation_months is not None: profile.probation_months = int(probation_months)
@@ -309,7 +302,7 @@ def update_hr_info(request, user_id):
     if os_val is not None: profile.official_salary = os_val
     profile.salary_currency = salary_currency
     
-    # Intermediary Save
+    # 保存中介信息
     profile.intermediary_company = intermediary_company if intermediary_company else None
     if ifa_val is not None:
         profile.intermediary_fee_amount = ifa_val
@@ -317,10 +310,9 @@ def update_hr_info(request, user_id):
         profile.intermediary_fee_amount = None
     profile.intermediary_fee_currency = intermediary_fee_currency
 
-    # Handle optional date clearing (if empty string sent?)
-    # Frontend sends YYYY-MM-DD or empty.
-    if 'resignation_date' in data: # Check existence to allow clearing
-        profile.resignation_date = resignation_date # Can be None
+    # 处理可选日期的清除（前端传空字符串）
+    if 'resignation_date' in data: # 检查键是否存在以允许清除
+        profile.resignation_date = resignation_date # 可以为 None
         
     if hr_note is not None:
         if append_note and profile.hr_note:
@@ -328,13 +320,13 @@ def update_hr_info(request, user_id):
         else:
             profile.hr_note = hr_note
     
-    # USDT Info
+    # USDT 信息
     usdt_address = data.get('usdt_address')
     if usdt_address is not None:
         profile.usdt_address = usdt_address
         
     if request.FILES.get('usdt_qr_code'):
-        # Validate image
+        # 验证图片
         is_valid, msg = _validate_file(request.FILES['usdt_qr_code'], max_size=5*1024*1024, allowed_extensions=['.jpg', '.png', '.jpeg'])
         if not is_valid:
              return JsonResponse({'status': 'error', 'errors': {'usdt_qr_code': msg}}, status=400)
@@ -342,7 +334,7 @@ def update_hr_info(request, user_id):
     
     profile.save()
 
-    # Log salary change if any
+    # 记录薪资变更历史（如有）
     new_probation = profile.probation_salary
     new_official = profile.official_salary
     new_currency = profile.salary_currency
@@ -389,7 +381,7 @@ def update_hr_info(request, user_id):
         }
     })
 
-# --- HR New Features ---
+# --- HR 新功能 ---
 
 @user_passes_test(is_superuser)
 def salary_history_list(request, user_id):
@@ -473,6 +465,6 @@ def contract_upload(request, user_id):
 @require_http_methods(["POST"])
 def contract_delete(request, contract_id):
     contract = get_object_or_404(Contract, pk=contract_id)
-    # Check permission if needed (currently superuser only)
+    # 检查权限（目前仅限超级管理员）
     contract.delete()
     return JsonResponse({'status': 'success'})

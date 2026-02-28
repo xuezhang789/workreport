@@ -17,24 +17,23 @@ from django.contrib.auth import get_user_model
 
 @login_required
 def teams_list(request):
-    # Permission Check: Superuser OR has 'project.manage' on at least one project
     # 权限检查：超级用户 或 在至少一个项目上拥有 'project.manage' 权限
     
-    # 1. Determine Access
+    # 1. 确定访问权限
     if request.user.is_superuser:
         has_access = True
         manageable_projects = Project.objects.filter(is_active=True)
     else:
-        # Get projects where user has 'project.manage' permission
-        # Note: This relies on RBAC. If using legacy managers field, we should check that too.
-        # But 'can_manage_project' usually checks RBAC.
-        # However, legacy `project.managers` is also a thing.
-        # Let's use `get_manageable_projects` which should ideally cover RBAC.
-        # And we also need to include legacy `project.managers` and `project.owner`.
+        # 获取用户拥有 'project.manage' 权限的项目
+        # 注意：这依赖于 RBAC。如果使用旧的 managers 字段，我们也应该检查。
+        # 但 'can_manage_project' 通常检查 RBAC。
+        # 然而，旧的 `project.managers` 也是一回事。
+        # 让我们使用 `get_manageable_projects`，理想情况下它应该涵盖 RBAC。
+        # 我们还需要包括旧的 `project.managers` 和 `project.owner`。
         
         from reports.utils import get_manageable_projects
-        # This RBAC helper returns projects where user has 'project.manage'.
-        # It also includes legacy/model-field based management (Owner/Managers).
+        # 此 RBAC 助手返回用户拥有 'project.manage' 权限的项目。
+        # 它还包括基于模型字段的管理（所有者/经理）。
         manageable_projects = get_manageable_projects(request.user)
         has_access = manageable_projects.exists()
 
@@ -47,29 +46,29 @@ def teams_list(request):
     
     project_filter = int(project_id) if project_id and project_id.isdigit() else None
     
-    # Filter 'qs' (Member Directory)
-    # Ideally, we should only show members who are in the projects the user can manage?
-    # Or is Member Directory global? 
-    # The requirement says "Project Owner... cannot view or operate other projects".
-    # This implies they shouldn't see members of other projects in a way that exposes sensitive info?
-    # But directory usually allows finding people to add.
-    # Let's keep member directory as is for now (searchable), or filter it if strictly required.
-    # Requirement: "Project Owner ... cannot access other projects".
-    # This strongly suggests filtering.
+    # 过滤 'qs'（成员目录）
+    # 理想情况下，我们是否应该只显示用户可以管理的项目的成员？
+    # 或者成员目录是全局的？
+    # 需求说“项目所有者……不能查看或操作其他项目”。
+    # 这意味着他们不应该以暴露敏感信息的方式看到其他项目的成员？
+    # 但目录通常允许查找人员以添加。
+    # 让我们暂时保持成员目录原样（可搜索），或者如果严格要求则过滤它。
+    # 需求：“项目所有者……不能访问其他项目”。
+    # 这强烈建议过滤。
     
     if request.user.is_superuser:
         qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     else:
-        # Restrict member search to manageable projects + maybe accessible projects?
-        # Usually you want to add NEW members from the whole company pool.
-        # So 'get_team_members' (Directory) probably needs to be ALL users so you can find them to ADD.
-        # BUT 'project_teams' (The cards) MUST be filtered.
-        # Let's keep Directory open (or filtered by `get_accessible_projects` if we want to be strict about visibility).
-        # But for "Team Management", usually you need to see who is available.
-        # Let's stick to: Directory = All Users (so you can add them).
+        # 将成员搜索限制在可管理项目 + 也许是可访问项目？
+        # 通常你想从整个公司池中添加新成员。
+        # 所以 'get_team_members' (目录) 可能需要是所有用户，以便你可以找到他们来添加。
+        # 但 'project_teams' (卡片) 必须被过滤。
+        # 让我们保持目录开放（或者如果我们想严格控制可见性，则通过 `get_accessible_projects` 过滤）。
+        # 但对于“团队管理”，通常你需要看看谁可用。
+        # 让我们坚持：目录 = 所有用户（这样你可以添加他们）。
         qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
-    # --- Pagination for Member Directory ---
+    # --- 成员目录分页 ---
     try:
         member_per_page = int(request.GET.get('member_per_page', 20))
         if member_per_page not in [10, 20, 50, 100]:
@@ -80,24 +79,24 @@ def teams_list(request):
     paginator = Paginator(qs, member_per_page)
     page_obj = paginator.get_page(request.GET.get('member_page'))
 
-    # --- Project Team Data for "Project View" ---
-    # Filtered by manageable projects
+    # --- “项目视图”的项目团队数据 ---
+    # 按可管理项目过滤
     project_teams = []
     
-    # Optimization: Split queries for different purposes
+    # 优化：为不同目的拆分查询
     
-    # 1. Lightweight query for Dropdowns (Filter & Modal)
-    # No annotations needed here, just ID/Name/Code
+    # 1. 下拉菜单的轻量级查询（过滤和模态框）
+    # 这里不需要注释，只需要 ID/Name/Code
     dropdown_projects = manageable_projects.values('id', 'name', 'code').order_by('name')
     
-    # 2. Heavy query for Project List (Cards)
-    # Needs member/manager counts and owner
+    # 2. 项目列表（卡片）的重型查询
+    # 需要成员/经理计数和所有者
     dashboard_projects_qs = manageable_projects.annotate(
         member_count=models.Count('members', distinct=True),
         manager_count=models.Count('managers', distinct=True)
     ).select_related('owner').order_by('name')
     
-    # --- Pagination for Project Teams ---
+    # --- 项目团队分页 ---
     try:
         project_per_page = int(request.GET.get('project_per_page', 20))
         if project_per_page not in [10, 20, 50, 100]:
@@ -109,12 +108,12 @@ def teams_list(request):
     project_page_obj = project_paginator.get_page(request.GET.get('project_page'))
     current_page_projects = project_page_obj.object_list
     
-    # Optimization: Fetch role stats in bulk instead of per-project loop
-    # Group by (Project, Position)
+    # 优化：批量获取角色统计信息，而不是每个项目循环
+    # 按 (Project, Position) 分组
     from django.contrib.auth import get_user_model
     User = get_user_model()
     
-    # Only fetch stats for projects on current page
+    # 仅获取当前页面项目的统计信息
     role_stats_qs = User.objects.filter(
         project_memberships__in=current_page_projects
     ).values(
@@ -123,7 +122,7 @@ def teams_list(request):
         count=models.Count('id')
     )
     
-    # Process stats in memory
+    # 在内存中处理统计信息
     stats_map = {}
     for stat in role_stats_qs:
         p_id = stat['project_memberships']
@@ -155,8 +154,8 @@ def teams_list(request):
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
         'total_count': qs.count(),
-        'projects': dropdown_projects, # Lightweight query for dropdowns
-        'project_teams': project_teams, # Processed data for cards
+        'projects': dropdown_projects, # 下拉菜单的轻量级查询
+        'project_teams': project_teams, # 卡片的处理数据
         'today_date': timezone.now().strftime('%Y-%m-%d'),
     })
 

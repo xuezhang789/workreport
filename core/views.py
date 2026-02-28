@@ -35,7 +35,7 @@ from django.db import transaction, IntegrityError
 
 def register(request):
     """
-    Register with invitation code.
+    使用邀请码注册。
     """
     if request.user.is_authenticated:
         return redirect('reports:workbench')
@@ -47,7 +47,7 @@ def register(request):
         try:
             invitation = Invitation.objects.get(code=invitation_code)
             if not invitation.is_valid:
-                # UX: Provide specific feedback for GET request, but be careful
+                # UX: 为 GET 请求提供具体反馈，但要小心
                 messages.error(request, "邀请码无效或已过期 / Invitation code invalid or expired")
                 invitation = None
         except Invitation.DoesNotExist:
@@ -60,16 +60,16 @@ def register(request):
         
         try:
             with transaction.atomic():
-                # Fix Race Condition: Lock the row
+                # 修复竞态条件：锁定行
                 try:
                     valid_invite = Invitation.objects.select_for_update().get(code=code_input)
                 except Invitation.DoesNotExist:
                     raise Invitation.DoesNotExist
 
                 if not valid_invite.is_valid:
-                    raise Invitation.DoesNotExist # Treat invalid as not found to prevent enumeration
+                    raise Invitation.DoesNotExist # 视为未找到以防止枚举
                 
-                # Verify Email if invitation specifies one
+                # 如果邀请指定了邮箱，则验证邮箱
                 email_input = form.data.get('email', '').strip()
                 if valid_invite.email and valid_invite.email.lower() != email_input.lower():
                      form.add_error('email', "该邀请码仅限特定邮箱使用 / Invitation code is restricted to a specific email")
@@ -78,7 +78,7 @@ def register(request):
                 if form.is_valid():
                     user = form.save()
                     
-                    # Mark invitation as used
+                    # 将邀请标记为已使用
                     valid_invite.status = 'used'
                     valid_invite.used_at = timezone.now()
                     valid_invite.registered_user = user
@@ -91,15 +91,15 @@ def register(request):
         except Invitation.DoesNotExist:
             form.add_error(None, "邀请码无效 / Invitation code invalid")
         except ValueError:
-            pass # Form error already added
+            pass # 表单错误已添加
         except Exception as e:
-            # Catch unexpected errors
+            # 捕获意外错误
             form.add_error(None, "注册失败，请稍后重试 / Registration failed, please try again")
             if settings.DEBUG:
                 print(f"Register Error: {e}")
 
     else:
-        # Pre-fill email if invitation exists
+        # 如果存在邀请，预填充邮箱
         initial_data = {}
         if invitation and invitation.email:
             initial_data['email'] = invitation.email
@@ -113,8 +113,8 @@ def register(request):
 
 @login_required
 def invitation_list(request):
-    """List and create invitations."""
-    # Check permission (e.g., admin or manager)
+    """列表和创建邀请。"""
+    # 检查权限（例如：管理员或经理）
     if not (request.user.is_superuser or has_manage_permission(request.user)):
         return _friendly_forbidden(request, "无权管理邀请 / No permission to manage invitations")
 
@@ -122,10 +122,10 @@ def invitation_list(request):
         action = request.POST.get('action')
         if action == 'create':
             email = request.POST.get('email', '').strip()
-            # Generate unique code with retry
+            # 生成唯一代码并重试
             max_retries = 5
             for _ in range(max_retries):
-                code = uuid.uuid4().hex[:12].upper() # Increase length to 12 to prevent enumeration
+                code = uuid.uuid4().hex[:12].upper() # 增加长度到 12 以防止枚举
                 if not Invitation.objects.filter(code=code).exists():
                     Invitation.objects.create(
                         code=code,
@@ -137,10 +137,10 @@ def invitation_list(request):
             
             messages.error(request, "生成邀请码失败，请重试 / Failed to generate code, please try again")
     
-    # Optimization: Select related profile for avatar
+    # 优化：为头像选择关联的 profile
     invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user', 'registered_user__profile').order_by('-created_at')
     
-    # Pagination
+    # 分页
     try:
         per_page = int(request.GET.get('per_page', 20))
         if per_page not in [10, 20, 50, 100]:
@@ -160,13 +160,13 @@ def invitation_list(request):
 
 def logout_view(request):
     """
-    Allow POST logout for security. GET shows a confirmation page.
+    为了安全起见，允许 POST 注销。GET 显示确认页面。
     """
     if request.method == 'POST':
         logout(request)
         return render(request, 'registration/logged_out.html')
     
-    # If GET, show confirmation page to prevent CSRF logout
+    # 如果是 GET，显示确认页面以防止 CSRF 注销
     if request.user.is_authenticated:
         return render(request, 'registration/logout_confirm.html')
         
@@ -178,7 +178,7 @@ from django.core.exceptions import ValidationError
 
 @login_required
 def send_email_code_api(request):
-    """API for sending email verification code."""
+    """发送邮箱验证码的 API。"""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
     
@@ -191,7 +191,7 @@ def send_email_code_api(request):
     if not email:
         return JsonResponse({'error': '请输入邮箱地址 / Please enter email address'}, status=400)
 
-    # Security: Use Django's robust validator
+    # 安全：使用 Django 的健壮验证器
     try:
         validate_email(email)
     except ValidationError:
@@ -200,14 +200,14 @@ def send_email_code_api(request):
     user = request.user
     UserModel = get_user_model()
     
-    # Check availability
+    # 检查可用性
     if UserModel.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
         return JsonResponse({'error': '该邮箱已被其他账号使用 / Email already in use'}, status=400)
     
     if email.lower() == (user.email or '').lower():
          return JsonResponse({'error': '该邮箱已绑定，无需重复验证 / Email already bound'}, status=400)
 
-    # Cooldown check
+    # 冷却检查
     cooldown = 60
     now_ts = time.time()
     last_send = request.session.get('email_verification_last_send') or 0
@@ -234,7 +234,7 @@ def send_email_code_api(request):
         log_action(request, 'error', f"send email code failed to {email}", data={'error': str(exc)})
         return JsonResponse({'error': '验证码发送失败，请联系管理员 / Failed to send email'}, status=500)
 
-    # Save to session
+    # 保存到会话
     request.session['email_verification'] = {
         'email': email,
         'code': code,
@@ -282,7 +282,7 @@ def account_settings(request):
                 new_password = password_form.cleaned_data['new_password1']
                 user.set_password(new_password)
                 user.save()
-                update_session_auth_hash(request, user)  # Keep user logged in
+                update_session_auth_hash(request, user)  # 保持用户登录状态
                 log_action(request, 'update', "password changed")
                 messages.success(request, "密码已更新 / Password updated successfully")
                 return redirect('core:account_settings')
@@ -318,7 +318,7 @@ def account_settings(request):
             else:
                 messages.error(request, "输入有误，请检查 / Invalid input")
 
-    # Calculate user statistics
+    # 计算用户统计数据
     today = timezone.now().date()
     week_start = today - timedelta(days=today.weekday())
     month_start = today.replace(day=1)
@@ -327,20 +327,20 @@ def account_settings(request):
     week_reports = user_reports.filter(date__gte=week_start)
     month_reports = user_reports.filter(date__gte=month_start)
     
-    # Statistics
+    # 统计数据
     week_report_count = week_reports.count()
     month_report_count = month_reports.count()
     total_report_count = user_reports.count()
     
-    # Calculate completion rate (reports submitted vs expected)
-    expected_week_reports = 7  # Assuming 7 days a week
+    # 计算完成率（提交的日报与预期的对比）
+    expected_week_reports = 7  # 假设每周 7 天
     completion_rate = min(100, int((week_report_count / expected_week_reports) * 100)) if expected_week_reports > 0 else 0
     
-    # Project participation
+    # 项目参与度
     project_count = get_accessible_projects(user).count()
     
-    # Average completion time (placeholder - would need timestamp data)
-    avg_completion_time = 2.5  # hours (placeholder)
+    # 平均完成时间（占位符 - 需要时间戳数据）
+    avg_completion_time = 2.5  # 小时（占位符）
     
     pending_email = request.session.get('email_verification')
     context = {
@@ -377,7 +377,7 @@ def global_search(request):
         'reports': []
     }
     
-    # 1. Search Projects
+    # 1. 搜索项目
     # 仅搜索有权限的项目
     accessible_projects = get_accessible_projects(request.user)
     projects = accessible_projects.filter(
@@ -387,7 +387,7 @@ def global_search(request):
     ).select_related('owner', 'current_phase').distinct()[:10]
     results['projects'] = projects
     
-    # 2. Search Tasks
+    # 2. 搜索任务
     # 搜索用户可访问的任务：自己创建的、负责的、协作的、或所在项目的
     # 简化逻辑：如果在可访问的项目中，就可以搜索到任务
     from tasks.models import Task
@@ -400,7 +400,7 @@ def global_search(request):
     ).select_related('project', 'user', 'status').distinct()[:20]
     results['tasks'] = tasks
     
-    # 3. Search Daily Reports
+    # 3. 搜索日报
     # 搜索自己提交的，或者管理的项目的日报
     # 管理员可搜所有？或者按权限
     # 简单起见，搜索自己能看到的日报
@@ -431,7 +431,7 @@ def global_search(request):
 @login_required
 def user_search_api(request):
     """人员远程搜索，用于任务指派等场景。"""
-    # Allow participants to search users if they have any accessible project
+    # 允许参与者搜索用户，如果他们有任何可访问的项目
     accessible_projects = get_accessible_projects(request.user)
     if not has_manage_permission(request.user) and not accessible_projects.exists():
         return _admin_forbidden(request)
@@ -444,22 +444,22 @@ def user_search_api(request):
     project_id = request.GET.get('project_id')
     User = get_user_model()
     
-    # Debug logging
+    # 调试日志
     # print(f"User Search: user={request.user}, superuser={request.user.is_superuser}, project_id={project_id}")
     
     if project_id and project_id.isdigit():
-        # Project specific search
+        # 项目特定搜索
         from projects.models import Project
         
-        # Security: Check if user has access to this project
+        # 安全：检查用户是否可以访问此项目
         accessible_projects = get_accessible_projects(request.user)
-        # accessible_projects already filters by permission (including superuser check)
+        # accessible_projects 已经过滤了权限（包括超级用户检查）
         if not accessible_projects.filter(id=project_id).exists():
             return JsonResponse({'error': 'Project not accessible'}, status=403)
             
         try:
             project = Project.objects.get(pk=project_id)
-            # Members + Managers + Owner
+            # 成员 + 经理 + 拥有者
             qs = User.objects.filter(
                 Q(project_memberships=project) |
                 Q(managed_projects=project) |
@@ -468,8 +468,8 @@ def user_search_api(request):
         except Project.DoesNotExist:
              qs = User.objects.none()
     else:
-        # Global search (context: adding members, or admin search)
-        # Determine if user has permission to search ALL users
+        # 全局搜索（上下文：添加成员，或管理员搜索）
+        # 确定用户是否有权限搜索所有用户
         can_search_all = (
             request.user.is_superuser or
             request.user.is_staff or
@@ -482,7 +482,7 @@ def user_search_api(request):
         if can_search_all:
             qs = User.objects.all()
         else:
-            # Limit to users in accessible projects
+            # 限制为可访问项目中的用户
             accessible_projects = get_accessible_projects(request.user)
             qs = User.objects.filter(
                 Q(project_memberships__in=accessible_projects) |
@@ -501,8 +501,8 @@ def user_search_api(request):
     users = qs.select_related('profile').order_by('username')[:20]
     data = []
     
-    # Pre-fetch roles if project_id is provided?
-    # Or just use general profile info. Requirement: Avatar, Name, Role Tag (Owner/Admin/Member), Dept
+    # 如果提供了 project_id，是否预取角色？
+    # 或者只使用一般的个人资料信息。需求：头像、姓名、角色标签（拥有者/管理员/成员）、部门
     
     for u in users:
         full_name = u.get_full_name()
@@ -517,7 +517,7 @@ def user_search_api(request):
             elif project.managers.filter(id=u.id).exists():
                 role_label = 'Admin'
                 
-        # Department
+        # 部门
         dept = u.profile.get_position_display() if hasattr(u, 'profile') else ''
         avatar = u.profile.avatar.url if hasattr(u, 'profile') and hasattr(u.profile, 'avatar') and u.profile.avatar else ''
         
@@ -537,7 +537,7 @@ def user_search_api(request):
 @login_required
 def username_check_api(request):
     """实时检查用户名是否可用。"""
-    # Security Fix: Require login to prevent enumeration
+    # 安全修复：需要登录以防止枚举
          
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")
@@ -548,7 +548,7 @@ def username_check_api(request):
         return JsonResponse({'available': False, 'reason': '请输入要检测的用户名 / Please enter a username to check'}, status=400)
         
     User = get_user_model()
-    # Check if exists
+    # 检查是否存在
     if User.objects.filter(username__iexact=username).exists():
         return JsonResponse({'available': False, 'reason': '用户名已存在 / Username already taken'})
         

@@ -74,8 +74,7 @@ class AuditLogService:
             )
 
         # 性能优化：根据目标对象类型减少冗余的关联查询
-        # Performance Optimization: Reduce redundant joins based on target type
-        # Robustness Fix: Always include key relations to avoid issues if target_type logic is fragile
+        # 稳健性修复：始终包含关键关联以避免 target_type 逻辑脆弱时出现问题
         related_fields = ['user', 'project', 'task']
 
         return qs.select_related(*related_fields).order_by('-created_at')
@@ -92,10 +91,10 @@ class AuditLogService:
             'operator_name': log.operator_name,
             'action': log.action,
             'items': [],
-            'summary_html': '' # For simplified display
+            'summary_html': '' # 用于简化显示
         }
         
-        # Helper to add item
+        # 添加条目的助手函数
         def add_item(type_, field, old, new, action, desc=None, field_key=None):
             entry['items'].append({
                 'type': type_,
@@ -113,7 +112,7 @@ class AuditLogService:
             repo_name = None
             action_verb = None
             
-            # New format: details={'repository': {'name': '...'}}
+            # 新格式：details={'repository': {'name': '...'}}
             if log.details and 'repository' in log.details:
                 repo_name = log.details['repository'].get('name')
                 if log.action == 'create':
@@ -121,7 +120,7 @@ class AuditLogService:
                 elif log.action == 'delete':
                     action_verb = 'Removed'
             
-            # Legacy format support (from previous attempts)
+            # 传统格式支持（来自之前的尝试）
             elif 'repository' in log.summary:
                 try:
                     if 'Added repository' in log.summary:
@@ -164,7 +163,7 @@ class AuditLogService:
                     if 'action' in change and 'values' in change:
                         action_verb = change.get('action')
                         values = change.get('values', [])
-                        # Use badge style HTML for values if possible, but raw string for now
+                        # 如果可能，对值使用徽章样式的 HTML，但目前使用原始字符串
                         values_str = ", ".join(values)
                         
                         add_item('field', change.get('verbose_name', field), 

@@ -25,6 +25,10 @@ EXPORT_CHUNK_SIZE = 500
 
 @login_required
 def my_reports_export(request):
+    """
+    导出当前登录用户的日报记录
+    支持按日期范围、状态、项目、角色和关键词进行筛选
+    """
     start_date = parse_date(request.GET.get('start_date') or '')
     end_date = parse_date(request.GET.get('end_date') or '')
     status = (request.GET.get('status') or '').strip()
@@ -93,7 +97,7 @@ def admin_reports_export(request):
 
     reports, role, start_date, end_date = _filtered_reports(request)
     
-    # Security Fix: Filter by accessible projects for non-superusers
+    # 安全修复：非超级管理员只能导出有权限的项目
     if not request.user.is_superuser:
         accessible_projects = get_accessible_projects(request.user)
         reports = reports.filter(projects__in=accessible_projects).distinct()
@@ -175,7 +179,7 @@ def stats_export(request):
     export_type = (request.GET.get('type') or 'missing').strip()
     target_date = parse_date(request.GET.get('date') or '') or timezone.localdate()
     
-    # Security Fix: Filter projects
+    # 安全修复：过滤项目权限
     projects_qs = Project.objects.filter(is_active=True)
     if not request.user.is_superuser:
         accessible_projects = get_accessible_projects(request.user)
@@ -183,7 +187,7 @@ def stats_export(request):
 
     if export_type == 'project_sla':
         tasks_qs = Task.objects.select_related('project')
-        # Filter tasks by accessible projects
+        # 仅显示有权限的项目任务
         if not request.user.is_superuser:
             tasks_qs = tasks_qs.filter(project__in=projects_qs)
             
@@ -340,7 +344,6 @@ def performance_export(request):
     project_filter = int(project_param) if project_param and project_param.isdigit() else None
     role_filter = role_param if role_param in dict(Profile.ROLE_CHOICES) else None
     
-    # Security check for project filter
     # 项目过滤器的安全检查
     if project_filter and accessible_projects is not None:
         if not accessible_projects.filter(id=project_filter).exists():
@@ -434,9 +437,8 @@ def personnel_export(request):
     role = (request.GET.get('role') or '').strip()
     project_id = request.GET.get('project')
     
-    # Corrected: project_memberships is a ManyToMany related_name returning Projects directly
     # 修正：project_memberships 是 ManyToMany related_name，直接返回 Project 对象
-    # 考勤数据仅获取当月数据，使用 Prefetch 进行过滤
+    # 考勤数据仅获取当月数据，使用 Prefetch 进行过滤，避免全量查询导致的性能问题
     today = timezone.localdate()
     current_month_start = today.replace(day=1)
     # 下个月的第一天
@@ -462,21 +464,21 @@ def personnel_export(request):
     def _iter_rows():
         today = timezone.localdate()
         for u in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
-            # u.project_memberships.all() returns Project objects
+            # 获取用户参与的项目名称
             projects = ", ".join([p.name for p in u.project_memberships.all()])
             
-            # Calculate tenure
+            # 计算在职天数
             tenure_days = ""
             if u.profile.hire_date:
                 end_date = u.profile.resignation_date if u.profile.resignation_date else today
                 if end_date >= u.profile.hire_date:
                     tenure_days = (end_date - u.profile.hire_date).days
 
-            # Calculate attendance stats for current month
+            # 计算本月考勤统计
             attendance_present = 0
             attendance_makeup = 0
             attendance_leave = 0
-            # 使用 prefetch 的结果
+            # 使用 prefetch 的结果，避免 N+1 查询
             for att in getattr(u, 'current_month_attendances', []):
                 if att.status == 'present':
                     attendance_present += 1

@@ -44,9 +44,9 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
     # --- 预计算交付周期（优化）---
-    # Optimized: Use DB aggregation for lead time where possible
+    # 优化：尽可能在数据库层面聚合计算交付周期（Lead Time）
     
-    # Calculate average lead time using DB (more efficient)
+    # 使用数据库聚合计算平均交付周期（更高效）
     lead_time_agg = tasks.filter(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
         completed_at__isnull=False
@@ -55,8 +55,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     )
     overall_avg_duration = lead_time_agg['avg_duration']
     
-    # Still fetch individual durations for median (p50) calculation and distribution charts
-    # but restrict fields strictly and limit data size to avoid memory overflow
+    # 仍需获取单条记录的时长以计算中位数 (P50) 和分布图
+    # 但严格限制字段并限制数据量，防止内存溢出
     # 限制数据量：仅获取最近 5000 条完成记录用于中位数计算
     completed_data = tasks.filter(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED], 
@@ -74,7 +74,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     user_durations = defaultdict(list)
     all_durations = []
     
-    # Use iterator() to save memory
+    # 使用 iterator() 节省内存
     for item in completed_data.iterator():
         if item['completed_at'] and item['created_at']:
             duration = (item['completed_at'] - item['created_at']).total_seconds() / 3600
@@ -197,7 +197,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     # 连签的实现需要复杂的每日分析，暂时保持简单或为空
 
     # --- 5. 总体统计 ---
-    # Optimized: Use single aggregate query for counts
+    # 优化：使用单次聚合查询获取所有计数
     overall_aggs = tasks.aggregate(
         total=Count('id'),
         overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
@@ -216,7 +216,7 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         overall_sla_on_time_rate = 0
 
     # 计算总体交付周期
-    # Optimized: Reuse all_durations calculated earlier
+    # 优化：复用之前计算的所有时长数据
     overall_lead_avg = statistics.mean(all_durations) if all_durations else None
     overall_lead_p50 = statistics.median(all_durations) if all_durations else None
 

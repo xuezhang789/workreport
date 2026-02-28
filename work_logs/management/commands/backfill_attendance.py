@@ -3,12 +3,12 @@ from work_logs.models import DailyReport, Attendance
 from django.db import transaction
 
 class Command(BaseCommand):
-    help = 'Backfill Attendance records from existing DailyReports'
+    help = '从现有日报回填考勤记录'
 
     def handle(self, *args, **options):
         self.stdout.write("Starting backfill...")
         
-        # Get all submitted reports without attendance
+        # 获取所有已提交但没有考勤记录的日报
         reports = DailyReport.objects.filter(status='submitted').exclude(attendance_record__isnull=False)
         total = reports.count()
         self.stdout.write(f"Found {total} reports to process.")
@@ -16,7 +16,7 @@ class Command(BaseCommand):
         batch_size = 1000
         processed = 0
         
-        # Use iterator to handle large datasets
+        # 使用迭代器处理大数据集
         for report in reports.iterator(chunk_size=batch_size):
             Attendance.objects.get_or_create(
                 user=report.user,

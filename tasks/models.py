@@ -76,6 +76,10 @@ class TaskComment(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['task']),
+            models.Index(fields=['created_at']),
+        ]
         verbose_name = "任务评论"
         verbose_name_plural = "任务评论"
 
