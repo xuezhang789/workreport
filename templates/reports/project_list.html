@@ -125,12 +125,44 @@
         border-radius: 3px;
     }
     
-    .table-progress-text {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        width: 32px;
-        text-align: right;
+    /* Pagination Styles */
+    .page-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: white;
+        color: var(--text-main);
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        font-size: 14px;
+    }
+    .page-btn:hover:not(.disabled):not(.active):not(.dots) {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: #eff6ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        pointer-events: none;
+    }
+    .page-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f8fafc;
+    }
+    .page-btn.dots {
+        border: none;
+        background: transparent;
+        cursor: default;
     }
 </style>
 {% endblock %}
@@ -396,65 +428,53 @@
         </div>
 
         <!-- Pagination -->
-        <div class="pagination-container">
-            <div class="pagination-info">
-                <span>共 {{ total_count }} 个项目 / Total {{ total_count }} projects</span>
-                <span>显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条 / Showing {{ page_obj.start_index }}-{{ page_obj.end_index }}</span>
-                <span>
-                    <select class="per-page-select" onchange="const url = new URL(window.location); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location = url;">
-                        <option value="12" {% if per_page == 12 %}selected{% endif %}>12 条/页 / 12 per page</option>
-                        <option value="24" {% if per_page == 24 %}selected{% endif %}>24 条/页 / 24 per page</option>
-                        <option value="48" {% if per_page == 48 %}selected{% endif %}>48 条/页 / 48 per page</option>
-                    </select>
-                </span>
-            </div>
-
+        <div class="pagination-container" style="margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 20px;">
+            
             {% if page_obj.has_other_pages %}
-                <div class="pagination-controls">
+                <!-- Controls -->
+                <div class="pagination-controls" style="display: flex; gap: 8px; align-items: center;">
+                    <!-- Previous -->
                     {% if page_obj.has_previous %}
                         <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-btn" title="上一页 / Previous">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15 18 9 12 15 6"></polyline>
-                            </svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </a>
                     {% else %}
                         <span class="page-btn disabled">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15 18 9 12 15 6"></polyline>
-                            </svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </span>
                     {% endif %}
 
+                    <!-- Page Numbers -->
                     {% for i in page_obj.paginator.page_range %}
                         {% if page_obj.number == i %}
                             <span class="page-btn active">{{ i }}</span>
                         {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
                             <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
+                        {% elif i == 1 or i == page_obj.paginator.num_pages %}
+                            <a href="?{% url_replace page=i %}" class="page-btn">{{ i }}</a>
+                        {% elif i == page_obj.number|add:'-3' or i == page_obj.number|add:'3' %}
+                             <span class="page-btn dots">...</span>
                         {% endif %}
                     {% endfor %}
 
+                    <!-- Next -->
                     {% if page_obj.has_next %}
                         <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-btn" title="下一页 / Next">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </a>
                     {% else %}
                         <span class="page-btn disabled">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </span>
                     {% endif %}
                 </div>
-                
-                <div class="jump-to-page">
-                    前往 / Go to
-                    <input type="number" class="jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" 
-                        onkeydown="if(event.key === 'Enter') { const val = Math.max(1, Math.min({{ page_obj.paginator.num_pages }}, this.value)); const url = new URL(window.location); url.searchParams.set('page', val); window.location = url; }">
-                    页 / Page
-                </div>
             {% endif %}
+
+            <!-- Info -->
+            <div class="pagination-info" style="font-size: 13px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
+                <span style="font-weight: 500;">共 {{ total_count }} 个项目 / Total {{ total_count }}</span>
+            </div>
+
         </div>
 
     {% else %}

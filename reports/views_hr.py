@@ -8,11 +8,11 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.core.paginator import Paginator
-from core.models import Profile
+from core.models import Profile, SalaryHistory, Contract
 from reports.models import Project
 from audit.utils import log_action
 from reports.services import teams as team_service
-from core.utils import _admin_forbidden
+from core.utils import _admin_forbidden, _validate_file
 
 def is_superuser(user):
     return user.is_superuser
@@ -76,14 +76,17 @@ def personnel_list(request):
     })
 
 @user_passes_test(is_superuser)
-@require_http_methods(["PUT"])
+@require_http_methods(["PUT", "POST"]) # Allow POST for FormData
 def update_hr_info(request, user_id):
     """
     更新成员人事信息 (仅管理员)
-    PUT /api/admin/members/{id}/hr-info
+    PUT/POST /api/admin/members/{id}/hr-info
     """
     try:
-        data = json.loads(request.body)
+        if request.content_type and request.content_type.startswith('application/json'):
+            data = json.loads(request.body)
+        else:
+            data = request.POST
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
@@ -141,9 +144,9 @@ def update_hr_info(request, user_id):
     if official_salary is not None:
         try:
             os_val = Decimal(str(official_salary))
-            # Must be > probation salary if both exist
-            if ps_val is not None and os_val <= ps_val:
-                errors['official_salary'] = '正式薪资必须大于试用薪资 / Official salary must be > probation salary'
+            # Relaxed validation: Allow official salary to be anything >= 0
+            if os_val < 0:
+                 errors['official_salary'] = '薪资必须大于等于 0 / Salary must be >= 0'
         except (InvalidOperation, ValueError):
             errors['official_salary'] = '无效的金额 / Invalid amount'
 
@@ -159,8 +162,10 @@ def update_hr_info(request, user_id):
             errors['resignation_date'] = '日期格式错误 (YYYY-MM-DD) / Invalid date format'
 
     # 7. Note
-    hr_note = data.get('hr_note', '')
-    if len(hr_note) > 500:
+    hr_note = data.get('hr_note')
+    append_note = data.get('append_note', False)
+    
+    if hr_note is not None and len(hr_note) > 500:
         errors['hr_note'] = '备注过长 (Max 500) / Note too long'
 
     # 8. Currency
@@ -208,6 +213,12 @@ def update_hr_info(request, user_id):
     if errors:
         return JsonResponse({'status': 'error', 'errors': errors}, status=400)
 
+    # Capture old values for history
+    old_probation = profile.probation_salary
+    old_official = profile.official_salary
+    old_currency = profile.salary_currency
+    old_status = profile.employment_status
+
     # Save
     if employment_status: profile.employment_status = employment_status
     if hire_date: profile.hire_date = hire_date
@@ -229,12 +240,52 @@ def update_hr_info(request, user_id):
     if 'resignation_date' in data: # Check existence to allow clearing
         profile.resignation_date = resignation_date # Can be None
         
-    profile.hr_note = hr_note # XSS filtering is done on Frontend display, backend stores raw text usually. 
-    # But django templates escape by default.
+    if hr_note is not None:
+        if append_note and profile.hr_note:
+            profile.hr_note = f"{profile.hr_note}\n{hr_note}"
+        else:
+            profile.hr_note = hr_note
+    
+    # USDT Info
+    usdt_address = data.get('usdt_address')
+    if usdt_address is not None:
+        profile.usdt_address = usdt_address
+        
+    if request.FILES.get('usdt_qr_code'):
+        # Validate image
+        is_valid, msg = _validate_file(request.FILES['usdt_qr_code'], max_size=5*1024*1024, allowed_extensions=['.jpg', '.png', '.jpeg'])
+        if not is_valid:
+             return JsonResponse({'status': 'error', 'errors': {'usdt_qr_code': msg}}, status=400)
+        profile.usdt_qr_code = request.FILES['usdt_qr_code']
     
     profile.save()
 
-    log_action(request, 'update', f"hr_info_update user={user.username}", data=data)
+    # Log salary change if any
+    new_probation = profile.probation_salary
+    new_official = profile.official_salary
+    new_currency = profile.salary_currency
+    
+    if (old_probation != new_probation or 
+        old_official != new_official or 
+        old_currency != new_currency):
+        SalaryHistory.objects.create(
+            user=user,
+            old_probation=old_probation,
+            new_probation=new_probation,
+            old_official=old_official,
+            new_official=new_official,
+            currency=new_currency,
+            reason=data.get('reason', 'HR Update'),
+            changed_by=request.user
+        )
+
+    action_summary = f"hr_info_update user={user.username}"
+    if old_status != 'active' and profile.employment_status == 'active':
+        action_summary = f"Confirm Probation (转正) for {user.username}"
+    elif old_status != 'terminated' and profile.employment_status == 'terminated':
+        action_summary = f"Terminate Employee (离职) for {user.username}"
+
+    log_action(request, 'update', action_summary, data=data)
 
     return JsonResponse({
         'status': 'success',
@@ -246,6 +297,8 @@ def update_hr_info(request, user_id):
             'probation_salary': str(profile.probation_salary) if profile.probation_salary else None,
             'official_salary': str(profile.official_salary) if profile.official_salary else None,
             'salary_currency': profile.salary_currency,
+            'usdt_address': profile.usdt_address or '',
+            'usdt_qr_code': profile.usdt_qr_code.url if profile.usdt_qr_code else '',
             'intermediary_company': profile.intermediary_company or '',
             'intermediary_fee_amount': str(profile.intermediary_fee_amount) if profile.intermediary_fee_amount else '',
             'intermediary_fee_currency': profile.intermediary_fee_currency,
@@ -253,3 +306,91 @@ def update_hr_info(request, user_id):
             'hr_note': profile.hr_note
         }
     })
+
+# --- HR New Features ---
+
+@user_passes_test(is_superuser)
+def salary_history_list(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    history = user.salary_history.select_related('changed_by').all()
+    
+    data = []
+    for h in history:
+        data.append({
+            'id': h.id,
+            'old_probation': str(h.old_probation) if h.old_probation else None,
+            'new_probation': str(h.new_probation) if h.new_probation else None,
+            'old_official': str(h.old_official) if h.old_official else None,
+            'new_official': str(h.new_official) if h.new_official else None,
+            'currency': h.currency,
+            'reason': h.reason,
+            'changed_by': h.changed_by.username if h.changed_by else 'System',
+            'created_at': h.created_at.strftime('%Y-%m-%d %H:%M')
+        })
+    return JsonResponse({'status': 'success', 'data': data})
+
+@user_passes_test(is_superuser)
+@require_http_methods(["GET"])
+def contract_list(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    contracts = user.contracts.select_related('uploaded_by').all()
+    
+    data = []
+    for c in contracts:
+        data.append({
+            'id': c.id,
+            'name': c.original_filename,
+            'url': c.file.url,
+            'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else None,
+            'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else None,
+            'uploaded_by': c.uploaded_by.username if c.uploaded_by else 'System',
+            'created_at': c.created_at.strftime('%Y-%m-%d')
+        })
+    return JsonResponse({'status': 'success', 'data': data})
+
+@user_passes_test(is_superuser)
+@require_http_methods(["POST"])
+def contract_upload(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    file = request.FILES.get('file')
+    start_date_str = request.POST.get('start_date')
+    end_date_str = request.POST.get('end_date')
+    
+    if not file:
+        return JsonResponse({'status': 'error', 'message': 'No file uploaded'}, status=400)
+        
+    is_valid, msg = _validate_file(file, max_size=10*1024*1024, allowed_extensions=['.pdf', '.doc', '.docx', '.jpg', '.png'])
+    if not is_valid:
+        return JsonResponse({'status': 'error', 'message': msg}, status=400)
+        
+    start_date = None
+    end_date = None
+    try:
+        if start_date_str: start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        if end_date_str: end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid date format'}, status=400)
+        
+    contract = Contract.objects.create(
+        user=user,
+        file=file,
+        original_filename=file.name,
+        uploaded_by=request.user,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    return JsonResponse({
+        'status': 'success',
+        'id': contract.id,
+        'url': contract.file.url,
+        'name': contract.original_filename
+    })
+
+@user_passes_test(is_superuser)
+@require_http_methods(["POST"])
+def contract_delete(request, contract_id):
+    contract = get_object_or_404(Contract, pk=contract_id)
+    # Check permission if needed (currently superuser only)
+    contract.delete()
+    return JsonResponse({'status': 'success'})

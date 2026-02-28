@@ -59,6 +59,10 @@ urlpatterns = [
     path('teams/<int:user_id>/project/<int:project_id>/remove/', views_teams.team_member_remove_project, name='team_member_remove_project'),
     path('personnel/', views_hr.personnel_list, name='personnel_list'),
     path('api/admin/members/<int:user_id>/hr-info/', views_hr.update_hr_info, name='api_hr_info_update'),
+    path('api/admin/members/<int:user_id>/salary-history/', views_hr.salary_history_list, name='api_salary_history_list'),
+    path('api/admin/members/<int:user_id>/contracts/', views_hr.contract_list, name='api_contract_list'),
+    path('api/admin/members/<int:user_id>/contracts/upload/', views_hr.contract_upload, name='api_contract_upload'),
+    path('api/admin/contracts/<int:contract_id>/delete/', views_hr.contract_delete, name='api_contract_delete'),
     path('personnel/export/', export_views.personnel_export, name='personnel_export'),
 
     # Project Attachments - Moved

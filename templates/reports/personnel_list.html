@@ -156,6 +156,60 @@
     .alert-box { padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
     .alert-box.warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
 
+    /* Salary Mask */
+    .salary-container.salary-hidden .val { display: none; }
+    .salary-container.salary-hidden .mask { display: inline; }
+    .salary-container.salary-visible .val { display: inline; }
+    .salary-container.salary-visible .mask { display: none; }
+    .salary-container.salary-visible .mask-hint { display: none; }
+
+    /* Tabs */
+    .tab-header { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+    .tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Dropdown */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content {
+        display: none;
+        position: fixed; /* Fixed positioning */
+        background-color: white;
+        min-width: 140px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        z-index: 1050; /* High z-index */
+        overflow: hidden;
+    }
+    .dropdown-content.show { display: block; } /* Show class */
+    .dropdown-content button {
+        color: var(--text-main);
+        padding: 10px 16px;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .dropdown-content button:hover { background-color: #f8fafc; color: var(--primary); }
+    /* Remove hover trigger */
+    .dropdown-trigger { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: white; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .dropdown-trigger:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @media (max-width: 640px) { .filter-grid { grid-template-columns: 1fr; } }
 {% endblock %}
@@ -197,55 +251,46 @@
         </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-section">
-        <form method="get">
-            <div class="filter-grid">
-                <!-- Search -->
-                <div class="form-group" style="flex: 2; min-width: 240px;">
-                    <label class="form-label" for="q">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        搜索 / Search
-                    </label>
-                    <input type="text" id="q" name="q" class="form-input" placeholder="姓名、邮箱或用户名..." value="{{ q }}">
-                </div>
-                
-                <!-- Status Filter -->
-                <div class="form-group">
-                    <label class="form-label">状态 / Status</label>
-                    <select name="status" class="form-select">
-                        <option value="active" {% if status == 'active' %}selected{% endif %}>在职 / Active</option>
-                        <option value="terminated" {% if status == 'terminated' %}selected{% endif %}>离职 / Terminated</option>
-                        <option value="all" {% if status == 'all' %}selected{% endif %}>全部 / All</option>
-                    </select>
-                </div>
-                
-                <!-- Role Filter -->
-                <div class="form-group">
-                    <label class="form-label" for="role">角色 / Role</label>
-                    <select id="role" name="role" class="form-select">
-                        <option value="">全部角色 / All Roles</option>
-                        {% for r_val, r_label in roles %}
-                        <option value="{{ r_val }}" {% if role == r_val %}selected{% endif %}>{{ r_label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Project Filter -->
-                <div class="form-group">
-                    <label class="form-label" for="project">项目 / Project</label>
-                    <select id="project" name="project" class="form-select">
-                        <option value="">全部项目 / All Projects</option>
-                        {% for p in projects %}
-                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+    <!-- Filter Toolbar -->
+    <div style="background: white; padding: 12px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+        <form method="get" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+            
+            <!-- Search -->
+            <div style="flex: 1; min-width: 240px; position: relative;">
+                <input type="text" name="q" class="form-input" placeholder="搜索姓名、邮箱或用户名..." value="{{ q }}" style="padding-left: 38px; height: 38px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </div>
 
-            <div class="filter-actions">
-                <a href="{% url 'reports:personnel_list' %}" class="btn btn-ghost">重置 / Reset</a>
-                <button type="submit" class="btn btn-primary">筛选 / Filter</button>
+            <!-- Filters -->
+            <select name="status" class="form-select" style="width: auto; height: 38px; cursor: pointer;" onchange="this.form.submit()">
+                <option value="active" {% if status == 'active' %}selected{% endif %}>在职 / Active</option>
+                <option value="terminated" {% if status == 'terminated' %}selected{% endif %}>离职 / Terminated</option>
+                <option value="all" {% if status == 'all' %}selected{% endif %}>全部状态 / All Status</option>
+            </select>
+            
+            <select name="role" class="form-select" style="width: auto; height: 38px; cursor: pointer;" onchange="this.form.submit()">
+                <option value="">全部角色 / All Roles</option>
+                {% for r_val, r_label in roles %}
+                <option value="{{ r_val }}" {% if role == r_val %}selected{% endif %}>{{ r_label }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="project" class="form-select" style="width: auto; max-width: 200px; height: 38px; cursor: pointer;" onchange="this.form.submit()">
+                <option value="">全部项目 / All Projects</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 8px; border-left: 1px solid var(--border-color); padding-left: 12px; margin-left: auto;">
+                <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    筛选
+                </button>
+                <a href="{% url 'reports:personnel_list' %}" class="btn btn-ghost btn-sm" style="height: 38px;" title="重置 / Reset">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                </a>
             </div>
         </form>
     </div>
@@ -283,6 +328,9 @@
                             <div>
                                 <div style="font-weight: 600;">{{ user.get_full_name|default:user.username }}</div>
                                 <div style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</div>
+                                {% if user.email %}
+                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">{{ user.email }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </td>
@@ -313,30 +361,53 @@
                     <td>{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
                     <td>{{ user.profile.probation_months }} Mo.</td>
                     <td>
-                        <div style="font-size: 12px;">
-                            <div title="Probation Salary">P: {{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
-                            <div title="Official Salary">O: {{ user.profile.official_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
+                        <div class="salary-container salary-hidden" onclick="this.classList.toggle('salary-hidden'); this.classList.toggle('salary-visible');" style="cursor: pointer; font-size: 12px;">
+                            <div title="Probation Salary">
+                                P: <span class="mask">******</span><span class="val">{{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }}</span> {{ user.profile.salary_currency }}
+                            </div>
+                            <div title="Official Salary">
+                                O: <span class="mask">******</span><span class="val">{{ user.profile.official_salary|default:"--"|floatformat:2|intcomma }}</span> {{ user.profile.salary_currency }}
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;" class="mask-hint">(Click to show)</div>
                         </div>
                     </td>
                     <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
                         {{ user.profile.hr_note|default:"--" }}
                     </td>
                     <td style="text-align: right;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick='openHRModal({{ user.id }}, "{{ user.get_full_name|default:user.username|escapejs }}", {
-                            employment_status: "{{ user.profile.employment_status }}",
-                            hire_date: "{{ user.profile.hire_date|date:"Y-m-d" }}",
-                            probation_months: {{ user.profile.probation_months }},
-                            probation_salary: "{{ user.profile.probation_salary|default:"" }}",
-                            official_salary: "{{ user.profile.official_salary|default:"" }}",
-                            salary_currency: "{{ user.profile.salary_currency }}",
-                            resignation_date: "{{ user.profile.resignation_date|date:"Y-m-d" }}",
-                            hr_note: "{{ user.profile.hr_note|escapejs }}",
-                            intermediary_company: "{{ user.profile.intermediary_company|default:""|escapejs }}",
-                            intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
-                            intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}"
-                        })'>
-                            编辑档案 / Edit
-                        </button>
+                        <div class="dropdown">
+                                <div class="dropdown-trigger" onclick="toggleDropdown(event, this)">
+                                    操作 <span style="font-size: 8px;">▼</span>
+                                </div>
+                                <div class="dropdown-content">
+                                <button type="button" onclick='openHRModal({{ user.id }}, "{{ user.get_full_name|default:user.username|escapejs }}", {
+                                    employment_status: "{{ user.profile.employment_status }}",
+                                    hire_date: "{{ user.profile.hire_date|date:"Y-m-d" }}",
+                                    probation_months: {{ user.profile.probation_months }},
+                                    probation_salary: "{{ user.profile.probation_salary|default:"" }}",
+                                    official_salary: "{{ user.profile.official_salary|default:"" }}",
+                                    salary_currency: "{{ user.profile.salary_currency }}",
+                                    resignation_date: "{{ user.profile.resignation_date|date:"Y-m-d" }}",
+                                    hr_note: "{{ user.profile.hr_note|escapejs }}",
+                                    intermediary_company: "{{ user.profile.intermediary_company|default:""|escapejs }}",
+                                    intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
+                                    intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}",
+                                    usdt_address: "{{ user.profile.usdt_address|default:""|escapejs }}",
+                                    usdt_qr_code: "{% if user.profile.usdt_qr_code %}{{ user.profile.usdt_qr_code.url|escapejs }}{% endif %}"
+                                })'>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    编辑 / Edit
+                                </button>
+                                <button type="button" onclick="openConfirmModal({{ user.id }}, '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.official_salary|default:"" }}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    转正 / Confirm
+                                </button>
+                                <button type="button" onclick="openTerminateModal({{ user.id }}, '{{ user.get_full_name|default:user.username|escapejs }}')" style="color: var(--danger);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                    离职 / Terminate
+                                </button>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -388,6 +459,74 @@
     }
 </script>
 
+<!-- Confirm Modal -->
+<div id="confirm-modal" class="modal-overlay" onclick="if(event.target === this) closeConfirmModal()">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 class="modal-title">办理转正 / Confirm Probation</h3>
+            <button type="button" class="close-btn" onclick="closeConfirmModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="confirm-form" onsubmit="saveConfirm(event)">
+                <input type="hidden" id="confirm-user-id">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px;" id="confirm-user-name"></div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">该员工将标记为“在职”，请确认薪资调整。</div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">正式薪资 / Official Salary</label>
+                    <input type="number" id="confirm-salary" class="form-input" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">调薪原因 / Reason</label>
+                    <input type="text" id="confirm-reason" class="form-input" value="转正调薪 / Probation Confirmed">
+                </div>
+
+                <div style="text-align: right; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="confirm-save-btn">确认转正 / Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Terminate Modal -->
+<div id="terminate-modal" class="modal-overlay" onclick="if(event.target === this) closeTerminateModal()">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 class="modal-title" style="color: var(--danger);">办理离职 / Terminate</h3>
+            <button type="button" class="close-btn" onclick="closeTerminateModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="terminate-form" onsubmit="saveTerminate(event)">
+                <input type="hidden" id="terminate-user-id">
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px;" id="terminate-user-name"></div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">该员工将标记为“离职”，此操作不可逆。</div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">离职日期 / Resignation Date</label>
+                    <input type="date" id="terminate-date" class="form-input" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">离职原因 / Reason</label>
+                    <textarea id="terminate-reason" class="form-input" rows="3" placeholder="例如：个人发展、合同到期..."></textarea>
+                </div>
+
+                <div style="text-align: right; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeTerminateModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="terminate-save-btn" style="background: var(--danger); border-color: var(--danger);">确认离职 / Terminate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- HR Modal -->
 <div id="hr-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeHRModal()">
     <div class="modal-content">
@@ -396,7 +535,15 @@
             <button type="button" class="close-btn" onclick="closeHRModal()">✕</button>
         </div>
         <div class="modal-body">
-            <form id="hr-form" onsubmit="saveHRInfo(event)">
+            <div class="tab-header">
+                <button type="button" class="tab-btn active" data-tab="profile" onclick="switchTab('profile')">基本信息 / Profile</button>
+                <button type="button" class="tab-btn" data-tab="salary" onclick="switchTab('salary')">薪资历史 / Salary History</button>
+                <button type="button" class="tab-btn" data-tab="contract" onclick="switchTab('contract')">劳动合同 / Contracts</button>
+            </div>
+
+            <!-- Tab 1: Profile -->
+            <div id="tab-profile" class="tab-content active">
+                <form id="hr-form" onsubmit="saveHRInfo(event)">
                 <input type="hidden" id="hr-user-id">
                 
                 <div class="form-group" style="margin-bottom: 16px;">
@@ -444,6 +591,24 @@
                 </div>
 
                 <div style="border-top: 1px solid var(--border-color); margin: 16px 0;"></div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px;">USDT 收款信息 / Payment</div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">USDT 地址 (TRC20/ERC20) / Address</label>
+                    <input type="text" id="hr-usdt-address" class="form-input" placeholder="T...">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">收款二维码 / QR Code</label>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <input type="file" id="hr-usdt-qr-input" accept="image/*" class="form-input" style="flex: 1;" onchange="previewQR(this)">
+                        <div id="hr-usdt-qr-preview" style="width: 48px; height: 48px; border: 1px solid var(--border-color); border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #f8fafc; overflow: hidden; cursor: pointer;" onclick="if(this.dataset.url) window.open(this.dataset.url)">
+                            <span style="font-size: 10px; color: var(--text-secondary);">None</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); margin: 16px 0;"></div>
                 <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px;">中介信息 / Intermediary</div>
 
                 <div class="form-group" style="margin-bottom: 16px;">
@@ -477,6 +642,28 @@
                     <button type="submit" class="btn btn-primary" id="hr-save-btn">保存 / Save</button>
                 </div>
             </form>
+            </div>
+
+            <!-- Tab 2: Salary History -->
+            <div id="tab-salary" class="tab-content">
+                <div id="salary-history-container" style="min-height: 200px;">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 20px;">点击加载 / Click to load</div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Contracts -->
+            <div id="tab-contract" class="tab-content">
+                <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 13px; color: var(--text-secondary);">支持 PDF, DOC, IMG (Max 10MB)</div>
+                    <div>
+                        <input type="file" id="contract-file-input" style="display: none;" onchange="uploadContract(this)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('contract-file-input').click()">+ 上传合同 / Upload</button>
+                    </div>
+                </div>
+                <div id="contract-list-container" style="min-height: 200px;">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 20px;">点击加载 / Click to load</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -532,32 +719,36 @@
         btn.disabled = true;
         
         const userId = document.getElementById('hr-user-id').value;
-        const data = {
-            employment_status: document.getElementById('hr-status').value,
-            hire_date: document.getElementById('hr-hire-date').value,
-            probation_months: document.getElementById('hr-probation-months').value,
-            probation_salary: document.getElementById('hr-probation-salary').value,
-            official_salary: document.getElementById('hr-official-salary').value,
-            salary_currency: document.getElementById('hr-salary-currency').value,
-            resignation_date: document.getElementById('hr-resignation-date').value,
-            hr_note: document.getElementById('hr-note').value,
-            intermediary_company: document.getElementById('hr-intermediary-company').value,
-            intermediary_fee_amount: document.getElementById('hr-intermediary-fee-amount').value,
-            intermediary_fee_currency: document.getElementById('hr-intermediary-fee-currency').value
-        };
+        const formData = new FormData();
+        formData.append('employment_status', document.getElementById('hr-status').value);
+        formData.append('hire_date', document.getElementById('hr-hire-date').value);
+        formData.append('probation_months', document.getElementById('hr-probation-months').value);
+        formData.append('probation_salary', document.getElementById('hr-probation-salary').value);
+        formData.append('official_salary', document.getElementById('hr-official-salary').value);
+        formData.append('salary_currency', document.getElementById('hr-salary-currency').value);
+        formData.append('resignation_date', document.getElementById('hr-resignation-date').value);
+        formData.append('hr_note', document.getElementById('hr-note').value);
+        formData.append('intermediary_company', document.getElementById('hr-intermediary-company').value);
+        formData.append('intermediary_fee_amount', document.getElementById('hr-intermediary-fee-amount').value);
+        formData.append('intermediary_fee_currency', document.getElementById('hr-intermediary-fee-currency').value);
+        formData.append('usdt_address', document.getElementById('hr-usdt-address').value);
+        
+        const qrInput = document.getElementById('hr-usdt-qr-input');
+        if (qrInput.files[0]) {
+            formData.append('usdt_qr_code', qrInput.files[0]);
+        }
 
         try {
-            // Using fetch with retry logic is good, but simple fetch for now
             const res = await fetch(`/reports/api/admin/members/${userId}/hr-info/`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                body: JSON.stringify(data)
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
+                body: formData
             });
             const result = await res.json();
             
             if (res.ok) {
                 showHRToast('保存成功 / Saved successfully');
-                setTimeout(() => location.reload(), 1000); // Reload to update table
+                setTimeout(() => location.reload(), 1000);
             } else {
                 const errorDiv = document.getElementById('hr-error-msg');
                 errorDiv.style.display = 'block';
@@ -580,5 +771,307 @@
     
     // Helper for fetch retry if needed
     async function fetchWithRetry(url, options) { return fetch(url, options); }
+
+    // Dropdown Logic
+    function toggleDropdown(e, trigger) {
+        e.stopPropagation();
+        const content = trigger.nextElementSibling;
+        const isOpen = content.classList.contains('show');
+        
+        closeAllDropdowns();
+        
+        if (!isOpen) {
+            content.classList.add('show');
+            const rect = trigger.getBoundingClientRect();
+            const contentRect = content.getBoundingClientRect();
+            
+            let top = rect.bottom + 4;
+            let left = rect.right - contentRect.width;
+            
+            // Check bottom edge
+            if (top + contentRect.height > window.innerHeight) {
+                top = rect.top - contentRect.height - 4;
+            }
+            
+            content.style.top = top + 'px';
+            content.style.left = left + 'px';
+        }
+    }
+    
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown-content.show').forEach(el => el.classList.remove('show'));
+    }
+    
+    document.addEventListener('click', closeAllDropdowns);
+    document.addEventListener('scroll', closeAllDropdowns, true); // Capture scroll to close
+</script>
+<script>
+    // --- New Features Logic ---
+    
+    // Confirm Modal
+    function openConfirmModal(userId, userName, currentOfficial) {
+        document.getElementById('confirm-user-id').value = userId;
+        document.getElementById('confirm-user-name').innerText = userName;
+        document.getElementById('confirm-salary').value = currentOfficial || '';
+        document.getElementById('confirm-modal').classList.add('open');
+    }
+    function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('open'); }
+    
+    async function saveConfirm(e) {
+        e.preventDefault();
+        const btn = document.getElementById('confirm-save-btn');
+        btn.disabled = true;
+        const userId = document.getElementById('confirm-user-id').value;
+        
+        try {
+            await fetch(`/reports/api/admin/members/${userId}/hr-info/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({
+                    employment_status: 'active',
+                    official_salary: document.getElementById('confirm-salary').value,
+                    reason: document.getElementById('confirm-reason').value
+                })
+            });
+            showHRToast('转正办理成功');
+            setTimeout(() => location.reload(), 1000);
+        } catch (err) {
+            showHRToast('Error', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // Terminate Modal
+    function openTerminateModal(userId, userName) {
+        document.getElementById('terminate-user-id').value = userId;
+        document.getElementById('terminate-user-name').innerText = userName;
+        document.getElementById('terminate-date').valueAsDate = new Date();
+        document.getElementById('terminate-modal').classList.add('open');
+    }
+    function closeTerminateModal() { document.getElementById('terminate-modal').classList.remove('open'); }
+
+    async function saveTerminate(e) {
+        e.preventDefault();
+        const btn = document.getElementById('terminate-save-btn');
+        btn.disabled = true;
+        const userId = document.getElementById('terminate-user-id').value;
+        const reason = document.getElementById('terminate-reason').value;
+        
+        try {
+            await fetch(`/reports/api/admin/members/${userId}/hr-info/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({
+                    employment_status: 'terminated',
+                    resignation_date: document.getElementById('terminate-date').value,
+                    hr_note: `离职原因: ${reason}`,
+                    append_note: true
+                })
+            });
+            showHRToast('离职办理成功');
+            setTimeout(() => location.reload(), 1000);
+        } catch (err) {
+            showHRToast('Error', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+    
+    // Debounce Search Removed
+
+
+    let currentUserId = null;
+
+    function switchTab(tabName) {
+        // Update Buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        
+        // Update Content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        const activeContent = document.getElementById('tab-' + tabName);
+        if (activeContent) activeContent.style.display = 'block';
+
+        // Load Data
+        if (tabName === 'salary' && currentUserId) {
+            loadSalaryHistory(currentUserId);
+        } else if (tabName === 'contract' && currentUserId) {
+            loadContracts(currentUserId);
+        }
+    }
+
+    // Override openHRModal to set currentUserId and reset tabs
+    const originalOpenHRModal = openHRModal;
+    openHRModal = function(userId, userName, data) {
+        currentUserId = userId;
+        
+        document.getElementById('hr-modal-title').innerText = `编辑人事档案: ${userName}`;
+        document.getElementById('hr-user-id').value = userId;
+        document.getElementById('hr-status').value = data.employment_status;
+        document.getElementById('hr-hire-date').value = data.hire_date || '';
+        document.getElementById('hr-probation-months').value = data.probation_months;
+        document.getElementById('hr-probation-salary').value = data.probation_salary || '';
+        document.getElementById('hr-official-salary').value = data.official_salary || '';
+        document.getElementById('hr-salary-currency').value = data.salary_currency || 'CNY';
+        document.getElementById('hr-resignation-date').value = data.resignation_date || '';
+        document.getElementById('hr-note').value = data.hr_note || '';
+        
+        document.getElementById('hr-intermediary-company').value = data.intermediary_company || '';
+        document.getElementById('hr-intermediary-fee-amount').value = data.intermediary_fee_amount || '';
+        document.getElementById('hr-intermediary-fee-currency').value = data.intermediary_fee_currency || 'CNY';
+
+        // New Fields
+        document.getElementById('hr-usdt-address').value = data.usdt_address || '';
+        const qrPreview = document.getElementById('hr-usdt-qr-preview');
+        if (data.usdt_qr_code) {
+            qrPreview.innerHTML = `<img src="${data.usdt_qr_code}" style="width:100%; height:100%; object-fit:cover;">`;
+            qrPreview.dataset.url = data.usdt_qr_code;
+        } else {
+            qrPreview.innerHTML = '<span style="font-size: 10px; color: var(--text-secondary);">None</span>';
+            qrPreview.dataset.url = '';
+        }
+        document.getElementById('hr-usdt-qr-input').value = '';
+
+        document.getElementById('hr-error-msg').style.display = 'none';
+        document.getElementById('hr-manage-modal').classList.add('open');
+
+        switchTab('profile'); // Reset to first tab
+    };
+
+    async function loadSalaryHistory(userId) {
+        const container = document.getElementById('salary-history-container');
+        container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
+        
+        try {
+            const res = await fetch(`/reports/api/admin/members/${userId}/salary-history/`);
+            const json = await res.json();
+            
+            if (json.status === 'success' && json.data.length > 0) {
+                let html = '<table class="table" style="font-size: 12px;"><thead><tr><th>日期 / Date</th><th>原薪资 / Old</th><th>新薪资 / New</th><th>原因 / Reason</th><th>操作人 / By</th></tr></thead><tbody>';
+                json.data.forEach(item => {
+                    html += `
+                        <tr>
+                            <td>${item.created_at}</td>
+                            <td>
+                                P: ${item.old_probation || '--'}<br>
+                                O: ${item.old_official || '--'}
+                            </td>
+                            <td>
+                                <span style="color: var(--primary);">P: ${item.new_probation || '--'}</span><br>
+                                <span style="color: var(--primary);">O: ${item.new_official || '--'}</span>
+                            </td>
+                            <td>${item.reason || '--'}</td>
+                            <td>${item.changed_by}</td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">暂无记录 / No history</div>';
+            }
+        } catch (err) {
+            container.innerHTML = '<div style="color: var(--danger); padding: 20px;">加载失败 / Load failed</div>';
+        }
+    }
+
+    async function loadContracts(userId) {
+        const container = document.getElementById('contract-list-container');
+        container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
+        
+        try {
+            const res = await fetch(`/reports/api/admin/members/${userId}/contracts/`);
+            const json = await res.json();
+            
+            if (json.status === 'success' && json.data.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                json.data.forEach(item => {
+                    html += `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: #f8fafc;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 32px; height: 32px; background: #eff6ff; color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: 6px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 13px;">${item.name}</div>
+                                    <div style="font-size: 11px; color: var(--text-secondary);">${item.created_at} by ${item.uploaded_by}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${item.url}" target="_blank" class="btn btn-sm btn-secondary" style="padding: 4px 8px;">下载 / Download</a>
+                                <button onclick="deleteContract(${item.id})" class="btn btn-sm btn-ghost" style="color: var(--danger); padding: 4px;">✕</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">暂无合同 / No contracts</div>';
+            }
+        } catch (err) {
+            container.innerHTML = '<div style="color: var(--danger); padding: 20px;">加载失败 / Load failed</div>';
+        }
+    }
+
+    async function uploadContract(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        // formData.append('start_date', ...); // Optional: add date inputs to UI if needed
+
+        const btn = input.nextElementSibling;
+        const originalText = btn.innerText;
+        btn.innerText = 'Uploading...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/reports/api/admin/members/${currentUserId}/contracts/upload/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
+                body: formData
+            });
+            const json = await res.json();
+            
+            if (json.status === 'success') {
+                showHRToast('上传成功 / Upload success');
+                loadContracts(currentUserId);
+            } else {
+                showHRToast(json.message || 'Upload failed', 'error');
+            }
+        } catch (err) {
+            showHRToast('Network error', 'error');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            input.value = ''; // Reset input
+        }
+    }
+
+    async function deleteContract(contractId) {
+        if (!confirm('确定删除此合同吗？ / Are you sure?')) return;
+        
+        try {
+            const res = await fetch(`/reports/api/admin/contracts/${contractId}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const json = await res.json();
+            
+            if (json.status === 'success') {
+                showHRToast('删除成功 / Deleted');
+                loadContracts(currentUserId);
+            } else {
+                showHRToast('Delete failed', 'error');
+            }
+        } catch (err) {
+            showHRToast('Network error', 'error');
+        }
+    }
 </script>
 {% endblock %}

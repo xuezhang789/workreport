@@ -136,7 +136,15 @@ def project_list(request):
     # Optimization: Use annotate to count members efficiently (Avoid N+1)
     projects = projects.annotate(member_count=Count('members', distinct=True))
     
-    paginator = Paginator(projects, 12)
+    # Pagination handling
+    try:
+        per_page = int(request.GET.get('per_page', 12))
+        if per_page not in [12, 24, 48]:
+            per_page = 12
+    except (ValueError, TypeError):
+        per_page = 12
+
+    paginator = Paginator(projects, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))
     
     # Optimization: Bulk fetch manageable status instead of per-project permission check
@@ -165,6 +173,7 @@ def project_list(request):
         'phases': phases,
         'phase_id': int(phase_id) if phase_id and phase_id.isdigit() else '',
         'can_create_project': can_create_project,
+        'per_page': per_page,
     }
     return render(request, 'reports/project_list.html', context)
 

@@ -27,6 +27,11 @@ class Profile(models.Model):
     official_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="正式薪资")
     CURRENCY_CHOICES = [('CNY', 'CNY'), ('USDT', 'USDT')]
     salary_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="货币单位")
+
+    # Payment Info
+    usdt_address = models.CharField(max_length=255, blank=True, null=True, verbose_name="USDT 地址")
+    usdt_qr_code = models.ImageField(upload_to='payment_qr/%Y/%m/', blank=True, null=True, verbose_name="USDT 收款二维码")
+
     intermediary_company = models.CharField(max_length=255, blank=True, null=True, verbose_name="中介公司")
     intermediary_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="中介费用")
     intermediary_fee_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="中介费用货币单位")
@@ -42,6 +47,40 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_position_display()}"
+
+
+class SalaryHistory(models.Model):
+    """记录员工薪资变更历史 / Track salary change history"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salary_history', verbose_name="用户")
+    old_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原试用薪资")
+    new_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新试用薪资")
+    old_official = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原正式薪资")
+    new_official = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新正式薪资")
+    currency = models.CharField(max_length=10, default='CNY', verbose_name="货币")
+    reason = models.CharField(max_length=255, blank=True, verbose_name="变更原因")
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='salary_changes_made', verbose_name="操作人")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="变更时间")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "薪资历史"
+        verbose_name_plural = "薪资历史"
+
+
+class Contract(models.Model):
+    """员工劳动合同 / Employee Contract"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts', verbose_name="用户")
+    file = models.FileField(upload_to='contracts/%Y/%m/', verbose_name="合同文件")
+    original_filename = models.CharField(max_length=255, verbose_name="原始文件名")
+    start_date = models.DateField(null=True, blank=True, verbose_name="开始日期")
+    end_date = models.DateField(null=True, blank=True, verbose_name="结束日期")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="上传人")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "劳动合同"
+        verbose_name_plural = "劳动合同"
 
 
 class SystemSetting(models.Model):
