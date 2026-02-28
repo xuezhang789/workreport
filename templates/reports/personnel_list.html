@@ -210,8 +210,42 @@
     .dropdown-trigger { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: white; font-size: 12px; display: flex; align-items: center; gap: 4px; }
     .dropdown-trigger:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
 
+    /* Pagination Toolbar - Unified Style */
+    .pagination-toolbar {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+        margin-top: 24px; padding: 12px 20px; background: white;
+        border: 1px solid var(--border-color); border-radius: 12px;
+        box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;
+    }
+    .pagination-toolbar .left-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; min-width: 140px; }
+    .pagination-toolbar .center-controls { display: flex; align-items: center; gap: 12px; }
+    .pagination-toolbar .right-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    
+    .page-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 36px; padding: 0 16px; border: 1px solid var(--border-color);
+        border-radius: 8px; background: white; color: var(--text-main);
+        font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        text-decoration: none; gap: 6px; user-select: none;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+    .page-btn:disabled, .page-btn[disabled] { color: #94a3b8; border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; }
+    
+    .page-current {
+        font-size: 13px; font-weight: 600; color: var(--text-main);
+        background: #f1f5f9; padding: 0 12px; height: 36px;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center; min-width: 36px;
+    }
+    .page-select { height: 36px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .page-jump-input { width: 48px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; padding: 0; }
+    .page-jump-input:focus { border-color: var(--primary); outline: none; }
+
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @media (max-width: 640px) { .filter-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+        .filter-grid { grid-template-columns: 1fr; }
+        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+    }
 {% endblock %}
 
 {% block content %}
@@ -420,43 +454,99 @@
     </div>
     {% endif %}
 
-    <!-- Pagination -->
-    {% if page_obj.has_other_pages %}
-    <div class="pagination-container">
-        {% if page_obj.has_previous %}
-        <a href="?page=1&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="First">«</a>
-        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Previous">‹</a>
-        {% else %}
-        <span class="page-btn disabled">«</span>
-        <span class="page-btn disabled">‹</span>
-        {% endif %}
+    <!-- Pagination Toolbar -->
+    <div class="pagination-toolbar">
+        
+        <!-- Left: Info -->
+        <div class="left-info">
+            共 <span style="font-weight: 700; color: var(--text-main);">{{ total_count }}</span> 条 / {{ page_obj.paginator.num_pages }} 页
+        </div>
 
-        <span class="page-input-wrapper">
-            Page <input type="number" id="page-input" value="{{ page_obj.number }}" min="1" max="{{ page_obj.paginator.num_pages }}" 
-                class="page-input"
-                onkeydown="if(event.key === 'Enter') goToPage(this.value)"> 
-            of {{ page_obj.paginator.num_pages }}
-        </span>
+        <!-- Center: Controls -->
+        <div class="center-controls">
+            {% if page_obj.has_previous %}
+                <button class="page-btn" onclick="changePage({{ page_obj.previous_page_number }})">上一页</button>
+            {% else %}
+                <button class="page-btn" disabled>上一页</button>
+            {% endif %}
+            
+            <div class="page-current">{{ page_obj.number }}</div>
+            
+            {% if page_obj.has_next %}
+                <button class="page-btn" onclick="changePage({{ page_obj.next_page_number }})">下一页</button>
+            {% else %}
+                <button class="page-btn" disabled>下一页</button>
+            {% endif %}
+        </div>
 
-        {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Next">›</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Last">»</a>
-        {% else %}
-        <span class="page-btn disabled">›</span>
-        <span class="page-btn disabled">»</span>
-        {% endif %}
+        <!-- Right: Settings & Jump -->
+        <div class="right-actions">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-secondary);">每页</span>
+                <select id="per-page-select" class="form-select page-select" style="width: auto; padding: 0 24px 0 8px;" onchange="changePerPage(this.value)">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-secondary);">跳转</span>
+                <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage()">
+                <button class="btn btn-secondary btn-sm" style="height: 36px; padding: 0 12px;" onclick="jumpToPage()">GO</button>
+            </div>
+        </div>
     </div>
-    {% endif %}
 
 </div>
 
 <script>
-    function goToPage(page) {
-        if (!page || page < 1) return;
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('page', page);
-        window.location.search = urlParams.toString();
+    function getQueryParam(key) {
+        return new URLSearchParams(window.location.search).get(key);
     }
+
+    function updateUrl(params) {
+        const url = new URL(window.location);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, value);
+        }
+        window.location = url;
+    }
+
+    function changePage(page) {
+        updateUrl({ page: page });
+    }
+
+    function changePerPage(size) {
+        localStorage.setItem('personnel_pageSize', size);
+        updateUrl({ per_page: size, page: 1 });
+    }
+
+    function jumpToPage() {
+        const input = document.getElementById('jump-page-input');
+        const page = parseInt(input.value);
+        const maxPage = {{ page_obj.paginator.num_pages }};
+        
+        if (isNaN(page) || page < 1 || page > maxPage) {
+            alert(`请输入 1~${maxPage} 之间的页码`);
+            input.focus();
+            return;
+        }
+        changePage(page);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const storedSize = localStorage.getItem('personnel_pageSize');
+        const urlSize = getQueryParam('per_page');
+        
+        if (storedSize && !urlSize) {
+             const currentPerPage = {{ per_page }};
+             if (parseInt(storedSize) !== currentPerPage) {
+                 updateUrl({ per_page: storedSize, page: 1 });
+             }
+        }
+    });
 </script>
 
 <!-- Confirm Modal -->

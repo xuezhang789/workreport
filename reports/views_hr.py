@@ -55,7 +55,14 @@ def personnel_list(request):
     }
     
     # Pagination
-    paginator = Paginator(qs, 20)
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
+    except (ValueError, TypeError):
+        per_page = 20
+
+    paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))
     
     # Projects for filter dropdown
@@ -64,6 +71,7 @@ def personnel_list(request):
     return render(request, 'reports/personnel_list.html', {
         'users': page_obj,
         'page_obj': page_obj,
+        'per_page': per_page,
         'q': q,
         'role': role,
         'status': status,

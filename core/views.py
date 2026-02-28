@@ -10,6 +10,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db.models import Q, Count
 from django.urls import reverse
@@ -138,8 +139,21 @@ def invitation_list(request):
 
     invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user').order_by('-created_at')
     
+    # Pagination
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
+    except (ValueError, TypeError):
+        per_page = 20
+
+    paginator = Paginator(invitations, per_page)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
     return render(request, 'core/invitation_list.html', {
-        'invitations': invitations,
+        'invitations': page_obj,
+        'page_obj': page_obj,
+        'per_page': per_page,
     })
 
 

@@ -478,6 +478,43 @@
         .filter-grid {
             grid-template-columns: 1fr; /* Stack filters */
         }
+        
+        .pagination-toolbar { flex-direction: column; text-align: center; justify-content: center; }
+    }
+    
+    /* Pagination Toolbar - Unified Style */
+    .pagination-toolbar {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+        margin-top: 24px; padding: 12px 20px; background: white;
+        border: 1px solid var(--border-color); border-radius: 12px;
+        box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;
+    }
+    .pagination-toolbar .left-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; min-width: 140px; }
+    .pagination-toolbar .center-controls { display: flex; align-items: center; gap: 12px; }
+    .pagination-toolbar .right-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    
+    .page-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 36px; padding: 0 16px; border: 1px solid var(--border-color);
+        border-radius: 8px; background: white; color: var(--text-main);
+        font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        text-decoration: none; gap: 6px; user-select: none;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+    .page-btn:disabled, .page-btn[disabled] { color: #94a3b8; border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; }
+    
+    .page-current {
+        font-size: 13px; font-weight: 600; color: var(--text-main);
+        background: #f1f5f9; padding: 0 12px; height: 36px;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center; min-width: 36px;
+    }
+    .page-select { height: 36px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .page-jump-input { width: 48px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; padding: 0; }
+    .page-jump-input:focus { border-color: var(--primary); outline: none; }
+
+    @media (max-width: 768px) {
+        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
     }
 </style>
 
@@ -634,6 +671,42 @@
         document.getElementById('loadingOverlay').classList.add('active');
     }
 
+    // --- Pagination Logic ---
+    function getQueryParam(key) {
+        return new URLSearchParams(window.location.search).get(key);
+    }
+
+    function updateUrl(params) {
+        const url = new URL(window.location);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, value);
+        }
+        window.location = url;
+    }
+
+    function changePage(page) {
+        updateUrl({ page: page });
+    }
+
+    function changePerPage(size) {
+        localStorage.setItem('my_task_pageSize', size);
+        updateUrl({ per_page: size, page: 1 });
+    }
+
+    function jumpToPage() {
+        const input = document.getElementById('jump-page-input');
+        if (!input) return;
+        const page = parseInt(input.value);
+        const maxPage = parseInt(input.getAttribute('max')) || 1;
+        
+        if (isNaN(page) || page < 1 || page > maxPage) {
+            alert(`请输入 1~${maxPage} 之间的页码`);
+            input.focus();
+            return;
+        }
+        changePage(page);
+    }
+
     // --- View Switcher Logic ---
     function switchView(viewName) {
         localStorage.setItem('taskViewMode', viewName);
@@ -769,6 +842,16 @@
         // Note: Checkbox listeners are handled via delegation below
         // Just update toolbar state in case of browser bfcache or preserved state
         updateToolbar();
+
+        // Init Page Size (Only if not set in URL)
+        const storedSize = localStorage.getItem('my_task_pageSize');
+        const urlSize = getQueryParam('per_page');
+        if (storedSize && !urlSize) {
+             const currentPerPage = {{ per_page|default:20 }};
+             if (parseInt(storedSize) !== currentPerPage) {
+                 updateUrl({ per_page: storedSize, page: 1 });
+             }
+        }
     }
 
     // --- Event Delegation & Lifecycle ---

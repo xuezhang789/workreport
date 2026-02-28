@@ -138,11 +138,11 @@ def project_list(request):
     
     # Pagination handling
     try:
-        per_page = int(request.GET.get('per_page', 12))
-        if per_page not in [12, 24, 48]:
-            per_page = 12
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
     except (ValueError, TypeError):
-        per_page = 12
+        per_page = 20
 
     paginator = Paginator(projects, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))

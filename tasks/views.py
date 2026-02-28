@@ -156,7 +156,14 @@ def admin_task_list(request):
         tasks_qs = tasks_qs.order_by(sort_field)
 
         # 标准视图的数据库分页（性能优化）
-        paginator = Paginator(tasks_qs, 15)
+        try:
+            per_page = int(request.GET.get('per_page', 20))
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+
+        paginator = Paginator(tasks_qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
         for t in page_obj:
             t.is_due_soon = t.id in due_soon_ids
@@ -174,6 +181,7 @@ def admin_task_list(request):
     return render(request, 'tasks/admin_task_list.html', {
         'tasks': page_obj,
         'page_obj': page_obj,
+        'per_page': per_page,
         'status': status,
         'category': category,
         'priority': priority,
@@ -1485,7 +1493,14 @@ def task_list(request):
     tasks_qs = tasks_qs.order_by(sort_field)
 
     # 分页
-    paginator = Paginator(tasks_qs, 20)
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
+    except (ValueError, TypeError):
+        per_page = 20
+
+    paginator = Paginator(tasks_qs, per_page)
     page_number = request.GET.get('page')
     tasks = paginator.get_page(page_number)
 
@@ -1501,6 +1516,8 @@ def task_list(request):
 
     context = {
         'tasks': tasks,
+        'page_obj': tasks, # Alias for consistency with other views
+        'per_page': per_page,
         'projects': projects,
         'selected_status': status,
         'selected_category': category,

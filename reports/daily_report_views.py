@@ -653,7 +653,14 @@ def admin_reports(request):
     submitted_count = stats['submitted']
     draft_count = stats['draft']
 
-    paginator = Paginator(reports, 27)
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
+    except (ValueError, TypeError):
+        per_page = 20
+
+    paginator = Paginator(reports, per_page)
     # Optimization: Set count manually to avoid extra COUNT(*) query by Paginator
     # 优化：手动设置 count 以避免 Paginator 执行额外的 COUNT(*) 查询
     paginator.count = total_count
@@ -667,6 +674,7 @@ def admin_reports(request):
     context = {
         'reports': page_obj,
         'page_obj': page_obj,
+        'per_page': per_page,
         'total_count': total_count,
         'submitted_count': submitted_count,
         'draft_count': draft_count,
