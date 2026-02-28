@@ -421,3 +421,61 @@ def performance_export(request):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     log_action(request, 'export', f"performance scope={scope}")
     return response
+
+
+@login_required
+def personnel_export(request):
+    """导出人事档案 / Export Personnel Records"""
+    if not request.user.is_superuser:
+        return _admin_forbidden(request)
+
+    q = (request.GET.get('q') or '').strip()
+    role = (request.GET.get('role') or '').strip()
+    project_id = request.GET.get('project')
+    
+    # Corrected: project_memberships is a ManyToMany related_name returning Projects directly
+    # 修正：project_memberships 是 ManyToMany related_name，直接返回 Project 对象
+    qs = get_user_model().objects.select_related('profile').prefetch_related('project_memberships').order_by('username')
+
+    if q:
+        qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q))
+    if role:
+        qs = qs.filter(profile__position=role)
+    if project_id and project_id.isdigit():
+        qs = qs.filter(project_memberships__id=int(project_id))
+    
+    qs = qs.distinct()
+
+    def _iter_rows():
+        for u in qs.iterator(chunk_size=EXPORT_CHUNK_SIZE):
+            # u.project_memberships.all() returns Project objects
+            projects = ", ".join([p.name for p in u.project_memberships.all()])
+            yield [
+                u.id,
+                u.username,
+                u.get_full_name(),
+                u.email,
+                u.profile.get_position_display(),
+                u.profile.get_employment_status_display(),
+                projects,
+                str(u.profile.hire_date) if u.profile.hire_date else "",
+                u.profile.probation_months,
+                u.profile.probation_salary or "",
+                u.profile.official_salary or "",
+                u.profile.salary_currency,
+                str(u.profile.resignation_date) if u.profile.resignation_date else "",
+                u.profile.intermediary_company or "",
+                f"{u.profile.intermediary_fee_amount} {u.profile.intermediary_fee_currency}" if u.profile.intermediary_fee_amount else "",
+                u.profile.hr_note or "",
+            ]
+
+    header = [
+        "ID", "用户名 / Username", "姓名 / Name", "邮箱 / Email", "职位 / Position", "状态 / Status", "参与项目 / Projects", 
+        "入职日期 / Hire Date", "试用期(月) / Probation", "试用薪资 / Probation Salary", "正式薪资 / Official Salary", "货币 / Currency", 
+        "离职日期 / Resignation", "中介公司 / Agency", "中介费用 / Agency Fee", "备注 / Note"
+    ]
+    
+    response = StreamingHttpResponse(_stream_csv(_iter_rows(), header), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="personnel_records.csv"'
+    log_action(request, 'export', f"personnel count={qs.count()}")
+    return response

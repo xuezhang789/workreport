@@ -412,7 +412,7 @@
                         return;
                     }
                     textarea.value = JSON.stringify(parsed, null, 4);
-                    showToast('JSON 格式化成功 / JSON formatted successfully');
+                    showRoleToast('JSON 格式化成功 / JSON formatted successfully');
                 } catch (e) {
                     alert('JSON 解析失败：/ JSON parse failed: ' + e.message);
                 }
@@ -420,7 +420,7 @@
         }
     });
 
-    function showToast(msg) {
+    function showRoleToast(msg) {
         const toast = document.getElementById('toast');
         toast.querySelector('span').textContent = msg;
         toast.classList.add('active');

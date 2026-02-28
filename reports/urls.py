@@ -57,7 +57,9 @@ urlpatterns = [
     path('teams/<int:user_id>/role/', views_teams.team_member_update_role, name='team_member_update_role'),
     path('teams/<int:user_id>/project/add/', views_teams.team_member_add_project, name='team_member_add_project'),
     path('teams/<int:user_id>/project/<int:project_id>/remove/', views_teams.team_member_remove_project, name='team_member_remove_project'),
+    path('personnel/', views_hr.personnel_list, name='personnel_list'),
     path('api/admin/members/<int:user_id>/hr-info/', views_hr.update_hr_info, name='api_hr_info_update'),
+    path('personnel/export/', export_views.personnel_export, name='personnel_export'),
 
     # Project Attachments - Moved
 

@@ -639,12 +639,6 @@
                     <th>角色 / Role</th>
                     <th>项目 / Projects</th>
                     <th>状态 / Status</th>
-                    {% if request.user.is_superuser %}
-                        <th>入职 / Hire</th>
-                        <th>试用 / Prob.</th>
-                        <th>薪资 (P/O)</th>
-                        <th>备注 / Note</th>
-                    {% endif %}
                     <th style="text-align: right;">操作 / Actions</th>
                 </tr>
             </thead>
@@ -688,7 +682,7 @@
                     <td>
                         <div class="project-tags">
                             {% for proj in user.project_memberships.all|slice:":3" %}
-                                <span class="project-tag">{{ proj.code }}</span>
+                                <span class="project-tag">{{ proj.name }} <span style="color:var(--text-muted);font-size:10px;margin-left:2px;">{{ proj.overall_progress|stringformat:".0f" }}%</span></span>
                             {% endfor %}
                             {% if user.project_memberships.all|length > 3 %}
                                 <span class="project-tag">+{{ user.project_memberships.all|length|add:"-3" }}</span>
@@ -696,57 +690,17 @@
                         </div>
                     </td>
                     <td>
-                        {% if request.user.is_superuser %}
-                            <!-- Admin sees detailed employment status -->
-                            {% if user.profile.employment_status == 'active' %}
-                                <span class="status-indicator"><span class="status-dot status-active"></span> 在职</span>
-                            {% else %}
-                                <span class="status-indicator"><span class="status-dot status-inactive"></span> 离职</span>
-                            {% endif %}
+                        {% if user.is_active %}
+                            <span class="status-indicator"><span class="status-dot status-active"></span> Active</span>
                         {% else %}
-                            <!-- Regular user sees active/inactive -->
-                            {% if user.is_active %}
-                                <span class="status-indicator"><span class="status-dot status-active"></span> Active</span>
-                            {% else %}
-                                <span class="status-indicator"><span class="status-dot status-inactive"></span> Inactive</span>
-                            {% endif %}
+                            <span class="status-indicator"><span class="status-dot status-inactive"></span> Inactive</span>
                         {% endif %}
                     </td>
-                    {% if request.user.is_superuser %}
-                        <td data-field="hire_date">{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
-                        <td data-field="probation">{{ user.profile.probation_months }} Mo.</td>
-                        <td>
-                            <div style="font-size: 12px;">
-                                <div>P: {{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
-                                <div>O: {{ user.profile.official_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
-                            </div>
-                        </td>
-                        <td data-field="note" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
-                            {{ user.profile.hr_note|default:"--" }}
-                        </td>
-                    {% endif %}
                     <td style="text-align: right;">
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
                             <button type="button" class="btn btn-secondary btn-sm" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.position }}', JSON.parse('{{ user.project_memberships.all|to_project_json|escapejs }}'))">
                                 权限
                             </button>
-                            {% if request.user.is_superuser %}
-                            <button type="button" class="btn btn-primary btn-sm" onclick='openHRModal({{ user.id }}, "{{ user.get_full_name|default:user.username|escapejs }}", {
-                                employment_status: "{{ user.profile.employment_status }}",
-                                hire_date: "{{ user.profile.hire_date|date:"Y-m-d" }}",
-                                probation_months: {{ user.profile.probation_months }},
-                                probation_salary: "{{ user.profile.probation_salary|default:"" }}",
-                                official_salary: "{{ user.profile.official_salary|default:"" }}",
-                                salary_currency: "{{ user.profile.salary_currency }}",
-                                resignation_date: "{{ user.profile.resignation_date|date:"Y-m-d" }}",
-                                hr_note: "{{ user.profile.hr_note|escapejs }}",
-                                intermediary_company: "{{ user.profile.intermediary_company|default:""|escapejs }}",
-                                intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
-                                intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}"
-                            })'>
-                                人事
-                            </button>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -1031,105 +985,6 @@
     </div>
 </div>
 
-{% if request.user.is_superuser %}
-<!-- HR Manage Modal -->
-<div id="hr-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeHRModal()">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h3 class="modal-title" id="hr-modal-title">编辑成员人事信息</h3>
-            <button type="button" class="close-btn" onclick="closeHRModal()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <form id="hr-form" onsubmit="saveHRInfo(event)">
-                <input type="hidden" id="hr-user-id">
-                
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label class="form-label">是否在职 / Employment Status</label>
-                    <select id="hr-status" class="form-select" required>
-                        <option value="active">在职 / Active</option>
-                        <option value="terminated">离职 / Terminated</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">入职时间 / Hire Date</label>
-                        <input type="date" id="hr-hire-date" class="form-input">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">离职时间 / Resignation Date</label>
-                        <input type="date" id="hr-resignation-date" class="form-input">
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">试用时长 (月) / Probation (Months)</label>
-                        <input type="number" id="hr-probation-months" class="form-input" min="1" max="6" value="3" required>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">试用薪资 / Probation Salary</label>
-                        <input type="number" id="hr-probation-salary" class="form-input" step="0.01" min="0">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">正式薪资 / Official Salary</label>
-                        <input type="number" id="hr-official-salary" class="form-input" step="0.01" min="0">
-                    </div>
-                    <div class="form-group" style="width: 80px;">
-                        <label class="form-label">单位 / Unit</label>
-                        <select id="hr-salary-currency" class="form-select" required>
-                            <option value="CNY">CNY</option>
-                            <option value="USDT">USDT</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="modal-section-title" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">中介信息 / Intermediary Info</div>
-                
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label class="form-label">中介公司 / Intermediary Company</label>
-                    <input type="text" id="hr-intermediary-company" class="form-input" placeholder="请输入中介公司名称">
-                </div>
-
-                <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-end;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">中介费用 / Intermediary Fee</label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <input type="number" id="hr-intermediary-fee-amount" class="form-input" step="0.01" min="0" style="padding-right: 30px;">
-                            <span id="hr-fee-symbol" style="position: absolute; right: 10px; color: var(--text-muted); font-weight: 600;">¥</span>
-                        </div>
-                    </div>
-                    <div class="form-group" style="width: 80px;">
-                        <label class="form-label">单位 / Unit</label>
-                        <select id="hr-intermediary-fee-currency" class="form-select" onchange="updateFeeSymbol(this.value)">
-                            <option value="CNY">CNY</option>
-                            <option value="USDT">USDT</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 24px;">
-                    <label class="form-label">备注 / Note</label>
-                    <textarea id="hr-note" class="form-input" rows="3" maxlength="500"></textarea>
-                </div>
-                
-                <div id="hr-error-msg" class="alert-box warning" style="display: none; margin-bottom: 16px;"></div>
-                
-                <div style="text-align: right;">
-                    <button type="button" class="btn btn-secondary" onclick="closeHRModal()">取消 / Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="hr-save-btn">保存 / Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 <!-- Toast Notification Container -->
 <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
 
@@ -1161,7 +1016,7 @@
         if(currentManageUserId == userId) {
             // Conflict detection/Sync
             if(senderId !== currentUserId) {
-                showToast(`⚠️ 此用户的权限已被其他管理员修改 / User permissions modified by another admin`, 'warning');
+                showTeamToast(`⚠️ 此用户的权限已被其他管理员修改 / User permissions modified by another admin`, 'warning');
             }
             
             if(msg.action === 'add_project' || msg.action === 'remove_project') {
@@ -1177,7 +1032,7 @@
     }
 
     // === UI Helpers ===
-    function showToast(message, type='success') {
+    function showTeamToast(message, type='success') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.style.cssText = `
@@ -1233,7 +1088,7 @@
         const cell = row.cells[2];
         let html = '<div class="project-tags">';
         projects.slice(0, 3).forEach(p => {
-            html += `<span class="project-tag">${p.code}</span>`;
+            html += `<span class="project-tag">${p.name} <span style="color:var(--text-muted);font-size:10px;margin-left:2px;">${Math.round(p.overall_progress||0)}%</span></span>`;
         });
         if(projects.length > 3) {
             html += `<span class="project-tag">+${projects.length - 3}</span>`;
@@ -1293,7 +1148,7 @@
                 const div = document.createElement('div');
                 div.className = 'project-item-modal';
                 div.innerHTML = `
-                    <span style="font-weight: 500;">${p.name} <span style="color: var(--text-muted); font-weight: normal;">(${p.code})</span></span>
+                    <span style="font-weight: 500;">${p.name} <span style="color: var(--text-muted); font-weight: normal;">(${Math.round(p.overall_progress||0)}%)</span></span>
                     <button type="button" class="btn-remove" title="移除项目" onclick="handleProjectRemove(${p.id}, this)">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
@@ -1331,14 +1186,14 @@
             const data = await res.json();
             
             if(data.status === 'success') {
-                showToast('角色更新成功 / Role updated successfully');
+                showTeamToast('角色更新成功 / Role updated successfully');
                 // Row update handled by WebSocket usually, but do it here for immediate feedback
                 // updateRowRole(currentManageUserId, role, ...); // We need display name, wait for WS or use local map
             } else {
-                showToast(data.message || 'Error updating role', 'error');
+                showTeamToast(data.message || 'Error updating role', 'error');
             }
         } catch(e) {
-            showToast('Network error', 'error');
+            showTeamToast('Network error', 'error');
         } finally {
             btn.innerText = originalText;
             btn.disabled = false;
@@ -1369,14 +1224,28 @@
             const data = await res.json();
             
             if(data.status === 'success') {
-                showToast('项目添加成功 / Project added');
-                renderModalProjects(data.projects); // Immediate update from response
+                showTeamToast('项目添加成功 / Project added');
+                // renderModalProjects expects an array of project objects {id, name, code}
+                // The API response might return 'projects' array which is the updated list
+                // OR 'project' object which is the single added project.
+                // Let's check what the API returns. 
+                // Based on views_teams.py: team_member_add_project returns {'status': 'success', 'projects': serialized_projects}
+                // So data.projects should be correct.
+                
+                if (data.projects) {
+                     renderModalProjects(data.projects); 
+                } else {
+                     // Fallback or error handling if API structure changed
+                     console.warn('API did not return projects list', data);
+                     // Ideally we should reload the whole list from server if we are unsure
+                     // But for now let's assume data.projects is there.
+                }
                 select.value = '';
             } else {
-                showToast(data.message || 'Error adding project', 'error');
+                showTeamToast(data.message || 'Error adding project', 'error');
             }
         } catch(e) {
-            showToast('Network error', 'error');
+            showTeamToast('Network error', 'error');
         } finally {
             btn.innerText = originalText;
             btn.disabled = false;
@@ -1399,15 +1268,15 @@
             const data = await res.json();
             
             if(data.status === 'success') {
-                showToast('项目已移除 / Project removed');
+                showTeamToast('项目已移除 / Project removed');
                 renderModalProjects(data.projects);
             } else {
-                showToast(data.message || 'Error removing project', 'error');
+                showTeamToast(data.message || 'Error removing project', 'error');
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
             }
         } catch(e) {
-            showToast('Network error', 'error');
+            showTeamToast('Network error', 'error');
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         }
@@ -1476,7 +1345,7 @@
             renderOwner(data.owner);
         } catch (e) {
             console.error(e);
-            showToast('加载失败 / Load failed', 'error');
+            showTeamToast('加载失败 / Load failed', 'error');
         }
     }
 
@@ -1567,154 +1436,19 @@
             const data = await res.json();
             if(data.status === 'success') {
                 loadProjectUsers();
-                if(data.message) showToast(data.message);
+                if(data.message) showTeamToast(data.message);
             } else {
-                showToast(data.error || 'Operation failed', 'error');
+                showTeamToast(data.error || 'Operation failed', 'error');
             }
         } catch(e) {
             console.error(e);
-            showToast('Request failed', 'error');
+            showTeamToast('Request failed', 'error');
         }
     }
 
     // HR Modal Logic
-    {% if request.user.is_superuser %}
-    function updateFeeSymbol(currency) {
-        const symbol = currency === 'USDT' ? '₮' : '¥';
-        document.getElementById('hr-fee-symbol').innerText = symbol;
-    }
-
-    function openHRModal(userId, userName, data) {
-        document.getElementById('hr-modal-title').innerText = `编辑成员人事信息 - ${userName}`;
-        document.getElementById('hr-user-id').value = userId;
-        document.getElementById('hr-status').value = data.employment_status;
-        document.getElementById('hr-hire-date').value = data.hire_date || '';
-        document.getElementById('hr-probation-months').value = data.probation_months;
-        document.getElementById('hr-probation-salary').value = data.probation_salary || '';
-        document.getElementById('hr-official-salary').value = data.official_salary || '';
-        document.getElementById('hr-salary-currency').value = data.salary_currency || 'CNY';
-        document.getElementById('hr-resignation-date').value = data.resignation_date || '';
-        document.getElementById('hr-note').value = data.hr_note || '';
-        
-        // Intermediary fields
-        document.getElementById('hr-intermediary-company').value = data.intermediary_company || '';
-        document.getElementById('hr-intermediary-fee-amount').value = data.intermediary_fee_amount || '';
-        document.getElementById('hr-intermediary-fee-currency').value = data.intermediary_fee_currency || 'CNY';
-        updateFeeSymbol(data.intermediary_fee_currency || 'CNY');
-
-        document.getElementById('hr-error-msg').style.display = 'none';
-        // Reset field highlights
-        document.querySelectorAll('#hr-form .form-input, #hr-form .form-select').forEach(el => el.style.borderColor = '');
-
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('hr-hire-date').max = today;
-        document.getElementById('hr-manage-modal').classList.add('open');
-    }
-
-    function closeHRModal() {
-        document.getElementById('hr-manage-modal').classList.remove('open');
-    }
-
-    async function saveHRInfo(e) {
-        e.preventDefault();
-        const btn = document.getElementById('hr-save-btn');
-        const originalText = btn.innerText;
-        btn.innerText = '保存中... / Saving...';
-        btn.disabled = true;
-        
-        // Reset field highlights
-        document.querySelectorAll('#hr-form .form-input, #hr-form .form-select').forEach(el => el.style.borderColor = '');
-        
-        const userId = document.getElementById('hr-user-id').value;
-        const data = {
-            employment_status: document.getElementById('hr-status').value,
-            hire_date: document.getElementById('hr-hire-date').value,
-            probation_months: document.getElementById('hr-probation-months').value,
-            probation_salary: document.getElementById('hr-probation-salary').value,
-            official_salary: document.getElementById('hr-official-salary').value,
-            salary_currency: document.getElementById('hr-salary-currency').value,
-            resignation_date: document.getElementById('hr-resignation-date').value,
-            hr_note: document.getElementById('hr-note').value,
-            intermediary_company: document.getElementById('hr-intermediary-company').value,
-            intermediary_fee_amount: document.getElementById('hr-intermediary-fee-amount').value,
-            intermediary_fee_currency: document.getElementById('hr-intermediary-fee-currency').value
-        };
-
-        // Client side joint validation
-        let clientErrors = [];
-        const hasCompany = data.intermediary_company.trim() !== '';
-        const hasFee = data.intermediary_fee_amount !== '' && parseFloat(data.intermediary_fee_amount) > 0;
-        
-        if ((hasCompany && !hasFee) || (!hasCompany && hasFee)) {
-            clientErrors.push('填写中介费用时，必须同时填写中介公司与货币单位');
-            document.getElementById('hr-intermediary-company').style.borderColor = 'var(--danger)';
-            document.getElementById('hr-intermediary-fee-amount').style.borderColor = 'var(--danger)';
-        }
-
-        if (clientErrors.length > 0) {
-            const errorDiv = document.getElementById('hr-error-msg');
-            errorDiv.style.display = 'block';
-            errorDiv.innerHTML = clientErrors.join('<br>');
-            btn.innerText = originalText;
-            btn.disabled = false;
-            return;
-        }
-
-        try {
-            const res = await fetchWithRetry(`/reports/api/admin/members/${userId}/hr-info/`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                body: JSON.stringify(data)
-            });
-            const result = await res.json();
-            if (res.ok) {
-                const row = document.getElementById(`row-${userId}`);
-                if (row) {
-                    // ... existing row update logic ...
-                     const statusCell = row.cells[3];
-                     const statusText = data.employment_status === 'active' ? '在职' : '离职';
-                     const statusClass = data.employment_status === 'active' ? 'status-active' : 'status-inactive';
-                     statusCell.innerHTML = `<span class="status-indicator"><span class="status-dot ${statusClass}"></span> ${statusText}</span>`;
-                     row.cells[4].innerText = data.hire_date || '--';
-                     row.cells[5].innerText = data.probation_months + ' Mo.';
-                     const pSal = data.probation_salary ? parseFloat(data.probation_salary).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
-                     const oSal = data.official_salary ? parseFloat(data.official_salary).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
-                     row.cells[6].innerHTML = `<div style="font-size: 12px;"><div>P: ${pSal} ${data.salary_currency}</div><div>O: ${oSal} ${data.salary_currency}</div></div>`;
-                     row.cells[7].innerText = data.hr_note || '--';
-                     row.cells[7].title = data.hr_note || '';
-                     const btn = row.cells[8].querySelector('.btn-primary');
-                     if(btn) {
-                        const oldOnclick = btn.getAttribute('onclick');
-                        const match = oldOnclick.match(/openHRModal\(\d+, "(.*?)",/);
-                        if(match) {
-                            const name = match[1];
-                            const jsonStr = JSON.stringify(data).replace(/"/g, "&quot;");
-                            btn.setAttribute('onclick', `openHRModal(${userId}, "${name}", ${jsonStr})`);
-                        }
-                     }
-                }
-                closeHRModal();
-                showToast('人事信息已保存 / HR Info Saved');
-            } else {
-                const errorDiv = document.getElementById('hr-error-msg');
-                errorDiv.style.display = 'block';
-                if (result.errors) {
-                    let msg = '';
-                    for (const [key, val] of Object.entries(result.errors)) { msg += `${val}<br>`; }
-                    errorDiv.innerHTML = msg;
-                } else {
-                    errorDiv.innerText = result.error || '保存失败 / Save failed';
-                }
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('网络错误 / Network error', 'error');
-        } finally {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
-    }
-    {% endif %}
+    // Moved to personnel_list.html
+    // HR 功能已移动到人事管理页面
 
 </script>
 {% endblock %}

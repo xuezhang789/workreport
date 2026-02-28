@@ -1,17 +1,79 @@
 import json
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.core.paginator import Paginator
 from core.models import Profile
+from reports.models import Project
 from audit.utils import log_action
+from reports.services import teams as team_service
+from core.utils import _admin_forbidden
 
 def is_superuser(user):
     return user.is_superuser
+
+@login_required
+def personnel_list(request):
+    """
+    独立的人事管理页面 / Personnel Management Page
+    仅超级管理员可访问 (Only Superuser)
+    """
+    if not request.user.is_superuser:
+        return _admin_forbidden(request, "需要管理员权限 / Admin access required")
+
+    q = (request.GET.get('q') or '').strip()
+    role = (request.GET.get('role') or '').strip()
+    project_id = request.GET.get('project')
+    project_filter = int(project_id) if project_id and project_id.isdigit() else None
+    
+    # Get all members with filters
+    # 获取成员列表
+    qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
+    
+    # Additional Filter: Status
+    # 额外筛选：状态
+    status = (request.GET.get('status') or 'active').strip()
+    if status == 'active':
+        qs = qs.filter(profile__employment_status='active')
+    elif status == 'terminated':
+        qs = qs.filter(profile__employment_status='terminated')
+    # if status == 'all', no filter
+    
+    # Calculate Stats
+    # 计算统计数据
+    total_users = User.objects.select_related('profile')
+    stats = {
+        'total': total_users.count(),
+        'active': total_users.filter(profile__employment_status='active').count(),
+        'terminated': total_users.filter(profile__employment_status='terminated').count(),
+        'new_hires': total_users.filter(profile__hire_date__month=timezone.now().month, profile__hire_date__year=timezone.now().year).count(),
+    }
+    
+    # Pagination
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
+    # Projects for filter dropdown
+    projects = Project.objects.filter(is_active=True).order_by('name')
+
+    return render(request, 'reports/personnel_list.html', {
+        'users': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'role': role,
+        'status': status,
+        'project_filter': project_filter,
+        'roles': Profile.ROLE_CHOICES,
+        'total_count': qs.count(),
+        'projects': projects,
+        'stats': stats,
+        'today_date': timezone.now().strftime('%Y-%m-%d'),
+    })
 
 @user_passes_test(is_superuser)
 @require_http_methods(["PUT"])

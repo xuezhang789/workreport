@@ -1,0 +1,584 @@
+{% extends "base_topbar.html" %}
+{% load reports_filters %}
+{% load core_tags %}
+{% load humanize %}
+{% block title %}人事管理 / Personnel Management{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="人事管理 / Personnel Management" nav_subtitle="管理员工档案、薪资与人事信息 / Manage employee profiles, salary & HR info" %}{% endblock %}
+
+{% block extra_styles %}
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --primary-hover: #1d4ed8;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body { background-color: var(--bg-page); color: var(--text-main); }
+
+    /* Filter Section */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+    .filter-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .form-input, .form-select {
+        padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; width: 100%;
+    }
+    .filter-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+
+    /* Table */
+    .table-container { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: white; }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th { background: #f8fafc; padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+    .table td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-main); vertical-align: middle; }
+    .table tr:hover { background: #f8fafc; }
+
+    /* User Info */
+    .user-header { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+
+    /* Badges */
+    .role-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+    .badge-dev { background: #e0f2fe; color: #0284c7; }
+    .badge-qa { background: #fef9c3; color: #ca8a04; }
+    .badge-pm { background: #f3e8ff; color: #9333ea; }
+    .badge-ui { background: #fce7f3; color: #db2777; }
+    .badge-ops { background: #ffedd5; color: #ea580c; }
+    .badge-mgr { background: #dcfce7; color: #16a34a; }
+    .badge-default { background: #f1f5f9; color: #475569; }
+
+    .status-indicator { font-size: 12px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-active { background: var(--success); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15); }
+    .status-inactive { background: var(--text-muted); }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: white; border-color: var(--border-color); color: var(--text-main); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+
+    /* Pagination */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 24px;
+        gap: 6px;
+    }
+    .page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        padding: 0 6px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        background: white;
+        color: var(--text-main);
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+        user-select: none;
+    }
+    .page-btn:hover:not(.disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+    .page-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        pointer-events: none;
+    }
+    .page-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+    .page-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 8px;
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+    .page-input {
+        width: 48px;
+        height: 32px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 13px;
+        transition: var(--transition);
+    }
+    .page-input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    
+    /* Modals */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease-out; }
+    .modal-content { background: white; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 18px; font-weight: 700; margin: 0; }
+    .close-btn { background: none; border: none; cursor: pointer; color: var(--text-secondary); }
+    .modal-body { padding: 20px; overflow-y: auto; }
+    
+    .alert-box { padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+    .alert-box.warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @media (max-width: 640px) { .filter-grid { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">人事档案 / Personnel Records</h1>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">管理员工档案、薪资与人事信息</p>
+        </div>
+        <div>
+             <a href="{% url 'reports:personnel_export' %}?q={{ q }}&role={{ role }}&project={{ project_filter }}&status={{ status }}" class="btn btn-secondary" target="_blank">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                导出档案 / Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="stat-card" style="background: white; padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-secondary); font-size: 13px; font-weight: 600; margin-bottom: 8px;">总员工数 / Total</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--text-main);">{{ stats.total }}</div>
+        </div>
+        <div class="stat-card" style="background: white; padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="color: var(--success); font-size: 13px; font-weight: 600; margin-bottom: 8px;">在职 / Active</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--text-main);">{{ stats.active }}</div>
+        </div>
+        <div class="stat-card" style="background: white; padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="color: var(--primary); font-size: 13px; font-weight: 600; margin-bottom: 8px;">本月新入职 / New Hires</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--text-main);">{{ stats.new_hires }}</div>
+        </div>
+        <div class="stat-card" style="background: white; padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 8px;">离职 / Terminated</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--text-muted);">{{ stats.terminated }}</div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-section">
+        <form method="get">
+            <div class="filter-grid">
+                <!-- Search -->
+                <div class="form-group" style="flex: 2; min-width: 240px;">
+                    <label class="form-label" for="q">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        搜索 / Search
+                    </label>
+                    <input type="text" id="q" name="q" class="form-input" placeholder="姓名、邮箱或用户名..." value="{{ q }}">
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="form-group">
+                    <label class="form-label">状态 / Status</label>
+                    <select name="status" class="form-select">
+                        <option value="active" {% if status == 'active' %}selected{% endif %}>在职 / Active</option>
+                        <option value="terminated" {% if status == 'terminated' %}selected{% endif %}>离职 / Terminated</option>
+                        <option value="all" {% if status == 'all' %}selected{% endif %}>全部 / All</option>
+                    </select>
+                </div>
+                
+                <!-- Role Filter -->
+                <div class="form-group">
+                    <label class="form-label" for="role">角色 / Role</label>
+                    <select id="role" name="role" class="form-select">
+                        <option value="">全部角色 / All Roles</option>
+                        {% for r_val, r_label in roles %}
+                        <option value="{{ r_val }}" {% if role == r_val %}selected{% endif %}>{{ r_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Project Filter -->
+                <div class="form-group">
+                    <label class="form-label" for="project">项目 / Project</label>
+                    <select id="project" name="project" class="form-select">
+                        <option value="">全部项目 / All Projects</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <a href="{% url 'reports:personnel_list' %}" class="btn btn-ghost">重置 / Reset</a>
+                <button type="submit" class="btn btn-primary">筛选 / Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Personnel Table -->
+    {% if users %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 250px;">员工 / Employee</th>
+                    <th>角色 / Role</th>
+                    <th>状态 / Status</th>
+                    <th>入职日期 / Hire Date</th>
+                    <th>试用期 / Probation</th>
+                    <th>薪资 (P/O) / Salary</th>
+                    <th>备注 / Note</th>
+                    <th style="text-align: right;">操作 / Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr id="row-{{ user.id }}">
+                    <td>
+                        <div class="user-header">
+                            <div class="user-avatar">
+                                {% with avatar_url=user|get_avatar_url %}
+                                    {% if avatar_url %}
+                                        <img src="{{ avatar_url }}" alt="{{ user.get_full_name }}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">
+                                    {% else %}
+                                        {{ user.get_full_name|default:user.username|slice:":1"|upper }}
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">{{ user.get_full_name|default:user.username }}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">@{{ user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.profile.position == 'dev' %}
+                            <span class="role-badge badge-dev">Dev</span>
+                        {% elif user.profile.position == 'qa' %}
+                            <span class="role-badge badge-qa">QA</span>
+                        {% elif user.profile.position == 'pm' %}
+                            <span class="role-badge badge-pm">PM</span>
+                        {% elif user.profile.position == 'ui' %}
+                            <span class="role-badge badge-ui">UI</span>
+                        {% elif user.profile.position == 'ops' %}
+                            <span class="role-badge badge-ops">Ops</span>
+                        {% elif user.profile.position == 'mgr' %}
+                            <span class="role-badge badge-mgr">Mgr</span>
+                        {% else %}
+                            <span class="role-badge badge-default">--</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.profile.employment_status == 'active' %}
+                            <span class="status-indicator"><span class="status-dot status-active"></span> 在职</span>
+                        {% else %}
+                            <span class="status-indicator"><span class="status-dot status-inactive"></span> 离职</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
+                    <td>{{ user.profile.probation_months }} Mo.</td>
+                    <td>
+                        <div style="font-size: 12px;">
+                            <div title="Probation Salary">P: {{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
+                            <div title="Official Salary">O: {{ user.profile.official_salary|default:"--"|floatformat:2|intcomma }} {{ user.profile.salary_currency }}</div>
+                        </div>
+                    </td>
+                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
+                        {{ user.profile.hr_note|default:"--" }}
+                    </td>
+                    <td style="text-align: right;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick='openHRModal({{ user.id }}, "{{ user.get_full_name|default:user.username|escapejs }}", {
+                            employment_status: "{{ user.profile.employment_status }}",
+                            hire_date: "{{ user.profile.hire_date|date:"Y-m-d" }}",
+                            probation_months: {{ user.profile.probation_months }},
+                            probation_salary: "{{ user.profile.probation_salary|default:"" }}",
+                            official_salary: "{{ user.profile.official_salary|default:"" }}",
+                            salary_currency: "{{ user.profile.salary_currency }}",
+                            resignation_date: "{{ user.profile.resignation_date|date:"Y-m-d" }}",
+                            hr_note: "{{ user.profile.hr_note|escapejs }}",
+                            intermediary_company: "{{ user.profile.intermediary_company|default:""|escapejs }}",
+                            intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
+                            intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}"
+                        })'>
+                            编辑档案 / Edit
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 64px; border: 2px dashed var(--border-color); border-radius: var(--radius-lg); color: var(--text-secondary);">
+        <h3>未找到员工 / No employees found</h3>
+    </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        {% if page_obj.has_previous %}
+        <a href="?page=1&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="First">«</a>
+        <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Previous">‹</a>
+        {% else %}
+        <span class="page-btn disabled">«</span>
+        <span class="page-btn disabled">‹</span>
+        {% endif %}
+
+        <span class="page-input-wrapper">
+            Page <input type="number" id="page-input" value="{{ page_obj.number }}" min="1" max="{{ page_obj.paginator.num_pages }}" 
+                class="page-input"
+                onkeydown="if(event.key === 'Enter') goToPage(this.value)"> 
+            of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Next">›</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}&q={{ q }}&role={{ role }}&status={{ status }}&project={{ project_filter }}" class="page-btn" title="Last">»</a>
+        {% else %}
+        <span class="page-btn disabled">›</span>
+        <span class="page-btn disabled">»</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function goToPage(page) {
+        if (!page || page < 1) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('page', page);
+        window.location.search = urlParams.toString();
+    }
+</script>
+
+<!-- HR Modal -->
+<div id="hr-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeHRModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="hr-modal-title">编辑人事档案</h3>
+            <button type="button" class="close-btn" onclick="closeHRModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="hr-form" onsubmit="saveHRInfo(event)">
+                <input type="hidden" id="hr-user-id">
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">状态 / Status</label>
+                    <select id="hr-status" class="form-select" required>
+                        <option value="active">在职 / Active</option>
+                        <option value="terminated">离职 / Terminated</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">入职时间 / Hire Date</label>
+                        <input type="date" id="hr-hire-date" class="form-input">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">离职时间 / Resignation</label>
+                        <input type="date" id="hr-resignation-date" class="form-input">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">试用期 (月) / Probation</label>
+                        <input type="number" id="hr-probation-months" class="form-input" min="1" max="6" value="3" required>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">试用薪资 / Probation Salary</label>
+                        <input type="number" id="hr-probation-salary" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">正式薪资 / Official Salary</label>
+                        <input type="number" id="hr-official-salary" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="width: 80px;">
+                        <label class="form-label">单位</label>
+                        <select id="hr-salary-currency" class="form-select">
+                            <option value="CNY">CNY</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); margin: 16px 0;"></div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px;">中介信息 / Intermediary</div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">中介公司 / Company</label>
+                    <input type="text" id="hr-intermediary-company" class="form-input">
+                </div>
+
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">中介费用 / Fee</label>
+                        <input type="number" id="hr-intermediary-fee-amount" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="width: 80px;">
+                        <label class="form-label">单位</label>
+                        <select id="hr-intermediary-fee-currency" class="form-select">
+                            <option value="CNY">CNY</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">备注 / Note</label>
+                    <textarea id="hr-note" class="form-input" rows="3" maxlength="500"></textarea>
+                </div>
+                
+                <div id="hr-error-msg" class="alert-box warning" style="display: none;"></div>
+                
+                <div style="text-align: right; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeHRModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="hr-save-btn">保存 / Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    function showHRToast(message, type='success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            padding: 12px 20px; border-radius: 8px; color: white; font-size: 14px; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 10px; background: ${type==='error'?'#ef4444':'#10b981'};
+        `;
+        toast.innerText = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // HR Modal Logic
+    function openHRModal(userId, userName, data) {
+        document.getElementById('hr-modal-title').innerText = `编辑人事档案: ${userName}`;
+        document.getElementById('hr-user-id').value = userId;
+        document.getElementById('hr-status').value = data.employment_status;
+        document.getElementById('hr-hire-date').value = data.hire_date || '';
+        document.getElementById('hr-probation-months').value = data.probation_months;
+        document.getElementById('hr-probation-salary').value = data.probation_salary || '';
+        document.getElementById('hr-official-salary').value = data.official_salary || '';
+        document.getElementById('hr-salary-currency').value = data.salary_currency || 'CNY';
+        document.getElementById('hr-resignation-date').value = data.resignation_date || '';
+        document.getElementById('hr-note').value = data.hr_note || '';
+        
+        document.getElementById('hr-intermediary-company').value = data.intermediary_company || '';
+        document.getElementById('hr-intermediary-fee-amount').value = data.intermediary_fee_amount || '';
+        document.getElementById('hr-intermediary-fee-currency').value = data.intermediary_fee_currency || 'CNY';
+
+        document.getElementById('hr-error-msg').style.display = 'none';
+        document.getElementById('hr-manage-modal').classList.add('open');
+    }
+
+    function closeHRModal() {
+        document.getElementById('hr-manage-modal').classList.remove('open');
+    }
+
+    async function saveHRInfo(e) {
+        e.preventDefault();
+        const btn = document.getElementById('hr-save-btn');
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...';
+        btn.disabled = true;
+        
+        const userId = document.getElementById('hr-user-id').value;
+        const data = {
+            employment_status: document.getElementById('hr-status').value,
+            hire_date: document.getElementById('hr-hire-date').value,
+            probation_months: document.getElementById('hr-probation-months').value,
+            probation_salary: document.getElementById('hr-probation-salary').value,
+            official_salary: document.getElementById('hr-official-salary').value,
+            salary_currency: document.getElementById('hr-salary-currency').value,
+            resignation_date: document.getElementById('hr-resignation-date').value,
+            hr_note: document.getElementById('hr-note').value,
+            intermediary_company: document.getElementById('hr-intermediary-company').value,
+            intermediary_fee_amount: document.getElementById('hr-intermediary-fee-amount').value,
+            intermediary_fee_currency: document.getElementById('hr-intermediary-fee-currency').value
+        };
+
+        try {
+            // Using fetch with retry logic is good, but simple fetch for now
+            const res = await fetch(`/reports/api/admin/members/${userId}/hr-info/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            
+            if (res.ok) {
+                showHRToast('保存成功 / Saved successfully');
+                setTimeout(() => location.reload(), 1000); // Reload to update table
+            } else {
+                const errorDiv = document.getElementById('hr-error-msg');
+                errorDiv.style.display = 'block';
+                if (result.errors) {
+                    let msg = '';
+                    for (const [key, val] of Object.entries(result.errors)) { msg += `${val}<br>`; }
+                    errorDiv.innerHTML = msg;
+                } else {
+                    errorDiv.innerText = result.error || 'Failed';
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            showHRToast('Network error', 'error');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+    
+    // Helper for fetch retry if needed
+    async function fetchWithRetry(url, options) { return fetch(url, options); }
+</script>
+{% endblock %}

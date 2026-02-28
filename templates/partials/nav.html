@@ -33,6 +33,9 @@
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" href="{% url 'reports:admin_reports' %}">日报管理 / Reports Admin</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'admin_task_stats' %}active{% endif %}" href="{% url 'tasks:admin_task_stats' %}">任务统计 / Task Stats</a>
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'teams' %}active{% endif %}" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
+                            {% if request.user.is_superuser %}
+                                <a class="{% if request.resolver_match and request.resolver_match.url_name == 'personnel_list' %}active{% endif %}" href="{% url 'reports:personnel_list' %}">人事管理 / Personnel Mgmt</a>
+                            {% endif %}
                         {% endif %}
                         {% if can_view_admin_global %}
                             <a class="{% if request.resolver_match and request.resolver_match.url_name == 'performance_board' %}active{% endif %}" href="{% url 'reports:performance_board' %}">绩效看板 / Performance Board</a>

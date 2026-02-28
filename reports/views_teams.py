@@ -203,7 +203,8 @@ def team_member_add_project(request, user_id):
             User = get_user_model()
             target_user = get_object_or_404(User, pk=user_id)
             projects = [{
-                'id': p.id, 'name': p.name, 'code': p.code
+                'id': p.id, 'name': p.name, 'code': p.code,
+                'overall_progress': float(p.overall_progress)
             } for p in target_user.project_memberships.all()]
             
             # Broadcast
@@ -244,7 +245,8 @@ def team_member_remove_project(request, user_id, project_id):
             User = get_user_model()
             target_user = get_object_or_404(User, pk=user_id)
             projects = [{
-                'id': p.id, 'name': p.name, 'code': p.code
+                'id': p.id, 'name': p.name, 'code': p.code,
+                'overall_progress': float(p.overall_progress)
             } for p in target_user.project_memberships.all()]
             
             # Broadcast

@@ -768,10 +768,10 @@
     function copyContent(text) {
         if (!text) return;
         navigator.clipboard.writeText(text).then(() => {
-            showToast('已复制到剪贴板 / Copied to clipboard');
+            showTemplateToast('已复制到剪贴板 / Copied to clipboard');
         }).catch(err => {
             console.error('Copy failed:', err);
-            showToast('复制失败 / Copy failed');
+            showTemplateToast('复制失败 / Copy failed');
         });
     }
 
@@ -781,7 +781,7 @@
         // closePreview(null, true);
     }
 
-    function showToast(msg) {
+    function showTemplateToast(msg) {
         const toast = document.getElementById('toast');
         toast.querySelector('span').textContent = msg;
         toast.classList.add('active');

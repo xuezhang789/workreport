@@ -846,7 +846,7 @@
     if (sampleBtn) {
         sampleBtn.addEventListener('click', () => {
             if (!templateSample) {
-                showToast('暂无示例可用 / No sample available');
+                showFormToast('暂无示例可用 / No sample available');
                 return;
             }
             const role = roleSelect ? roleSelect.value : 'dev';
@@ -860,12 +860,12 @@
                     el.value = idx == 0 ? templateSample : '';
                 }
             });
-            showToast('已套用角色示例，可按需修改 / Sample applied');
+            showFormToast('已套用角色示例，可按需修改 / Sample applied');
         });
     }
 
     // Toast notification
-    function showToast(text) {
+    function showFormToast(text) {
         const toast = document.getElementById('toast');
         const toastText = document.getElementById('toast-text');
         toastText.textContent = text;
@@ -1194,7 +1194,7 @@
         const dateVal = dateInput ? dateInput.value : '';
         const roleVal = roleSelect ? roleSelect.value : '';
         if (!dateVal || !roleVal) {
-            showToast('⚠️ 请填写日期并选择角色 / Please fill date and select role');
+            showFormToast('⚠️ 请填写日期并选择角色 / Please fill date and select role');
             return false;
         }
         const fields = roleFields[roleVal] || [];
@@ -1203,7 +1203,7 @@
             return el && el.value.trim().length > 0;
         });
         if (!hasContent) {
-            showToast('⚠️ 请至少填写一个当前角色的内容字段 / Please fill at least one content field');
+            showFormToast('⚠️ 请至少填写一个当前角色的内容字段 / Please fill at least one content field');
             return false;
         }
         return true;
@@ -1356,7 +1356,7 @@
         }
         
         if (!name || !date || !role) {
-            showToast('⚠️ 请先填写姓名、日期和角色 / Please fill name, date and role');
+            showFormToast('⚠️ 请先填写姓名、日期和角色 / Please fill name, date and role');
             return '';
         }
 
@@ -1422,14 +1422,14 @@
         btnCopy.addEventListener('click', async () => {
             const content = previewContent ? previewContent.textContent : null;
             if (!content) {
-                showToast('⚠️ 当前没有可复制的日报内容 / No content to copy');
+                showFormToast('⚠️ 当前没有可复制的日报内容 / No content to copy');
                 return;
             }
             try {
                 await navigator.clipboard.writeText(content);
-                showToast('✅ 已复制到剪贴板 / Copied to clipboard');
+                showFormToast('✅ 已复制到剪贴板 / Copied to clipboard');
             } catch (e) {
-                showToast('⚠️ 复制失败 / Copy failed');
+                showFormToast('⚠️ 复制失败 / Copy failed');
             }
         });
     }
@@ -1460,7 +1460,7 @@
                 updateRoleVisibility();
             }
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-            showToast('✅ 表单已重置 / Form reset');
+            showFormToast('✅ 表单已重置 / Form reset');
         });
     }
 
@@ -1501,7 +1501,7 @@
                 document.getElementById('mgr-tomorrow').value = '组织缺陷收敛专项 / Organize bug convergence task force';
             }
             
-            showToast('✅ 已填入示例 / Sample filled');
+            showFormToast('✅ 已填入示例 / Sample filled');
         });
     }
 
@@ -1622,7 +1622,7 @@
             const data = await res.json();
             
             if (!res.ok || !data.success) {
-                showToast(data.message || '模板加载失败');
+                showFormToast(data.message || '模板加载失败');
                 return;
             }
             
@@ -1637,7 +1637,7 @@
                 // We don't trigger loadRoleTemplate here to avoid overriding the user's focus
                 // or fetching default hints that might conflict with the applied template context.
                 const newLabel = roleLabels[data.role] || data.role;
-                showToast(`🔄 已切换角色为: ${newLabel} / Switched to ${newLabel}`);
+                showFormToast(`🔄 已切换角色为: ${newLabel} / Switched to ${newLabel}`);
             }
             
             // Apply Content
@@ -1677,11 +1677,11 @@
             document.getElementById('btn-undo-template').style.display = 'inline-flex';
             
             window.closeTemplateModal();
-            showToast(`✅ 已应用模板 (${appliedCount} 个字段) / Template applied`);
+            showFormToast(`✅ 已应用模板 (${appliedCount} 个字段) / Template applied`);
             
         } catch (e) {
             console.error(e);
-            showToast('⚠️ 应用失败 / Failed to apply');
+            showFormToast('⚠️ 应用失败 / Failed to apply');
         }
     };
     
@@ -1710,7 +1710,7 @@
             templateUndoStack = null;
             btnUndo.style.display = 'none';
             document.getElementById('current-template-info').style.display = 'none';
-            showToast('✅ 已撤销 / Undone');
+            showFormToast('✅ 已撤销 / Undone');
         });
     }
 </script>

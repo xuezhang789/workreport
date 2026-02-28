@@ -51,10 +51,10 @@ def pretty_json(value):
 @register.filter
 def to_project_json(projects):
     """
-    将项目 QuerySet 序列化为 JSON 字符串 (id, name, code)
+    将项目 QuerySet 序列化为 JSON 字符串 (id, name, code, overall_progress)
     """
     try:
-        data = [{'id': p.id, 'name': p.name, 'code': p.code} for p in projects]
+        data = [{'id': p.id, 'name': p.name, 'code': p.code, 'overall_progress': float(p.overall_progress)} for p in projects]
         return mark_safe(json.dumps(data, ensure_ascii=False))
     except Exception:
         return "[]"
