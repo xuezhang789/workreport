@@ -93,23 +93,21 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
         overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
-        # lead_time=Avg(F('completed_at') - F('created_at'), filter=Q(status='completed')) # SQLite 对平均持续时间的限制
+        sla_met=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]) & (Q(due_at__isnull=True) | Q(completed_at__lte=F('due_at')))),
+        avg_lead_time=Avg(ExpressionWrapper(F('completed_at') - F('created_at'), output_field=DurationField()), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
     ).order_by('-total')
 
-    # 在 Python 中计算交付周期以安全支持所有数据库或使用复杂的数据库函数
-    # 为了简单和兼容性，我们将在这里进行聚合或稍后改进
-    # 让我们做一个单独的查询来计算交付周期，以避免复杂的分组问题
-    
     for p in project_metrics:
         total = p['total']
         completed = p['completed']
         overdue = p['overdue']
+        sla_met = p['sla_met']
         
-        # 计算交付周期（用于显示的近似值）
-        # 使用预计算的持续时间
+        # 使用数据库计算的平均交付周期（更准确，不受 5000 条限制）
+        db_lead_time_avg = p['avg_lead_time'].total_seconds() / 3600 if p['avg_lead_time'] else None
+        
+        # 计算中位数仍需 Python（受 5000 条限制）
         durations = project_durations.get(p['project__name'], [])
-        
-        lead_time_avg = statistics.mean(durations) if durations else None
         lead_time_p50 = statistics.median(durations) if durations else None
 
         project_stats.append({
@@ -119,8 +117,8 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
             'overdue': overdue,
             'completion_rate': (completed / total * 100) if total else 0,
             'overdue_rate': (overdue / total * 100) if total else 0,
-            'sla_on_time_rate': 0, # Placeholder
-            'lead_time_avg': round(lead_time_avg, 1) if lead_time_avg is not None else None,
+            'sla_on_time_rate': (sla_met / completed * 100) if completed else 0,
+            'lead_time_avg': round(db_lead_time_avg, 1) if db_lead_time_avg is not None else None,
             'lead_time_p50': round(lead_time_p50, 1) if lead_time_p50 is not None else None,
         })
 
