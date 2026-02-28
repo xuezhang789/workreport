@@ -109,24 +109,43 @@ class AuditLogService:
 
         # 5. 仓库 (Repository)
         should_show_repos = not field_filter or field_filter == 'repository'
-        if should_show_repos and 'repository' in log.summary and log.target_type == 'Project':
-             try:
-                repo_name = "Unknown"
-                if 'repository' in log.summary:
-                    if 'for project' in log.summary:
+        if should_show_repos and log.target_type == 'Project':
+            repo_name = None
+            action_verb = None
+            
+            # New format: details={'repository': {'name': '...'}}
+            if log.details and 'repository' in log.details:
+                repo_name = log.details['repository'].get('name')
+                if log.action == 'create':
+                    action_verb = 'Added'
+                elif log.action == 'delete':
+                    action_verb = 'Removed'
+            
+            # Legacy format support (from previous attempts)
+            elif 'repository' in log.summary:
+                try:
+                    if 'Added repository' in log.summary:
+                         repo_name = log.summary.split('Added repository', 1)[1].strip()
+                         action_verb = 'Added'
+                    elif 'Removed repository' in log.summary:
+                         repo_name = log.summary.split('Removed repository', 1)[1].strip()
+                         action_verb = 'Removed'
+                    elif 'for project' in log.summary:
                         repo_name = log.summary.split('repository', 1)[1].split('for project')[0].strip()
+                        action_verb = 'Added' if log.action == 'create' else 'Removed'
                     elif 'from project' in log.summary:
                         repo_name = log.summary.split('repository', 1)[1].split('from project')[0].strip()
-                    
-                    action_verb = 'Added' if log.action == 'create' else 'Removed'
-                    add_item('repository', '代码仓库 / Repository', 
-                             repo_name if action_verb == 'Removed' else None,
-                             repo_name if action_verb == 'Added' else None,
-                             action_verb,
-                             f"{action_verb} repository {repo_name}")
-                    return entry
-             except Exception:
-                 pass
+                        action_verb = 'Removed'
+                except:
+                    pass
+
+            if repo_name and action_verb:
+                add_item('repository', '代码仓库 / Repository', 
+                         repo_name if action_verb == 'Removed' else None,
+                         repo_name if action_verb == 'Added' else None,
+                         action_verb,
+                         f"{action_verb} repository {repo_name}")
+                return entry
 
         # 1. 字段变更 (Diff)
         if log.details and 'diff' in log.details:
@@ -191,18 +210,6 @@ class AuditLogService:
         if should_show_comments and 'comment' in log.summary:
             add_item('comment', '评论 / Comment', None, 'New Comment', 'Added', 'Added a comment')
 
-        # 5. 仓库 (Repository)
-        should_show_repos = not field_filter or field_filter == 'repository'
-        if should_show_repos:
-            if 'repository' in log.summary:
-                repo_name = log.summary.split('repository', 1)[1].split('for project')[0].split('from project')[0].strip()
-                action_verb = 'Added' if log.action == 'create' else 'Removed'
-                add_item('repository', '代码仓库 / Repository', 
-                         repo_name if action_verb == 'Removed' else None,
-                         repo_name if action_verb == 'Added' else None,
-                         action_verb,
-                         f"{action_verb} repository {repo_name}")
-        
         # 4. 创建/通用
         if not field_filter and log.action == 'create' and not entry['items']:
              add_item('lifecycle', '生命周期 / Lifecycle', None, 'Created', 'Created', f"Created {log.target_type}")

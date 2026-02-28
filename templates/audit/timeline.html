@@ -68,6 +68,13 @@
                         <div class="change-values">
                             <span class="value-new">{{ item.description }}</span>
                         </div>
+                    {% elif item.type == 'repository' %}
+                         <div class="change-field">
+                            <i class="fa-brands fa-git-alt"></i> Repository
+                        </div>
+                        <div class="change-values">
+                            <span class="value-new">{{ item.description }}</span>
+                        </div>
                     {% elif item.type == 'lifecycle' %}
                          <div class="change-field lifecycle">
                             <i class="fa-solid fa-star"></i> Lifecycle

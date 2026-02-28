@@ -896,8 +896,17 @@ def project_add_repository(request, project_id):
         
     repo = ProjectRepository.objects.create(project=project, name=name, url=url)
     
-    # Audit Log
-    log_action(request, 'create', f"repository {repo.name} for project {project.id}")
+    # Audit Log - Manually create to ensure target_type is Project
+    AuditLog.objects.create(
+        user=request.user,
+        action='create',
+        target_type='Project',
+        target_id=str(project.id),
+        target_label=project.name,
+        summary=f"Added repository {repo.name}",
+        details={'repository': {'name': repo.name, 'url': repo.url}},
+        result='success'
+    )
     
     return JsonResponse({
         'status': 'success',
@@ -918,7 +927,16 @@ def project_delete_repository(request, repo_id):
     repo_name = repo.name
     repo.delete()
     
-    # Audit Log
-    log_action(request, 'delete', f"repository {repo_name} from project {project.id}")
+    # Audit Log - Manually create to ensure target_type is Project
+    AuditLog.objects.create(
+        user=request.user,
+        action='delete',
+        target_type='Project',
+        target_id=str(project.id),
+        target_label=project.name,
+        summary=f"Removed repository {repo_name}",
+        details={'repository': {'name': repo_name}},
+        result='success'
+    )
     
     return JsonResponse({'status': 'success'})
