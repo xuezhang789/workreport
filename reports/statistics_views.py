@@ -479,7 +479,8 @@ def performance_board(request):
              return _admin_forbidden(request, "没有该项目的访问权限 / No access to this project")
 
     # 统计数据缓存键
-    cache_key = f"perf_board_stats_{request.user.id}_{start_date}_{end_date}_{project_filter}_{role_filter}_{q}"
+    # 优化：添加版本号以应对代码更改
+    cache_key = f"perf_board_stats_v2_{request.user.id}_{start_date}_{end_date}_{project_filter}_{role_filter}_{q}"
     stats = cache.get(cache_key)
     
     if not stats:
@@ -494,12 +495,11 @@ def performance_board(request):
         cache.set(cache_key, stats, 600) # 缓存 10 分钟
     
     # 根据权限过滤紧急任务
-    urgent_tasks = 0
-    total_tasks = 0
-    
+    # 优化：从 stats 中重用计算好的聚合值，而不是重新查询 DB
     if 'overall_overdue' in stats:
         urgent_tasks = stats['overall_overdue']
     else:
+        # Fallback only if stats generation failed partially
         urgent_tasks_qs = Task.objects.filter(status='overdue')
         if accessible_projects is not None:
             urgent_tasks_qs = urgent_tasks_qs.filter(project__in=accessible_projects)
@@ -524,22 +524,28 @@ def performance_board(request):
     
     # 构造项目燃尽图数据 (用于前端 Chart.js，避免二次请求)
     project_data = stats.get('project_stats', [])
+    # 优化：预先计算 JSON 结构，前端直接使用
+    chart_labels = [p.get('name', 'Unknown') for p in project_data]
+    chart_completed = [p.get('completed', 0) for p in project_data]
+    chart_remaining = [p.get('total', 0) - p.get('completed', 0) for p in project_data]
+    chart_overdue = [p.get('overdue', 0) for p in project_data]
+    
     chart_data = {
-        'labels': [p['project'] for p in project_data], # 注意：这里用 'project' 而不是 'name'，取决于 stats.py 的键名
+        'labels': chart_labels,
         'datasets': [
-            {'label': '已完成', 'data': [p['completed'] for p in project_data], 'backgroundColor': '#10b981'},
-            {'label': '剩余', 'data': [p['total'] - p['completed'] for p in project_data], 'backgroundColor': '#3b82f6'},
-            {'label': '逾期', 'data': [p['overdue'] for p in project_data], 'backgroundColor': '#ef4444'},
+            {'label': '已完成', 'data': chart_completed, 'backgroundColor': '#10b981'},
+            {'label': '剩余', 'data': chart_remaining, 'backgroundColor': '#3b82f6'},
+            {'label': '逾期', 'data': chart_overdue, 'backgroundColor': '#ef4444'},
         ],
         'overall_rate': stats.get('overall_sla_on_time_rate', 0)
     }
 
     # 紧急任务计算较慢，增加缓存
-    sla_cache_key = f"perf_board_sla_{request.user.id}_{project_filter}_{sla_hours_val}"
+    sla_cache_key = f"perf_board_sla_v2_{request.user.id}_{project_filter}_{sla_hours_val}"
     sla_urgent_tasks = cache.get(sla_cache_key)
     
     if sla_urgent_tasks is None:
-        sla_urgent_tasks = []
+        sla_urgent_tasks_list = []
         
         # 优化：select_related 'sla_timer' 以避免 calculate_sla_info 中的 N+1
         # 优化：过滤潜在的紧急任务以减少 Python 处理
@@ -561,23 +567,29 @@ def performance_board(request):
         created_cutoff = cutoff - timedelta(hours=default_sla)
         
         # 优化：仅查询必要字段
-        sla_qs = sla_qs.filter(
+        # 必须包含 sla_timer 关联字段，但 Django ORM 不允许在 only() 中包含反向关联或某些外键属性，需小心
+        # 实际上 select_related 已经优化了关联加载。defer() 可能更安全，但这里我们只需确保不加载大文本字段。
+        sla_qs = sla_qs.defer('content').filter(
             Q(due_at__lte=cutoff) | 
-            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=True) & Q(created_at__lte=created_cutoff)) |
-            (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=False)) # 为安全起见保留项目 SLA 任务
-        ).only('id', 'title', 'due_at', 'created_at', 'status', 'project', 'user', 'sla_timer')
+            (Q(due_at__isnull=True) & Q(created_at__lte=created_cutoff))
+        )
             
         for t in sla_qs:
             # 传递解析后的阈值字典而不是原始字符串
-            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=thresholds)
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
             if info and info.get('status') in ('tight', 'overdue'):
                 t.sla_info = info
-                sla_urgent_tasks.append(t)
-        sla_urgent_tasks.sort(key=lambda t: (
+                sla_urgent_tasks_list.append(t)
+        
+        # 在 Python 中排序
+        sla_urgent_tasks_list.sort(key=lambda t: (
             t.sla_info.get('sort', 3),
             t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
             -t.created_at.timestamp(),
         ))
+        
+        # 优化：限制显示的紧急任务数量，避免页面过长和内存占用
+        sla_urgent_tasks = sla_urgent_tasks_list[:50]
         
         # 缓存 5 分钟
         cache.set(sla_cache_key, sla_urgent_tasks, 300)
