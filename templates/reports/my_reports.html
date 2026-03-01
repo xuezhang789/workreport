@@ -1,38 +1,9 @@
 {% extends "base_topbar.html" %}
 {% load core_tags %}
 {% block title %}我的日报 / My Reports{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="我的日报 / My Reports" nav_subtitle="浏览、筛选与管理您的日常工作 / Manage your daily work" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="我的日报" nav_subtitle="My Reports" %}{% endblock %}
 
 {% block extra_styles %}
-    :root {
-        --primary: #2563eb;
-        --primary-light: #eff6ff;
-        --primary-hover: #1d4ed8;
-        --text-main: #1e293b;
-        --text-secondary: #64748b;
-        --text-muted: #94a3b8;
-        --bg-page: #f8fafc;
-        --bg-card: #ffffff;
-        --border-color: #e2e8f0;
-        --success: #10b981;
-        --success-bg: #d1fae5;
-        --warning: #f59e0b;
-        --warning-bg: #fef3c7;
-        --danger: #ef4444;
-        --danger-bg: #fee2e2;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body {
-        background-color: var(--bg-page);
-        color: var(--text-main);
-    }
-
     /* --- Filter Section --- */
     .filter-section {
         background: var(--bg-card);

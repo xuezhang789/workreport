@@ -1,37 +1,12 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
 {% block title %}团队在线日报 / Daily Report{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="团队在线日报 / Daily Report" nav_subtitle="智能表单 · 多角色适配 · 实时预览 / Smart Form · Multi-role · Live Preview" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="团队在线日报" nav_subtitle="Daily Report" %}{% endblock %}
 
 {% block extra_styles %}
-    :root {
-        --primary: #2563eb;
-        --primary-light: #eff6ff;
-        --primary-hover: #1d4ed8;
-        --text-main: #1e293b;
-        --text-secondary: #64748b;
-        --text-muted: #94a3b8;
-        --bg-page: #f8fafc;
-        --bg-card: #ffffff;
-        --border-color: #e2e8f0;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body {
-        background-color: var(--bg-page);
-        color: var(--text-main);
-    }
-
     /* --- Layout --- */
     .main-layout {
+
         display: grid;
         grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         gap: 24px;

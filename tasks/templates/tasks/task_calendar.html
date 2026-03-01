@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block title %}工作日历 / Calendar{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="任务日历" nav_subtitle="Task Calendar" %}{% endblock %}
+
 
 {% block extra_styles %}
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />

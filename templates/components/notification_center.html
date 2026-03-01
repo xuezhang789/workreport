@@ -59,8 +59,8 @@
     }
     .notification-dropdown {
         position: absolute;
-        top: 110%;
-        right: -80px; /* Adjust alignment */
+        top: 100%;
+        right: 0;
         width: 360px;
         background: #fff;
         border-radius: 12px;
@@ -68,8 +68,9 @@
         border: 1px solid rgba(0,0,0,0.05);
         display: none;
         flex-direction: column;
-        z-index: 1000;
+        z-index: 9999;
         max-height: 500px;
+        margin-top: 8px;
     }
     .notification-dropdown.open {
         display: flex;

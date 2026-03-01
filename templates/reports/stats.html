@@ -4,70 +4,110 @@
 {% block title %}统计分析 / Statistics{% endblock %}
 
 {% block nav_header %}
-{% include "partials/nav.html" with nav_title="统计分析 / Statistics" nav_subtitle="项目与任务数据概览 / Project & Task Data Overview" %}
+{% include "partials/nav.html" with nav_title="统计分析" nav_subtitle="Statistics" %}
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
+<div class="page-container">
     <!-- Header -->
-    <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800">统计概览 / Statistics Overview</h1>
-        <div class="text-sm text-gray-500">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">统计分析 / Statistics</h1>
+            <p class="page-subtitle">项目与任务数据概览 / Project & Task Data Overview</p>
+        </div>
+        <div class="text-sm text-secondary">
             生成时间 / Generated at: {{ generated_at|date:"Y-m-d H:i" }}
         </div>
     </div>
 
     <!-- Metrics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="text-gray-500 text-sm font-medium">总日报数 / Total Reports</div>
-            <div class="text-3xl font-bold text-blue-600 mt-2">{{ metrics.total_reports }}</div>
+    <div class="card-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+        <div class="kpi-card">
+            <div class="kpi-content">
+                <div class="kpi-label">总日报数 / Total</div>
+                <div class="kpi-value">{{ metrics.total_reports }}</div>
+                <div class="kpi-trend bg-blue-subtle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    Reports
+                </div>
+            </div>
+            <div class="kpi-icon blue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="text-gray-500 text-sm font-medium">活跃项目 / Active Projects</div>
-            <div class="text-3xl font-bold text-green-600 mt-2">{{ metrics.total_projects }}</div>
+        <div class="kpi-card">
+            <div class="kpi-content">
+                <div class="kpi-label">活跃项目 / Projects</div>
+                <div class="kpi-value">{{ metrics.total_projects }}</div>
+                <div class="kpi-trend bg-green-subtle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    Active
+                </div>
+            </div>
+            <div class="kpi-icon green">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="text-gray-500 text-sm font-medium">活跃用户 / Active Users</div>
-            <div class="text-3xl font-bold text-purple-600 mt-2">{{ metrics.active_users }}</div>
+        <div class="kpi-card">
+            <div class="kpi-content">
+                <div class="kpi-label">活跃用户 / Users</div>
+                <div class="kpi-value">{{ metrics.active_users }}</div>
+                <div class="kpi-trend bg-cyan-subtle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Active
+                </div>
+            </div>
+            <div class="kpi-icon" style="background: #cffafe; color: #0891b2;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="text-gray-500 text-sm font-medium">今日缺报 / Missing Today</div>
-            <div class="text-3xl font-bold text-red-600 mt-2">{{ metrics.missing_today }}</div>
+        <div class="kpi-card">
+            <div class="kpi-content">
+                <div class="kpi-label">今日缺报 / Missing</div>
+                <div class="kpi-value">{{ metrics.missing_today }}</div>
+                <div class="kpi-trend bg-red-subtle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    Alert
+                </div>
+            </div>
+            <div class="kpi-icon" style="background: #fee2e2; color: #ef4444;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <form method="get" class="flex flex-wrap gap-4 items-end">
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">日期 / Date</label>
-                <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="form-input text-sm border-gray-300 rounded-md">
+    <div class="filter-section">
+        <form method="get" class="filter-grid" style="align-items: end;">
+            <div class="form-group">
+                <label class="form-label">日期 / Date</label>
+                <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="form-input">
             </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">项目 / Project</label>
-                <select name="project" class="form-select text-sm border-gray-300 rounded-md">
+            <div class="form-group">
+                <label class="form-label">项目 / Project</label>
+                <select name="project" class="form-select">
                     <option value="">全部 / All</option>
                     {% for p in projects %}
                     <option value="{{ p.id }}" {% if project_filter == p.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">角色 / Role</label>
-                <select name="role" class="form-select text-sm border-gray-300 rounded-md">
+            <div class="form-group">
+                <label class="form-label">角色 / Role</label>
+                <select name="role" class="form-select">
                     <option value="">全部 / All</option>
                     {% for r_val, r_label in report_roles %}
                     <option value="{{ r_val }}" {% if role_filter == r_val %}selected{% endif %}>{{ r_label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                筛选 / Filter
-            </button>
-            
-            <div class="ml-auto">
-                <a href="{% url 'reports:performance_export' %}?type=missing&date={{ today|date:'Y-m-d' }}" class="text-blue-600 hover:text-blue-800 text-sm">
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    筛选 / Filter
+                </button>
+                <a href="{% url 'reports:performance_export' %}?type=missing&date={{ today|date:'Y-m-d' }}" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     导出缺报名单 / Export Missing
                 </a>
             </div>
@@ -76,35 +116,40 @@
 
     <!-- Missing Reports Section -->
     {% if missing_projects %}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50">
-            <h3 class="font-bold text-red-800">缺报人员名单 / Missing Reports</h3>
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card-header" style="background: #fef2f2; border-bottom: 1px solid #fecaca; padding: 16px 24px; margin: 0;">
+            <h3 class="card-title" style="color: #991b1b;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                缺报人员名单 / Missing Reports
+            </h3>
             {% if request.user.is_superuser %}
-            <a href="?remind=1&date={{ today|date:'Y-m-d' }}" class="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="return confirm('确定发送催报邮件？/ Confirm send reminders?')">
+            <a href="?remind=1&date={{ today|date:'Y-m-d' }}" class="btn btn-danger btn-sm" onclick="return confirm('确定发送催报邮件？/ Confirm send reminders?')">
                 一键催报 / Send Reminders
             </a>
             {% endif %}
         </div>
-        <div class="p-0">
-            <table class="w-full text-sm text-left">
-                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+        <div class="table-container" style="border: none; border-radius: 0;">
+            <table class="table table-hover">
+                <thead>
                     <tr>
-                        <th class="px-6 py-3">项目 / Project</th>
-                        <th class="px-6 py-3">缺报人数 / Count</th>
-                        <th class="px-6 py-3">人员 / Users</th>
+                        <th style="padding-left: 24px;">项目 / Project</th>
+                        <th>缺报人数 / Count</th>
+                        <th>人员 / Users</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in missing_projects %}
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-4 font-medium">{{ item.project }}</td>
-                        <td class="px-6 py-4">{{ item.missing_count }}</td>
-                        <td class="px-6 py-4 text-gray-600">
+                    <tr>
+                        <td style="padding-left: 24px; font-weight: 600;">{{ item.project }}</td>
+                        <td><span class="badge badge-danger">{{ item.missing_count }}</span></td>
+                        <td>
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                             {% for u in item.users %}
-                                <span class="inline-block bg-gray-100 px-2 py-1 rounded text-xs mr-1 mb-1" title="Last: {{ u.last_date|default:'Never' }}">
+                                <span class="badge badge-default" title="Last: {{ u.last_date|default:'Never' }}">
                                     {{ u.name }}
                                 </span>
                             {% endfor %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -115,34 +160,34 @@
     {% endif %}
 
     <!-- Top Projects Stats -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="dashboard-grid">
         <!-- Project SLA Stats -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-gray-800">项目 SLA 概览 / Project SLA Overview</h3>
+        <div class="col-span-6 card" style="padding: 0; overflow: hidden; margin: 0;">
+            <div class="card-header" style="padding: 16px 24px; margin: 0; background: #f8fafc;">
+                <h3 class="card-title">项目 SLA 概览 / Project SLA Overview</h3>
             </div>
-            <div class="p-0 overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="table">
+                    <thead>
                         <tr>
-                            <th class="px-4 py-3">项目 / Project</th>
-                            <th class="px-4 py-3">SLA 达成率 / SLA Rate</th>
-                            <th class="px-4 py-3">完成/总数 / Completed/Total</th>
+                            <th style="padding-left: 24px;">项目 / Project</th>
+                            <th>SLA 达成率 / SLA Rate</th>
+                            <th>完成/总数 / Completed/Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in project_sla_stats %}
-                        <tr class="border-b">
-                            <td class="px-4 py-3 font-medium">{{ p.project.name }}</td>
-                            <td class="px-4 py-3">
-                                <div class="flex items-center">
-                                    <span class="mr-2">{{ p.sla_rate|floatformat:0 }}%</span>
-                                    <div class="w-24 bg-gray-200 rounded-full h-1.5">
-                                        <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ p.sla_rate }}%"></div>
+                        <tr>
+                            <td style="padding-left: 24px; font-weight: 500;">{{ p.project.name }}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-weight: 600; width: 36px;">{{ p.sla_rate|floatformat:0 }}%</span>
+                                    <div style="flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; max-width: 100px;">
+                                        <div style="height: 100%; background: var(--primary); width: {{ p.sla_rate }}%;"></div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-gray-500">{{ p.completed }}/{{ p.total }}</td>
+                            <td style="color: var(--text-secondary);">{{ p.completed }}/{{ p.total }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -151,16 +196,16 @@
         </div>
 
         <!-- Role Distribution -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-gray-800">日报角色分布 / Report Role Distribution</h3>
+        <div class="col-span-6 card" style="padding: 0; overflow: hidden; margin: 0;">
+            <div class="card-header" style="padding: 16px 24px; margin: 0; background: #f8fafc;">
+                <h3 class="card-title">日报角色分布 / Report Role Distribution</h3>
             </div>
-            <div class="p-4">
-                <ul class="space-y-3">
+            <div style="padding: 24px;">
+                <ul style="display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none;">
                     {% for role, count in role_counts %}
-                    <li class="flex justify-between items-center">
-                        <span class="text-gray-600">{{ role }}</span>
-                        <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded">{{ count }}</span>
+                    <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">
+                        <span style="color: var(--text-secondary); font-weight: 500;">{{ role }}</span>
+                        <span class="badge badge-primary">{{ count }}</span>
                     </li>
                     {% endfor %}
                 </ul>

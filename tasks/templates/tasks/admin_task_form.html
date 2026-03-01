@@ -1,7 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load file_utils %}
 {% block title %}{% if task %}编辑任务 / Edit Task{% else %}发布任务 / New Task{% endif %}{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title=task|yesno:"编辑任务 / Edit Task,发布任务 / New Task" nav_subtitle="仅管理员或相关人员可操作 / Restricted Access" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="任务表单" nav_subtitle="Task Form" %}{% endblock %}
 {% block extra_styles %}
 <style>
     /* --- Design System (Synced with Project Form) --- */

@@ -1,9 +1,8 @@
 {% extends "base_topbar.html" %}
 {% load tz safe_md %}
 {% block title %}日报详情 / Daily Report Detail{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情 / Report Detail" nav_subtitle="查看你的日报内容 / View your report content" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="日报详情" nav_subtitle="Report Detail" %}{% endblock %}
 {% block extra_styles %}
-<style>
     /* --- Design System (Consistent with Admin Pages) --- */
     .page-container {
         max-width: 1600px;
@@ -173,7 +172,6 @@
         color: var(--text-secondary);
         font-style: italic;
     }
-</style>
 {% endblock %}
 
 {% block content %}

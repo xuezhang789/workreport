@@ -1,47 +1,58 @@
 {% extends "base_topbar.html" %}
 {% load core_tags permission_tags %}
 {% block title %}项目列表 / Projects{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表 / Projects" nav_subtitle="浏览、筛选与管理项目 / Browse, filter & manage projects" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目列表" nav_subtitle="Projects" %}{% endblock %}
 
 {% block extra_styles %}
-<style>
-    /* --- Scoped Page Styles for "Grand" Layout --- */
-    
-    /* Override base .content to allow wider layout (up to 1920px/98%) */
+    /* --- Layout Overrides --- */
     .content {
-        max-width: 1920px !important; 
-        width: 98% !important;
-        padding-left: clamp(24px, 3vw, 48px) !important;
-        padding-right: clamp(24px, 3vw, 48px) !important;
+        max-width: 100% !important; 
+        padding-left: clamp(24px, 4vw, 48px) !important;
+        padding-right: clamp(24px, 4vw, 48px) !important;
     }
 
-    .page-container {
-        max-width: 100%;
-        margin: 0 auto;
-        padding-bottom: 120px;
+    /* --- Header & View Switcher --- */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
     }
 
-    /* View Switcher Styles */
+    .page-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0 0 4px 0;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .page-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
     .view-switcher {
         display: flex;
         background: white;
         padding: 4px;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         border: 1px solid var(--border-color);
         gap: 2px;
     }
-    
-    .loading-overlay {
-        position: fixed; inset: 0; background: rgba(255,255,255,0.6);
-        backdrop-filter: blur(2px); z-index: 2000;
-        display: flex; justify-content: center; align-items: center;
-        opacity: 0; pointer-events: none; transition: opacity 0.3s;
-    }
-    .loading-overlay.active { opacity: 1; pointer-events: all; }
 
     .view-btn {
-        padding: 6px;
-        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-sm);
         color: var(--text-secondary);
         border: none;
         background: transparent;
@@ -49,11 +60,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: var(--transition);
+        transition: all 0.2s;
     }
 
     .view-btn:hover {
-        background: var(--bg-page);
+        background: var(--bg-hover);
         color: var(--text-main);
     }
 
@@ -62,179 +73,290 @@
         color: var(--primary);
     }
 
-    /* Table Styles Override/Enhancement */
+    /* --- Filter Section --- */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+    }
+
+    .search-wrapper {
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .search-input {
+        padding-left: 36px;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 12px;
+        margin-left: auto;
+    }
+
+    /* --- Project Grid --- */
+    .project-grid {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+    
+    .project-grid.active { display: grid; }
+
+    .project-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+        height: 100%;
+    }
+
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--primary-light);
+    }
+
+    .card-status-bar {
+        height: 4px;
+        background: var(--border-color);
+    }
+    .card-status-bar.active { background: var(--success); }
+    .card-status-bar.inactive { background: var(--text-muted); }
+
+    .card-body {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .project-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0 0 4px 0;
+        line-height: 1.4;
+    }
+
+    .project-code {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--bg-body);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    .phase-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 99px;
+        white-space: nowrap;
+    }
+    .phase-dev { background: #eff6ff; color: #1d4ed8; }
+    .phase-qa { background: #fff7ed; color: #c2410c; }
+    .phase-release { background: #ecfdf5; color: #047857; }
+    .phase-default { background: #f1f5f9; color: #475569; }
+
+    .card-meta {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .card-footer {
+        background: var(--bg-body);
+        padding: 12px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* --- Table View --- */
     .project-table-container {
+        display: none;
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         overflow: hidden;
         box-shadow: var(--shadow-sm);
-        display: none; /* Hidden by default */
     }
+    .project-table-container.active { display: block; }
 
-    .project-table-container.active {
-        display: block;
-    }
+    .cell-info { display: flex; flex-direction: column; }
+    .cell-title { font-weight: 600; color: var(--text-main); font-size: 14px; }
+    .cell-sub { font-size: 12px; color: var(--text-secondary); }
 
-    .project-grid.active {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); /* Wider cards */
-        gap: 32px; /* More breathing room */
-    }
-
-    .project-grid {
-        display: none;
-    }
-    
-    /* Responsive Table Cells */
-    .cell-info {
+    /* --- Pagination --- */
+    .pagination-toolbar {
+        margin-top: 32px;
         display: flex;
-        flex-direction: column;
-    }
-    
-    .cell-title {
-        font-weight: 600;
-        color: var(--text-main);
-        font-size: 14px;
-    }
-    
-    .cell-sub {
-        font-size: 12px;
-        color: var(--text-secondary);
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
     }
 
-    /* Progress Bar in Table */
-    .table-progress {
-        width: 120px;
+    .page-btn {
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: white;
+        color: var(--text-main);
+        font-size: 13px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
     }
-    
-    .table-progress-track {
-        flex: 1;
-        height: 6px;
-        background: #f1f5f9;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-    
-    .table-progress-fill {
-        height: 100%;
-        background: var(--primary);
-        border-radius: 3px;
-    }
-    
-    .page-btn.dots {
-        border: none;
-        background: transparent;
-        cursor: default;
-    }
-    
-    /* Pagination Toolbar - Unified Style */
-    .pagination-toolbar {
-        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
-        margin-top: 40px; padding: 12px 20px; background: white;
-        border: 1px solid var(--border-color); border-radius: 12px;
-        box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;
-    }
-    .pagination-toolbar .left-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; min-width: 140px; }
-    .pagination-toolbar .center-controls { display: flex; align-items: center; gap: 12px; }
-    .pagination-toolbar .right-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    
-    .page-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        height: 36px; padding: 0 16px; border: 1px solid var(--border-color);
-        border-radius: 8px; background: white; color: var(--text-main);
-        font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
-        text-decoration: none; gap: 6px; user-select: none;
-    }
-    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
-    .page-btn:disabled, .page-btn[disabled] { color: #94a3b8; border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; }
-    
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .page-current {
-        font-size: 13px; font-weight: 600; color: var(--text-main);
-        background: #f1f5f9; padding: 0 12px; height: 36px;
-        border-radius: 8px; display: flex; align-items: center; justify-content: center; min-width: 36px;
+        height: 36px;
+        min-width: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-body);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 13px;
     }
-    .page-select { height: 36px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-    .page-jump-input { width: 48px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; padding: 0; }
-    .page-jump-input:focus { border-color: var(--primary); outline: none; }
+
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 64px 24px;
+        background: white;
+        border-radius: var(--radius-lg);
+        border: 1px dashed var(--border-color);
+    }
+    .empty-icon {
+        width: 64px; height: 64px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+    }
+
+    .loading-overlay {
+        position: fixed; inset: 0; background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(4px); z-index: 2000;
+        display: flex; justify-content: center; align-items: center;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .loading-overlay.active { opacity: 1; pointer-events: all; }
 
     @media (max-width: 768px) {
-        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
-        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        .filter-grid { flex-direction: column; align-items: stretch; }
+        .pagination-toolbar { flex-direction: column; text-align: center; }
+        .page-header { flex-direction: column; align-items: flex-start; }
     }
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-container">
-
+<div>
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner" style="width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="width: 40px; height: 40px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
     </div>
 
-    <!-- Header Actions -->
+    <!-- Header -->
     <div class="page-header">
         <div>
             <h1 class="page-title">项目总览 / Projects</h1>
             <p class="page-subtitle">共 {{ total_count }} 个项目 / Total {{ total_count }} projects</p>
         </div>
         <div class="page-actions">
-            <!-- View Switcher -->
             <div class="view-switcher">
-                <button type="button" class="view-btn active" id="btnGrid" onclick="switchView('grid')" title="卡片视图 / Grid View">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="3" width="7" height="7"></rect>
-                        <rect x="14" y="14" width="7" height="7"></rect>
-                        <rect x="3" y="14" width="7" height="7"></rect>
-                    </svg>
+                <button type="button" class="view-btn active" id="btnGrid" onclick="switchView('grid')" title="Grid View">
+                    <i class="fas fa-th-large"></i>
                 </button>
-                <button type="button" class="view-btn" id="btnTable" onclick="switchView('table')" title="列表视图 / Table View">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"></line>
-                        <line x1="8" y1="12" x2="21" y2="12"></line>
-                        <line x1="8" y1="18" x2="21" y2="18"></line>
-                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
+                <button type="button" class="view-btn" id="btnTable" onclick="switchView('table')" title="Table View">
+                    <i class="fas fa-list"></i>
                 </button>
             </div>
-
             {% if can_create_project %}
                 <a href="{% url 'projects:project_create' %}" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    新建项目 / New Project
+                    <i class="fas fa-plus"></i> 新建项目 / New Project
                 </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Filter Bar -->
+    <!-- Filter -->
     <div class="filter-section">
         <form method="get" id="filterForm" onsubmit="document.getElementById('loadingOverlay').classList.add('active')">
             <div class="filter-grid">
-                <div class="form-group" style="flex: 2; min-width: 240px;">
+                <div class="form-group" style="flex: 2;">
                     <label class="form-label" for="q">搜索 / Search</label>
                     <div class="search-wrapper">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" id="q" name="q" class="search-input" placeholder="项目名称、代码或描述... / Name, code or description..." value="{{ q }}">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="q" name="q" class="search-input" placeholder="项目名称、代码或描述..." value="{{ q }}">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="phase">当前阶段 / Phase</label>
-                    <select id="phase" name="phase" class="form-select">
+                    <label class="form-label" for="phase">阶段 / Phase</label>
+                    <select id="phase" name="phase">
                         <option value="">全部阶段 / All Phases</option>
                         {% for p in phases %}
                             <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
@@ -244,101 +366,82 @@
 
                 <div class="form-group">
                     <label class="form-label" for="owner">负责人 / Owner</label>
-                    <input type="text" id="owner" name="owner" class="form-input" placeholder="输入姓名... / Enter name..." value="{{ owner }}">
+                    <input type="text" id="owner" name="owner" placeholder="输入姓名..." value="{{ owner }}">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="sort">排序方式 / Sort By</label>
-                    <select id="sort" name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
-                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧) / Created (Newest)</option>
-                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新) / Created (Oldest)</option>
-                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>项目名称 (A-Z) / Name (A-Z)</option>
-                        <option value="status" {% if sort_by == 'status' %}selected{% endif %}>状态 (活跃优先) / Status (Active First)</option>
-                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低) / Progress (High-Low)</option>
+                    <label class="form-label" for="sort">排序 / Sort</label>
+                    <select id="sort" name="sort" onchange="document.getElementById('filterForm').submit()">
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>名称 (A-Z)</option>
+                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
                     </select>
                 </div>
-            </div>
 
-            <div class="filter-actions">
-                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost" onclick="document.getElementById('loadingOverlay').classList.add('active')">重置 / Reset</a>
-                <a href="{% url 'projects:project_export' %}?q={{ q }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&owner={{ owner }}" class="btn btn-ghost" title="导出当前筛选结果">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    导出 / Export
-                </a>
-                <button type="submit" class="btn btn-secondary" id="filterBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>筛选 / Filter</span>
-                </button>
+                <div class="filter-actions">
+                    <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')">重置</a>
+                    <button type="submit" class="btn btn-primary" id="filterBtn">筛选</button>
+                </div>
             </div>
         </form>
     </div>
 
     {% if projects %}
         <!-- Grid View -->
-        <div id="viewGrid" class="card-grid project-grid active">
+        <div id="viewGrid" class="project-grid active">
             {% for p in projects %}
-                <article class="project-card" style="position: relative;">
-                    <!-- Full card link -->
-                    <a href="{% url 'projects:project_detail' p.pk %}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;" aria-label="进入 {{ p.name }}"></a>
+                <article class="project-card">
+                    <!-- Link Overlay -->
+                    <a href="{% url 'projects:project_detail' p.pk %}" style="position: absolute; inset: 0; z-index: 1;"></a>
 
                     <div class="card-status-bar {% if p.is_active %}active{% else %}inactive{% endif %}"></div>
                     
                     <div class="card-body">
-                        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-                            <div style="flex: 1;">
-                                <h3 class="project-title" style="font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: var(--text-main);">{{ p.name }}</h3>
-                                <span class="project-code" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-page); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border-color);">{{ p.code }}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="flex: 1; padding-right: 12px;">
+                                <h3 class="project-title">{{ p.name }}</h3>
+                                <span class="project-code">{{ p.code }}</span>
                             </div>
                             <span class="phase-badge {% if p.current_phase and '开发' in p.current_phase.phase_name %}phase-dev{% elif p.current_phase and '测试' in p.current_phase.phase_name %}phase-qa{% elif p.current_phase and '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
-                                {{ p.current_phase.phase_name|default:"未开始 / Not Started" }}
+                                {{ p.current_phase.phase_name|default:"未开始" }}
                             </span>
                         </div>
 
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); font-weight: 600;">
-                                <span>总体进度 / Progress</span>
+                        <div style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                                <span>进度 / Progress</span>
                                 <span>{{ p.overall_progress }}%</span>
                             </div>
-                            <div style="height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
-                                <div style="height: 100%; background: linear-gradient(90deg, var(--primary), #3b82f6); width: {{ p.overall_progress }}%;"></div>
+                            <div style="height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; background: var(--primary); width: {{ p.overall_progress }}%;"></div>
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border-color); margin-top: auto;">
-                            <div class="meta-item" title="负责人 / Owner" style="display: flex; align-items: center; gap: 8px;">
-                                {% include "partials/user_avatar.html" with user=p.owner size="24px" font_size="10px" %}
-                                <span style="font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    {% if p.owner %}
-                                        {{ p.owner.get_full_name|default:p.owner.username }}
-                                    {% else %}
-                                        未分配
-                                    {% endif %}
+                        <div class="card-meta">
+                            <div class="meta-item">
+                                {% include "partials/user_avatar.html" with user=p.owner size="20px" font_size="10px" %}
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ p.owner.get_full_name|default:p.owner.username|default:"未分配" }}
                                 </span>
                             </div>
-                            <div class="meta-item" title="团队成员 / Team Members" style="display: flex; align-items: center; gap: 8px;">
-                                <svg class="meta-icon" style="width: 16px; height: 16px; color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                <span style="font-size: 13px; color: var(--text-secondary);">{{ p.member_count }} 成员</span>
+                            <div class="meta-item">
+                                <i class="fas fa-users"></i> {{ p.member_count }} 成员
                             </div>
                         </div>
                     </div>
 
                     <div class="card-footer" style="position: relative; z-index: 2;">
-                        <div style="font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column;">
-                            <span>Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
-                            <span>End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            <div>Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</div>
+                            <div>End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             {% can_manage_project p as user_can_manage %}
                             {% if user_can_manage %}
-                                <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary btn-sm">编辑</a>
+                                <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">编辑</a>
                             {% endif %}
-                            <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-primary btn-sm">进入</a>
+                            <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">进入</a>
                         </div>
                     </div>
                 </article>
@@ -347,8 +450,8 @@
 
         <!-- Table View -->
         <div id="viewTable" class="project-table-container">
-            <div class="table-container" style="border: none; border-radius: 0;">
-                <table class="table table-hover">
+            <div style="overflow-x: auto;">
+                <table class="table">
                     <thead>
                         <tr>
                             <th style="width: 300px;">项目名称 / Project Name</th>
@@ -366,7 +469,7 @@
                         <tr>
                             <td>
                                 <div class="cell-info">
-                                    <a href="{% url 'projects:project_detail' p.pk %}" class="cell-title" style="text-decoration: none; color: var(--primary);">{{ p.name }}</a>
+                                    <a href="{% url 'projects:project_detail' p.pk %}" class="cell-title">{{ p.name }}</a>
                                     <span class="cell-sub">{{ p.code }}</span>
                                 </div>
                             </td>
@@ -382,17 +485,16 @@
                                 </span>
                             </td>
                             <td>
-                                <div class="table-progress">
-                                    <div class="table-progress-track">
-                                        <div class="table-progress-fill" style="width: {{ p.overall_progress }}%;"></div>
+                                <div style="display: flex; align-items: center; gap: 8px; width: 120px;">
+                                    <div style="flex: 1; height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; width: {{ p.overall_progress }}%; background: var(--primary);"></div>
                                     </div>
-                                    <span class="table-progress-text">{{ p.overall_progress }}%</span>
+                                    <span style="font-size: 12px; font-weight: 600;">{{ p.overall_progress }}%</span>
                                 </div>
                             </td>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 13px;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                    {{ p.member_count }}
+                                    <i class="fas fa-users"></i> {{ p.member_count }}
                                 </div>
                             </td>
                             <td>
@@ -403,21 +505,25 @@
                             </td>
                             <td>
                                 {% if p.is_active %}
-                                    <span class="status-indicator status-active"><span class="status-dot status-active"></span>Active</span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--success); font-weight: 600;">
+                                        <span style="width: 6px; height: 6px; background: var(--success); border-radius: 50%;"></span> Active
+                                    </span>
                                 {% else %}
-                                    <span class="status-indicator status-inactive"><span class="status-dot status-inactive"></span>Inactive</span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); font-weight: 600;">
+                                        <span style="width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%;"></span> Inactive
+                                    </span>
                                 {% endif %}
                             </td>
                             <td style="text-align: right;">
                                 <div style="display: flex; justify-content: flex-end; gap: 8px;">
                                     {% can_manage_project p as user_can_manage %}
                                     {% if user_can_manage %}
-                                        <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-ghost btn-sm" title="编辑 / Edit">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary" style="padding: 4px 8px;" title="编辑">
+                                            <i class="fas fa-pen"></i>
                                         </a>
                                     {% endif %}
-                                    <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-ghost btn-sm" title="进入 / Enter">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                    <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-secondary" style="padding: 4px 8px;" title="进入">
+                                        <i class="fas fa-arrow-right"></i>
                                     </a>
                                 </div>
                             </td>
@@ -428,82 +534,75 @@
             </div>
         </div>
 
-    <!-- Pagination Toolbar -->
-    <div class="pagination-toolbar">
-        <!-- Left: Info -->
-        <div class="left-info">
-            共 <span style="font-weight: 700; color: var(--text-main);">{{ page_obj.paginator.count }}</span> 条 / {{ page_obj.paginator.num_pages }} 页
-        </div>
+        <!-- Pagination -->
+        <div class="pagination-toolbar">
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                共 <span style="font-weight: 700; color: var(--text-main);">{{ page_obj.paginator.count }}</span> 条 / {{ page_obj.paginator.num_pages }} 页
+            </div>
 
-        <!-- Center: Controls -->
-        <div class="center-controls">
-            {% if page_obj.has_previous %}
-                <button type="button" class="page-btn" onclick="changePage({{ page_obj.previous_page_number }})">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    上一页
-                </button>
-            {% else %}
-                <button type="button" class="page-btn" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    上一页
-                </button>
-            {% endif %}
-            
-            <div class="page-current">{{ page_obj.number }}</div>
-            
-            {% if page_obj.has_next %}
-                <button type="button" class="page-btn" onclick="changePage({{ page_obj.next_page_number }})">
-                    下一页
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </button>
-            {% else %}
-                <button type="button" class="page-btn" disabled>
-                    下一页
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </button>
-            {% endif %}
-        </div>
-
-        <!-- Right: Settings & Jump -->
-        <div class="right-actions">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; color: var(--text-secondary);">每页</span>
-                <select id="per-page-select" class="form-select page-select" style="width: auto; padding: 0 24px 0 8px;" onchange="changePerPage(this.value)">
-                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                {% if page_obj.has_previous %}
+                    <button type="button" class="page-btn" onclick="changePage({{ page_obj.previous_page_number }})">
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                {% else %}
+                    <button type="button" class="page-btn" disabled>
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                {% endif %}
+                
+                <div class="page-current">{{ page_obj.number }}</div>
+                
+                {% if page_obj.has_next %}
+                    <button type="button" class="page-btn" onclick="changePage({{ page_obj.next_page_number }})">
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                {% else %}
+                    <button type="button" class="page-btn" disabled>
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <select id="per-page-select" onchange="changePerPage(this.value)" style="width: auto; padding: 6px 24px 6px 12px;">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10 / 页</option>
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20 / 页</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / 页</option>
                 </select>
-            </div>
-            
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; color: var(--text-secondary);">跳转</span>
-                <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage()">
-                <button type="button" class="btn btn-secondary btn-sm" style="height: 36px; padding: 0 12px;" onclick="jumpToPage()">GO</button>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="number" id="jump-page-input" placeholder="页码" min="1" max="{{ page_obj.paginator.num_pages }}" 
+                           style="width: 60px; text-align: center;" onkeydown="if(event.key === 'Enter') jumpToPage()">
+                    <button type="button" class="btn btn-secondary" style="padding: 6px 12px;" onclick="jumpToPage()">Go</button>
+                </div>
             </div>
         </div>
-    </div>
 
     {% else %}
         <!-- Empty State -->
         <div class="empty-state">
-            <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-            </svg>
-            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目 / No projects found</h3>
-            <p style="margin-bottom: 24px;">尝试调整筛选条件，或者创建一个新项目。<br>Try adjusting filters or create a new project.</p>
+            <i class="fas fa-folder-open empty-icon"></i>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目</h3>
+            <p style="margin-bottom: 24px; color: var(--text-secondary);">尝试调整筛选条件，或者创建一个新项目。</p>
             {% if can_create_project %}
-                <a href="{% url 'projects:project_create' %}" class="btn btn-primary">新建项目 / New Project</a>
+                <a href="{% url 'projects:project_create' %}" class="btn btn-primary">新建项目</a>
             {% else %}
-                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">清除筛选 / Clear Filters</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">清除筛选</a>
             {% endif %}
         </div>
     {% endif %}
-
 </div>
 
+<style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
-    // View Switcher Logic
+    // View Switcher
     const btnGrid = document.getElementById('btnGrid');
     const btnTable = document.getElementById('btnTable');
     const viewGrid = document.getElementById('viewGrid');
@@ -525,72 +624,25 @@
         }
     }
 
-    // Initialize View based on local storage
     document.addEventListener('DOMContentLoaded', function() {
         const savedView = localStorage.getItem('project_list_view') || 'grid';
         switchView(savedView);
         
-        // Form Submit Loading State
-        document.getElementById('filterForm').addEventListener('submit', function() {
-            const btn = document.getElementById('filterBtn');
-            const span = btn.querySelector('span');
-            btn.disabled = true;
-            btn.style.opacity = '0.7';
-            span.textContent = '加载中... / Loading...';
-            
-            const svg = btn.querySelector('svg');
-            if(svg) {
-                svg.innerHTML = '<path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="2" stroke-linecap="round"/>';
-                svg.classList.add('animate-spin');
-            }
-        });
-    });
-</script>
-
-<style>
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .animate-spin { animation: spin 1s linear infinite; }
-</style>
-
-<script>
-    function getQueryParam(key) {
-        return new URLSearchParams(window.location.search).get(key);
-    }
-
-    function updateUrl(params) {
-        const url = new URL(window.location);
-        for (const [key, value] of Object.entries(params)) {
-            url.searchParams.set(key, value);
+        // Loading state
+        const filterForm = document.getElementById('filterForm');
+        if(filterForm) {
+            filterForm.addEventListener('submit', function() {
+                const btn = document.getElementById('filterBtn');
+                if(btn) {
+                    btn.disabled = true;
+                    btn.textContent = '加载中...';
+                }
+            });
         }
-        window.location = url;
-    }
 
-    function changePage(page) {
-        updateUrl({ page: page });
-    }
-
-    function changePerPage(size) {
-        localStorage.setItem('project_pageSize', size);
-        updateUrl({ per_page: size, page: 1 });
-    }
-
-    function jumpToPage() {
-        const input = document.getElementById('jump-page-input');
-        const page = parseInt(input.value);
-        const maxPage = {{ page_obj.paginator.num_pages }};
-        
-        if (isNaN(page) || page < 1 || page > maxPage) {
-            alert(`请输入 1~${maxPage} 之间的页码`);
-            input.focus();
-            return;
-        }
-        changePage(page);
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
+        // Pagination Initialization
         const storedSize = localStorage.getItem('project_pageSize');
         const urlSize = getQueryParam('per_page');
-        
         if (storedSize && !urlSize) {
              const currentPerPage = {{ per_page }};
              if (parseInt(storedSize) !== currentPerPage) {
@@ -598,5 +650,30 @@
              }
         }
     });
+
+    // Pagination Logic
+    function getQueryParam(key) { return new URLSearchParams(window.location.search).get(key); }
+    function updateUrl(params) {
+        const url = new URL(window.location);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, value);
+        }
+        window.location = url;
+    }
+    function changePage(page) { updateUrl({ page: page }); }
+    function changePerPage(size) {
+        localStorage.setItem('project_pageSize', size);
+        updateUrl({ per_page: size, page: 1 });
+    }
+    function jumpToPage() {
+        const input = document.getElementById('jump-page-input');
+        const page = parseInt(input.value);
+        const maxPage = {{ page_obj.paginator.num_pages }};
+        if (isNaN(page) || page < 1 || page > maxPage) {
+            alert(`请输入 1~${maxPage} 之间的页码`);
+            return;
+        }
+        changePage(page);
+    }
 </script>
 {% endblock %}
