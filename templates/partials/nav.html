@@ -296,25 +296,37 @@
         top: var(--nav-height);
         left: 0;
         right: 0;
+        bottom: 0; /* Cover full screen */
         background: white;
-        border-bottom: 1px solid var(--nav-border);
         padding: 16px;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-        z-index: 999;
+        z-index: 998; /* Below topbar (9999) */
         flex-direction: column;
         gap: 8px;
-        max-height: calc(100vh - var(--nav-height));
         overflow-y: auto;
     }
     
     .mobile-menu-container.show {
         display: flex;
-        animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: fadeIn 0.2s ease-out;
     }
     
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .mobile-nav-group {
+        border-top: 1px solid var(--nav-border);
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+    .mobile-group-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--nav-text);
+        margin: 8px 0 4px 12px;
+        letter-spacing: 0.5px;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -484,9 +496,27 @@
         <a class="nav-link" href="{% url 'tasks:task_list' %}">任务 / Tasks</a>
         <a class="nav-link" href="{% url 'reports:my_reports' %}">日报 / Reports</a>
         <a class="nav-link" href="{% url 'reports:daily_report_create' %}">写日报 / Create Report</a>
-        <div class="dropdown-divider"></div>
-        <a class="nav-link" href="{% url 'core:account_settings' %}">个人中心 / Settings</a>
-        <a class="nav-link" href="#" onclick="document.getElementById('logout-form').submit();">退出登录 / Logout</a>
+        
+        <!-- Admin Section for Mobile -->
+        {% if can_view_admin_project or can_view_admin_global %}
+            <div class="mobile-nav-group">
+                <div class="mobile-group-title">管理 / Admin</div>
+                {% if can_view_admin_project %}
+                    <a class="nav-link" href="{% url 'tasks:admin_task_list' %}">任务管理 / Tasks Admin</a>
+                    <a class="nav-link" href="{% url 'reports:admin_reports' %}">日报管理 / Reports Admin</a>
+                {% endif %}
+                {% if can_view_admin_global %}
+                    <a class="nav-link" href="{% url 'reports:performance_board' %}">绩效看板 / Performance</a>
+                    <a class="nav-link" href="{% url 'reports:template_center' %}">模板中心 / Templates</a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="mobile-nav-group">
+            <div class="mobile-group-title">账户 / Account</div>
+            <a class="nav-link" href="{% url 'core:account_settings' %}">个人中心 / Settings</a>
+            <a class="nav-link" href="#" onclick="document.getElementById('logout-form').submit();">退出登录 / Logout</a>
+        </div>
     </div>
 
 </header>

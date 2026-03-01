@@ -11,35 +11,6 @@
         padding-right: clamp(24px, 4vw, 48px) !important;
     }
 
-    /* --- Header & View Switcher --- */
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .page-title {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--text-main);
-        margin: 0 0 4px 0;
-    }
-
-    .page-subtitle {
-        color: var(--text-secondary);
-        font-size: 14px;
-        margin: 0;
-    }
-
-    .page-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
     .view-switcher {
         display: flex;
         background: white;
@@ -73,40 +44,8 @@
         color: var(--primary);
     }
 
-    /* --- Filter Section --- */
-    .filter-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        margin-bottom: 24px;
-        box-shadow: var(--shadow-sm);
-    }
-
-    .filter-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: flex-end;
-    }
-
-    .form-group {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .form-label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 6px;
-    }
-
-    .search-wrapper {
-        position: relative;
-    }
-
+    /* --- Search Input Specifics --- */
+    .search-wrapper { position: relative; }
     .search-icon {
         position: absolute;
         left: 12px;
@@ -117,21 +56,12 @@
         color: var(--text-muted);
         pointer-events: none;
     }
-
-    .search-input {
-        padding-left: 36px;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 12px;
-        margin-left: auto;
-    }
+    .search-input { padding-left: 36px; }
 
     /* --- Project Grid --- */
     .project-grid {
         display: none;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Reduced min-width slightly */
         gap: 24px;
     }
     
@@ -241,74 +171,14 @@
     .cell-title { font-weight: 600; color: var(--text-main); font-size: 14px; }
     .cell-sub { font-size: 12px; color: var(--text-secondary); }
 
-    /* --- Pagination --- */
-    .pagination-toolbar {
-        margin-top: 32px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px;
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-    }
-
-    .page-btn {
-        height: 36px;
-        padding: 0 12px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        background: white;
-        color: var(--text-main);
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .page-current {
-        height: 36px;
-        min-width: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-body);
-        border-radius: var(--radius-md);
-        font-weight: 600;
-        font-size: 13px;
-    }
-
-    /* --- Empty State --- */
-    .empty-state {
-        text-align: center;
-        padding: 64px 24px;
-        background: white;
-        border-radius: var(--radius-lg);
-        border: 1px dashed var(--border-color);
-    }
-    .empty-icon {
-        width: 64px; height: 64px;
-        color: var(--text-muted);
-        margin-bottom: 16px;
-    }
-
-    .loading-overlay {
-        position: fixed; inset: 0; background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(4px); z-index: 2000;
-        display: flex; justify-content: center; align-items: center;
-        opacity: 0; pointer-events: none; transition: opacity 0.3s;
-    }
-    .loading-overlay.active { opacity: 1; pointer-events: all; }
-
+    /* Force Grid on Mobile */
     @media (max-width: 768px) {
-        .filter-grid { flex-direction: column; align-items: stretch; }
-        .pagination-toolbar { flex-direction: column; text-align: center; }
-        .page-header { flex-direction: column; align-items: flex-start; }
+        .view-switcher { display: none; }
+        .project-table-container.active { display: none !important; }
+        .project-grid { display: grid !important; }
+        
+        /* Adjust grid for small screens */
+        .project-grid { grid-template-columns: 1fr; }
     }
 {% endblock %}
 
