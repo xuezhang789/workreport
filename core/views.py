@@ -33,10 +33,16 @@ import uuid
 
 from django.db import transaction, IntegrityError
 
+@transaction.non_atomic_requests
 def register(request):
     """
     使用邀请码注册。
     """
+    # 频率限制：防止暴力破解邀请码
+    ip = request.META.get('REMOTE_ADDR')
+    if _throttle(request, f'register_attempt_{ip}', max_requests=10, period=60):
+         return render(request, '429.html', {'message': '注册尝试过于频繁，请稍后再试 / Too many registration attempts, please try again later'}, status=429)
+
     if request.user.is_authenticated:
         return redirect('reports:workbench')
 

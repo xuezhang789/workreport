@@ -75,7 +75,7 @@ def _send_weekly_digest(recipient, stats):
         return True
     except Exception as e:
         # Log error in production
-        logger.error(f"Failed to send weekly digest: {e}")
+        logger.exception(f"Failed to send weekly digest: {e}") # 使用 logger.exception 记录堆栈信息
         return False
 
 @login_required
@@ -471,15 +471,24 @@ def performance_board(request):
         cache.set(cache_key, stats, 600) # 缓存 10 分钟
     
     # 根据权限过滤紧急任务
-    urgent_tasks_qs = Task.objects.filter(status='overdue')
-    total_tasks_qs = Task.objects.all()
+    urgent_tasks = 0
+    total_tasks = 0
     
-    if accessible_projects is not None:
-        urgent_tasks_qs = urgent_tasks_qs.filter(project__in=accessible_projects)
-        total_tasks_qs = total_tasks_qs.filter(project__in=accessible_projects)
-        
-    urgent_tasks = stats.get('overall_overdue', urgent_tasks_qs.count())
-    total_tasks = stats.get('overall_total', total_tasks_qs.count())
+    if 'overall_overdue' in stats:
+        urgent_tasks = stats['overall_overdue']
+    else:
+        urgent_tasks_qs = Task.objects.filter(status='overdue')
+        if accessible_projects is not None:
+            urgent_tasks_qs = urgent_tasks_qs.filter(project__in=accessible_projects)
+        urgent_tasks = urgent_tasks_qs.count()
+
+    if 'overall_total' in stats:
+        total_tasks = stats['overall_total']
+    else:
+        total_tasks_qs = Task.objects.all()
+        if accessible_projects is not None:
+            total_tasks_qs = total_tasks_qs.filter(project__in=accessible_projects)
+        total_tasks = total_tasks_qs.count()
     
     # 预取 SLA 设置一次
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -490,6 +499,18 @@ def performance_board(request):
     thresholds = get_sla_thresholds(system_setting_value=sla_thresholds_val)
     sla_only = request.GET.get('sla_only') == '1'
     
+    # 构造项目燃尽图数据 (用于前端 Chart.js，避免二次请求)
+    project_data = stats.get('project_stats', [])
+    chart_data = {
+        'labels': [p['project'] for p in project_data], # 注意：这里用 'project' 而不是 'name'，取决于 stats.py 的键名
+        'datasets': [
+            {'label': '已完成', 'data': [p['completed'] for p in project_data], 'backgroundColor': '#10b981'},
+            {'label': '剩余', 'data': [p['total'] - p['completed'] for p in project_data], 'backgroundColor': '#3b82f6'},
+            {'label': '逾期', 'data': [p['overdue'] for p in project_data], 'backgroundColor': '#ef4444'},
+        ],
+        'overall_rate': stats.get('overall_sla_on_time_rate', 0)
+    }
+
     # 紧急任务计算较慢，增加缓存
     sla_cache_key = f"perf_board_sla_{request.user.id}_{project_filter}_{sla_hours_val}"
     sla_urgent_tasks = cache.get(sla_cache_key)
@@ -516,11 +537,12 @@ def performance_board(request):
         default_sla = sla_hours_val or 48 # 如果设置缺失，默认为 48
         created_cutoff = cutoff - timedelta(hours=default_sla)
         
+        # 优化：仅查询必要字段
         sla_qs = sla_qs.filter(
             Q(due_at__lte=cutoff) | 
             (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=True) & Q(created_at__lte=created_cutoff)) |
             (Q(due_at__isnull=True) & Q(project__sla_hours__isnull=False)) # 为安全起见保留项目 SLA 任务
-        )
+        ).only('id', 'title', 'due_at', 'created_at', 'status', 'project', 'user', 'sla_timer')
             
         for t in sla_qs:
             # 传递解析后的阈值字典而不是原始字符串
@@ -564,4 +586,5 @@ def performance_board(request):
         'projects': projects_qs,
         'report_roles': Profile.ROLE_CHOICES,
         'user_stats_page': Paginator(stats.get('user_stats', []), 10).get_page(request.GET.get('upage')),
+        'chart_data': json.dumps(chart_data), # 注入 JSON 字符串
     })

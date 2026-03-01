@@ -93,8 +93,12 @@ class AuditService:
                                  diff[field_name] = {
                                      'old': old_obj.username if old_obj else None,
                                      'new': new_obj.username if new_obj else None
-                                 }
-                             except:
+                                }
+                             except Exception as e:
+                                 # Fallback to string representation of ID if user lookup fails
+                                 import logging
+                                 logger = logging.getLogger(__name__)
+                                 logger.debug(f"Audit diff user lookup failed: {e}")
                                  diff[field_name] = {'old': str(old_val), 'new': str(new_val)}
                         else:
                              # 如果是 Project, Task 等其他外键

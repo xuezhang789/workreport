@@ -9,7 +9,8 @@ from django.db.models import Q
 # Setup Django
 sys.path.append(os.getcwd())
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
-os.environ.setdefault('DJANGO_SECRET_KEY', 'django-insecure-dummy-key-for-diagnosis')
+# 使用环境变量或默认的非敏感值，避免在代码中硬编码真实密钥
+os.environ.setdefault('DJANGO_SECRET_KEY', os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dummy-key-for-diagnosis'))
 os.environ.setdefault('DEBUG', 'True')
 django.setup()
 

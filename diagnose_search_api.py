@@ -29,7 +29,8 @@ def diagnose():
 
     # 2. 检查是否有用户负责或参与项目
     users_with_projects = set()
-    for p in Project.objects.filter(is_active=True):
+    # 优化：select_related 和 prefetch_related 避免 N+1
+    for p in Project.objects.filter(is_active=True).select_related('owner').prefetch_related('members', 'managers'):
         if p.owner:
             users_with_projects.add(p.owner)
         for m in p.members.all():

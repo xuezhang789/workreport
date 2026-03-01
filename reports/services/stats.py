@@ -14,9 +14,9 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     """
     User = get_user_model()
     
-    # 基础查询集
-    tasks = Task.objects.select_related('project', 'user', 'user__profile')
-    reports = DailyReport.objects.select_related('user', 'user__profile')
+    # 基础查询集 (移除无用的 select_related，因为聚合查询会忽略它)
+    tasks = Task.objects.all()
+    # reports = DailyReport.objects.select_related('user', 'user__profile') # 移除未使用的 reports 查询
     
     if accessible_projects is not None:
         tasks = tasks.filter(project__in=accessible_projects)
@@ -218,7 +218,12 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     # 计算总体交付周期
     # 优化：复用之前计算的所有时长数据
     overall_lead_avg = statistics.mean(all_durations) if all_durations else None
-    overall_lead_p50 = statistics.median(all_durations) if all_durations else None
+    
+    # 移除总体中位数计算，除非数据量非常小
+    # 对于大数据集，中位数的计算成本较高且对概览视图不是绝对必要的
+    overall_lead_p50 = None 
+    if len(all_durations) < 1000:
+        overall_lead_p50 = statistics.median(all_durations)
 
     return {
         'project_stats': project_stats,

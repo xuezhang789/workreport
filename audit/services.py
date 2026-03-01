@@ -135,8 +135,13 @@ class AuditLogService:
                     elif 'from project' in log.summary:
                         repo_name = log.summary.split('repository', 1)[1].split('from project')[0].strip()
                         action_verb = 'Removed'
-                except:
+                except (IndexError, ValueError):
                     pass
+                except Exception as e:
+                    # Log unexpected errors during summary parsing
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Failed to parse audit log summary for repository info: {e}")
 
             if repo_name and action_verb:
                 add_item('repository', '代码仓库 / Repository', 

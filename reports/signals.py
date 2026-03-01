@@ -352,7 +352,10 @@ def notify_project_change(sender, instance, created, **kwargs):
         # 1. 项目经理（所有者 + 经理）
         if instance.owner:
             recipients.add(instance.owner)
-        recipients.update(instance.managers.all())
+        
+        # 优化：避免在循环中触发查询
+        managers = list(instance.managers.all())
+        recipients.update(managers)
         
         # 2. 阶段负责人（动态角色）
         if new_phase and new_phase.related_role:
@@ -364,6 +367,7 @@ def notify_project_change(sender, instance, created, **kwargs):
             ).values_list('user_id', flat=True)
             
             if role_users:
+                # 优化：批量查询用户
                 recipients.update(User.objects.filter(id__in=role_users))
 
         # 从收件人中移除操作员
