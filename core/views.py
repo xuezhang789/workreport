@@ -453,9 +453,6 @@ def user_search_api(request):
     project_id = request.GET.get('project_id')
     User = get_user_model()
     
-    # 调试日志
-    # print(f"User Search: user={request.user}, superuser={request.user.is_superuser}, project_id={project_id}")
-    
     if project_id and project_id.isdigit():
         # 项目特定搜索
         from projects.models import Project
@@ -510,9 +507,22 @@ def user_search_api(request):
     users = qs.select_related('profile').order_by('username')[:20]
     data = []
     
-    # 如果提供了 project_id，是否预取角色？
-    # 或者只使用一般的个人资料信息。需求：头像、姓名、角色标签（拥有者/管理员/成员）、部门
+    # 优化：预取项目角色信息以避免循环中的 N+1 查询
+    project_owner_id = None
+    project_manager_ids = set()
     
+    if project_id and project_id.isdigit():
+        try:
+            # 重用上面的 project 对象如果可用，或者重新查询（如果上面逻辑改变）
+            # 在上面的逻辑中，project 变量是在 try 块中定义的
+            # 为了安全起见，这里假设 project 变量可能不可用如果上面的逻辑分支未执行
+            # 但逻辑上，如果 project_id 存在，上面的 try 块应该已执行
+            if 'project' in locals():
+                project_owner_id = project.owner_id
+                project_manager_ids = set(project.managers.values_list('id', flat=True))
+        except Exception:
+            pass
+
     for u in users:
         full_name = u.get_full_name()
         display_name = f"{full_name} ({u.username})" if full_name else u.username
@@ -521,9 +531,9 @@ def user_search_api(request):
             
         role_label = 'Member'
         if project_id and project_id.isdigit():
-            if u.id == project.owner_id:
+            if u.id == project_owner_id:
                 role_label = 'Owner'
-            elif project.managers.filter(id=u.id).exists():
+            elif u.id in project_manager_ids:
                 role_label = 'Admin'
                 
         # 部门
@@ -543,15 +553,20 @@ def user_search_api(request):
     return JsonResponse({'results': data})
 
 
-@login_required
+@transaction.non_atomic_requests
 def username_check_api(request):
-    """实时检查用户名是否可用。"""
-    # 安全修复：需要登录以防止枚举
-         
+    """
+    实时检查用户名是否可用。
+    允许未登录用户访问（用于注册页面），但必须严格限流。
+    """
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")
-    if _throttle(request, 'username_check_ts', min_interval=0.4):
-        return JsonResponse({'error': '请求过于频繁'}, status=429)  # 简易节流防抖
+        
+    # 基于 IP 的限流，防止枚举
+    ip = request.META.get('REMOTE_ADDR')
+    if _throttle(request, f'username_check_{ip}', min_interval=0.5, max_requests=30, period=60):
+        return JsonResponse({'error': '请求过于频繁 / Too many requests'}, status=429)
+
     username = (request.GET.get('username') or '').strip()
     if not username:
         return JsonResponse({'available': False, 'reason': '请输入要检测的用户名 / Please enter a username to check'}, status=400)

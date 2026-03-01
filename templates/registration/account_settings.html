@@ -374,34 +374,72 @@
                         {% endif %}
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }} @{{ user.username }}</h3>
-                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</div>
+                        <h3 style="margin: 0 0 4px 0; font-size: 18px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ user.get_full_name|default:user.username }}</h3>
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@{{ user.username }} &middot; {{ user.email }}</div>
                         <div class="badge-container">
-                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ user.profile.get_position_display|default:'-' }}">角色 / Role: {{ user.profile.get_position_display|default:"-" }}</span>
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ user.profile.get_position_display|default:'-' }}">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                {{ user.profile.get_position_display|default:"暂无角色 / No Role" }}
+                            </span>
                             {% if user.profile.email_verified %}
-                            <span class="badge badge-success" title="已验证 / Verified">已验证 / Verified</span>
+                            <span class="badge badge-success" title="已验证 / Verified">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                已验证 / Verified
+                            </span>
                             {% else %}
-                            <span class="badge badge-warning" title="未验证 / Unverified">未验证 / Unverified</span>
+                            <span class="badge badge-warning" title="未验证 / Unverified">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                未验证 / Unverified
+                            </span>
                             {% endif %}
                         </div>
                     </div>
-                    <div style="text-align: right; min-width: 140px;">
-                        <div style="font-size: 12px; color: var(--text-secondary);">注册时间 / Joined</div>
-                        <div style="font-weight: 600; margin-bottom: 8px;">{{ user.date_joined|date:"Y-m-d" }}</div>
+                    <div style="text-align: right; min-width: 140px;" class="hidden-mobile">
                         <div style="font-size: 12px; color: var(--text-secondary);">上次登录 / Last Login</div>
-                        <div style="font-weight: 600;">{{ user.last_login|date:"Y-m-d"|default:"-" }}</div>
+                        <div style="font-weight: 600; margin-bottom: 8px;">{{ user.last_login|date:"Y-m-d H:i"|default:"-" }}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">注册时间 / Joined</div>
+                        <div style="font-weight: 600;">{{ user.date_joined|date:"Y-m-d" }}</div>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div style="padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">本周日报 / Reports this week</div>
-                        <div style="font-size: 24px; font-weight: 800; color: var(--primary);">{{ week_report_count|default:"0" }}</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
+                    <div style="padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: grid; place-items: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">本周日报 / Reports this week</div>
+                            <div style="font-size: 28px; font-weight: 800; color: var(--text-main); line-height: 1;">{{ week_report_count|default:"0" }}</div>
+                        </div>
                     </div>
-                    <div style="padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">参与项目 / Projects</div>
-                        <div style="font-size: 24px; font-weight: 800; color: var(--text-main);">{{ project_count|default:"0" }}</div>
+                    <div style="padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: #f0fdf4; color: #16a34a; display: grid; place-items: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">参与项目 / Projects</div>
+                            <div style="font-size: 28px; font-weight: 800; color: var(--text-main); line-height: 1;">{{ project_count|default:"0" }}</div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section-header" style="margin-top: 12px; border-bottom: none; padding-bottom: 0;">
+                    <h3 class="section-title" style="font-size: 18px;">快捷操作 / Quick Actions</h3>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="switchTab('profile')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        修改资料 / Edit Profile
+                    </button>
+                    <button class="btn btn-secondary" onclick="switchTab('security')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        修改密码 / Change Password
+                    </button>
+                    <a href="{% url 'core:logout' %}" class="btn" style="background: #fee2e2; color: #ef4444; border-color: #fecaca;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        退出登录 / Logout
+                    </a>
                 </div>
             </div>
 
@@ -409,8 +447,31 @@
             <div id="tab-profile" class="tab-pane">
                 <div class="section-header">
                     <h2 class="section-title">个人资料 / Profile</h2>
-                    <p class="section-desc">管理您的公开信息和用户名 / Manage your public profile.</p>
+                    <p class="section-desc">管理您的公开信息和头像 / Manage your public profile.</p>
                 </div>
+
+                <div class="form-group" style="margin-bottom: 32px;">
+                    <label class="form-label">头像 / Avatar</label>
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        <div class="user-avatar-lg" id="avatar-preview" style="width: 80px; height: 80px; font-size: 28px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                            {% if user.profile.avatar_url %}
+                            <img src="{{ user.profile.avatar_url }}" alt="Avatar">
+                            {% else %}
+                            {{ user.username|slice:":1"|upper }}
+                            {% endif %}
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label class="btn btn-secondary" style="cursor: pointer; display: inline-flex;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                上传新头像 / Upload New
+                                <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                            </label>
+                            <p class="help-text">支持 JPG, PNG, GIF. 最大 2MB. 上传后自动保存. <br> Supports JPG, PNG, GIF. Max 2MB. Auto-saved.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;">
 
                 <form method="post">
                     {% csrf_token %}
@@ -421,49 +482,23 @@
                         <div class="help-text">用户名用于登录，不可更改 / Username is used for login and cannot be changed.</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">当前姓名 / Current Name</label>
-                        <div style="font-size: 15px; font-weight: 500; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: var(--text-main);">
-                            {{ user.get_full_name|default:"-" }}
-                        </div>
-                        <div class="help-text">姓名（昵称），用于前端展示，便于识别 / Name (Nickname), used for frontend display for easy identification</div>
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ name_form.full_name.id_for_label }}" class="form-label">新姓名 / New Name</label>
+                        <label for="{{ name_form.full_name.id_for_label }}" class="form-label">姓名 (昵称) / Display Name</label>
                         {{ name_form.full_name }}
                         {% if name_form.full_name.errors %}
                         <div class="help-text text-danger">{{ name_form.full_name.errors.0 }}</div>
+                        {% else %}
+                        <div class="help-text">用于前端展示，便于团队识别 / Used for team identification</div>
                         {% endif %}
                     </div>
                     <div class="form-group">
-                        <label for="{{ name_form.password.id_for_label }}" class="form-label">当前密码 / Current Password</label>
+                        <label for="{{ name_form.password.id_for_label }}" class="form-label">当前密码 (确认修改) / Confirm with Password</label>
                         {{ name_form.password }}
                         {% if name_form.password.errors %}
                         <div class="help-text text-danger">{{ name_form.password.errors.0 }}</div>
                         {% endif %}
                     </div>
-                    <button type="submit" class="btn btn-primary">保存姓名更改 / Save Name</button>
+                    <button type="submit" class="btn btn-primary">保存姓名更改 / Save Changes</button>
                 </form>
-
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;">
-
-                <div class="form-group">
-                    <label class="form-label">头像 / Avatar</label>
-                    <div style="display: flex; gap: 16px; align-items: center;">
-                        <div class="user-avatar-lg" id="avatar-preview" style="width: 64px; height: 64px; font-size: 24px;">
-                            {% if user.profile.avatar_url %}
-                            <img src="{{ user.profile.avatar_url }}" alt="Avatar">
-                            {% else %}
-                            {{ user.username|slice:":1"|upper }}
-                            {% endif %}
-                        </div>
-                        <label class="btn btn-secondary" style="cursor: pointer;">
-                            上传新头像 / Upload New
-                            <input type="file" id="avatar-input" accept="image/*" style="display: none;">
-                        </label>
-                    </div>
-                </div>
-
-                <button type="button" id="profile-pref-save" class="btn btn-secondary">保存资料偏好 / Save Preferences</button>
             </div>
 
             <!-- Tab: Security -->
@@ -727,7 +762,6 @@
                 },
                 onProgress: (file, percentage) => {
                     if (avatarPreview) {
-                        // Simple overlay for progress
                         avatarPreview.style.opacity = 0.5;
                     }
                 },
@@ -735,7 +769,7 @@
                     finalizeAvatar(data.upload_id);
                 },
                 onError: (file, error) => {
-                    alert('Avatar upload failed: ' + error);
+                    showToast('error', '上传失败 / Upload Failed', error);
                     if (avatarPreview) avatarPreview.style.opacity = 1;
                 }
             });
@@ -748,7 +782,7 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const dataUrl = e.target.result;
-                    const imgTag = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                    const imgTag = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover;">`;
                     avatarPreview.innerHTML = imgTag;
                     if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
                 };
@@ -768,18 +802,17 @@
                 .then(data => {
                     if (data.status === 'success') {
                         if (avatarPreview) avatarPreview.style.opacity = 1;
-                        // Update preview with final URL to ensure it works
-                        const imgTag = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                        const imgTag = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover;">`;
                         avatarPreview.innerHTML = imgTag;
                         if (overviewAvatar) overviewAvatar.innerHTML = imgTag;
-                        alert('Avatar updated!');
+                        showToast('success', '头像已更新 / Avatar Updated', '您的新头像已保存 / Your new avatar has been saved.');
                     } else {
-                        alert('Avatar finalize failed: ' + data.message);
+                        showToast('error', '保存失败 / Save Failed', data.message);
                     }
                 })
                 .catch(e => {
                     console.error(e);
-                    alert('Network error');
+                    showToast('error', '网络错误 / Network Error', '无法连接到服务器 / Unable to connect to server');
                 });
             }
         }
@@ -794,7 +827,20 @@
         });
         if (privacySave) {
             privacySave.addEventListener('click', () => {
-                prefSave('privacy', { show_email: !!privacyShowEmail.checked, show_role: !!privacyShowRole.checked }, (r) => alert(r.ok ? '已保存 / Saved' : '失败 / Failed'));
+                const btn = privacySave;
+                const originalText = btn.innerText;
+                btn.disabled = true;
+                btn.innerText = '保存中... / Saving...';
+                
+                prefSave('privacy', { show_email: !!privacyShowEmail.checked, show_role: !!privacyShowRole.checked }, (r) => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    if (r.ok) {
+                        showToast('success', '隐私设置已保存 / Privacy Saved', '您的隐私偏好已更新 / Your privacy preferences have been updated.');
+                    } else {
+                        showToast('error', '保存失败 / Failed', '请稍后重试 / Please try again later.');
+                    }
+                });
             });
         }
 
@@ -807,7 +853,20 @@
         });
         if (notifySave) {
             notifySave.addEventListener('click', () => {
-                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => alert(r.ok ? '已保存 / Saved' : '失败 / Failed'));
+                const btn = notifySave;
+                const originalText = btn.innerText;
+                btn.disabled = true;
+                btn.innerText = '保存中... / Saving...';
+                
+                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    if (r.ok) {
+                        showToast('success', '通知设置已保存 / Notifications Saved', '您的通知偏好已更新 / Your notification preferences have been updated.');
+                    } else {
+                        showToast('error', '保存失败 / Failed', '请稍后重试 / Please try again later.');
+                    }
+                });
             });
         }
 
@@ -821,7 +880,7 @@
                     const hiddenEmail = document.querySelector('input[name="email"]');
                     if (hiddenEmail) email = hiddenEmail.value;
                 }
-                if (!email) { alert('请输入邮箱 / Please enter email'); return; }
+                if (!email) { showToast('error', '请输入邮箱 / Email Required', ''); return; }
                 
                 sendCodeBtn.disabled = true;
                 sendCodeBtn.innerText = '发送中... / Sending...';
@@ -831,7 +890,7 @@
                     body: JSON.stringify({ email: email })
                 }).then(r => r.json()).then(data => {
                     if (data.success) {
-                        alert(data.message);
+                        showToast('success', '验证码已发送 / Code Sent', data.message);
                         let t = 60;
                         sendCodeBtn.innerText = t + 's';
                         const timer = setInterval(() => {
@@ -839,12 +898,12 @@
                             if (t <= 0) { clearInterval(timer); sendCodeBtn.disabled = false; sendCodeBtn.innerText = '重发 / Resend'; }
                         }, 1000);
                     } else {
-                        alert(data.error || '失败 / Failed');
+                        showToast('error', '发送失败 / Failed', data.error || 'Unknown error');
                         sendCodeBtn.disabled = false;
                         sendCodeBtn.innerText = '重试 / Retry';
                     }
                 }).catch(() => {
-                    alert('网络错误 / Network error');
+                    showToast('error', '网络错误 / Network Error', '无法连接到服务器 / Unable to connect to server');
                     sendCodeBtn.disabled = false;
                     sendCodeBtn.innerText = '重试 / Retry';
                 });

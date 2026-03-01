@@ -1,19 +1,64 @@
-{% extends "base_topbar.html" %}
+{% extends "registration/auth_base.html" %}
 
-{% block title %}注销确认 / Logout Confirmation{% endblock %}
+{% block title %}注销确认 / Confirm Logout{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .confirm-content {
+        text-align: center;
+    }
+    .warning-icon {
+        width: 64px;
+        height: 64px;
+        background: #fef2f2;
+        color: #ef4444;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+    .action-row {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 32px;
+    }
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        border: none;
+    }
+    .btn-danger:hover {
+        background: #dc2626;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="auth-card">
+<div class="confirm-content">
+    <div class="warning-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+    </div>
+
     <div class="auth-header">
-        <h1>注销登录 / Sign Out</h1>
-        <p>您确定要退出当前账号吗？ / Are you sure you want to sign out?</p>
+        <h1 class="auth-title">确认退出 / Confirm Logout</h1>
+        <p class="auth-subtitle">
+            您确定要退出当前账号吗？<br>
+            Are you sure you want to sign out?
+        </p>
     </div>
 
     <form method="post" action="{% url 'core:logout' %}">
         {% csrf_token %}
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary btn-block">确认退出 / Confirm Logout</button>
-            <a href="/" class="btn btn-secondary btn-block" style="margin-top: 12px; text-align: center;">取消 / Cancel</a>
+        <div class="action-row">
+            <button type="submit" class="btn btn-danger">
+                确认退出 / Sign Out
+            </button>
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                取消 / Cancel
+            </a>
         </div>
     </form>
 </div>

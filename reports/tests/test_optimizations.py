@@ -94,3 +94,39 @@ class OptimizationTests(TestCase):
         # Check if we got any 429s
         self.assertIn(429, responses, "Rate limiting did not trigger 429 response")
 
+    def test_user_search_api_n_plus_1(self):
+        """Verify user_search_api does not have N+1 queries when searching in a project."""
+        from django.urls import reverse
+        from django.test import Client
+        from unittest.mock import patch
+        
+        client = Client()
+        client.force_login(self.user)
+        
+        project = self.projects[0]
+        # Add many members to the project
+        for i in range(10):
+            u = User.objects.create_user(username=f'member_{i}', password='pwd')
+            Profile.objects.create(user=u, position='dev')
+            project.members.add(u)
+            
+        url = reverse('core:user_search_api') + f'?project_id={project.id}'
+        
+        # Warm up
+        with patch('core.views._throttle', return_value=False):
+            client.get(url)
+            
+            with CaptureQueriesContext(connection) as ctx:
+                response = client.get(url)
+            
+        self.assertEqual(response.status_code, 200)
+        # Should be minimal queries: 
+        # 1. Session/User
+        # 2. Project access check
+        # 3. Project fetch
+        # 4. Managers fetch (prefetched)
+        # 5. Users query
+        # 6. Profile query (select_related)
+        # It should NOT vary by member count (10)
+        self.assertLess(len(ctx), 10, f"Too many queries: {len(ctx)}")
+
