@@ -33,6 +33,10 @@ import uuid
 
 from django.db import transaction, IntegrityError
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @transaction.non_atomic_requests
 def register(request):
     """
@@ -101,8 +105,7 @@ def register(request):
         except Exception as e:
             # 捕获意外错误
             form.add_error(None, "注册失败，请稍后重试 / Registration failed, please try again")
-            if settings.DEBUG:
-                print(f"Register Error: {e}")
+            logger.error(f"Register Error: {e}", exc_info=True)
 
     else:
         # 如果存在邀请，预填充邮箱

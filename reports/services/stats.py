@@ -20,15 +20,12 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
     
     if accessible_projects is not None:
         tasks = tasks.filter(project__in=accessible_projects)
-        reports = reports.filter(projects__in=accessible_projects).distinct()
 
     # 应用过滤器
     if start_date:
         tasks = tasks.filter(created_at__date__gte=start_date)
-        reports = reports.filter(date__gte=start_date)
     if end_date:
         tasks = tasks.filter(created_at__date__lte=end_date)
-        reports = reports.filter(date__lte=end_date)
         
     if project_id:
         tasks = tasks.filter(project_id=project_id)
@@ -37,11 +34,9 @@ def get_performance_stats(start_date=None, end_date=None, project_id=None, role_
         
     if role_filter:
         tasks = tasks.filter(user__profile__position=role_filter)
-        reports = reports.filter(user__profile__position=role_filter)
 
     if q:
         tasks = tasks.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
-        reports = reports.filter(Q(user__username__icontains=q) | Q(user__first_name__icontains=q))
 
     # --- 预计算交付周期（优化）---
     # 优化：尽可能在数据库层面聚合计算交付周期（Lead Time）

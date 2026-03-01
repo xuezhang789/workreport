@@ -49,10 +49,50 @@ MANAGER_ROLES = {'mgr', 'pm'}
 # has_manage_permission moved to core.permissions
 
 
-def _throttle(request, key: str, min_interval=0.8):
-    """简单接口节流，基于 session/key。 / Simple API throttle based on session/key."""
-    now = time.monotonic()
+from django.core.cache import cache
+
+def _throttle(request, key: str, min_interval=0.8, max_requests=None, period=None):
+    """
+    接口节流 / API Throttling
+    
+    Uses Django Cache backend (global) instead of Session (user-specific) 
+    to effectively block IP-based attacks even without cookies.
+    """
+    now = time.time()
+    
+    # Mode 2: Rate Limiting
+    if max_requests and period:
+        # Use cache for global storage
+        # key should be unique enough (caller should ensure uniqueness, e.g. include IP)
+        cache_key = f"throttle_{key}"
+        history = cache.get(cache_key, [])
+        
+        if not isinstance(history, list):
+            history = []
+            
+        # Filter out timestamps older than the period
+        history = [ts for ts in history if now - ts < period]
+        
+        if len(history) >= max_requests:
+            # Update cache to keep the block active?
+            # Let's just write back the cleaned history
+            cache.set(cache_key, history, period) # Expire after period
+            return True
+            
+        history.append(now)
+        cache.set(cache_key, history, period)
+        return False
+
+    # Mode 1: Simple Interval (Session-based or Cache-based?)
+    # Original was Session-based. Let's keep it Session-based for simple debounce?
+    # Or move to Cache for consistency?
+    # Existing usages: 'user_search_ts', 'username_check_ts'. These are per-user actions.
+    # So Session is fine for Mode 1.
+    
     last = request.session.get(key)
+    if isinstance(last, list):
+        last = None
+        
     if last and now - last < min_interval:
         return True
     request.session[key] = now
