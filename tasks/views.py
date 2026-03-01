@@ -75,6 +75,9 @@ def admin_task_list(request):
         'project', 'user', 'sla_timer', 'user__profile', 'user__preferences'
     ).prefetch_related('collaborators', 'collaborators__profile')
     
+    # 立即按可访问项目过滤，防止未授权访问和减少数据量
+    tasks_qs = tasks_qs.filter(project__in=accessible_projects)
+    
     # 预取一次 SLA 设置
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
@@ -86,14 +89,12 @@ def admin_task_list(request):
     # 如果没有指定项目，则使用默认 SLA 小时数进行通用查询
     default_sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
     
+    # 优化：基于已过滤的查询集计算即将到期的任务
     due_soon_ids = set(tasks_qs.filter(
         status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW],
         due_at__gt=now,
         due_at__lte=now + timedelta(hours=default_sla_hours)
     ).values_list('id', flat=True))
-    
-    # 按可访问项目过滤（超级管理员查看所有活动项目）
-    tasks_qs = tasks_qs.filter(project__in=accessible_projects)
 
     if status in dict(Task.STATUS_CHOICES):
         tasks_qs = tasks_qs.filter(status=status)
@@ -175,12 +176,16 @@ def admin_task_list(request):
     User = get_user_model()
     # 优化：仅获取下拉列表所需的字段
     project_choices = accessible_projects.order_by('name').only('id', 'name')
+    
     # 可访问项目中的用户
-    user_objs = User.objects.filter(
-        Q(project_memberships__in=accessible_projects) |
-        Q(managed_projects__in=accessible_projects) |
-        Q(owned_projects__in=accessible_projects)
-    ).distinct().order_by('username').only('id', 'username', 'first_name', 'last_name')
+    if request.user.is_superuser:
+        user_objs = User.objects.filter(is_active=True).order_by('username').only('id', 'username', 'first_name', 'last_name')
+    else:
+        user_objs = User.objects.filter(
+            Q(project_memberships__in=accessible_projects) |
+            Q(managed_projects__in=accessible_projects) |
+            Q(owned_projects__in=accessible_projects)
+        ).distinct().order_by('username').only('id', 'username', 'first_name', 'last_name')
     
     return render(request, 'tasks/admin_task_list.html', {
         'tasks': page_obj,

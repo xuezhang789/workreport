@@ -4,7 +4,7 @@
 {% load humanize %}
 {% block title %}人事管理 / Personnel Management{% endblock %}
 
-{% block nav_header %}{% include "partials/nav.html" with nav_title="人事管理" nav_subtitle="Personnel Management" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="人事档案" nav_subtitle="Personnel Records" %}{% endblock %}
 
 {% block extra_styles %}
     :root {
@@ -641,7 +641,7 @@ function renderCalendar(data) {
                     </td>
                     <td style="text-align: right;">
                         <div class="dropdown">
-                                <div class="dropdown-trigger" onclick="toggleDropdown(event, this)">
+                                <div class="dropdown-trigger" onclick="togglePersonDropdown(event, this)">
                                     操作 <span style="font-size: 8px;">▼</span>
                                 </div>
                                 <div class="dropdown-content">
@@ -1098,15 +1098,16 @@ function renderCalendar(data) {
     async function fetchWithRetry(url, options) { return fetch(url, options); }
 
     // Dropdown Logic
-    function toggleDropdown(e, trigger) {
+    function togglePersonDropdown(e, trigger) {
         e.stopPropagation();
         const content = trigger.nextElementSibling;
         const isOpen = content.classList.contains('show');
         
-        closeAllDropdowns();
+        closePersonDropdowns();
         
         if (!isOpen) {
             content.classList.add('show');
+            // ... positioning logic ...
             const rect = trigger.getBoundingClientRect();
             const contentRect = content.getBoundingClientRect();
             
@@ -1123,12 +1124,12 @@ function renderCalendar(data) {
         }
     }
     
-    function closeAllDropdowns() {
+    function closePersonDropdowns() {
         document.querySelectorAll('.dropdown-content.show').forEach(el => el.classList.remove('show'));
     }
     
-    document.addEventListener('click', closeAllDropdowns);
-    document.addEventListener('scroll', closeAllDropdowns, true); // Capture scroll to close
+    document.addEventListener('click', closePersonDropdowns);
+    document.addEventListener('scroll', closePersonDropdowns, true); // Capture scroll to close
 </script>
 <script>
     // --- New Features Logic ---
