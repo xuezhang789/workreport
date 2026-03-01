@@ -73,7 +73,7 @@ def admin_task_list(request):
     # 优化：为头像渲染选择关联的 profile 和 preferences
     tasks_qs = Task.objects.select_related(
         'project', 'user', 'sla_timer', 'user__profile', 'user__preferences'
-    ).prefetch_related('collaborators', 'collaborators__profile')
+    ).prefetch_related('collaborators', 'collaborators__profile', 'collaborators__preferences')
     
     # 立即按可访问项目过滤，防止未授权访问和减少数据量
     tasks_qs = tasks_qs.filter(project__in=accessible_projects)
@@ -119,29 +119,33 @@ def admin_task_list(request):
         amber_hours = get_sla_thresholds(sla_thresholds_val).get('amber', 4)
         cutoff_time = now + timedelta(hours=amber_hours)
         
-        hot_qs = tasks_qs.exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).filter(
+        # 优化：避免加载已完成的任务，这些通常不需要紧急关注
+        tasks_qs = tasks_qs.exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).filter(
             due_at__isnull=False,
             due_at__lt=cutoff_time
         )
         
-        # 回退到 Python 进行精确的状态计算和排序，但基于一个小得多的数据集
-        tasks = list(hot_qs)
+        # 使用数据库排序
+        # 注意：这只是一个近似值，真正的 SLA 排序很复杂。
+        # 但为了分页和速度，我们必须在数据库中进行排序。
+        tasks_qs = tasks_qs.order_by('due_at', '-created_at')
         
-        # 使用 Python 逻辑再次检查以确保与 calculate_sla_info 一致
-        tasks = [t for t in tasks if calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)['status'] in ('tight', 'overdue')]
-        
-        far_future = now + timedelta(days=365)
-        for t in tasks:
-            t.is_due_soon = t.id in due_soon_ids
-            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-        tasks.sort(key=lambda t: (
-            -t.created_at.timestamp(),
-            t.sla_info.get('sort', 3),
-            t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
-            t.due_at or far_future,
-        ))
-        paginator = Paginator(tasks, 15)
+        # 标准视图的数据库分页（性能优化）
+        try:
+            per_page = int(request.GET.get('per_page', 20))
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+
+        paginator = Paginator(tasks_qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
+        
+        # 仅对当前页进行 SLA 计算
+        for t in page_obj:
+            t.is_due_soon = True # By definition of hot filter
+            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+            
     else:
         # 标准排序
         allowed_sorts = {

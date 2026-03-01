@@ -1,0 +1,232 @@
+{% load core_tags permission_tags %}
+<div id="projectListContainer">
+    {% if projects %}
+        <!-- Grid View -->
+        <div id="viewGrid" class="project-grid active">
+            {% for p in projects %}
+                <article class="project-card">
+                    <!-- Link Overlay -->
+                    <a href="{% url 'projects:project_detail' p.pk %}" style="position: absolute; inset: 0; z-index: 1;"></a>
+
+                    <div class="card-status-bar {% if p.is_active %}active{% else %}inactive{% endif %}"></div>
+                    
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="flex: 1; padding-right: 12px;">
+                                <h3 class="project-title">{{ p.name }}</h3>
+                                <span class="project-code">{{ p.code }}</span>
+                            </div>
+                            <span class="phase-badge {% if p.current_phase and '开发' in p.current_phase.phase_name %}phase-dev{% elif p.current_phase and '测试' in p.current_phase.phase_name %}phase-qa{% elif p.current_phase and '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
+                                {{ p.current_phase.phase_name|default:"未开始" }}
+                            </span>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                                <span>进度 / Progress</span>
+                                <span>{{ p.overall_progress }}%</span>
+                            </div>
+                            <div style="height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; background: var(--primary); width: {{ p.overall_progress }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="card-meta">
+                            <div class="meta-item">
+                                {% include "partials/user_avatar.html" with user=p.owner size="20px" font_size="10px" %}
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ p.owner.get_full_name|default:p.owner.username|default:"未分配" }}
+                                </span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-users"></i> {{ p.member_count }} 成员
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer" style="position: relative; z-index: 2;">
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            <div>Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</div>
+                            <div>End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            {% can_manage_project p as user_can_manage %}
+                            {% if user_can_manage %}
+                                <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">编辑</a>
+                            {% endif %}
+                            <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;">进入</a>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        <!-- Table View -->
+        <div id="viewTable" class="project-table-container">
+            <div style="overflow-x: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 300px;">项目名称 / Project Name</th>
+                            <th>负责人 / Owner</th>
+                            <th>阶段 / Phase</th>
+                            <th>进度 / Progress</th>
+                            <th>成员 / Members</th>
+                            <th>日期 / Dates</th>
+                            <th>状态 / Status</th>
+                            <th style="text-align: right;">操作 / Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in projects %}
+                        <tr>
+                            <td>
+                                <div class="cell-info">
+                                    <a href="{% url 'projects:project_detail' p.pk %}" class="cell-title">{{ p.name }}</a>
+                                    <span class="cell-sub">{{ p.code }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    {% include "partials/user_avatar.html" with user=p.owner size="24px" font_size="10px" %}
+                                    <span style="font-size: 13px;">{{ p.owner.get_full_name|default:p.owner.username|default:"--" }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="phase-badge {% if p.current_phase and '开发' in p.current_phase.phase_name %}phase-dev{% elif p.current_phase and '测试' in p.current_phase.phase_name %}phase-qa{% elif p.current_phase and '发布' in p.current_phase.phase_name %}phase-release{% else %}phase-default{% endif %}">
+                                    {{ p.current_phase.phase_name|default:"--" }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px; width: 120px;">
+                                    <div style="flex: 1; height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; width: {{ p.overall_progress }}%; background: var(--primary);"></div>
+                                    </div>
+                                    <span style="font-size: 12px; font-weight: 600;">{{ p.overall_progress }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 13px;">
+                                    <i class="fas fa-users"></i> {{ p.member_count }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-info">
+                                    <span style="font-size: 12px; color: var(--text-secondary);">Start: {{ p.start_date|date:"Y-m-d"|default:"--" }}</span>
+                                    <span style="font-size: 12px; color: var(--text-secondary);">End: {{ p.end_date|date:"Y-m-d"|default:"--" }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if p.is_active %}
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--success); font-weight: 600;">
+                                        <span style="width: 6px; height: 6px; background: var(--success); border-radius: 50%;"></span> Active
+                                    </span>
+                                {% else %}
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); font-weight: 600;">
+                                        <span style="width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%;"></span> Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                    {% can_manage_project p as user_can_manage %}
+                                    {% if user_can_manage %}
+                                        <a href="{% url 'projects:project_edit' p.pk %}" class="btn btn-secondary" style="padding: 4px 8px;" title="编辑">
+                                            <i class="fas fa-pen"></i>
+                                        </a>
+                                    {% endif %}
+                                    <a href="{% url 'projects:project_detail' p.pk %}" class="btn btn-secondary" style="padding: 4px 8px;" title="进入">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-toolbar">
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                共 <span style="font-weight: 700; color: var(--text-main);">{{ page_obj.paginator.count }}</span> 条 / {{ page_obj.paginator.num_pages }} 页
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+                {% if page_obj.has_previous %}
+                    <button type="button" class="page-btn" 
+                            hx-get="{% url 'projects:project_list' %}?page={{ page_obj.previous_page_number }}&q={{ q }}&phase={{ phase_id }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" 
+                            hx-target="#projectListContainer"
+                            hx-push-url="true"
+                            hx-indicator="#loadingOverlay">
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                {% else %}
+                    <button type="button" class="page-btn" disabled>
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                {% endif %}
+                
+                <div class="page-current">{{ page_obj.number }}</div>
+                
+                {% if page_obj.has_next %}
+                    <button type="button" class="page-btn" 
+                            hx-get="{% url 'projects:project_list' %}?page={{ page_obj.next_page_number }}&q={{ q }}&phase={{ phase_id }}&owner={{ owner }}&sort={{ sort_by }}&per_page={{ per_page }}" 
+                            hx-target="#projectListContainer"
+                            hx-push-url="true"
+                            hx-indicator="#loadingOverlay">
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                {% else %}
+                    <button type="button" class="page-btn" disabled>
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <select id="per-page-select" name="per_page" 
+                        hx-get="{% url 'projects:project_list' %}?page=1&q={{ q }}&phase={{ phase_id }}&owner={{ owner }}&sort={{ sort_by }}" 
+                        hx-target="#projectListContainer"
+                        hx-push-url="true"
+                        hx-indicator="#loadingOverlay"
+                        style="width: auto; padding: 6px 24px 6px 12px;">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10 / 页</option>
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20 / 页</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / 页</option>
+                </select>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="number" id="jump-page-input" placeholder="页码" min="1" max="{{ page_obj.paginator.num_pages }}" 
+                           style="width: 60px; text-align: center;" onkeydown="if(event.key === 'Enter') jumpToPage()">
+                    <button type="button" class="btn btn-secondary" style="padding: 6px 12px;" onclick="jumpToPage()">Go</button>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <i class="fas fa-folder-open empty-icon"></i>
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">没有找到相关项目</h3>
+            <p style="margin-bottom: 24px; color: var(--text-secondary);">尝试调整筛选条件，或者创建一个新项目。</p>
+            {% if can_create_project %}
+                <a href="{% url 'projects:project_create' %}" class="btn btn-primary">新建项目</a>
+            {% else %}
+                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">清除筛选</a>
+            {% endif %}
+        </div>
+    {% endif %}
+    
+    <script>
+        // Re-apply view state after HTMX swap
+        (function() {
+            const savedView = localStorage.getItem('project_list_view') || 'grid';
+            // We need to call switchView from the main page scope
+            if (window.switchView) {
+                window.switchView(savedView);
+            }
+        })();
+    </script>
+</div>

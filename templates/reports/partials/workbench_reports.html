@@ -1,0 +1,42 @@
+<div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="section-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-history" style="color: var(--primary);"></i> 近期日报 / Recent Reports
+        </h3>
+        <a href="{% url 'reports:my_reports' %}" style="font-size: 12px; color: var(--primary); text-decoration: none;">全部 &rarr;</a>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--bg-body);">
+                    <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">DATE</th>
+                    <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">ROLE</th>
+                    <th style="padding: 12px 16px; text-align: right; font-size: 12px; color: var(--text-secondary); font-weight: 600;">STATUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recent_reports %}
+                <tr style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;" onclick="window.location.href='{% url 'reports:report_detail' r.id %}'" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 16px; font-weight: 600; color: var(--text-main); font-size: 13px;">{{ r.date|date:"Y-m-d" }}</td>
+                    <td style="padding: 12px 16px; font-size: 13px; color: var(--text-secondary);">{{ r.get_role_display }}</td>
+                    <td style="padding: 12px 16px; text-align: right;">
+                        {% if r.status == 'submitted' %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #ecfdf5; color: #059669; font-size: 11px; font-weight: 600;">已提交</span>
+                        {% elif r.status == 'draft' %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #fffbeb; color: #d97706; font-size: 11px; font-weight: 600;">草稿</span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #f3f4f6; color: #4b5563; font-size: 11px; font-weight: 600;">{{ r.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px;">
+                        暂无记录 / No records
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

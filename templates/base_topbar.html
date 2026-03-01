@@ -6,19 +6,17 @@
     <meta charset="UTF-8">
     <title>{% block title %}团队 / Team{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.loli.net">
-    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
-    <link href="https://fonts.loli.net/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/workreport.css' %}">
     <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <link href="https://cdn.bootcdn.net/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css" rel="stylesheet" />
+    <!-- HTMX -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/htmx/1.9.10/htmx.min.js"></script>
     <!-- jQuery (Required for Select2) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js"></script>
     <style>
         :root {
             /* Modern SaaS Palette (Indigo/Slate) */
@@ -61,6 +59,28 @@
             --border: var(--border-color);
             --accent: var(--warning);
             --primary-2: #06b6d4; /* Cyan 500 */
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: #0f172a;       /* Slate 900 */
+                --bg-card: #1e293b;       /* Slate 800 */
+                --bg-hover: #334155;      /* Slate 700 */
+                
+                --text-main: #f8fafc;     /* Slate 50 */
+                --text-secondary: #cbd5e1;/* Slate 300 */
+                --text-muted: #94a3b8;    /* Slate 400 */
+                
+                --border-color: #334155;  /* Slate 700 */
+                
+                --primary: #6366f1;       /* Indigo 500 (lighter for dark mode) */
+                --primary-hover: #818cf8; /* Indigo 400 */
+                --primary-light: rgba(99, 102, 241, 0.2); /* Indigo 500 with opacity */
+                --primary-text: #e0e7ff;  /* Indigo 100 */
+
+                --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+                --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            }
         }
 
         * { box-sizing: border-box; }

@@ -118,7 +118,7 @@
         <label for="{{ form.password1.id_for_label }}" class="form-label">设置密码 / Password</label>
         {{ form.password1 }}
         
-        <div class="password-strength-meter">
+        <div class="password-strength-meter" role="progressbar" aria-label="Password strength" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="password-strength-bar" id="password-strength-bar"></div>
         </div>
         <div class="strength-text" id="password-score-text">强度评分 / Score: 0/6</div>
@@ -162,9 +162,6 @@
 {% block extra_scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const inputs = document.querySelectorAll('input, select');
-        inputs.forEach(input => input.classList.add('form-input'));
-
         const password1Input = document.getElementById('id_password1');
         const password2Input = document.getElementById('id_password2');
         const strengthBar = document.getElementById('password-strength-bar');
@@ -199,6 +196,7 @@
 
             const percent = (score / 6) * 100;
             strengthBar.style.width = percent + '%';
+            document.querySelector('.password-strength-meter').setAttribute('aria-valuenow', percent);
             
             if (score <= 2) {
                 strengthBar.style.backgroundColor = 'var(--danger)';

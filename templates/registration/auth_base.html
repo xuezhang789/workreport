@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}WorkReport{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             /* Modern SaaS Palette */
@@ -22,6 +19,18 @@
             --radius: 16px;
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: #0f172a;
+                --bg-card: #1e293b;
+                --text-main: #f8fafc;
+                --text-secondary: #cbd5e1;
+                --border-color: #334155;
+                --primary: #6366f1;
+                --primary-hover: #818cf8;
+            }
         }
 
         * {
@@ -109,25 +118,25 @@
             display: block;
             font-size: 13px;
             font-weight: 500;
-            color: #374151;
+            color: var(--text-main);
             margin-bottom: 6px;
         }
 
-        .form-input {
+        input, select, textarea, .form-input {
             width: 100%;
             padding: 12px 16px;
             border: 1px solid var(--border-color);
             border-radius: 10px;
             font-size: 16px; /* Prevent iOS zoom */
             transition: all 0.2s;
-            background-color: #f9fafb;
+            background-color: var(--bg-hover);
             color: var(--text-main);
         }
 
-        .form-input:focus {
+        input:focus, select:focus, textarea:focus, .form-input:focus {
             outline: none;
             border-color: var(--primary);
-            background-color: #fff;
+            background-color: var(--bg-card);
             box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
         }
 

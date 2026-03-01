@@ -1,0 +1,41 @@
+<div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="section-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-list-ul" style="color: var(--primary);"></i> 待办任务 / My Tasks
+        </h3>
+        <a href="{% url 'tasks:task_list' %}" style="font-size: 12px; color: var(--primary); text-decoration: none;">全部 &rarr;</a>
+    </div>
+
+    <div style="padding: 0;">
+        {% if my_tasks %}
+            {% for t in my_tasks %}
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: flex-start; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                <!-- Priority Indicator -->
+                <div style="width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; background: {% if t.priority == 'high' %}var(--danger){% elif t.priority == 'medium' %}var(--warning){% else %}var(--success){% endif %};" title="Priority: {{ t.get_priority_display }}"></div>
+                
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <a href="{% url 'tasks:task_view' t.id %}" style="font-size: 14px; font-weight: 600; color: var(--text-main); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">
+                            {{ t.title }}
+                        </a>
+                        {% if t.due_at %}
+                            <span style="font-size: 12px; color: {% if t.is_overdue %}var(--danger){% else %}var(--text-muted){% endif %}; white-space: nowrap; margin-left: 8px;">
+                                {{ t.due_at|date:"m-d" }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+                        <span style="background: var(--bg-body); padding: 2px 6px; border-radius: 4px;">{{ t.project.code }}</span>
+                        <span>{{ t.get_status_display }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="padding: 32px; text-align: center; color: var(--text-muted);">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎉</div>
+                <div>暂无待办任务 / No pending tasks</div>
+            </div>
+        {% endif %}
+    </div>
+</div>

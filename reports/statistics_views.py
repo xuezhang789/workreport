@@ -80,10 +80,23 @@ def _send_weekly_digest(recipient, stats):
 
 @login_required
 def workbench(request):
-    # 获取用户任务统计 (优化：使用聚合查询代替多次 count)
+    """
+    工作台主视图 (Skeleton)
+    """
+    return render(request, 'reports/workbench_v2.html', {
+        'today': timezone.localdate(),
+        'user': request.user
+    })
+
+@login_required
+def workbench_stats(request):
+    """
+    HTMX: 统计数据概览
+    """
+    # 模拟延迟以展示骨架屏效果 (可选)
+    # time.sleep(0.5)
     
     tasks = Task.objects.filter(user=request.user)
-    
     stats = tasks.aggregate(
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
@@ -94,24 +107,11 @@ def workbench(request):
     
     total = stats['total']
     completed = stats['completed']
-    overdue = stats['overdue']
-    in_progress = stats['in_progress']
-    pending = stats['pending']
     
     completion_rate = (completed / total * 100) if total else 0
-    overdue_rate = (overdue / total * 100) if total else 0
-
-    # 获取今日任务和即将到期任务数量
-    today = timezone.now()
-    today_tasks_count = tasks.filter(due_at__date=today.date()).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
-    upcoming_tasks_count = tasks.filter(
-        due_at__date__gt=today.date(),
-        due_at__date__lte=today.date() + timedelta(days=3)
-    ).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
-
-    # 日报连签和今日日报状态
+    
+    # 日报连签
     today_date = timezone.localdate()
-    # 优化：将连胜检查限制在最近的历史记录（365天）并使用 distinct
     qs_reports = DailyReport.objects.filter(
         user=request.user, 
         status='submitted'
@@ -121,7 +121,6 @@ def workbench(request):
     streak = 0
     curr = today_date
     
-    # 检查今天是否提交以开始连胜计数，否则检查昨天
     if curr in date_set:
         streak += 1
         curr = curr - timedelta(days=1)
@@ -133,20 +132,53 @@ def workbench(request):
         while curr in date_set:
             streak += 1
             curr = curr - timedelta(days=1)
-    
-    # 检查今日是否已提交日报
-    # 优化：如果 today_date 在 date_set 中（因为我们过滤了 status='submitted'），则 has_today_report 为 True
-    
+            
     has_today_report = today_date in date_set
 
-    # 增强数据的项目燃尽图
-    # 优化：直接查询任务以避免繁重的项目分组
-    
+    # 智能引导
+    try:
+        user_role = request.user.profile.position
+    except (Profile.DoesNotExist, AttributeError):
+        user_role = 'dev'
+        
+    # 获取今日和即将到期任务 (用于引导)
+    today = timezone.now()
+    today_tasks_count = tasks.filter(due_at__date=today.date()).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
+    upcoming_tasks_count = tasks.filter(
+        due_at__date__gt=today.date(),
+        due_at__date__lte=today.date() + timedelta(days=3)
+    ).exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).count()
+
+    guidance = generate_workbench_guidance(
+        total, completed, stats['overdue'], stats['in_progress'], stats['pending'],
+        streak, has_today_report, user_role, today_tasks_count, upcoming_tasks_count
+    )
+
+    return render(request, 'reports/partials/workbench_stats.html', {
+        'stats': {
+            'total': total,
+            'completed': completed,
+            'overdue': stats['overdue'],
+            'in_progress': stats['in_progress'],
+            'pending': stats['pending'],
+            'completion_rate': completion_rate,
+        },
+        'streak': streak,
+        'has_today_report': has_today_report,
+        'missing_today': not has_today_report,
+        'guidance': guidance,
+    })
+
+@login_required
+def workbench_projects(request):
+    """
+    HTMX: 项目进度燃尽图
+    """
     task_stats = Task.objects.filter(
         user=request.user,
         project__is_active=True
     ).values(
-        'project__name', 'project__code'
+        'project__name', 'project__code', 'project__id'
     ).annotate(
         total_p=Count('id'),
         completed_p=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
@@ -158,57 +190,48 @@ def workbench(request):
     for stat in task_stats:
         total_p = stat['total_p']
         completed_p = stat['completed_p']
-        overdue_p = stat['overdue_p']
-        in_progress_p = stat['in_progress_p']
+        
         completion_rate_p = (completed_p / total_p * 100) if total_p else 0
         
         project_burndown.append({
             'project': stat['project__name'],
             'code': stat['project__code'],
+            'id': stat['project__id'],
             'total': total_p,
             'completed': completed_p,
-            'in_progress': in_progress_p,
+            'in_progress': stat['in_progress_p'],
             'remaining': total_p - completed_p,
-            'overdue': overdue_p,
+            'overdue': stat['overdue_p'],
             'completion_rate': completion_rate_p,
         })
+        
+    return render(request, 'reports/partials/workbench_projects.html', {
+        'project_burndown': project_burndown
+    })
 
-    # recent reports with status
-    # 具有状态的最近日报
+@login_required
+def workbench_reports(request):
+    """
+    HTMX: 近期日报
+    """
     recent_reports = DailyReport.objects.filter(user=request.user).order_by('-date')[:5]
+    return render(request, 'reports/partials/workbench_reports.html', {
+        'recent_reports': recent_reports
+    })
 
-    # 获取用户角色用于个性化引导
-    try:
-        user_role = request.user.profile.position
-    except (Profile.DoesNotExist, AttributeError):
-        user_role = 'dev'
+@login_required
+def workbench_tasks(request):
+    """
+    HTMX: 我的待办任务 (Top 5 Urgent)
+    """
+    my_tasks = Task.objects.filter(
+        user=request.user
+    ).exclude(
+        status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
+    ).select_related('project').order_by('due_at', '-priority')[:5]
     
-    # 智能引导文案生成
-    guidance = generate_workbench_guidance(
-        total, completed, overdue, in_progress, pending,
-        streak, has_today_report, user_role, today_tasks_count, upcoming_tasks_count
-    )
-
-    return render(request, 'reports/workbench.html', {
-        'task_stats': {
-            'total': total,
-            'completed': completed,
-            'overdue': overdue,
-            'in_progress': in_progress,
-            'pending': pending,
-            'completion_rate': completion_rate,
-            'overdue_rate': overdue_rate,
-        },
-        'today_tasks_count': today_tasks_count,
-        'upcoming_tasks_count': upcoming_tasks_count,
-        'project_burndown': project_burndown,
-        'streak': streak,
-        'has_today_report': has_today_report,
-        'missing_today': not has_today_report,
-        'recent_reports': recent_reports,
-        'guidance': guidance,
-        'user_role': user_role,
-        'today': today_date,
+    return render(request, 'reports/partials/workbench_tasks.html', {
+        'my_tasks': my_tasks
     })
 
 

@@ -646,6 +646,7 @@ def admin_reports(request):
     # 聚合统计数据
     # 优化：使用单次查询替代三次 count() 查询
     # 清除排序以避免开销
+    # 注意：如果不需要总数，可以移除 stats['total']
     stats = reports.order_by().aggregate(
         total=Count('id'),
         submitted=Count(Case(When(status='submitted', then=1), output_field=IntegerField())),

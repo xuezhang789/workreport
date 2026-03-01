@@ -1,0 +1,46 @@
+<div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="section-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-chart-line" style="color: var(--info);"></i> 项目进度 / Project Progress
+        </h3>
+        <span class="status-badge badge-neutral" style="background: var(--bg-body); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px; font-size: 11px;">{{ project_burndown|length }}</span>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--bg-body);">
+                    <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">PROJECT</th>
+                    <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-secondary); font-weight: 600;">DONE</th>
+                    <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-secondary); font-weight: 600;">WIP</th>
+                    <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">PROGRESS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in project_burndown %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px 16px;">
+                        <a href="{% url 'projects:project_detail' row.id %}" style="font-weight: 600; color: var(--text-main); text-decoration: none; display: block;">{{ row.project }}</a>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ row.code }}</div>
+                    </td>
+                    <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">{{ row.completed }}</td>
+                    <td style="padding: 12px 16px; text-align: center;">{{ row.in_progress }}</td>
+                    <td style="padding: 12px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="height: 6px; background: var(--bg-body); width: 60px; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ row.completion_rate }}%; background: {% if row.completion_rate >= 80 %}var(--success){% elif row.completion_rate >= 50 %}var(--warning){% else %}var(--danger){% endif %};"></div>
+                            </div>
+                            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">{{ row.completion_rate|floatformat:0 }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">
+                        暂无项目数据 / No project data
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

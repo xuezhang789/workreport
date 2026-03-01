@@ -1,0 +1,97 @@
+
+<!-- Guidance Banner -->
+{% if guidance.primary %}
+<div class="card" style="border-left: 4px solid var(--primary); display: flex; align-items: flex-start; gap: 16px; padding: 20px; margin-bottom: 32px; background: var(--bg-card); box-shadow: var(--shadow-sm); border-radius: var(--radius-lg);">
+    <div style="font-size: 24px;">
+        {% if guidance.status == 'urgent' %}🚨
+        {% elif guidance.status == 'warning' %}⚠️
+        {% elif guidance.status == 'info' %}💡
+        {% else %}🎯{% endif %}
+    </div>
+    <div style="flex: 1;">
+        <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700; color: var(--text-main);">{{ guidance.primary }}</h3>
+        <p style="margin: 0 0 16px 0; color: var(--text-secondary); font-size: 14px;">{{ guidance.secondary }}</p>
+        
+        {% if guidance.actions %}
+        <div style="display: flex; gap: 12px;">
+            {% for action in guidance.actions %}
+                <a href="{% url action.url %}" class="btn {% if action.priority == 'high' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    {{ action.text }}
+                </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Grid (Compact Row) -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    
+    <!-- Today's Report -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid {% if missing_today %}var(--warning){% else %}var(--border-color){% endif %}; display: flex; flex-direction: column; justify-content: center; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;">
+        {% if missing_today %}
+            <div style="position: absolute; right: -10px; top: -10px; width: 40px; height: 40px; background: #fff7ed; border-radius: 50%; display: grid; place-items: center; color: var(--warning); opacity: 0.5;">⚠️</div>
+        {% else %}
+            <div style="position: absolute; right: -10px; top: -10px; width: 40px; height: 40px; background: #ecfdf5; border-radius: 50%; display: grid; place-items: center; color: var(--success); opacity: 0.5;">✅</div>
+        {% endif %}
+        
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500;">今日日报</div>
+        {% if missing_today %}
+            <a href="{% url 'reports:daily_report_create' %}" style="font-size: 14px; font-weight: 700; color: var(--danger); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                立即提交 <i class="fas fa-arrow-right" style="font-size: 10px;"></i>
+            </a>
+        {% else %}
+            <div style="font-size: 14px; font-weight: 700; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-check"></i> 已完成
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Total Tasks -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-clipboard-list" style="color: var(--text-muted);"></i> 任务总数
+        </div>
+        <div style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.total }}</div>
+    </div>
+
+    <!-- In Progress -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-spinner" style="color: var(--info);"></i> 进行中
+        </div>
+        <div style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.in_progress }}</div>
+    </div>
+
+    <!-- Overdue -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> 逾期
+        </div>
+        <div style="font-size: 20px; font-weight: 700; color: var(--danger);">{{ stats.overdue }}</div>
+    </div>
+
+    <!-- Completion Rate -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-chart-pie" style="color: var(--success);"></i> 完成率
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.completion_rate|floatformat:0 }}</span>
+            <span style="font-size: 12px; color: var(--text-muted);">%</span>
+        </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-fire" style="color: #f59e0b;"></i> 连签
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ streak }}</span>
+            <span style="font-size: 12px; color: var(--text-muted);">天</span>
+        </div>
+    </div>
+
+</div>

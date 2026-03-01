@@ -176,6 +176,9 @@ def project_list(request):
         'can_create_project': can_create_project,
         'per_page': per_page,
     }
+    if request.headers.get('HX-Request'):
+        return render(request, 'reports/partials/project_list_content.html', context)
+
     return render(request, 'reports/project_list.html', context)
 
 @login_required
