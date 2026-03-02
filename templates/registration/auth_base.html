@@ -1,46 +1,83 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}WorkReport{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Mobile optimization for auth pages */
-        input {
-            font-size: 16px !important; /* Prevent iOS zoom */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-field {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .input-field:focus {
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        .btn-primary {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
         }
     </style>
+    {% block extra_styles %}{% endblock %}
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-        <div>
-            <h2 class="mt-2 text-center text-3xl font-extrabold text-gray-900">
+<body class="h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-cover bg-center bg-no-repeat bg-fixed" style="background-image: url('{% static 'images/auth-bg.jpg' %}');">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    
+    <div class="relative sm:mx-auto sm:w-full sm:max-w-md fade-in-up">
+        <div class="text-center mb-8">
+            <div class="mx-auto h-16 w-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/20 mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <svg class="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="text-4xl font-extrabold text-white tracking-tight drop-shadow-lg">
                 WorkReport
             </h2>
-            <p class="mt-2 text-center text-sm text-gray-600">
-                {% block subtitle %}工作日报管理系统 / Work Report System{% endblock %}
-            </p>
-        </div>
-        
-        {% if messages %}
-        <div class="space-y-2">
-            {% for message in messages %}
-            <div class="p-4 rounded-md {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% block content %}
-        {% endblock %}
-        
-        <div class="mt-6 text-center">
-            <p class="text-xs text-gray-400">
-                &copy; {% now "Y" %} WorkReport. All rights reserved.
+            <p class="mt-3 text-base text-slate-200 font-medium">
+                {% block subtitle %}高效研发团队的协作利器 / The Collaboration Tool for High-Performance R&D Teams{% endblock %}
             </p>
         </div>
     </div>
+
+    <div class="relative sm:mx-auto sm:w-full sm:max-w-[480px] fade-in-up" style="animation-delay: 0.1s;">
+        <div class="bg-white/95 backdrop-blur-xl py-8 px-4 shadow-2xl shadow-black/10 sm:rounded-2xl sm:px-10 border border-white/20">
+            {% if messages %}
+            <div class="space-y-4 mb-6">
+                {% for message in messages %}
+                <div class="p-4 rounded-xl flex items-start gap-3 shadow-sm {% if message.tags == 'error' %}bg-red-50 text-red-700 ring-1 ring-red-100{% else %}bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100{% endif %}">
+                    {% if message.tags == 'error' %}
+                    <svg class="h-5 w-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {% else %}
+                    <svg class="h-5 w-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {% endif %}
+                    <span class="text-sm font-medium">{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+
+        <div class="mt-8 text-center space-y-2 fade-in-up" style="animation-delay: 0.2s;">
+            <p class="text-xs text-slate-300/80 font-medium">
+                &copy; {% now "Y" %} WorkReport. 让每一次交付都值得信赖 / Make Every Delivery Trustworthy.
+            </p>
+        </div>
+    </div>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

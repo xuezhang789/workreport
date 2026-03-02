@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Max
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -31,52 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def _send_weekly_digest(recipient, stats):
-    """
-    发送周报邮件给指定收件人。
-    """
-    try:
-        subject = f"周报 / Weekly Digest: {timezone.localdate().isoformat()}"
-        
-        # 简单构建邮件内容 (目前为纯文本，可升级为 HTML)
-        # 指标摘要
-        total = stats.get('overall_total', 0)
-        completed = stats.get('overall_completed', 0)
-        overdue = stats.get('overall_overdue', 0)
-        rate = stats.get('overall_rate', 0)
-        
-        message = f"""
-        你好 / Hello,
-        
-        这是您的本周工作简报 / Here is your weekly work digest:
-        
-        --- 总体概况 / Overview ---
-        任务总数 / Total Tasks: {total}
-        已完成 / Completed: {completed}
-        逾期任务 / Overdue: {overdue}
-        完成率 / Completion Rate: {rate:.1f}%
-        
-        --- 项目详情 / Projects ---
-        """
-        
-        for p in stats.get('project_stats', []):
-            message += f"\nProject: {p['name']}\n"
-            message += f"  Total: {p['total']}, Done: {p['completed']}, Overdue: {p['overdue']}\n"
-            
-        message += "\n\n请登录系统查看详情 / Please login to view details."
-        
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [recipient],
-            fail_silently=False,
-        )
-        return True
-    except Exception as e:
-        # Log error in production
-        logger.exception(f"Failed to send weekly digest: {e}") # 使用 logger.exception 记录堆栈信息
-        return False
+from reports.services.notification_service import send_weekly_digest_email
 
 @login_required
 def workbench(request):
@@ -233,7 +188,7 @@ def workbench_tasks(request):
         user=request.user
     ).exclude(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
-    ).select_related('project').annotate(
+    ).select_related('project', 'sla_timer').annotate(
         priority_val=Case(
             When(priority='high', then=3),
             When(priority='medium', then=2),
@@ -305,7 +260,7 @@ def stats(request):
             last_report_dates = DailyReport.objects.filter(
                 user_id__in=all_missing_ids, 
                 status='submitted'
-            ).values('user_id').annotate(last_date=models.Max('date'))
+            ).values('user_id').annotate(last_date=Max('date'))
             
             last_map = {item['user_id']: item['last_date'] for item in last_report_dates}
         else:
@@ -437,41 +392,65 @@ def stats(request):
         role_counts = qs.values_list('role').annotate(c=Count('id')).order_by('-c')
         top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
         cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
-    sla_urgent_tasks = []
     
-    # 预取 SLA 设置一次
+    # 优化：SLA 紧急任务缓存
+    sla_cache_key = f"stats_sla_urgent_v1_{target_date}_{project_filter}_{role_filter}"
+    sla_urgent_tasks = cache.get(sla_cache_key)
+    
+    if sla_urgent_tasks is None:
+        sla_urgent_tasks = []
+        
+        # 预取 SLA 设置一次
+        cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
+        sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
+        cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
+        # Parse thresholds to dict
+        sla_thresholds_val = get_sla_thresholds(cfg_thresholds.value if cfg_thresholds else None)
+    
+        # Optimization: Filter tasks at DB level to reduce loop size
+        # Only check tasks that might be overdue or tight
+        # Logic similar to performance_board optimization
+        
+        max_threshold = sla_thresholds_val.get('amber', 4)
+        # Check tasks due within (threshold + buffer) or created long ago (if no due date)
+        cutoff = timezone.now() + timedelta(hours=max_threshold + 1)
+        default_sla = sla_hours_val or 48
+        created_cutoff = cutoff - timedelta(hours=default_sla)
+    
+        sla_candidates = Task.objects.select_related('project', 'user', 'sla_timer').exclude(
+            status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
+        ).filter(
+            Q(due_at__lte=cutoff) | 
+            (Q(due_at__isnull=True) & Q(created_at__lte=created_cutoff))
+        )
+        
+        # 如果有项目过滤，在这里应用
+        if project_filter and project_filter.isdigit():
+            sla_candidates = sla_candidates.filter(project_id=int(project_filter))
+        
+        # 如果有角色过滤
+        if role_filter:
+            sla_candidates = sla_candidates.filter(user__profile__position=role_filter)
+    
+        for t in sla_candidates.iterator():
+            info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
+            if info and info.get('status') in ('tight', 'overdue'):
+                t.sla_info = info
+                sla_urgent_tasks.append(t)
+        sla_urgent_tasks.sort(key=lambda t: (
+            t.sla_info.get('sort', 3),
+            t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
+            -t.created_at.timestamp(),
+        ))
+        
+        # 缓存 5 分钟
+        cache.set(sla_cache_key, sla_urgent_tasks, 300)
+
+    # 为了模板中获取 SLA 配置用于显示（如果不从缓存加载）
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
     sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
-    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
-
-    # Optimization: Filter tasks at DB level to reduce loop size
-    # Only check tasks that might be overdue or tight
-    # Logic similar to performance_board optimization
-    
-    max_threshold = (json.loads(sla_thresholds_val) if sla_thresholds_val else {}).get('amber', 4)
-    # Check tasks due within (threshold + buffer) or created long ago (if no due date)
-    cutoff = timezone.now() + timedelta(hours=max_threshold + 1)
-    default_sla = sla_hours_val or 48
-    created_cutoff = cutoff - timedelta(hours=default_sla)
-
-    sla_candidates = Task.objects.select_related('project', 'user', 'sla_timer').exclude(
-        status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
-    ).filter(
-        Q(due_at__lte=cutoff) | 
-        (Q(due_at__isnull=True) & Q(created_at__lte=created_cutoff))
-    )
-
-    for t in sla_candidates.iterator():
-        info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-        if info and info.get('status') in ('tight', 'overdue'):
-            t.sla_info = info
-            sla_urgent_tasks.append(t)
-    sla_urgent_tasks.sort(key=lambda t: (
-        t.sla_info.get('sort', 3),
-        t.sla_info.get('remaining_hours') if t.sla_info.get('remaining_hours') is not None else 9999,
-        -t.created_at.timestamp(),
-    ))
+    thresholds = get_sla_thresholds(cfg_thresholds.value if cfg_thresholds else None)
 
     return render(request, 'reports/stats.html', {
         'metrics': metrics,
@@ -646,7 +625,7 @@ def performance_board(request):
         if not recipient:
             messages.error(request, "请先在个人中心绑定邮箱 / Please bind email first.")
         else:
-            sent = _send_weekly_digest(recipient, stats)
+            sent = send_weekly_digest_email(request.user, stats)
             if sent:
                 messages.success(request, "周报已发送到绑定邮箱 / Weekly digest sent.")
             else:

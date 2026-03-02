@@ -327,6 +327,12 @@ def account_settings(request):
             else:
                 messages.error(request, "输入有误，请检查 / Invalid input")
 
+        elif action == 'cancel_email_change':
+            request.session.pop('email_verification', None)
+            request.session.modified = True
+            messages.info(request, "已取消邮箱修改 / Email change cancelled")
+            return redirect('core:account_settings')
+
     # 计算用户统计数据
     today = timezone.now().date()
     week_start = today - timedelta(days=today.weekday())

@@ -186,24 +186,39 @@ def stats_export(request):
         projects_qs = projects_qs.filter(id__in=accessible_projects).distinct()
 
     if export_type == 'project_sla':
-        tasks_qs = Task.objects.select_related('project')
-        # 仅显示有权限的项目任务
+        # 优化：使用聚合一次性获取所有项目的统计数据，避免 N+1 查询
+        # Optimization: Use aggregation to get stats for all projects in one query
+        
+        # 基础任务查询
+        base_tasks = Task.objects.all()
         if not request.user.is_superuser:
-            tasks_qs = tasks_qs.filter(project__in=projects_qs)
+            base_tasks = base_tasks.filter(project__in=projects_qs)
             
-        projects = projects_qs.order_by('name')
+        # 使用 FilteredRelation 或简单的条件聚合
+        # 注意：projects_qs 已经过滤了权限
+        
+        from django.db.models import Case, When, IntegerField
+        
+        projects = projects_qs.annotate(
+            total_tasks=Count('tasks', filter=Q(tasks__in=base_tasks)),
+            completed_tasks=Count('tasks', filter=Q(tasks__in=base_tasks, tasks__status='completed')),
+            overdue_tasks=Count('tasks', filter=Q(tasks__in=base_tasks, tasks__status='overdue')),
+            sla_ok_tasks=Count('tasks', filter=Q(
+                tasks__in=base_tasks,
+                tasks__status='completed',
+                tasks__due_at__isnull=False,
+                tasks__completed_at__isnull=False,
+                tasks__completed_at__lte=F('tasks__due_at')
+            ))
+        ).order_by('name')
+
         rows = []
         for p in projects:
-            total = tasks_qs.filter(project=p).count()
-            completed = tasks_qs.filter(project=p, status='completed').count()
-            overdue = tasks_qs.filter(project=p, status='overdue').count()
-            within_sla = tasks_qs.filter(
-                project=p,
-                status='completed',
-                due_at__isnull=False,
-                completed_at__isnull=False,
-                completed_at__lte=F('due_at')
-            ).count()
+            total = p.total_tasks
+            completed = p.completed_tasks
+            overdue = p.overdue_tasks
+            within_sla = p.sla_ok_tasks
+            
             sla_rate = (within_sla / completed * 100) if completed else 0
             rows.append([
                 p.name,
@@ -248,19 +263,43 @@ def stats_export(request):
         qs = DailyReport.objects.filter(date=target_date)
         todays_user_ids = set(qs.values_list('user_id', flat=True))
         active_projects = projects_qs.prefetch_related('members', 'managers')
-        rows = []
+        
+        # Optimization: Collect all missing users first to avoid N+1
+        missing_user_ids = set()
+        project_missing_map = {} # project_id -> list of missing user ids
+        
         for p in active_projects:
-            expected_users = set(p.members.values_list('id', flat=True)) | set(p.managers.values_list('id', flat=True))
+            # Use .all() to utilize prefetch_related, avoid values_list which hits DB
+            members_ids = {u.id for u in p.members.all()}
+            managers_ids = {u.id for u in p.managers.all()}
+            expected_users = members_ids | managers_ids
+            
             if p.owner_id:
                 expected_users.add(p.owner_id)
-            missing_ids = [uid for uid in expected_users if uid not in todays_user_ids]
-            if missing_ids:
-                users = get_user_model().objects.filter(id__in=missing_ids)
+            
+            p_missing = [uid for uid in expected_users if uid not in todays_user_ids]
+            if p_missing:
+                missing_user_ids.update(p_missing)
+                project_missing_map[p.id] = p_missing
+        
+        # Fetch all missing users in one query
+        users_map = {}
+        if missing_user_ids:
+            users_qs = get_user_model().objects.filter(id__in=missing_user_ids)
+            users_map = {u.id: u for u in users_qs}
+            
+        rows = []
+        for p in active_projects:
+            p_missing_ids = project_missing_map.get(p.id, [])
+            if p_missing_ids:
+                # Get user objects from map
+                missing_users = [users_map[uid] for uid in p_missing_ids if uid in users_map]
                 rows.append([
                     p.name,
-                    len(missing_ids),
-                    ", ".join([u.get_full_name() or u.username for u in users]),
+                    len(missing_users),
+                    ", ".join([u.get_full_name() or u.username for u in missing_users]),
                 ])
+                
         header = ["项目", "缺报人数", "名单"]
         filename = f"missing_reports_{target_date}.csv"
 

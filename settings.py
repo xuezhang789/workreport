@@ -151,8 +151,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'collected_static'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    BASE_DIR / 'staticfiles',
+]
 
 # Whitenoise 静态文件存储配置
 # Whitenoise configuration

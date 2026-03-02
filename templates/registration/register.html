@@ -1,188 +1,195 @@
 {% extends "registration/auth_base.html" %}
 
 {% block title %}注册 / Register{% endblock %}
+{% block subtitle %}加入我们，开启高效研发之旅 <br /> Join us and start efficient collaboration{% endblock %}
 
 {% block extra_styles %}
 <style>
-    /* Password Strength Overrides for New Theme */
-    .password-strength-meter {
-        height: 4px;
-        background-color: #e5e7eb;
-        border-radius: 2px;
-        margin-top: 8px;
-        overflow: hidden;
-    }
+    /* New Theme Overrides */
     .password-strength-bar {
-        height: 100%;
-        width: 0;
         transition: width 0.3s ease, background-color 0.3s ease;
     }
-    .strength-text {
-        font-size: 11px;
-        margin-top: 4px;
-        text-align: right;
-        font-weight: 500;
-        color: var(--text-secondary);
-    }
-    .password-requirements {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4px;
-        margin-top: 8px;
-    }
-    @media (max-width: 360px) {
-        .password-requirements { grid-template-columns: 1fr; }
-    }
     .requirement {
-        font-size: 11px;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        opacity: 0.7;
+        opacity: 0.5;
+        transition: all 0.2s;
     }
     .requirement.met {
-        color: var(--success);
-        font-weight: 600;
         opacity: 1;
-    }
-    .label-hint {
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-top: 4px;
-        opacity: 0.8;
-    }
-
-    /* Mobile Optimizations */
-    @media (max-width: 640px) {
-        input[type="text"], 
-        input[type="email"], 
-        input[type="password"],
-        select {
-            min-height: 48px !important;
-            font-size: 16px !important; /* Prevent zoom */
-            padding: 12px !important;
-        }
-        .btn {
-            min-height: 48px !important;
-            font-size: 16px !important;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .password-requirements {
-            grid-template-columns: 1fr; /* Stack requirements on mobile */
-        }
+        color: #16a34a; /* text-green-600 */
+        font-weight: 500;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="auth-header">
-    <h1 class="auth-title">创建账户 / Create Account</h1>
-    <p class="auth-subtitle">Join us to start collaborating efficiently</p>
-</div>
-
-{% if form.non_field_errors %}
-    <div class="alert alert-danger">
-        {% for error in form.non_field_errors %}
-            <span>{{ error }}</span>
-        {% endfor %}
-    </div>
-{% endif %}
-
-<form method="post" action="{% url 'core:register' %}" novalidate id="register-form">
+<form method="post" action="{% url 'core:register' %}" novalidate id="register-form" class="space-y-5">
     {% csrf_token %}
     
-    <div class="form-group">
-        <label for="invitation_code" class="form-label">邀请码 / Invitation Code</label>
-        <input type="text" name="invitation_code" id="invitation_code" class="form-input" 
-               value="{{ invitation_code }}" required 
-               placeholder="Enter invitation code"
-               {% if invitation_code %}readonly style="background-color: #f3f4f6;"{% endif %}>
-        <div class="label-hint">注册需要有效的邀请码 / Registration requires a valid invitation code</div>
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.username.id_for_label }}" class="form-label">用户名 / Username</label>
-        {{ form.username }}
-        <div class="label-hint">唯一标识，建议使用英文字母和数字 / Unique ID, letters and numbers recommended</div>
-        {% if form.username.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.full_name.id_for_label }}" class="form-label">姓名(昵称) / Full Name(Nickname)</label>
-        {{ form.full_name }}
-        {% if form.full_name.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.full_name.errors.0 }}</div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.email.id_for_label }}" class="form-label">邮箱 / Email</label>
-        {{ form.email }}
-        {% if form.email.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.email.errors.0 }}</div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.position.id_for_label }}" class="form-label">职位 / Position</label>
-        {{ form.position }}
-        {% if form.position.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.position.errors.0 }}</div>
-        {% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.password1.id_for_label }}" class="form-label">设置密码 / Password</label>
-        {{ form.password1 }}
-        
-        <div class="password-strength-meter" role="progressbar" aria-label="Password strength" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-            <div class="password-strength-bar" id="password-strength-bar"></div>
+    {% if form.non_field_errors %}
+    <div class="rounded-md bg-red-50 p-4 border border-red-200">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">提交错误 / Error</h3>
+                <div class="mt-2 text-sm text-red-700">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-        <div class="strength-text" id="password-score-text">强度评分 / Score: 0/6</div>
+    </div>
+    {% endif %}
+    
+    <div>
+        <label for="invitation_code" class="block text-sm font-medium text-slate-700">邀请码 / Invitation Code</label>
+        <div class="mt-1">
+            <input type="text" name="invitation_code" id="invitation_code" 
+                   class="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm input-field disabled:bg-slate-100 disabled:text-slate-500"
+                   value="{{ invitation_code }}" required 
+                   placeholder="请输入团队邀请码 / Enter Team Invitation Code"
+                   {% if invitation_code %}readonly{% endif %}>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">注册需要有效的邀请码，请联系管理员获取 / Valid invitation code required.</p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-y-5 gap-x-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+            <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-slate-700">用户名 / Username</label>
+            <div class="mt-1">
+                {{ form.username }}
+            </div>
+            <p class="mt-1 text-xs text-slate-500">唯一标识，建议使用英文字母和数字 / Unique ID, letters & numbers</p>
+            {% if form.username.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.username.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.full_name.id_for_label }}" class="block text-sm font-medium text-slate-700">昵称 / Nickname</label>
+            <div class="mt-1">
+                {{ form.full_name }}
+            </div>
+            {% if form.full_name.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.full_name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.position.id_for_label }}" class="block text-sm font-medium text-slate-700">职位 / Position</label>
+            <div class="mt-1">
+                {{ form.position }}
+            </div>
+            {% if form.position.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.position.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-slate-700">邮箱 / Email</label>
+        <div class="mt-1">
+            {{ form.email }}
+        </div>
+        {% if form.email.errors %}
+            <p class="mt-1 text-xs text-red-600">{{ form.email.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-slate-700">设置密码 / Password</label>
+        <div class="mt-1 relative">
+            {{ form.password1 }}
+        </div>
         
-        <div class="password-requirements">
-            <div class="requirement" id="req-length-8">✓ 8+ Chars</div>
-            <div class="requirement" id="req-length-12">✓ 12+ Chars</div>
-            <div class="requirement" id="req-upper">✓ Uppercase</div>
-            <div class="requirement" id="req-lower">✓ Lowercase</div>
-            <div class="requirement" id="req-number">✓ Number</div>
-            <div class="requirement" id="req-symbol">✓ Symbol</div>
+        <div class="mt-2 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+            <div class="h-full bg-red-500 w-0 password-strength-bar" id="password-strength-bar"></div>
+        </div>
+        <div class="flex justify-between items-center mt-1">
+            <span class="text-xs text-slate-500" id="password-score-text">强度: 弱 / Weak</span>
+        </div>
+        
+        <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
+            <div class="requirement flex items-center gap-1" id="req-length-8">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 8+ 字符 / Chars
+            </div>
+            <div class="requirement flex items-center gap-1" id="req-length-12">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 12+ 字符 / Chars
+            </div>
+            <div class="requirement flex items-center gap-1" id="req-upper">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 大写 / Uppercase
+            </div>
+            <div class="requirement flex items-center gap-1" id="req-lower">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 小写 / Lowercase
+            </div>
+            <div class="requirement flex items-center gap-1" id="req-number">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 数字 / Number
+            </div>
+            <div class="requirement flex items-center gap-1" id="req-symbol">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> 符号 / Symbol
+            </div>
         </div>
 
         {% if form.password1.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.password1.errors.0 }}</div>
+            <p class="mt-1 text-xs text-red-600">{{ form.password1.errors.0 }}</p>
         {% endif %}
     </div>
 
-    <div class="form-group">
-        <label for="{{ form.password2.id_for_label }}" class="form-label">确认密码 / Confirm Password</label>
-        {{ form.password2 }}
+    <div>
+        <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-slate-700">确认密码 / Confirm Password</label>
+        <div class="mt-1">
+            {{ form.password2 }}
+        </div>
         {% if form.password2.errors %}
-            <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.password2.errors.0 }}</div>
+            <p class="mt-1 text-xs text-red-600">{{ form.password2.errors.0 }}</p>
         {% endif %}
     </div>
 
-    <button type="submit" class="btn btn-primary" id="register-btn">
-        创建账户 / Create Account
-    </button>
+    <div class="pt-2">
+        <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:scale-[1.02]" id="register-btn">
+            创建账户 / Create Account
+        </button>
+    </div>
 </form>
 
-<div class="auth-footer">
-    <p>
-        已有账号？ / Already have an account? 
-        <a href="{% url 'core:login' %}" class="auth-link">返回登录 / Back to login</a>
-    </p>
+<div class="mt-6">
+    <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-slate-200"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-slate-500">
+                已有账号？ / Already have an account?
+            </span>
+        </div>
+    </div>
+    <div class="mt-6 text-center">
+        <a href="{% url 'core:login' %}" class="font-medium text-indigo-600 hover:text-indigo-500">
+            返回登录 / Back to login
+        </a>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Apply Tailwind classes to Django form inputs dynamically
+        const inputs = document.querySelectorAll('input:not([type="checkbox"]):not([type="hidden"]):not([type="submit"]):not([readonly])');
+        const selects = document.querySelectorAll('select');
+        
+        const inputClasses = ['appearance-none', 'block', 'w-full', 'px-3', 'py-2', 'border', 'border-slate-300', 'rounded-md', 'shadow-sm', 'placeholder-slate-400', 'focus:outline-none', 'focus:ring-indigo-500', 'focus:border-indigo-500', 'sm:text-sm', 'input-field'];
+        
+        [...inputs, ...selects].forEach(el => {
+            if (!el.classList.contains('input-field')) {
+                el.classList.add(...inputClasses);
+            }
+        });
+
         const password1Input = document.getElementById('id_password1');
         const password2Input = document.getElementById('id_password2');
         const strengthBar = document.getElementById('password-strength-bar');
@@ -217,19 +224,22 @@
 
             const percent = (score / 6) * 100;
             strengthBar.style.width = percent + '%';
-            document.querySelector('.password-strength-meter').setAttribute('aria-valuenow', percent);
             
-            if (score <= 2) {
-                strengthBar.style.backgroundColor = 'var(--danger)';
-            } else if (score <= 4) {
-                strengthBar.style.backgroundColor = '#f59e0b'; // warning
-            } else {
-                strengthBar.style.backgroundColor = 'var(--success)';
+            let colorClass = 'bg-red-500';
+            let text = '强度: 弱 / Weak';
+            
+            if (score > 4) {
+                colorClass = 'bg-green-500';
+                text = '强度: 强 / Strong';
+            } else if (score > 2) {
+                colorClass = 'bg-yellow-500';
+                text = '强度: 中 / Medium';
             }
-
+            
+            strengthBar.className = `h-full w-0 password-strength-bar ${colorClass}`;
             if (scoreText) {
-                scoreText.textContent = `强度评分 / Score: ${score}/6 (Min ${MIN_SCORE})`;
-                scoreText.style.color = score >= MIN_SCORE ? 'var(--success)' : 'var(--danger)';
+                scoreText.textContent = `${text} (${score}/6)`;
+                scoreText.className = `text-xs ${score >= MIN_SCORE ? 'text-green-600' : 'text-slate-500'}`;
             }
             return score;
         }
@@ -243,10 +253,10 @@
         function checkPasswordMatch() {
             if (password2Input.value && password1Input.value !== password2Input.value) {
                 password2Input.setCustomValidity('密码不匹配 / Passwords do not match');
-                password2Input.style.borderColor = 'var(--danger)';
+                password2Input.classList.add('border-red-300', 'text-red-900', 'placeholder-red-300', 'focus:border-red-500', 'focus:ring-red-500');
             } else {
                 password2Input.setCustomValidity('');
-                password2Input.style.borderColor = '';
+                password2Input.classList.remove('border-red-300', 'text-red-900', 'placeholder-red-300', 'focus:border-red-500', 'focus:ring-red-500');
             }
         }
 
@@ -260,11 +270,11 @@
                 const passwordStrength = checkPasswordStrength(password1Input.value);
                 if (passwordStrength < MIN_SCORE) {
                     e.preventDefault();
-                    alert('密码强度不足 / Password strength insufficient');
+                    alert('密码强度不足，请增加密码复杂性 / Password strength insufficient');
                     return false;
                 }
                 registerBtn.disabled = true;
-                registerBtn.innerHTML = '创建中... / Creating...';
+                registerBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 创建中...';
                 setTimeout(() => {
                     registerBtn.disabled = false;
                     registerBtn.innerHTML = '创建账户 / Create Account';
@@ -283,17 +293,18 @@
                         .then(data => {
                             if (!data.available) {
                                 this.setCustomValidity(data.reason);
-                                this.style.borderColor = 'var(--danger)';
+                                this.classList.add('border-red-300', 'text-red-900', 'focus:border-red-500', 'focus:ring-red-500');
                             } else {
                                 this.setCustomValidity('');
-                                this.style.borderColor = 'var(--success)';
+                                this.classList.remove('border-red-300', 'text-red-900', 'focus:border-red-500', 'focus:ring-red-500');
+                                this.classList.add('border-green-300', 'focus:border-green-500', 'focus:ring-green-500');
                             }
                         });
                 }
             });
              usernameInput.addEventListener('input', function() {
                 this.setCustomValidity('');
-                this.style.borderColor = '';
+                this.classList.remove('border-red-300', 'text-red-900', 'focus:border-red-500', 'focus:ring-red-500');
             });
         }
     });

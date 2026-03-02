@@ -44,6 +44,7 @@ def _invalidate_stats_cache(sender=None, instance=None, **kwargs):
         # 尝试使用模式删除（例如 django-redis）
         cache.delete_pattern("stats_*")
         cache.delete_pattern("project_stats_*")
+        cache.delete_pattern("admin_task_stats_*")
     except (AttributeError, Exception):
         # 对于不支持 delete_pattern 的后端的回退（例如测试中的 LocMemCache）
         cache.clear()

@@ -755,9 +755,12 @@
                 <form method="post" id="email-form">
                     {% csrf_token %}
                     {% if pending_email %}
-                        <div class="alert alert-warning" style="max-width: 600px;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            <div>验证码已发送至 / Code sent to <strong>{{ pending_email.email }}</strong></div>
+                        <div class="alert alert-warning" style="max-width: 600px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                <div>验证码已发送至 / Code sent to <strong>{{ pending_email.email }}</strong></div>
+                            </div>
+                            <button type="submit" name="action" value="cancel_email_change" class="btn btn-link btn-sm" formnovalidate style="color: inherit; text-decoration: underline; padding: 0; border: none; font-size: 13px;">更换 / Change</button>
                         </div>
                         <input type="hidden" name="email" value="{{ pending_email.email }}">
                     {% else %}
@@ -832,6 +835,13 @@
 
                 <div class="form-group" style="max-width: 100%;">
                     <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <label class="setting-option-card">
+                            <input id="notify-email-instantly" type="checkbox" class="setting-checkbox">
+                            <div class="setting-text">
+                                <span class="setting-title">重要邮件通知 / Email Alerts</span>
+                                <span class="setting-desc">接收任务分配、状态变更、被提及等即时邮件通知。<br> Receive instant emails for task assignments, updates, and mentions.</span>
+                            </div>
+                        </label>
                         <label class="setting-option-card">
                             <input id="notify-email-digest" type="checkbox" class="setting-checkbox">
                             <div class="setting-text">
@@ -1096,12 +1106,14 @@
             });
         }
 
+        const notifyEmailInstantly = document.getElementById('notify-email-instantly');
         const notifyEmailDigest = document.getElementById('notify-email-digest');
         const notifyInapp = document.getElementById('notify-inapp');
         const notifySave = document.getElementById('notify-save');
         prefGet('notify', (data) => {
+            if (notifyEmailInstantly) notifyEmailInstantly.checked = (data.email_instantly !== false); // Default True
             if (notifyEmailDigest) notifyEmailDigest.checked = !!data.email_digest;
-            if (notifyInapp) notifyInapp.checked = !!data.inapp;
+            if (notifyInapp) notifyInapp.checked = (data.inapp !== false); // Default True
         });
         if (notifySave) {
             notifySave.addEventListener('click', () => {
@@ -1110,7 +1122,11 @@
                 btn.disabled = true;
                 btn.innerText = '保存中... / Saving...';
                 
-                prefSave('notify', { email_digest: !!notifyEmailDigest.checked, inapp: !!notifyInapp.checked }, (r) => {
+                prefSave('notify', { 
+                    email_instantly: !!notifyEmailInstantly.checked,
+                    email_digest: !!notifyEmailDigest.checked, 
+                    inapp: !!notifyInapp.checked 
+                }, (r) => {
                     btn.disabled = false;
                     btn.innerText = originalText;
                     if (r.ok) {

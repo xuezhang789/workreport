@@ -15,6 +15,7 @@ from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.core.cache import cache
 from django.urls import reverse
 
 from projects.models import Project
@@ -606,221 +607,236 @@ def admin_task_stats(request):
     # --- 3. KPI 计算 (Optimized) ---
     # Optimization: Use single aggregate query for all metrics instead of multiple count() queries
     
-    # 3.1 Construct Aggregation
-    aggs = {}
+    # Cache key for statistics
+    cache_key = f"admin_task_stats_data_v3_{request.user.id}_{period}_{start_date}_{end_date}_{project_id}_{user_id}_{role}_{q}"
+    stats_data = cache.get(cache_key)
     
-    # New Tasks (Current)
-    new_q = Q(created_at__date__range=(start_date, end_date)) if (start_date and end_date) else Q()
-    aggs['new'] = Count('pk', filter=new_q)
-    
-    # Done Tasks (Current)
-    done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])
-    if start_date and end_date:
-        done_q &= Q(completed_at__date__range=(start_date, end_date))
-    aggs['done'] = Count('pk', filter=done_q)
-    
-    # Overdue (Snapshot - Current)
-    now = timezone.now()
-    overdue_q = Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=now)
-    aggs['overdue'] = Count('pk', filter=overdue_q)
-    
-    # On Time (Current)
-    # Done & Has Due & Completed <= Due
-    with_due_q = done_q & Q(due_at__isnull=False)
-    on_time_q = with_due_q & Q(completed_at__lte=F('due_at'))
-    
-    aggs['on_time'] = Count('pk', filter=on_time_q)
-    aggs['with_due'] = Count('pk', filter=with_due_q)
-    
-    # Avg Duration (Current)
-    aggs['avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=done_q)
-
-    # Previous Period Metrics
-    if prev_start_date:
-        # Prev New
-        prev_new_q = Q(created_at__date__range=(prev_start_date, prev_end_date))
-        aggs['prev_new'] = Count('pk', filter=prev_new_q)
+    if stats_data is None:
+        # 3.1 Construct Aggregation
+        aggs = {}
         
-        # Prev Done
-        prev_done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__date__range=(prev_start_date, prev_end_date))
-        aggs['prev_done'] = Count('pk', filter=prev_done_q)
+        # New Tasks (Current)
+        new_q = Q(created_at__date__range=(start_date, end_date)) if (start_date and end_date) else Q()
+        aggs['new'] = Count('pk', filter=new_q)
         
-        # Prev On Time
-        prev_with_due_q = prev_done_q & Q(due_at__isnull=False)
-        prev_on_time_q = prev_with_due_q & Q(completed_at__lte=F('due_at'))
+        # Done Tasks (Current)
+        done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])
+        if start_date and end_date:
+            done_q &= Q(completed_at__date__range=(start_date, end_date))
+        aggs['done'] = Count('pk', filter=done_q)
         
-        aggs['prev_on_time'] = Count('pk', filter=prev_on_time_q)
-        aggs['prev_with_due'] = Count('pk', filter=prev_with_due_q)
+        # Overdue (Snapshot - Current)
+        now = timezone.now()
+        overdue_q = Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=now)
+        aggs['overdue'] = Count('pk', filter=overdue_q)
         
-        # Prev Avg Duration
-        aggs['prev_avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=prev_done_q)
-
-    # Execute Aggregation
-    results = base_tasks.aggregate(**aggs)
-
-    # 3.2 Extract Results
-    metric_new = results.get('new', 0)
-    metric_done = results.get('done', 0)
-    metric_overdue = results.get('overdue', 0)
-    metric_on_time = results.get('on_time', 0)
-    tasks_with_due_in_period = results.get('with_due', 0)
-    
-    avg_dur = results.get('avg_dur')
-    metric_avg_time = avg_dur.total_seconds() / 3600 if avg_dur else 0
-    
-    prev_new = results.get('prev_new', 0)
-    prev_done = results.get('prev_done', 0)
-    prev_on_time = results.get('prev_on_time', 0)
-    prev_tasks_with_due = results.get('prev_with_due', 0)
-    
-    prev_avg_dur = results.get('prev_avg_dur')
-    prev_avg_time = prev_avg_dur.total_seconds() / 3600 if prev_avg_dur else 0
-
-    # 3.3 Derived Rates
-    rate_throughput = (metric_done / metric_new * 100) if metric_new else 0
-    prev_rate = (prev_done / prev_new * 100) if prev_new else 0
-    
-    rate_on_time = (metric_on_time / tasks_with_due_in_period * 100) if tasks_with_due_in_period else 0
-    prev_rate_on_time = (prev_on_time / prev_tasks_with_due * 100) if prev_tasks_with_due else 0
-
-    # 增长计算
-    def calc_growth(current, previous):
-        if not previous:
-            return 100 if current > 0 else 0
-        return round(((current - previous) / previous) * 100, 1)
-
-    growth_new = calc_growth(metric_new, prev_new)
-    growth_done = calc_growth(metric_done, prev_done)
-    growth_rate = round(rate_throughput - prev_rate, 1) # 百分比绝对差
-    growth_on_time = round(rate_on_time - prev_rate_on_time, 1)
-    growth_avg_time = round(metric_avg_time - prev_avg_time, 1) # 小时绝对差
-
-    # --- 4. 图表: 趋势分析 ---
-    # 显示最近 14/30 天，无论过滤器如何？或者匹配过滤器？
-    # 如果选择 "本月"，显示该月的每日趋势。
-    # 如果 "本周"，显示本周每日。
-    # 如果 "今天"，也许每小时？（目前太复杂）。
-    # 默认为：如果范围 < 60 天，每日。否则每周/每月。
-    
-    chart_start = start_date or (today - timedelta(days=29))
-    chart_end = end_date or today
-    days_diff = (chart_end - chart_start).days + 1
-    
-    trend_labels = []
-    trend_created = []
-    trend_completed = []
-    
-    # 高效聚合
-    # 按日期分组
-    created_data = base_tasks.filter(created_at__date__range=(chart_start, chart_end))\
-        .values('created_at__date').annotate(c=Count('id'))
-    created_map = {item['created_at__date']: item['c'] for item in created_data}
-    
-    completed_data = base_tasks.filter(completed_at__date__range=(chart_start, chart_end), status__in=[TaskStatus.DONE, TaskStatus.CLOSED])\
-        .values('completed_at__date').annotate(c=Count('id'))
-    completed_map = {item['completed_at__date']: item['c'] for item in completed_data}
-    
-    # 填充空缺
-    for i in range(days_diff):
-        d = chart_start + timedelta(days=i)
-        trend_labels.append(d.strftime('%m-%d'))
-        trend_created.append(created_map.get(d, 0))
-        trend_completed.append(completed_map.get(d, 0))
-
-    # --- 5. 分布: 状态与优先级 (活跃任务快照) ---
-    # 对于分布，通常如果没有日期范围，我们看 *当前活跃* 任务，
-    # 或者 *范围期间创建* 的任务。
-    # "任务统计" 通常暗示 "在此期间产生的任务状态如何？"
-    # 如果设置了期间，让我们按范围内的 `created_at` 过滤。
-    dist_qs = base_tasks
-    if start_date and end_date:
-        dist_qs = dist_qs.filter(created_at__date__range=(start_date, end_date))
+        # On Time (Current)
+        # Done & Has Due & Completed <= Due
+        with_due_q = done_q & Q(due_at__isnull=False)
+        on_time_q = with_due_q & Q(completed_at__lte=F('due_at'))
         
-    status_dist = list(dist_qs.values('status').annotate(c=Count('id')).order_by('-c'))
-    status_map = dict(Task.STATUS_CHOICES)
-    priority_dist = list(dist_qs.values('priority').annotate(c=Count('id')))
-    priority_map = dict(Task.PRIORITY_CHOICES)
-
-    # --- 6. 缺失日报 (可操作) ---
-    # 逻辑同前，但仅针对 "今天"
-    missing_count = 0
-    
-    if period == 'today' or period == 'custom': # 仅在相关时显示缺失
-        # ... (Missing logic reused from previous) ...
-        # 优化：仅在需要时计算
-        # Optimization: Use 'date' field instead of 'created_at__date' for index usage
-        reported_ids = DailyReport.objects.filter(date=today).values_list('user_id', flat=True)
+        aggs['on_time'] = Count('pk', filter=on_time_q)
+        aggs['with_due'] = Count('pk', filter=with_due_q)
         
-        # 相关用户
-        target_projs = Project.objects.filter(is_active=True)
-        target_projs = target_projs.filter(id__in=accessible_projects)
-        if project_id and project_id.isdigit():
-            target_projs = target_projs.filter(id=int(project_id))
+        # Avg Duration (Current)
+        aggs['avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=done_q)
+    
+        # Previous Period Metrics
+        if prev_start_date:
+            # Prev New
+            prev_new_q = Q(created_at__date__range=(prev_start_date, prev_end_date))
+            aggs['prev_new'] = Count('pk', filter=prev_new_q)
             
-        relevant_users = User.objects.filter(is_active=True).filter(
-            Q(project_memberships__in=target_projs) | Q(managed_projects__in=target_projs)
-        ).distinct()
-        
-        if user_id: relevant_users = relevant_users.filter(id=int(user_id))
-        if role: relevant_users = relevant_users.filter(profile__position=role)
-        
-        missing_users_qs = relevant_users.exclude(id__in=reported_ids)
-        missing_count = missing_users_qs.count()
-        
-        # 缺失项目分组 (如果 count > 0)
-        if missing_count > 0:
-             # ... (重用分组逻辑) ...
-             # 为简洁起见，在此重构中简化
-             pass
-
-    # --- 7. 详情表 (项目 / 用户) ---
-    # 按项目分组
-    project_metrics = dist_qs.values('project__id', 'project__name').annotate(
-        total=Count('id'),
-        completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
-        overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)), # 逾期活跃
-        avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
-    ).order_by('-total')
+            # Prev Done
+            prev_done_q = Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], completed_at__date__range=(prev_start_date, prev_end_date))
+            aggs['prev_done'] = Count('pk', filter=prev_done_q)
+            
+            # Prev On Time
+            prev_with_due_q = prev_done_q & Q(due_at__isnull=False)
+            prev_on_time_q = prev_with_due_q & Q(completed_at__lte=F('due_at'))
+            
+            aggs['prev_on_time'] = Count('pk', filter=prev_on_time_q)
+            aggs['prev_with_due'] = Count('pk', filter=prev_with_due_q)
+            
+            # Prev Avg Duration
+            aggs['prev_avg_dur'] = Avg(F('completed_at') - F('created_at'), filter=prev_done_q)
     
-    project_stats = []
-    for row in project_metrics:
-        t = row['total']
-        c = row['completed']
-        lt = row['avg_lead']
-        project_stats.append({
-            'id': row['project__id'],
-            'name': row['project__name'],
-            'total': t,
-            'completed': c,
-            'rate': (c/t*100) if t else 0,
-            'overdue': row['overdue'],
-            'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
-        })
-
-    # 按用户分组
-    user_metrics = dist_qs.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
-        total=Count('id'),
-        completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
-        overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)),
-        on_time=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at'))),
-        avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
-    ).order_by('-total')[:50] # 限制前 50
+        # Execute Aggregation
+        results = base_tasks.aggregate(**aggs)
     
-    user_stats = []
-    for row in user_metrics:
-        t = row['total']
-        c = row['completed']
-        lt = row['avg_lead']
-        user_stats.append({
-            'id': row['user__id'],
-            'name': f"{row['user__first_name'] or ''} {row['user__last_name'] or ''}".strip() or row['user__username'],
-            'total': t,
-            'completed': c,
-            'rate': (c/t*100) if t else 0,
-            'overdue': row['overdue'],
-            'on_time': row['on_time'],
-            'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
-        })
+        # 3.2 Extract Results
+        metric_new = results.get('new', 0)
+        metric_done = results.get('done', 0)
+        metric_overdue = results.get('overdue', 0)
+        metric_on_time = results.get('on_time', 0)
+        tasks_with_due_in_period = results.get('with_due', 0)
+        
+        avg_dur = results.get('avg_dur')
+        metric_avg_time = avg_dur.total_seconds() / 3600 if avg_dur else 0
+        
+        prev_new = results.get('prev_new', 0)
+        prev_done = results.get('prev_done', 0)
+        prev_on_time = results.get('prev_on_time', 0)
+        prev_tasks_with_due = results.get('prev_with_due', 0)
+        
+        prev_avg_dur = results.get('prev_avg_dur')
+        prev_avg_time = prev_avg_dur.total_seconds() / 3600 if prev_avg_dur else 0
+    
+        # 3.3 Derived Rates
+        rate_throughput = (metric_done / metric_new * 100) if metric_new else 0
+        prev_rate = (prev_done / prev_new * 100) if prev_new else 0
+        
+        rate_on_time = (metric_on_time / tasks_with_due_in_period * 100) if tasks_with_due_in_period else 0
+        prev_rate_on_time = (prev_on_time / prev_tasks_with_due * 100) if prev_tasks_with_due else 0
+    
+        # 增长计算
+        def calc_growth(current, previous):
+            if not previous:
+                return 100 if current > 0 else 0
+            return round(((current - previous) / previous) * 100, 1)
+    
+        growth_new = calc_growth(metric_new, prev_new)
+        growth_done = calc_growth(metric_done, prev_done)
+        growth_rate = round(rate_throughput - prev_rate, 1) # 百分比绝对差
+        growth_on_time = round(rate_on_time - prev_rate_on_time, 1)
+        growth_avg_time = round(metric_avg_time - prev_avg_time, 1) # 小时绝对差
+    
+        # --- 4. 图表: 趋势分析 ---
+        
+        chart_start = start_date or (today - timedelta(days=29))
+        chart_end = end_date or today
+        days_diff = (chart_end - chart_start).days + 1
+        
+        trend_labels = []
+        trend_created = []
+        trend_completed = []
+        
+        # 高效聚合
+        # 按日期分组
+        created_data = base_tasks.filter(created_at__date__range=(chart_start, chart_end))\
+            .values('created_at__date').annotate(c=Count('id'))
+        created_map = {item['created_at__date']: item['c'] for item in created_data}
+        
+        completed_data = base_tasks.filter(completed_at__date__range=(chart_start, chart_end), status__in=[TaskStatus.DONE, TaskStatus.CLOSED])\
+            .values('completed_at__date').annotate(c=Count('id'))
+        completed_map = {item['completed_at__date']: item['c'] for item in completed_data}
+        
+        # 填充空缺
+        for i in range(days_diff):
+            d = chart_start + timedelta(days=i)
+            trend_labels.append(d.strftime('%m-%d'))
+            trend_created.append(created_map.get(d, 0))
+            trend_completed.append(completed_map.get(d, 0))
+    
+        # --- 5. 分布: 状态与优先级 (活跃任务快照) ---
+        dist_qs = base_tasks
+        if start_date and end_date:
+            dist_qs = dist_qs.filter(created_at__date__range=(start_date, end_date))
+            
+        status_dist = list(dist_qs.values('status').annotate(c=Count('id')).order_by('-c'))
+        status_map = dict(Task.STATUS_CHOICES)
+        priority_dist = list(dist_qs.values('priority').annotate(c=Count('id')))
+        priority_map = dict(Task.PRIORITY_CHOICES)
+    
+        # --- 6. 缺失日报 (可操作) ---
+        missing_count = 0
+        
+        if period == 'today' or period == 'custom': # 仅在相关时显示缺失
+            # Optimization: Use 'date' field instead of 'created_at__date' for index usage
+            reported_ids = DailyReport.objects.filter(date=today).values_list('user_id', flat=True)
+            
+            # 相关用户
+            target_projs = Project.objects.filter(is_active=True)
+            target_projs = target_projs.filter(id__in=accessible_projects)
+            if project_id and project_id.isdigit():
+                target_projs = target_projs.filter(id=int(project_id))
+                
+            relevant_users = User.objects.filter(is_active=True).filter(
+                Q(project_memberships__in=target_projs) | Q(managed_projects__in=target_projs)
+            ).distinct()
+            
+            if user_id: relevant_users = relevant_users.filter(id=int(user_id))
+            if role: relevant_users = relevant_users.filter(profile__position=role)
+            
+            missing_users_qs = relevant_users.exclude(id__in=reported_ids)
+            missing_count = missing_users_qs.count()
+    
+        # --- 7. 详情表 (项目 / 用户) ---
+        # 按项目分组
+        project_metrics = dist_qs.values('project__id', 'project__name').annotate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
+            overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)), # 逾期活跃
+            avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
+        ).order_by('-total')
+        
+        project_stats = []
+        for row in project_metrics:
+            t = row['total']
+            c = row['completed']
+            lt = row['avg_lead']
+            project_stats.append({
+                'id': row['project__id'],
+                'name': row['project__name'],
+                'total': t,
+                'completed': c,
+                'rate': (c/t*100) if t else 0,
+                'overdue': row['overdue'],
+                'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
+            })
+    
+        # 按用户分组
+        user_metrics = dist_qs.values('user__id', 'user__username', 'user__first_name', 'user__last_name').annotate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
+            overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS], due_at__lt=now)),
+            on_time=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED], due_at__isnull=False, completed_at__lte=F('due_at'))),
+            avg_lead=Avg(F('completed_at') - F('created_at'), filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
+        ).order_by('-total')[:50] # 限制前 50
+        
+        user_stats = []
+        for row in user_metrics:
+            t = row['total']
+            c = row['completed']
+            lt = row['avg_lead']
+            user_stats.append({
+                'id': row['user__id'],
+                'name': f"{row['user__first_name'] or ''} {row['user__last_name'] or ''}".strip() or row['user__username'],
+                'total': t,
+                'completed': c,
+                'rate': (c/t*100) if t else 0,
+                'overdue': row['overdue'],
+                'on_time': row['on_time'],
+                'lead_time': round(lt.total_seconds()/3600, 1) if lt else None
+            })
+            
+        stats_data = {
+            'metric_new': metric_new,
+            'metric_done': metric_done,
+            'metric_overdue': metric_overdue,
+            'rate_throughput': rate_throughput,
+            'rate_on_time': rate_on_time,
+            'metric_avg_time': metric_avg_time,
+            'growth_new': growth_new,
+            'growth_done': growth_done,
+            'growth_rate': growth_rate,
+            'growth_on_time': growth_on_time,
+            'growth_avg_time': growth_avg_time,
+            'missing_count': missing_count,
+            'trend_labels': trend_labels,
+            'trend_created': trend_created,
+            'trend_completed': trend_completed,
+            'status_dist': status_dist,
+            'priority_dist': priority_dist,
+            'project_stats': project_stats,
+            'user_stats': user_stats,
+        }
+        
+        cache.set(cache_key, stats_data, 600)
+    
+    # Unpack from stats_data
+    status_map = dict(Task.STATUS_CHOICES)
+    priority_map = dict(Task.PRIORITY_CHOICES)
 
     # --- 8. 上下文 ---
     # 下钻过滤字符串
@@ -837,39 +853,39 @@ def admin_task_stats(request):
         
         # Metrics
         'kpi': {
-            'new': metric_new,
-            'new_growth': growth_new,
-            'new_growth_abs': abs(growth_new),
-            'done': metric_done,
-            'done_growth': growth_done,
-            'done_growth_abs': abs(growth_done),
-            'rate': rate_throughput,
-            'rate_growth': growth_rate, 
-            'rate_growth_abs': abs(growth_rate),
-            'overdue': metric_overdue,
-            'missing_reports': missing_count,
-            'on_time_rate': rate_on_time,
-            'on_time_growth': growth_on_time,
-            'on_time_growth_abs': abs(growth_on_time),
-            'avg_time': round(metric_avg_time, 1),
-            'avg_time_growth': growth_avg_time,
-            'avg_time_growth_abs': abs(growth_avg_time),
+            'new': stats_data['metric_new'],
+            'new_growth': stats_data['growth_new'],
+            'new_growth_abs': abs(stats_data['growth_new']),
+            'done': stats_data['metric_done'],
+            'done_growth': stats_data['growth_done'],
+            'done_growth_abs': abs(stats_data['growth_done']),
+            'rate': stats_data['rate_throughput'],
+            'rate_growth': stats_data['growth_rate'], 
+            'rate_growth_abs': abs(stats_data['growth_rate']),
+            'overdue': stats_data['metric_overdue'],
+            'missing_reports': stats_data['missing_count'],
+            'on_time_rate': stats_data['rate_on_time'],
+            'on_time_growth': stats_data['growth_on_time'],
+            'on_time_growth_abs': abs(stats_data['growth_on_time']),
+            'avg_time': round(stats_data['metric_avg_time'], 1),
+            'avg_time_growth': stats_data['growth_avg_time'],
+            'avg_time_growth_abs': abs(stats_data['growth_avg_time']),
         },
         
         # Charts
         'trend': {
-            'labels': trend_labels,
-            'created': trend_created,
-            'completed': trend_completed,
+            'labels': stats_data['trend_labels'],
+            'created': stats_data['trend_created'],
+            'completed': stats_data['trend_completed'],
         },
         'dist': {
-            'status': [{'label': status_map.get(x['status'], x['status']), 'value': x['c'], 'code': x['status']} for x in status_dist],
-            'priority': [{'label': priority_map.get(x['priority'], x['priority']), 'value': x['c'], 'code': x['priority']} for x in priority_dist],
+            'status': [{'label': status_map.get(x['status'], x['status']), 'value': x['c'], 'code': x['status']} for x in stats_data['status_dist']],
+            'priority': [{'label': priority_map.get(x['priority'], x['priority']), 'value': x['c'], 'code': x['priority']} for x in stats_data['priority_dist']],
         },
         
         # Tables
-        'projects_data': project_stats,
-        'users_data': user_stats,
+        'projects_data': stats_data['project_stats'],
+        'users_data': stats_data['user_stats'],
         
         # Filters
         'projects': accessible_projects.order_by('name'),

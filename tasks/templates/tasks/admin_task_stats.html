@@ -49,6 +49,16 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        flex: 1 1 200px; /* Default flexible width */
+        min-width: 0;
+    }
+    
+    .filter-group.wide {
+        flex: 2 1 300px;
+    }
+    
+    .filter-group.narrow {
+        flex: 0 1 200px;
     }
 
     .filter-label {
@@ -57,6 +67,7 @@
         color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        white-space: nowrap;
     }
 
     .period-selector {
@@ -65,6 +76,7 @@
         padding: 4px;
         border-radius: 10px;
         gap: 2px;
+        flex-wrap: wrap;
     }
 
     .period-btn {
@@ -77,6 +89,9 @@
         border: none;
         cursor: pointer;
         transition: all 0.2s ease;
+        white-space: nowrap;
+        flex: 1 1 auto;
+        text-align: center;
     }
 
     .period-btn:hover {
@@ -98,7 +113,8 @@
         color: var(--text-main);
         background: #fff;
         transition: border-color 0.2s;
-        min-width: 160px;
+        width: 100%;
+        min-width: 0;
     }
     .form-control:focus {
         outline: none;
@@ -109,14 +125,14 @@
     /* 2. KPI Cards */
     .kpi-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
     }
 
     .kpi-card {
         background: var(--card-bg);
         border-radius: var(--card-radius);
-        padding: 24px;
+        padding: 20px;
         box-shadow: var(--card-shadow);
         display: flex;
         flex-direction: column;
@@ -124,6 +140,7 @@
         overflow: hidden;
         border: 1px solid rgba(226, 232, 240, 0.6);
         transition: transform 0.2s, box-shadow 0.2s;
+        min-height: 160px;
     }
 
     .kpi-card:hover {
@@ -135,40 +152,47 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
 
     .kpi-icon-wrapper {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 20px;
+        flex-shrink: 0;
     }
 
     .kpi-title {
-        font-size: 14px;
+        font-size: 13px;
         color: var(--text-secondary);
         font-weight: 500;
         margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .kpi-value {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 800;
         color: var(--text-main);
-        line-height: 1;
+        line-height: 1.2;
         letter-spacing: -0.03em;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
+        word-break: break-all;
     }
 
     .kpi-footer {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 13px;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 12px;
+        line-height: 1.4;
     }
 
     .trend-badge {
@@ -178,6 +202,8 @@
         border-radius: 20px;
         font-weight: 600;
         font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     .trend-up { background: #dcfce7; color: #166534; }
     .trend-down { background: #fee2e2; color: #991b1b; }
@@ -206,17 +232,21 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
     }
 
     .chart-title {
         font-size: 18px;
         font-weight: 700;
         color: var(--text-main);
+        white-space: nowrap;
     }
 
     .chart-legend {
         display: flex;
         gap: 16px;
+        flex-wrap: wrap;
     }
     .legend-item {
         display: flex;
@@ -421,7 +451,7 @@
 
     <!-- 1. Filter Section -->
     <form method="get" class="filter-section" id="filterForm">
-        <div class="filter-group" style="flex: 2; min-width: 300px;">
+        <div class="filter-group wide">
             <label class="filter-label">统计周期 / Time Period</label>
             <div class="period-selector">
                 <button type="button" class="period-btn {% if period == 'today' %}active{% endif %}" onclick="setPeriod('today')">今日 / Today</button>
@@ -433,18 +463,18 @@
             <input type="hidden" name="period" id="periodInput" value="{{ period }}">
         </div>
 
-        <div class="filter-group" id="customDateGroup" style="{% if period != 'custom' %}display:none;{% endif %} flex-direction: row; gap: 12px; flex: 1;">
-            <div style="flex: 1;">
+        <div class="filter-group" id="customDateGroup" style="{% if period != 'custom' %}display:none;{% endif %} flex-direction: row; gap: 12px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px;">
                 <label class="filter-label">开始日期 / Start Date</label>
                 <input type="date" name="start" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
             </div>
-            <div style="flex: 1;">
+            <div style="flex: 1; min-width: 140px;">
                 <label class="filter-label">结束日期 / End Date</label>
                 <input type="date" name="end" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
             </div>
         </div>
 
-        <div class="filter-group" style="flex: 1;">
+        <div class="filter-group">
             <label class="filter-label">所属项目 / Project</label>
             <select name="project" class="form-control" onchange="this.form.submit()">
                 <option value="">全部项目 / All Projects</option>
@@ -454,7 +484,7 @@
             </select>
         </div>
 
-        <div class="filter-group" style="flex: 1;">
+        <div class="filter-group">
             <label class="filter-label">角色 / Role</label>
             <select name="role" class="form-control" onchange="this.form.submit()">
                 <option value="">全部角色 / All Roles</option>
@@ -464,7 +494,7 @@
             </select>
         </div>
         
-        <div class="filter-group" style="width: 200px;">
+        <div class="filter-group narrow">
              <label class="filter-label">搜索 / Search</label>
              <input type="text" name="q" class="form-control" placeholder="搜索用户..." value="{{ current_filters.q }}" onblur="this.form.submit()">
         </div>

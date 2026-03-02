@@ -1,31 +1,22 @@
 {% extends "registration/auth_base.html" %}
 
 {% block title %}已退出 / Logged Out{% endblock %}
-
-{% block extra_styles %}
-{% endblock %}
+{% block subtitle %}感谢您的使用，期待再次相见 / Thanks for using, see you again{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-4 text-center">
-                <div class="mb-4 text-success">
-                    <i class="bi bi-check-circle display-1"></i>
-                </div>
-                <h4 class="card-title mb-3">已注销 / Logged Out</h4>
-                <p class="card-text text-muted mb-4">您已成功退出登录。 / You have successfully logged out.</p>
-                
-                <div class="d-grid">
-                    <a href="{% url 'core:login' %}" class="btn btn-primary btn-lg">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>重新登录 / Login Again
-                    </a>
-                </div>
-            </div>
-        </div>
+<div class="text-center">
+    <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-emerald-100 mb-6 shadow-inner ring-4 ring-white">
+        <svg class="h-12 w-12 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+    </div>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">已安全退出 / Logged Out</h3>
+    <p class="text-sm text-slate-500 mb-8 max-w-xs mx-auto">您已成功退出登录，您的会话已结束。 / You have successfully logged out. Your session has ended.</p>
+    
+    <div class="space-y-4">
+        <a href="{% url 'core:login' %}" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:scale-[1.02] btn-primary">
+            重新登录 / Login Again
+        </a>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
 {% endblock %}
