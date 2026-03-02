@@ -56,7 +56,158 @@
         color: var(--text-muted);
         pointer-events: none;
     }
-    .search-input { padding-left: 36px; }
+    .search-input { 
+        padding-left: 36px; 
+        height: 38px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        width: 100%;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    .search-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+
+    /* --- Filter Section --- */
+    .filter-section {
+        margin-bottom: 24px;
+    }
+
+    .filter-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr auto;
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-control {
+        height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: #fff;
+        font-size: 14px;
+        color: var(--text-main);
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+        outline: none;
+    }
+    
+    .form-control:hover {
+        border-color: #cbd5e1;
+    }
+
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .filter-actions .btn {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 16px;
+        font-weight: 500;
+    }
+
+    /* Mobile Filter Styles */
+    @media (max-width: 1024px) {
+        .filter-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        .form-group:first-child {
+            grid-column: 1 / -1;
+        }
+        .filter-actions {
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+            margin-top: 8px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .filter-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        
+        /* Mobile Collapsible Filter */
+        .filter-card {
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        details.mobile-filter summary {
+            padding: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+        }
+        
+        details.mobile-filter summary::-webkit-details-marker { display: none; }
+        
+        details.mobile-filter summary::after {
+            content: '\f0b0'; /* FontAwesome filter icon */
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+        
+        details.mobile-filter[open] summary::after {
+            transform: rotate(180deg);
+        }
+        
+        .filter-content {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            background: #f8fafc;
+        }
+    }
 
     /* --- Project Grid --- */
     .project-grid {
@@ -156,6 +307,163 @@
         align-items: center;
     }
 
+    /* --- Pagination Styles (Unified) --- */
+    .pagination-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 0;
+        margin-top: 24px;
+        border-top: 1px solid var(--border-color);
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .pg-info {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+
+    .pg-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pg-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        padding: 0 16px;
+        border: 1px solid var(--border-color);
+        background: #fff;
+        border-radius: 6px;
+        color: var(--text-main);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        user-select: none;
+    }
+
+    .pg-btn:hover:not(.disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .pg-btn.disabled {
+        color: #ccc;
+        border-color: #eee;
+        background: #f9f9f9;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .pg-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pg-select {
+        height: 36px;
+        padding: 0 32px 0 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: #fff;
+        font-size: 14px;
+        color: var(--text-main);
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        transition: border-color 0.2s;
+    }
+
+    .pg-select:hover {
+        border-color: var(--primary);
+    }
+
+    .pg-jump {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pg-input {
+        width: 60px;
+        height: 36px;
+        padding: 0 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 14px;
+        transition: border-color 0.2s;
+    }
+
+    .pg-input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .pg-input.error {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px #fee2e2;
+    }
+
+    .pg-go-btn {
+        height: 36px;
+        padding: 0 12px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .pg-go-btn:hover {
+        background: var(--primary-hover);
+    }
+
+    .jump-error-msg {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        color: var(--danger);
+        font-size: 12px;
+        white-space: nowrap;
+        background: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid #fee2e2;
+        display: none;
+        z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+        .pagination-bar {
+            flex-direction: column;
+            gap: 12px;
+        }
+        .pg-info, .pg-controls, .pg-right {
+            width: 100%;
+            justify-content: center;
+        }
+        .pg-right {
+            flex-wrap: wrap;
+        }
+    }
+
     /* --- Table View --- */
     .project-table-container {
         display: none;
@@ -245,6 +553,25 @@
     @media (min-width: 769px) {
         .fab-create { display: none; }
     }
+
+    /* --- Loading Overlay --- */
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%;
+        background: rgba(255, 255, 255, 0.6);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+    }
+    
+    .loading-overlay.htmx-request, .loading-overlay.active {
+        display: flex;
+    }
 {% endblock %}
 
 {% block content %}
@@ -285,85 +612,91 @@
             </a>
         {% endif %}
 
-        <form method="get" id="filterForm" 
-              hx-get="{% url 'projects:project_list' %}" 
-              hx-target="#projectListContainer" 
-              hx-push-url="true" 
-              hx-indicator="#loadingOverlay">
-            
-            <!-- Mobile Filter Wrapper -->
-            <div class="desktop-filter-wrapper">
-                <div class="filter-grid">
-                    <div class="form-group" style="flex: 2;">
-                        <label class="form-label" for="q">搜索 / Search</label>
-                        <div class="search-wrapper">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="q" name="q" class="search-input" 
-                                   placeholder="项目名称、代码或描述..." 
-                                   value="{{ q }}"
-                                   hx-trigger="keyup changed delay:500ms, search">
+        <div class="filter-card">
+            <details class="mobile-filter" open>
+                <summary>
+                    <span>筛选与搜索 / Filter & Search</span>
+                </summary>
+                
+                <div class="filter-content">
+                    <form method="get" id="filterForm" 
+                          hx-get="{% url 'projects:project_list' %}" 
+                          hx-target="#projectListContainer" 
+                          hx-push-url="true" 
+                          hx-indicator="#loadingOverlay">
+                        
+                        <div class="filter-grid">
+                            <!-- Search -->
+                            <div class="form-group" style="grid-column: span 1;">
+                                <label class="form-label" for="q">搜索 / Search</label>
+                                <div class="search-wrapper">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="q" name="q" class="search-input" 
+                                           placeholder="项目名称、代码或描述..." 
+                                           value="{{ q }}"
+                                           hx-trigger="keyup changed delay:500ms, search">
+                                </div>
+                            </div>
+                            
+                            <!-- Phase -->
+                            <div class="form-group">
+                                <label class="form-label" for="phase">阶段 / Phase</label>
+                                <select id="phase" name="phase" class="form-control" hx-trigger="change">
+                                    <option value="">全部 / All</option>
+                                    {% for p in phases %}
+                                        <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Owner -->
+                            <div class="form-group">
+                                <label class="form-label" for="owner">负责人 / Owner</label>
+                                <input type="text" id="owner" name="owner" class="form-control"
+                                       placeholder="姓名..." 
+                                       value="{{ owner }}"
+                                       list="owner-list"
+                                       hx-trigger="keyup changed delay:500ms">
+                                <datalist id="owner-list">
+                                    {% for u in potential_owners %}
+                                        <option value="{{ u.username }}">{{ u.get_full_name|default:u.username }}</option>
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+
+                            <!-- Sort -->
+                            <div class="form-group">
+                                <label class="form-label" for="sort">排序 / Sort</label>
+                                <select id="sort" name="sort" class="form-control" hx-trigger="change">
+                                    <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
+                                    <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
+                                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>名称 (A-Z)</option>
+                                    <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
+                                </select>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="filter-actions">
+                                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')" title="重置 / Reset">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="filterBtn">
+                                    <i class="fas fa-filter" style="margin-right: 6px;"></i> 筛选
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="phase">阶段 / Phase</label>
-                        <select id="phase" name="phase" hx-trigger="change">
-                            <option value="">全部阶段 / All Phases</option>
-                            {% for p in phases %}
-                                <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="owner">负责人 / Owner</label>
-                        <input type="text" id="owner" name="owner" 
-                               placeholder="输入姓名..." 
-                               value="{{ owner }}"
-                               hx-trigger="keyup changed delay:500ms">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="sort">排序 / Sort</label>
-                        <select id="sort" name="sort" hx-trigger="change">
-                            <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
-                            <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
-                            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>名称 (A-Z)</option>
-                            <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-actions">
-                        <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')">重置</a>
-                        <button type="submit" class="btn btn-primary" id="filterBtn">筛选</button>
-                    </div>
+                    </form>
                 </div>
-            </div>
-        </form>
+            </details>
+        </div>
     </div>
 
     <script>
-        // Move filter content into details on mobile
+        // Handle Details default state on mobile
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.innerWidth <= 768) {
-                const wrapper = document.querySelector('.desktop-filter-wrapper');
-                if (wrapper && !wrapper.parentElement.tagName.toLowerCase() === 'details') {
-                    const details = document.createElement('details');
-                    const summary = document.createElement('summary');
-                    summary.textContent = '筛选与搜索 / Filter & Search';
-                    
-                    const content = document.createElement('div');
-                    content.className = 'filter-content';
-                    
-                    // Move content
-                    while (wrapper.firstChild) {
-                        content.appendChild(wrapper.firstChild);
-                    }
-                    
-                    details.appendChild(summary);
-                    details.appendChild(content);
-                    wrapper.parentNode.replaceChild(details, wrapper);
-                }
+            if (window.innerWidth <= 640) {
+                const details = document.querySelector('.mobile-filter');
+                if (details) details.removeAttribute('open');
             }
         });
     </script>
@@ -431,24 +764,52 @@
 
     // Pagination Logic
     function getQueryParam(key) { return new URLSearchParams(window.location.search).get(key); }
+    
     function updateUrl(params) {
         const url = new URL(window.location);
         for (const [key, value] of Object.entries(params)) {
             url.searchParams.set(key, value);
         }
-        window.location = url;
+        // Try HTMX first
+        if (typeof htmx !== 'undefined') {
+            const path = url.pathname + url.search;
+            htmx.ajax('GET', path, {target: '#projectListContainer', pushUrl: true, indicator: '#loadingOverlay'});
+        } else {
+            window.location = url;
+        }
     }
+
     function changePage(page) { updateUrl({ page: page }); }
+    
     function changePerPage(size) {
         localStorage.setItem('project_pageSize', size);
         updateUrl({ per_page: size, page: 1 });
     }
+
     function jumpToPage() {
         const input = document.getElementById('jump-page-input');
+        const errorMsg = document.getElementById('jumpError'); // New error element
         const page = parseInt(input.value);
-        const maxPage = {{ page_obj.paginator.num_pages }};
+        // We need total pages. It was passed as maxPage in previous code, but here we can read it from context if available, 
+        // or just rely on the input max attribute if set.
+        // The old code had: const maxPage = {{ page_obj.paginator.num_pages }}; 
+        // But this JS block is in the main template, so it has access to initial context.
+        // However, after HTMX update, this value might be stale if total pages changed (e.g. filter).
+        // Best way: read 'max' attribute from input which is updated by HTMX.
+        const maxPage = parseInt(input.getAttribute('max')) || 1;
+        
+        // Reset styles
+        input.classList.remove('error');
+        if(errorMsg) errorMsg.style.display = 'none';
+
         if (isNaN(page) || page < 1 || page > maxPage) {
-            alert(`请输入 1~${maxPage} 之间的页码`);
+            input.classList.add('error');
+            if(errorMsg) {
+                errorMsg.textContent = `1~${maxPage}`;
+                errorMsg.style.display = 'block';
+            } else {
+                alert(`请输入 1~${maxPage} 之间的页码`);
+            }
             return;
         }
         changePage(page);

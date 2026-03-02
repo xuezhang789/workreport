@@ -11,7 +11,7 @@
                 <tr style="background: var(--bg-body);">
                     <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">PROJECT</th>
                     <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-secondary); font-weight: 600;">DONE</th>
-                    <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-secondary); font-weight: 600;">WIP</th>
+                    <th style="padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-secondary); font-weight: 600;">PENDING</th>
                     <th style="padding: 12px 16px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600;">PROGRESS</th>
                 </tr>
             </thead>
@@ -23,7 +23,12 @@
                         <div style="font-size: 11px; color: var(--text-muted);">{{ row.code }}</div>
                     </td>
                     <td style="padding: 12px 16px; text-align: center; color: var(--success); font-weight: 600;">{{ row.completed }}</td>
-                    <td style="padding: 12px 16px; text-align: center;">{{ row.in_progress }}</td>
+                    <td style="padding: 12px 16px; text-align: center;">
+                        <span style="font-weight: 600; color: var(--text-main);">{{ row.remaining }}</span>
+                        {% if row.overdue > 0 %}
+                            <span style="font-size: 10px; color: var(--danger); background: #fee2e2; padding: 1px 4px; border-radius: 4px; margin-left: 4px;" title="Overdue">{{ row.overdue }}!</span>
+                        {% endif %}
+                    </td>
                     <td style="padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="height: 6px; background: var(--bg-body); width: 60px; border-radius: 3px; overflow: hidden;">
@@ -66,8 +71,13 @@
                     <span style="font-size: 14px; font-weight: 700; color: var(--success);">{{ row.completed }}</span>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid var(--border-color);">
-                    <span style="font-size: 11px; color: var(--text-secondary);">WIP</span>
-                    <span style="font-size: 14px; font-weight: 700; color: var(--text-main);">{{ row.in_progress }}</span>
+                    <span style="font-size: 11px; color: var(--text-secondary);">Pending</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <span style="font-size: 14px; font-weight: 700; color: var(--text-main);">{{ row.remaining }}</span>
+                        {% if row.overdue > 0 %}
+                            <span style="font-size: 10px; color: var(--danger); background: #fee2e2; padding: 1px 4px; border-radius: 4px;">{{ row.overdue }}!</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

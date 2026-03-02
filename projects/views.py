@@ -161,6 +161,13 @@ def project_list(request):
     # Permission Check for Create Button
     can_create_project = has_manage_permission(request.user)
     
+    # Get potential owners for filter autocomplete
+    # 获取用于筛选自动补全的潜在负责人
+    # Optimization: Only fetch users who own at least one accessible project
+    accessible_projects = get_accessible_projects(request.user).filter(is_active=True)
+    owner_ids = accessible_projects.values_list('owner_id', flat=True).distinct()
+    potential_owners = get_user_model().objects.filter(id__in=owner_ids).order_by('username')
+    
     context = {
         'projects': page_obj,
         'page_obj': page_obj,
@@ -168,6 +175,7 @@ def project_list(request):
         'start_date': start_date,
         'end_date': end_date,
         'owner': owner,
+        'potential_owners': potential_owners,
         'sort_by': sort_by,
         'total_count': projects.count(),
         'manageable_ids': manageable_ids,

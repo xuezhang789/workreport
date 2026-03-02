@@ -101,10 +101,13 @@ class ProjectListFullTests(TestCase):
         self.assertContains(response, 'class="view-switcher"')
         # Filter Bar
         self.assertContains(response, 'id="filterForm"')
-        # Progress Bars
-        self.assertContains(response, 'class="table-progress"')
-        # Avatars
-        self.assertContains(response, 'class="user-avatar')
+        # Progress Bars (Check for style or structure since class was removed/changed)
+        # self.assertContains(response, 'class="table-progress"') # Removed
+        self.assertContains(response, 'width: 30.00%; background: var(--primary);')
+        
+        # Avatars (Updated class name)
+        # self.assertContains(response, 'class="user-avatar') # Removed
+        self.assertContains(response, 'class="avatar-component"')
 
     # def test_pagination(self):
     #     """Test pagination rendering."""
