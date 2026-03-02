@@ -13,16 +13,40 @@
         overflow-x: auto;
         padding-bottom: 1rem;
         height: calc(100vh - 180px);
+        -webkit-overflow-scrolling: touch; /* Smooth scroll */
+        scroll-snap-type: x mandatory; /* Snap columns */
     }
     
     .kanban-column {
-        flex: 0 0 320px;
+        flex: 0 0 300px; /* Slightly narrower */
         background: var(--bg-secondary);
         border-radius: 8px;
         display: flex;
         flex-direction: column;
         max-height: 100%;
         border: 1px solid var(--border-color);
+        scroll-snap-align: start; /* Snap align */
+    }
+
+    @media (max-width: 640px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .page-actions {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+        }
+        .page-actions .btn {
+            flex: 1;
+            justify-content: center;
+            min-height: 44px;
+        }
+        .kanban-column {
+            flex: 0 0 85vw; /* Almost full width on mobile */
+        }
     }
     
     .kanban-header {

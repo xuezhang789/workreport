@@ -52,6 +52,28 @@
         margin-top: 4px;
         opacity: 0.8;
     }
+
+    /* Mobile Optimizations */
+    @media (max-width: 640px) {
+        input[type="text"], 
+        input[type="email"], 
+        input[type="password"],
+        select {
+            min-height: 48px !important;
+            font-size: 16px !important; /* Prevent zoom */
+            padding: 12px !important;
+        }
+        .btn {
+            min-height: 48px !important;
+            font-size: 16px !important;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .password-requirements {
+            grid-template-columns: 1fr; /* Stack requirements on mobile */
+        }
+    }
 </style>
 {% endblock %}
 

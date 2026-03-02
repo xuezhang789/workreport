@@ -315,8 +315,34 @@
         gap: 8px;
     }
 
+    /* Markdown Content Optimizations */
+    .content-box {
+        overflow-wrap: break-word;
+    }
+    .content-box img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+    }
+    .content-box table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    .content-box pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+
     @media (max-width: 640px) {
-        .page-container { padding: 16px; }
+        .page-container { padding: 16px; padding-bottom: 80px; }
         .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
         .info-grid { grid-template-columns: 1fr; }
         .details-grid { grid-template-columns: 1fr; }
@@ -326,10 +352,40 @@
             width: 100%;
             flex-wrap: wrap;
         }
-        .card-header .btn { flex: 1; justify-content: center; }
         
+        /* Mobile Sticky Toolbar */
+        .task-actions-toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 16px;
+            z-index: 1000;
+            display: flex;
+            gap: 12px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+            justify-content: space-between;
+        }
+        
+        .task-actions-toolbar .btn {
+            flex: 1;
+            justify-content: center;
+            min-height: 44px;
+        }
+        
+        /* Hide "Back" button in sticky toolbar to save space */
+        .task-actions-toolbar .btn-ghost { display: none; }
+
         .link-content { flex-direction: column; align-items: stretch; }
         .link-actions { justify-content: flex-end; }
+        
+        /* Touch targets */
+        .btn-xs { min-height: 44px; }
+        .filter-select { min-height: 44px; font-size: 16px; width: 100%; }
     }
 
     /* Responsive Grid for Bottom Section */
@@ -380,7 +436,7 @@
                 </div>
                 <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--text-main);">{{ task.title }}</h1>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div class="task-actions-toolbar" style="display: flex; gap: 8px;">
                 <a href="{% url 'tasks:task_list' %}" class="btn btn-ghost">返回列表 / Back to List</a>
                 {% if can_edit %}
                     <a href="{% url 'tasks:admin_task_edit' task.pk %}" class="btn btn-secondary">编辑 / Edit</a>

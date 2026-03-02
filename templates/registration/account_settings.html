@@ -365,11 +365,143 @@
 
     /* --- Responsive --- */
     @media (max-width: 768px) {
-        .settings-container { flex-direction: column; min-height: auto; }
-        .settings-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); flex-direction: row; overflow-x: auto; padding: 12px; }
-        .nav-item { white-space: nowrap; padding: 8px 12px; }
-        .settings-content { padding: 24px; }
-        .overview-card { flex-direction: column; text-align: center; }
+        /* Layout Container */
+        .settings-container {
+            flex-direction: column;
+            min-height: auto;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            background: transparent;
+            box-shadow: none;
+            border: none;
+        }
+        
+        /* Top Navigation Scroll */
+        .settings-sidebar { 
+            width: 100%;
+            background: #fff;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            flex-direction: row; 
+            overflow-x: auto; 
+            padding: 12px 16px;
+            -webkit-overflow-scrolling: touch;
+            gap: 8px;
+            position: sticky;
+            top: var(--nav-height, 64px);
+            z-index: 900; /* Below topbar (9999) but above content */
+            height: auto;
+            min-height: 56px;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        
+        .nav-item { 
+            white-space: nowrap; 
+            padding: 6px 16px;
+            height: auto;
+            min-height: 36px;
+            border: none;
+            border-radius: 99px; /* Pill shape */
+            background: #f1f5f9;
+            box-shadow: none !important;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        
+        .nav-item:hover { background: #e2e8f0; }
+        
+        .nav-item.active {
+            color: #fff;
+            background: var(--primary) !important;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
+            border: none;
+        }
+        .nav-item.active::before { display: none; }
+        
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            display: none; /* Hide icons in pills to save space, or keep if preferred. Let's hide to be cleaner pills. */
+        }
+        
+        /* Content Area */
+        .settings-content {
+            padding: 16px;
+            background: transparent;
+        }
+        
+        /* Cards in Mobile */
+        .overview-card, .form-group, .setting-option-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Section Header: Remove card styling in mobile, make it a clean title */
+        .section-header {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0 4px;
+            margin-bottom: 12px;
+        }
+        .section-title { font-size: 18px; }
+        .section-desc { font-size: 13px; }
+        
+        /* Reset specific styles for mobile cards */
+        .form-group { max-width: 100%; }
+        
+        /* Overview Specifics */
+        .overview-card { flex-direction: column; text-align: center; gap: 16px; }
+        .user-avatar-lg { margin: 0 auto; }
+        .badge-container { justify-content: center; }
+        
+        .hidden-mobile { display: none; }
+        
+        /* Touch Targets */
+        .btn {
+            width: 100%;
+            justify-content: center;
+            min-height: 44px;
+        }
+        .form-input {
+            min-height: 44px;
+            font-size: 16px; /* No Zoom */
+        }
+        
+        .setting-checkbox {
+            width: 24px;
+            height: 24px;
+        }
+        
+        /* Quick Actions Grid */
+        #tab-overview .section-header + div {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px !important;
+        }
+        /* Make Logout full width if it's the last one (it is) */
+        #tab-overview .section-header + div .btn:last-child {
+            grid-column: 1 / -1;
+        }
+        
+        /* Avatar Upload Mobile */
+        div[style*="display: flex; gap: 20px;"] {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        /* Page Header padding */
+        .page-header { padding: 0 16px; }
     }
 {% endblock %}
 
@@ -733,13 +865,24 @@
     function switchTab(tabName) {
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         const activeItem = document.querySelector(`.nav-item[onclick="switchTab('${tabName}')"]`);
-        if (activeItem) activeItem.classList.add('active');
+        if (activeItem) {
+            activeItem.classList.add('active');
+            // Scroll into view on mobile (Horizontal Scroll)
+            if (window.innerWidth <= 768) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
 
         document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
         const activePane = document.getElementById(`tab-${tabName}`);
         if (activePane) activePane.classList.add('active');
 
         localStorage.setItem('settings_tab', tabName);
+        
+        // Mobile: Scroll to top of content when switching tabs to avoid being lost
+        if (window.innerWidth <= 768) {
+             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function() {

@@ -5,7 +5,7 @@
         </h3>
         <span class="status-badge badge-neutral" style="background: var(--bg-body); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px; font-size: 11px;">{{ project_burndown|length }}</span>
     </div>
-    <div style="overflow-x: auto;">
+    <div class="wb-project-table-view">
         <table class="table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background: var(--bg-body);">
@@ -43,4 +43,45 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Mobile Card View -->
+    <div class="wb-project-mobile-view" style="display: none;">
+        {% for row in project_burndown %}
+        <div style="padding: 16px; border-bottom: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                    <a href="{% url 'projects:project_detail' row.id %}" style="font-weight: 700; color: var(--text-main); text-decoration: none; font-size: 14px; display: block; margin-bottom: 2px;">{{ row.project }}</a>
+                    <span style="font-size: 11px; color: var(--text-muted); background: var(--bg-body); padding: 2px 6px; border-radius: 4px;">{{ row.code }}</span>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 18px; font-weight: 700; color: {% if row.completion_rate >= 80 %}var(--success){% elif row.completion_rate >= 50 %}var(--warning){% else %}var(--danger){% endif %};">
+                        {{ row.completion_rate|floatformat:0 }}<span style="font-size: 12px;">%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: var(--bg-body); padding: 8px 12px; border-radius: 8px;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span style="font-size: 11px; color: var(--text-secondary);">Done</span>
+                    <span style="font-size: 14px; font-weight: 700; color: var(--success);">{{ row.completed }}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid var(--border-color);">
+                    <span style="font-size: 11px; color: var(--text-secondary);">WIP</span>
+                    <span style="font-size: 14px; font-weight: 700; color: var(--text-main);">{{ row.in_progress }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">
+            暂无项目数据 / No project data
+        </div>
+        {% endfor %}
+    </div>
+
+    <style>
+        @media (max-width: 640px) {
+            .wb-project-table-view { display: none !important; }
+            .wb-project-mobile-view { display: block !important; }
+        }
+    </style>
 </div>

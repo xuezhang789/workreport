@@ -10,37 +10,69 @@
         padding: 24px;
     }
 
+    /* --- Mobile Enhancements --- */
     @media (max-width: 640px) {
-        .page-container { padding: 16px; }
-        .form-card { padding: 16px; }
-        .section-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-        .info-grid { grid-template-columns: 1fr; }
+        .page-container { padding: 16px; padding-bottom: 80px; } /* Space for bottom bar */
+        .form-card { padding: 20px; border: none; box-shadow: none; border-radius: 0; background: transparent; }
         
-        .btn-toolbar { 
-            flex-direction: column-reverse; 
-            align-items: stretch;
+        /* Typography */
+        .section-title { font-size: 22px; margin-bottom: 4px; }
+        .info-grid { padding: 16px; gap: 16px; background: #fff; border: 1px solid var(--border-color); }
+        .info-value { font-size: 16px; }
+        
+        /* Content Sections as Cards */
+        .content-section {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
         }
-        
-        .btn-toolbar .btn, .btn-toolbar form {
-            width: 100%;
-            display: flex;
+        .content-header {
+            background: #fff;
+            border-bottom: 1px dashed var(--border-color);
+            padding: 16px;
+            font-size: 16px;
+            color: var(--primary);
         }
-        
-        .btn-toolbar form button {
-            width: 100%;
-        }
-        
-        /* Ensure content doesn't overflow */
         .content-body {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+            padding: 16px;
+            font-size: 16px;
+            line-height: 1.7;
         }
         
-        /* Ensure images in content fit */
-        .content-body img {
-            max-width: 100%;
-            height: auto;
+        /* Sticky Bottom Bar */
+        .btn-toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 16px;
+            margin: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: row; /* Horizontal layout */
+            gap: 12px;
+            box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
         }
+        
+        /* Action Buttons Mobile */
+        .btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            min-height: 44px;
+        }
+        
+        .btn-ghost { display: none; } /* Hide Back button in bottom bar, rely on browser/nav back */
+        
+        /* Make primary action most prominent */
+        .btn-primary { flex: 2; }
     }
 
     .form-card {
@@ -124,6 +156,32 @@
         font-size: 15px;
         line-height: 1.6;
         color: var(--text-main);
+        overflow-wrap: break-word; /* Prevent long words breaking layout */
+    }
+
+    /* Markdown Content Optimizations */
+    .content-body img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+    }
+    
+    .content-body table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    
+    .content-body pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
     }
 
     .content-body p:last-child {

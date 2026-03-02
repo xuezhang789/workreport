@@ -139,7 +139,17 @@
     
     .comment-form textarea {
         padding: 10px 12px;
-        font-size: 13px;
+        font-size: 16px; /* Prevent zoom */
+    }
+    
+    .comment-form .btn {
+        min-height: 44px; /* Touch target */
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .comment-form .actions-row {
+        flex-direction: column;
     }
 }
 </style>

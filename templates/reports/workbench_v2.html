@@ -72,15 +72,58 @@
     }
 
     @media (max-width: 640px) {
-        .quick-actions {
-            grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile for better visibility */
+        /* Mobile Layout Adjustments */
+        .content {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
         }
+
         .wb-grid {
-            gap: 16px;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        /* Quick Actions - Horizontal Scroll */
+        .quick-actions {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding-bottom: 4px; /* Space for scrollbar if visible */
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+            margin-right: -16px; /* Bleed to edge */
+            padding-right: 16px; /* Padding for end of list */
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .quick-actions::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
+        }
+        
+        .qa-btn {
+            flex: 0 0 80px; /* Fixed width for consistent items */
+            min-height: auto;
+            aspect-ratio: 1/1; /* Square aspect ratio */
+            padding: 12px;
+        }
+        
+        .qa-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        .qa-label {
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* Reorder Right Column to Bottom */
+        .wb-right-col {
+            order: 2;
         }
     }
     
-    /* --- Quick Actions (Modern) --- */
+    /* --- Quick Actions (Desktop) --- */
     .quick-actions {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -215,7 +258,7 @@
         </div>
 
         <!-- RIGHT COLUMN -->
-        <div style="display: flex; flex-direction: column; gap: 32px;">
+        <div class="wb-right-col" style="display: flex; flex-direction: column; gap: 32px;">
             
             <!-- Recent Reports (HTMX Load) -->
             <section id="wb-reports" 

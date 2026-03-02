@@ -68,6 +68,47 @@
     @media (max-width: 768px) {
         .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
         .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        
+        /* Table Card View */
+        .table thead { display: none; }
+        .table tbody, .table tr, .table td { display: block; width: 100%; }
+        .table tr {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+        }
+        .table td {
+            padding: 8px 0;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: right;
+            border-bottom: 1px dashed #f1f5f9;
+        }
+        .table td:last-child { border-bottom: none; }
+        
+        .table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-right: 12px;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        
+        /* Specific tweaks for JSON box in card view */
+        .json-box {
+            max-width: 100%;
+            margin-top: 8px;
+        }
+        
+        /* Hide empty columns if any */
+        .table td:empty { display: none; }
     }
 
     /* --- Filter Section --- */
@@ -565,10 +606,10 @@
                 <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td style="color: var(--text-secondary); font-size: 12px; font-family: monospace;">
+                        <td data-label="时间 / Time" style="color: var(--text-secondary); font-size: 12px; font-family: monospace;">
                             {{ log.created_at|localtime|date:"Y-m-d H:i:s" }}
                         </td>
-                        <td>
+                        <td data-label="操作人 / Operator">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;">
                                     {% if log.user %}
@@ -582,7 +623,7 @@
                                 </span>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="动作 / Action">
                             {% if log.action == 'create' %}
                                 <span class="badge badge-green">创建 / Create</span>
                             {% elif log.action == 'update' %}
@@ -599,7 +640,7 @@
                                 <span class="badge badge-gray">{{ log.get_action_display }}</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="结果 / Result">
                             {% if log.result == 'success' %}
                                 <span style="color: var(--success);" title="成功 / Success">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -610,7 +651,7 @@
                                 </span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="操作对象 / Target">
                             {% if log.target_type and log.target_type != 'AccessLog' %}
                                 <div style="display: flex; flex-direction: column; gap: 2px;">
                                     {% if log.target_label %}
@@ -624,7 +665,7 @@
                                 <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="所属项目 / Project">
                             {% if log.project %}
                                 <a href="{% url 'projects:project_detail' log.project.id %}" style="text-decoration: none; color: var(--primary); font-weight: 500;">
                                     {{ log.project.name }}
@@ -633,11 +674,11 @@
                                 <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td style="font-size: 12px;">{{ log.ip|default:"-" }}</td>
-                        <td style="font-size: 12px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ log.summary }}">
+                        <td data-label="IP地址 / IP" style="font-size: 12px;">{{ log.ip|default:"-" }}</td>
+                        <td data-label="摘要 / Summary" style="font-size: 12px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ log.summary }}">
                             {{ log.summary|default:"-" }}
                         </td>
-                        <td style="width: 100px;">
+                        <td data-label="详情 / Details" style="width: 100px;">
                             {% if log.details %}
                                 <details>
                                     <summary>查看 / View</summary>

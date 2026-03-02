@@ -65,5 +65,36 @@
             </div>
         </form>
     </div>
+    
+    <style>
+        @media (max-width: 640px) {
+            .page-container { padding: 16px; }
+            .form-card { padding: 20px !important; }
+            
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .btn-toolbar {
+                flex-direction: column-reverse;
+                padding-top: 16px;
+            }
+            
+            .btn-toolbar .btn, .btn-toolbar a {
+                width: 100%;
+                min-height: 44px; /* Touch target */
+                justify-content: center;
+            }
+            
+            .form-input {
+                min-height: 44px;
+                font-size: 16px !important; /* Prevent zoom */
+            }
+            
+            .sla-visual {
+                font-size: 10px !important; /* Smaller text for visual bar */
+            }
+        }
+    </style>
 </div>
 {% endblock %}

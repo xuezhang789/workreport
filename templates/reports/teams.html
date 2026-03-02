@@ -423,29 +423,106 @@
     .btn-remove:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
     
     @media (max-width: 640px) {
-        .filter-grid { grid-template-columns: 1fr; }
-        .team-grid { grid-template-columns: 1fr; }
-        .pagination-toolbar { flex-direction: column; gap: 16px; }
-        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        /* Mobile Page Container */
+        .page-container { padding: 16px; }
         
-        /* Mobile Touch Targets */
-        .btn, .page-btn, .form-input, .form-select {
-            min-height: 44px;
-        }
+        /* Filter Grid */
+        .filter-grid { grid-template-columns: 1fr; gap: 12px; }
+        .filter-section { padding: 16px; }
+        .form-input, .form-select, .btn { min-height: 44px; font-size: 16px; } /* Touch targets */
         
         .filter-actions {
             flex-direction: column;
             width: 100%;
+            margin-top: 12px;
         }
-        .filter-actions .btn {
-            width: 100%;
-            justify-content: center;
+        .filter-actions .btn { width: 100%; justify-content: center; }
+
+        /* Project Cards */
+        .team-grid { grid-template-columns: 1fr; gap: 16px; }
+        .card { border-radius: 12px; margin-bottom: 16px; }
+        .card-body { padding: 16px; }
+        .card-footer { padding: 12px 16px; }
+        
+        /* Mobile Card View Table for Members */
+        .table-container { border: none; background: transparent; overflow: visible; }
+        .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+        .table thead { display: none; }
+        
+        .table tr {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
         }
         
-        .modal-content {
-            width: 95%;
-            max-height: 90vh;
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+            text-align: right;
+            min-height: 44px;
         }
+        
+        .table td:last-child { border-bottom: none; padding-bottom: 0; }
+        .table td:first-child { padding-top: 0; }
+        
+        .table td::before {
+            content: attr(data-label);
+            float: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-right: 12px;
+            text-align: left;
+        }
+        
+        /* Specific cell tweaks */
+        .table td[data-label="成员 / Member"] {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+        .table td[data-label="成员 / Member"]::before { display: none; }
+        
+        .user-header { width: 100%; }
+        
+        /* Project Tags Wrap */
+        .project-tags {
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            max-width: 70%;
+        }
+
+        /* Pagination */
+        .pagination-toolbar { flex-direction: column; gap: 16px; padding: 16px; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; flex-wrap: wrap; }
+        
+        /* Modals */
+        .modal-content {
+            width: 100%; height: 100%; max-height: 100%; border-radius: 0;
+            display: flex; flex-direction: column;
+        }
+        .modal-body { flex: 1; padding: 16px; overflow-y: auto; }
+        .modal-header { border-radius: 0; }
+        
+        /* Tabs Scroll */
+        .view-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn { flex-shrink: 0; }
+        
+        /* PM Modal Tabs */
+        .pm-tab { padding: 12px 8px; font-size: 12px; }
     }
 {% endblock %}
 
@@ -667,7 +744,7 @@
             <tbody>
                 {% for user in users %}
                 <tr id="row-{{ user.id }}">
-                    <td>
+                    <td data-label="成员 / Member">
                         <div class="user-header" style="gap: 10px;">
                             <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">
                                 {% with avatar_url=user|get_avatar_url %}
@@ -684,7 +761,7 @@
                             </div>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="角色 / Role">
                         {% if user.profile.position == 'dev' %}
                             <span class="role-badge badge-dev">Dev</span>
                         {% elif user.profile.position == 'qa' %}
@@ -701,7 +778,7 @@
                             <span class="role-badge badge-default">--</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="项目 / Projects">
                         <div class="project-tags">
                             {% for proj in user.project_memberships.all|slice:":3" %}
                                 <span class="project-tag">{{ proj.name }} <span style="color:var(--text-muted);font-size:10px;margin-left:2px;">{{ proj.overall_progress|stringformat:".0f" }}%</span></span>
@@ -711,7 +788,7 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td>
+                    <td data-label="状态 / Status">
                         {% if user.is_active %}
                             <span class="status-indicator"><span class="status-dot status-active"></span> Active</span>
                         {% else %}

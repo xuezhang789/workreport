@@ -9,27 +9,27 @@
     <div style="padding: 0;">
         {% if my_tasks %}
             {% for t in my_tasks %}
-            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: flex-start; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+            <a href="{% url 'tasks:task_view' t.id %}" style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-bottom: 1px solid var(--border-color); text-decoration: none; color: inherit; transition: background 0.2s; position: relative;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
                 <!-- Priority Indicator -->
-                <div style="width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; background: {% if t.priority == 'high' %}var(--danger){% elif t.priority == 'medium' %}var(--warning){% else %}var(--success){% endif %};" title="Priority: {{ t.get_priority_display }}"></div>
+                <div style="width: 6px; height: 36px; border-radius: 3px; flex-shrink: 0; background: {% if t.priority == 'high' %}var(--danger){% elif t.priority == 'medium' %}var(--warning){% else %}var(--success){% endif %};" title="Priority: {{ t.get_priority_display }}"></div>
                 
                 <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <a href="{% url 'tasks:task_view' t.id %}" style="font-size: 14px; font-weight: 600; color: var(--text-main); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
+                        <span style="font-size: 14px; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 70%;">
                             {{ t.title }}
-                        </a>
+                        </span>
                         {% if t.due_at %}
-                            <span style="font-size: 12px; color: {% if t.is_overdue %}var(--danger){% else %}var(--text-muted){% endif %}; white-space: nowrap; margin-left: 8px;">
+                            <span style="font-size: 11px; font-weight: 500; color: {% if t.is_overdue %}var(--danger){% else %}var(--text-muted){% endif %}; white-space: nowrap; background: var(--bg-body); padding: 2px 6px; border-radius: 4px;">
                                 {{ t.due_at|date:"m-d" }}
                             </span>
                         {% endif %}
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
-                        <span style="background: var(--bg-body); padding: 2px 6px; border-radius: 4px;">{{ t.project.code }}</span>
+                        <span style="background: var(--bg-body); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 11px;">{{ t.project.code }}</span>
                         <span>{{ t.get_status_display }}</span>
                     </div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         {% else %}
             <div style="padding: 32px; text-align: center; color: var(--text-muted);">

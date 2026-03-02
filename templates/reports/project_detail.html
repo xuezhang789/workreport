@@ -425,16 +425,142 @@
         margin-left: auto;
     }
     
-    .role-owner { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
-    .role-mgr { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+    /* --- Mobile Sticky Nav --- */
+    .project-nav {
+        display: none;
+        position: sticky;
+        top: var(--nav-height, 64px);
+        z-index: 900;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 16px;
+        overflow-x: auto;
+        white-space: nowrap;
+        gap: 8px;
+        margin: -24px -24px 24px -24px; /* Counteract page padding */
+        -webkit-overflow-scrolling: touch;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 16px;
+        border-radius: 99px;
+        background: #f1f5f9;
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .nav-pill.active {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    }
+
+    /* --- Mobile Table Cards --- */
+    @media (max-width: 768px) {
+        .page-container { padding: 0; } /* Full width on mobile */
+        
+        .project-nav { display: flex; margin: 0; top: 56px; } /* Adjust top for mobile header */
+        
+        /* Reset Card Styles for "Seamless" look */
+        .card {
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            box-shadow: none;
+            border-bottom: 8px solid #f1f5f9; /* Separator */
+            margin-bottom: 0;
+            padding: 16px;
+        }
+        
+        .card:last-child { border-bottom: none; }
+        
+        /* Table to Cards */
+        .table thead { display: none; }
+        .table tbody, .table tr, .table td { display: block; width: 100%; }
+        .table tr {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+        }
+        .table td {
+            padding: 4px 0;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: right;
+        }
+        .table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-right: 12px;
+            text-align: left;
+        }
+        
+        /* Special handling for first column (Title) */
+        .table td:first-child {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .table td:first-child::before { display: none; }
+        
+        /* Actions column */
+        .table td:last-child {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #f1f5f9;
+            justify-content: flex-end;
+        }
+        .table td:last-child::before { display: none; }
+        
+        /* Hide empty states padding */
+        div[style*="text-align: center; padding: 40px;"] { padding: 32px 16px !important; }
+        
+        /* Attachment Grid Mobile */
+        .attachment-grid { grid-template-columns: 1fr; }
+        .attachment-card { flex-direction: row; align-items: center; padding: 12px; }
+        .attachment-header { flex: 1; min-width: 0; margin-bottom: 0; }
+        .attachment-preview { width: 48px; height: 48px; border-radius: 4px; margin-right: 12px; margin-bottom: 0; }
+        .attachment-meta { display: none; } /* Simplify for mobile */
+        .attachment-actions { margin-top: 0; }
+        
+        /* Buttons */
+        .btn { min-height: 44px; }
+    }
 {% endblock %}
 
 {% block content %}
 {% can_manage_project project as can_manage %}
+
+<!-- Mobile Sticky Nav -->
+<nav class="project-nav" id="projectNav">
+    <a href="#section-overview" class="nav-pill active" onclick="handleNavClick(event, 'section-overview')">概览 / Overview</a>
+    <a href="#section-attachments" class="nav-pill" onclick="handleNavClick(event, 'section-attachments')">附件 / Attachments</a>
+    <a href="#section-phase" class="nav-pill" onclick="handleNavClick(event, 'section-phase')">进度 / Progress</a>
+    <a href="#section-members" class="nav-pill" onclick="handleNavClick(event, 'section-members')">成员 / Members</a>
+    <a href="#section-tasks" class="nav-pill" onclick="handleNavClick(event, 'section-tasks')">任务 / Tasks</a>
+    <a href="#section-reports" class="nav-pill" onclick="handleNavClick(event, 'section-reports')">日报 / Reports</a>
+</nav>
+
 <div class="page-container">
     
     <!-- Header / Overview -->
-    <div class="card">
+    <div class="card" id="section-overview">
         <div class="card-header">
             <div>
                 <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: var(--text-main);">{{ project.name }}</h1>
@@ -552,7 +678,7 @@
     </div>
 
     <!-- Attachments Module -->
-    <div class="card" id="attachments-card">
+    <div class="card" id="section-attachments">
     <div class="card-header">
         <div class="card-title">
             <span>📎</span> 附件 / Attachments
@@ -606,7 +732,7 @@
     </div>
 
     <!-- Phase Management -->
-    <div class="card">
+    <div class="card" id="section-phase">
         <div class="card-header">
             <div class="card-title">
                 <span>🚩</span> 阶段与进度 / Phase & Progress
@@ -644,7 +770,7 @@
     </div>
 
     <!-- Team Members -->
-    <div class="card">
+    <div class="card" id="section-members">
         <div class="card-header">
             <div class="card-title">
                 <span>👥</span> 项目成员 / Team Members
@@ -718,7 +844,7 @@
     </div>
 
     <!-- Tasks Module -->
-    <div class="card">
+    <div class="card" id="section-tasks">
         <div class="card-header">
             <div class="card-title">
                 <span>📋</span> 关联任务 / Tasks
@@ -775,7 +901,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="优先级 / Priority">
                                     {% if task.priority == 'high' %}
                                         <span class="status-badge" style="background: #fee2e2; color: #ef4444;">High</span>
                                     {% elif task.priority == 'medium' %}
@@ -784,13 +910,13 @@
                                         <span class="status-badge" style="background: #dcfce7; color: #16a34a;">Low</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="负责人 / Assignee">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
                                         <span style="font-size: 13px;">{{ task.user.get_full_name|default:task.user.username|default:"--" }}</span>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="截止日期 / Due Date">
                                     {% if task.due_at %}
                                         <span style="font-size: 13px; {% if task.sla_info.is_overdue and task.status != 'done' and task.status != 'closed' %}color: #ef4444; font-weight: 600;{% else %}color: var(--text-secondary);{% endif %}">
                                             {{ task.due_at|date:"Y-m-d" }}
@@ -799,7 +925,7 @@
                                         <span style="font-size: 13px; color: var(--text-muted);">--</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="状态 / Status">
                                     <span class="status-badge 
                                         {% if task.status == 'done' %}badge-completed
                                         {% elif task.status == 'closed' %}badge-default
@@ -810,7 +936,7 @@
                                         {{ task.get_status_display }}
                                     </span>
                                 </td>
-                                <td style="text-align: right;">
+                                <td style="text-align: right;" data-label="操作 / Actions">
                                     <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost btn-sm">查看 / View</a>
                                 </td>
                             </tr>
@@ -839,7 +965,7 @@
     </div>
 
     <!-- Recent Reports -->
-    <div class="card">
+    <div class="card" id="section-reports">
         <div class="card-header">
             <div class="card-title"><span>📰</span> 最近日报 / Recent Reports</div>
         </div>
@@ -858,9 +984,9 @@
                         {% for r in recent_reports %}
                             <tr>
                                 <td>{{ r.date }}</td>
-                                <td>{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</td>
-                                <td>{{ r.get_role_display }}</td>
-                                <td style="text-align: right;">
+                                <td data-label="提交人 / Submitter">{{ r.user.get_full_name|default:r.user.username }} @{{ r.user.username }}</td>
+                                <td data-label="角色 / Role">{{ r.get_role_display }}</td>
+                                <td style="text-align: right;" data-label="操作 / Actions">
                                     <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-ghost" style="padding: 4px 8px; font-size: 12px;">查看 / View</a>
                                 </td>
                             </tr>
@@ -879,6 +1005,23 @@
 {% block extra_scripts %}
 <script src="{% static 'js/upload_manager.js' %}"></script>
 <script>
+    // --- Mobile Nav Logic ---
+    function handleNavClick(event, sectionId) {
+        event.preventDefault();
+        
+        // Update Active State
+        document.querySelectorAll('.nav-pill').forEach(pill => pill.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Scroll to Section with Offset
+        const section = document.getElementById(sectionId);
+        if (section) {
+            const navHeight = document.getElementById('projectNav').offsetHeight;
+            const top = section.getBoundingClientRect().top + window.pageYOffset - navHeight - 16;
+            window.scrollTo({ top: top, behavior: 'smooth' });
+        }
+    }
+
     // --- Upload Logic ---
     document.addEventListener('DOMContentLoaded', function() {
         const addAttachmentBtn = document.getElementById('add-attachment-btn');

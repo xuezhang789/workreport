@@ -243,41 +243,105 @@
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @media (max-width: 768px) {
-        .filter-grid { grid-template-columns: 1fr; }
-        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
-        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        .page-container { padding: 16px; }
         
-        /* Stack Filter Toolbar */
-        .filter-toolbar {
-            flex-direction: column;
-            align-items: stretch !important;
+        /* Stats Grid - 2 columns on mobile */
+        div[style*="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
         }
-        
-        .filter-toolbar input, 
-        .filter-toolbar select, 
-        .filter-toolbar .btn {
-            width: 100% !important;
-            max-width: none !important;
-            min-height: 44px; /* Touch target */
-        }
+        .stat-card { padding: 16px !important; }
+        .stat-card .val { font-size: 24px !important; }
+
+        /* Filter Toolbar */
+        .filter-toolbar { flex-direction: column; align-items: stretch !important; gap: 12px !important; }
+        .filter-toolbar > div, .filter-toolbar form { width: 100%; }
+        .form-input, .form-select, .btn { min-height: 44px; font-size: 16px; } /* Touch targets */
         
         .filter-toolbar .actions-group {
-            border-left: none !important;
-            padding-left: 0 !important;
-            margin-left: 0 !important;
-            margin-top: 12px;
-            display: grid !important;
-            grid-template-columns: 1fr 44px; /* Filter btn + Reset btn */
-            gap: 8px;
+            margin-top: 12px; padding-left: 0 !important; border-left: none !important;
+            display: grid !important; grid-template-columns: 1fr 44px; gap: 8px; margin-left: 0 !important;
         }
         
-        /* Stats Cards */
-        .stat-card {
-            padding: 16px !important;
+        /* Mobile Card View Table */
+        .table-container { border: none; background: transparent; overflow: visible; }
+        .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+        .table thead { display: none; }
+        
+        .table tr {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
         }
-        .stat-card .val {
-            font-size: 24px !important;
+        
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            text-align: right;
+            min-height: 44px;
         }
+        
+        .table td:last-child { border-bottom: none; padding-bottom: 0; }
+        .table td:first-child { padding-top: 0; }
+        
+        .table td::before {
+            content: attr(data-label);
+            float: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-right: 12px;
+            text-align: left;
+        }
+        
+        /* Specific cell tweaks */
+        .table td[data-label="员工 / Employee"] {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+        .table td[data-label="员工 / Employee"]::before { display: none; } /* Hide label for user header */
+        
+        .user-header { width: 100%; }
+        .actions-cell { justify-content: flex-end; padding-top: 8px !important; }
+        
+        /* Pagination */
+        .pagination-toolbar { flex-direction: column; gap: 16px; padding: 16px; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; flex-wrap: wrap; }
+        
+        /* Modals */
+        .modal-content {
+            width: 100%; height: 100%; max-height: 100%; border-radius: 0;
+            display: flex; flex-direction: column;
+        }
+        .modal-body { flex: 1; padding: 16px; overflow-y: auto; }
+        .modal-header { border-radius: 0; }
+        
+        .calendar-day { min-height: 60px; font-size: 12px; }
+        
+        /* Dropdowns as Bottom Sheet */
+        .dropdown-content {
+            position: fixed; top: auto !important; bottom: 0; left: 0 !important; right: 0;
+            width: 100%; border-radius: 16px 16px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            animation: slideUp 0.2s ease-out;
+            padding-bottom: env(safe-area-inset-bottom);
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .dropdown-content button { padding: 16px; font-size: 16px; border-bottom: 1px solid var(--border-color); text-align: center; }
+        .dropdown-content button:last-child { border-bottom: none; }
+        .dropdown-content button svg { margin-right: 8px; }
     }
 {% endblock %}
 
@@ -611,7 +675,7 @@ function renderCalendar(data) {
             <tbody>
                 {% for user in users %}
                 <tr id="row-{{ user.id }}">
-                    <td>
+                    <td data-label="员工 / Employee">
                         <div class="user-header">
                             <div class="user-avatar">
                                 {% with avatar_url=user|get_avatar_url %}
@@ -631,7 +695,7 @@ function renderCalendar(data) {
                             </div>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="角色 / Role">
                         {% if user.profile.position == 'dev' %}
                             <span class="role-badge badge-dev">Dev</span>
                         {% elif user.profile.position == 'qa' %}
@@ -648,16 +712,16 @@ function renderCalendar(data) {
                             <span class="role-badge badge-default">--</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="状态 / Status">
                         {% if user.profile.employment_status == 'active' %}
                             <span class="status-indicator"><span class="status-dot status-active"></span> 在职</span>
                         {% else %}
                             <span class="status-indicator"><span class="status-dot status-inactive"></span> 离职</span>
                         {% endif %}
                     </td>
-                    <td>{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
-                    <td>{{ user.profile.probation_months }} Mo.</td>
-                    <td>
+                    <td data-label="入职日期 / Hire Date">{{ user.profile.hire_date|date:"Y-m-d"|default:"--" }}</td>
+                    <td data-label="试用期 / Probation">{{ user.profile.probation_months }} Mo.</td>
+                    <td data-label="薪资 / Salary">
                         <div class="salary-container salary-hidden" onclick="this.classList.toggle('salary-hidden'); this.classList.toggle('salary-visible');" style="cursor: pointer; font-size: 12px;">
                             <div title="Probation Salary">
                                 P: <span class="mask">******</span><span class="val">{{ user.profile.probation_salary|default:"--"|floatformat:2|intcomma }}</span> {{ user.profile.salary_currency }}
@@ -668,10 +732,10 @@ function renderCalendar(data) {
                             <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;" class="mask-hint">(Click to show)</div>
                         </div>
                     </td>
-                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
+                    <td data-label="备注 / Note" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ user.profile.hr_note }}">
                         {{ user.profile.hr_note|default:"--" }}
                     </td>
-                    <td style="text-align: right;">
+                    <td class="actions-cell" style="text-align: right;">
                         <div class="dropdown">
                                 <div class="dropdown-trigger" onclick="togglePersonDropdown(event, this)">
                                     操作 <span style="font-size: 8px;">▼</span>

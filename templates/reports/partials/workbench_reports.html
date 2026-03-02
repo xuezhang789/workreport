@@ -5,7 +5,7 @@
         </h3>
         <a href="{% url 'reports:my_reports' %}" style="font-size: 12px; color: var(--primary); text-decoration: none;">全部 &rarr;</a>
     </div>
-    <div style="overflow-x: auto;">
+    <div class="wb-report-table-view">
         <table class="table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background: var(--bg-body);">
@@ -39,4 +39,36 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Mobile Card View -->
+    <div class="wb-report-mobile-view" style="display: none;">
+        {% for r in recent_reports %}
+        <a href="{% url 'reports:report_detail' r.id %}" style="display: block; padding: 16px; border-bottom: 1px solid var(--border-color); text-decoration: none; color: inherit;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 14px;">{{ r.date|date:"Y-m-d" }}</div>
+                {% if r.status == 'submitted' %}
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #ecfdf5; color: #059669; font-size: 11px; font-weight: 600;">已提交</span>
+                {% elif r.status == 'draft' %}
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #fffbeb; color: #d97706; font-size: 11px; font-weight: 600;">草稿</span>
+                {% else %}
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #f3f4f6; color: #4b5563; font-size: 11px; font-weight: 600;">{{ r.get_status_display }}</span>
+                {% endif %}
+            </div>
+            <div style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-user-tag" style="font-size: 10px;"></i> {{ r.get_role_display }}
+            </div>
+        </a>
+        {% empty %}
+        <div style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px;">
+            暂无记录 / No records
+        </div>
+        {% endfor %}
+    </div>
+
+    <style>
+        @media (max-width: 640px) {
+            .wb-report-table-view { display: none !important; }
+            .wb-report-mobile-view { display: block !important; }
+        }
+    </style>
 </div>

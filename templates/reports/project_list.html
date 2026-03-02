@@ -180,31 +180,70 @@
         /* Adjust grid for small screens */
         .project-grid { grid-template-columns: 1fr; }
         
-        /* Stack Filter */
-        .filter-grid {
+        /* Filter Optimization */
+        .filter-section details {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 0;
+            margin-bottom: 16px;
+        }
+        .filter-section summary {
+            padding: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-section summary::-webkit-details-marker { display: none; }
+        .filter-section summary::after {
+            content: '\f0b0'; /* FontAwesome filter icon */
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+        }
+        .filter-content {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-        .form-group {
-            width: 100%;
-            margin-bottom: 0;
-        }
-        .filter-actions {
-            width: 100%;
-            display: flex;
-            gap: 12px;
-        }
-        .filter-actions .btn {
-            flex: 1;
-            justify-content: center;
-        }
-        
+
         /* Adjust Layout Padding */
         .content {
             padding-left: 16px !important;
             padding-right: 16px !important;
         }
+        
+        /* Hide Desktop Create Button */
+        .page-actions .btn-primary { display: none; }
+    }
+    
+    /* FAB */
+    .fab-create {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: var(--shadow-lg);
+        z-index: 100;
+        transition: transform 0.2s;
+        text-decoration: none;
+    }
+    .fab-create:active { transform: scale(0.95); }
+    
+    @media (min-width: 769px) {
+        .fab-create { display: none; }
     }
 {% endblock %}
 
@@ -240,59 +279,94 @@
 
     <!-- Filter -->
     <div class="filter-section">
+        {% if can_create_project %}
+            <a href="{% url 'projects:project_create' %}" class="fab-create" aria-label="Create Project">
+                <i class="fas fa-plus"></i>
+            </a>
+        {% endif %}
+
         <form method="get" id="filterForm" 
               hx-get="{% url 'projects:project_list' %}" 
               hx-target="#projectListContainer" 
               hx-push-url="true" 
               hx-indicator="#loadingOverlay">
-            <div class="filter-grid">
-                <div class="form-group" style="flex: 2;">
-                    <label class="form-label" for="q">搜索 / Search</label>
-                    <div class="search-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="q" name="q" class="search-input" 
-                               placeholder="项目名称、代码或描述..." 
-                               value="{{ q }}"
-                               hx-trigger="keyup changed delay:500ms, search">
+            
+            <!-- Mobile Filter Wrapper -->
+            <div class="desktop-filter-wrapper">
+                <div class="filter-grid">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label" for="q">搜索 / Search</label>
+                        <div class="search-wrapper">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="q" name="q" class="search-input" 
+                                   placeholder="项目名称、代码或描述..." 
+                                   value="{{ q }}"
+                                   hx-trigger="keyup changed delay:500ms, search">
+                        </div>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="phase">阶段 / Phase</label>
-                    <select id="phase" name="phase" hx-trigger="change">
-                        <option value="">全部阶段 / All Phases</option>
-                        {% for p in phases %}
-                            <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="phase">阶段 / Phase</label>
+                        <select id="phase" name="phase" hx-trigger="change">
+                            <option value="">全部阶段 / All Phases</option>
+                            {% for p in phases %}
+                                <option value="{{ p.id }}" {% if phase_id == p.id %}selected{% endif %}>{{ p.phase_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="owner">负责人 / Owner</label>
-                    <input type="text" id="owner" name="owner" 
-                           placeholder="输入姓名..." 
-                           value="{{ owner }}"
-                           hx-trigger="keyup changed delay:500ms">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="owner">负责人 / Owner</label>
+                        <input type="text" id="owner" name="owner" 
+                               placeholder="输入姓名..." 
+                               value="{{ owner }}"
+                               hx-trigger="keyup changed delay:500ms">
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="sort">排序 / Sort</label>
-                    <select id="sort" name="sort" hx-trigger="change">
-                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
-                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
-                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>名称 (A-Z)</option>
-                        <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label" for="sort">排序 / Sort</label>
+                        <select id="sort" name="sort" hx-trigger="change">
+                            <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>创建时间 (新→旧)</option>
+                            <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>创建时间 (旧→新)</option>
+                            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>名称 (A-Z)</option>
+                            <option value="progress" {% if sort_by == 'progress' %}selected{% endif %}>进度 (高→低)</option>
+                        </select>
+                    </div>
 
-                <div class="filter-actions">
-                    <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')">重置</a>
-                    <!-- Submit button is still useful for immediate submission or if JS fails -->
-                    <button type="submit" class="btn btn-primary" id="filterBtn">筛选</button>
+                    <div class="filter-actions">
+                        <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')">重置</a>
+                        <button type="submit" class="btn btn-primary" id="filterBtn">筛选</button>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
+
+    <script>
+        // Move filter content into details on mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth <= 768) {
+                const wrapper = document.querySelector('.desktop-filter-wrapper');
+                if (wrapper && !wrapper.parentElement.tagName.toLowerCase() === 'details') {
+                    const details = document.createElement('details');
+                    const summary = document.createElement('summary');
+                    summary.textContent = '筛选与搜索 / Filter & Search';
+                    
+                    const content = document.createElement('div');
+                    content.className = 'filter-content';
+                    
+                    // Move content
+                    while (wrapper.firstChild) {
+                        content.appendChild(wrapper.firstChild);
+                    }
+                    
+                    details.appendChild(summary);
+                    details.appendChild(content);
+                    wrapper.parentNode.replaceChild(details, wrapper);
+                }
+            }
+        });
+    </script>
 
     <!-- Project List Content (HTMX Target) -->
     {% include "reports/partials/project_list_content.html" %}

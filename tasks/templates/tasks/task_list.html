@@ -421,7 +421,32 @@
     }
     .loading-overlay.active { opacity: 1; pointer-events: all; }
     
-    /* --- Media Queries for Responsive Design --- */
+    /* FAB */
+    .fab-create {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: var(--shadow-lg);
+        z-index: 90; /* Below bulk toolbar */
+        transition: transform 0.2s;
+        text-decoration: none;
+    }
+    .fab-create:active { transform: scale(0.95); }
+    
+    @media (min-width: 769px) {
+        .fab-create { display: none; }
+    }
+
+    /* Filter Optimization Mobile */
     @media (max-width: 768px) {
         .page-container {
             padding: 0 16px 100px 16px;
@@ -485,14 +510,73 @@
         }
         .bulk-info { border-right: none; padding-right: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; width: 100%; justify-content: center; }
         .bulk-actions { width: 100%; justify-content: space-between; }
-        .bulk-btn { flex: 1; justify-content: center; height: 44px; }
-        
-        /* Hide complex filters on mobile initially (maybe toggle) */
-        .filter-grid {
-            grid-template-columns: 1fr; /* Stack filters */
-        }
+        .bulk-btn { flex: 1; justify-content: center; min-height: 44px; }
         
         .pagination-toolbar { flex-direction: column; text-align: center; justify-content: center; }
+        
+        /* Touch Targets */
+        .view-btn { width: 44px; height: 44px; }
+        .form-select, .search-input { min-height: 44px; font-size: 16px; }
+        .btn { min-height: 44px; }
+
+        /* Filter Panel Collapsible */
+        .filter-panel {
+            padding: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+        
+        .filter-panel details {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .filter-panel summary {
+            padding: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+        }
+        .filter-panel summary::-webkit-details-marker { display: none; }
+        .filter-panel summary::after {
+            content: '\f0b0'; /* FontAwesome filter icon - fallback if FA loaded */
+            font-family: "Font Awesome 5 Free"; 
+            font-weight: 900;
+        }
+        /* SVG icon fallback */
+        .filter-panel summary::after {
+            content: '';
+            width: 20px; height: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .filter-content {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        /* Hide complex filters grid initially, show in details */
+        .filter-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        /* Hide Desktop Create Button */
+        .page-header .btn-primary { display: none; }
     }
     
     /* Pagination Toolbar - Unified Style */
@@ -528,6 +612,10 @@
     @media (max-width: 768px) {
         .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
         .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        
+        .page-btn { min-height: 44px; min-width: 44px; }
+        .page-current { min-height: 44px; min-width: 44px; }
+        .page-select, .page-jump-input { min-height: 44px; }
     }
 </style>
 
@@ -537,6 +625,12 @@
         <div class="spinner" style="width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
     </div>
     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+    {% if can_create_task %}
+    <a href="{% url 'tasks:admin_task_create' %}" class="fab-create" aria-label="Create Task">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </a>
+    {% endif %}
 
     <!-- Header -->
     <div class="page-header">
@@ -842,6 +936,38 @@
 
     // --- Initialization Logic ---
     function initTaskPage() {
+        // Mobile Filter Optimization
+        if (window.innerWidth <= 768) {
+            const filterGrid = document.querySelector('.filter-grid');
+            const filterPanel = document.querySelector('.filter-panel');
+            // Check if already wrapped or not needed
+            if (filterGrid && filterPanel && !filterPanel.querySelector('details')) {
+                const details = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.textContent = '筛选与搜索 / Filter & Search';
+                
+                const content = document.createElement('div');
+                content.className = 'filter-content';
+                
+                // Move filter grid into content
+                content.appendChild(filterGrid);
+                
+                // Move bottom row as well
+                const bottomRow = document.querySelector('.filter-row-bottom');
+                if (bottomRow) content.appendChild(bottomRow);
+                
+                details.appendChild(summary);
+                details.appendChild(content);
+                
+                // Clear panel and append details
+                // We need to keep the form wrapper!
+                const form = document.getElementById('filterForm');
+                if (form) {
+                    form.appendChild(details);
+                }
+            }
+        }
+
         // Reset kanban flag on re-init
         window.kanbanDistributed = false;
 

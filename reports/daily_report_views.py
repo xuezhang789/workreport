@@ -449,7 +449,14 @@ def my_reports(request):
             Q(mgr_tomorrow__icontains=q)
         )
 
-    paginator = Paginator(qs, 20)
+    try:
+        per_page = int(request.GET.get('per_page', 20))
+        if per_page not in [10, 20, 50, 100]:
+            per_page = 20
+    except (ValueError, TypeError):
+        per_page = 20
+
+    paginator = Paginator(qs, per_page)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -492,6 +499,7 @@ def my_reports(request):
     context = {
         'reports': page_obj,
         'page_obj': page_obj,
+        'per_page': per_page,
         'start_date': start_date,
         'end_date': end_date,
         'status': status,
