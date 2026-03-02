@@ -228,8 +228,18 @@
         opacity: 1;
     }
 
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
     @media (max-width: 900px) {
         .page-grid { grid-template-columns: 1fr; }
+        .form-row { grid-template-columns: 1fr; }
     }
 {% endblock %}
 
@@ -314,7 +324,7 @@
                         <span class="help-text">JSON 格式，Key 必须对应右侧的字段名</span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                    <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">排序权重 / Sort Order</label>
                             <input type="number" name="sort_order" value="{{ sort_order_value }}" class="form-input" style="width: 120px;">

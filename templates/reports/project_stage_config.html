@@ -4,6 +4,19 @@
 {% block nav_header %}{% include "partials/nav.html" with nav_title="阶段配置" nav_subtitle="Stage Configuration" %}{% endblock %}
 
 
+{% block extra_styles %}
+<style>
+    .config-layout {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 24px;
+    }
+    @media (max-width: 768px) {
+        .config-layout { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="hero">
     <div>
@@ -13,7 +26,7 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+<div class="config-layout">
     <!-- Form Section -->
     <section class="card">
         <h3>{% if editing %}编辑阶段 / Edit Phase{% else %}新增阶段 / New Phase{% endif %}</h3>
@@ -47,8 +60,9 @@
     <!-- List Section -->
     <section class="card">
         <h3>阶段列表 / Phase List</h3>
-        <table class="table">
-            <thead>
+        <div class="table-container">
+            <table class="table">
+                <thead>
                 <tr>
                     <th>排序 / Order</th>
                     <th>名称 / Name</th>
@@ -94,6 +108,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </section>
 </div>
 {% endblock %}

@@ -356,13 +356,47 @@
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         /* --- Responsive Utils --- */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        th { background-color: var(--bg-hover); font-weight: 600; color: var(--text-secondary); }
+
+        .grid-responsive {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
         @media (max-width: 768px) {
-            .page-header { flex-direction: column; align-items: flex-start; }
-            .filter-grid { flex-direction: column; align-items: stretch; }
-            .filter-actions { margin-left: 0; margin-top: 8px; }
-            .pagination-toolbar { flex-direction: column; justify-content: center; text-align: center; }
+            .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .page-title { font-size: 20px; }
             
-            /* Better Touch Targets */
+            .filter-grid { flex-direction: column; align-items: stretch; }
+            .filter-actions { margin-left: 0; margin-top: 12px; width: 100%; display: flex; gap: 8px; }
+            .filter-actions .btn { flex: 1; justify-content: center; }
+            
+            .pagination-toolbar { flex-direction: column; gap: 12px; text-align: center; }
+            .pagination-toolbar .btn-group { width: 100%; justify-content: center; }
+            
+            .content { padding: 16px; }
+            .card { padding: 16px; }
+            
+            /* Full width buttons on mobile for better touch targets */
+            .page-actions { width: 100%; margin-top: 12px; }
+            .page-actions .btn { flex: 1; }
+            
             input, select, textarea, .btn { min-height: 44px; }
         }
 
