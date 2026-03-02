@@ -297,18 +297,28 @@
         left: 0;
         right: 0;
         bottom: 0; /* Cover full screen */
+        height: calc(100vh - var(--nav-height)); /* Explicit height for mobile browsers */
         background: white;
         padding: 16px;
         z-index: 998; /* Below topbar (9999) */
         flex-direction: column;
         gap: 8px;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         
         /* Animation */
         opacity: 0;
         transform: translateY(-10px);
         pointer-events: none;
         transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Fallback for mobile browsers with dynamic URL bars */
+    @supports (-webkit-touch-callout: none) {
+        .mobile-menu-container {
+            height: -webkit-fill-available;
+            padding-bottom: 80px; /* Extra padding for bottom bar */
+        }
     }
     
     .mobile-menu-container.show {
@@ -556,6 +566,7 @@
     }
 
     function toggleMobileMenu(btn) {
+        closeAllDropdowns();
         const menu = document.getElementById('mobile-menu');
         const icon = btn.querySelector('i');
         const isExpanded = btn.getAttribute('aria-expanded') === 'true';
@@ -567,6 +578,7 @@
                 icon.classList.remove('fa-times');
                 icon.classList.add('fa-bars');
             }
+            document.body.style.overflow = ''; // Restore scrolling
         } else {
             menu.classList.add('show');
             btn.setAttribute('aria-expanded', 'true');
@@ -574,6 +586,7 @@
                 icon.classList.remove('fa-bars');
                 icon.classList.add('fa-times');
             }
+            document.body.style.overflow = 'hidden'; // Lock scrolling
         }
     }
 
@@ -584,8 +597,11 @@
             closeAllDropdowns();
         }
         
-        // Close mobile menu if clicking outside topbar
-        if (!e.target.closest('.topbar')) {
+        // Close mobile menu if clicking outside topbar and not on menu content
+        // Note: With full screen menu, clicking "outside" usually means clicking on the menu itself (which is fine)
+        // or clicking on the topbar. The logic here handles closing if user clicks topbar links.
+        if (!e.target.closest('.topbar') && !e.target.closest('.mobile-menu-container')) {
+            // This condition is rarely met with full screen menu, but kept for safety
             const mobileMenu = document.getElementById('mobile-menu');
             const mobileBtn = document.querySelector('.mobile-menu-btn');
             if (mobileMenu && mobileMenu.classList.contains('show')) {
