@@ -100,13 +100,13 @@
                value="{{ invitation_code }}" required 
                placeholder="Enter invitation code"
                {% if invitation_code %}readonly style="background-color: #f3f4f6;"{% endif %}>
-        <div class="label-hint">注册需要有效的邀请码</div>
+        <div class="label-hint">注册需要有效的邀请码 / Registration requires a valid invitation code</div>
     </div>
 
     <div class="form-group">
         <label for="{{ form.username.id_for_label }}" class="form-label">用户名 / Username</label>
         {{ form.username }}
-        <div class="label-hint">唯一标识，建议使用英文字母和数字</div>
+        <div class="label-hint">唯一标识，建议使用英文字母和数字 / Unique ID, letters and numbers recommended</div>
         {% if form.username.errors %}
             <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</div>
         {% endif %}
@@ -174,11 +174,10 @@
 
 <div class="auth-footer">
     <p>
-        已有账号？ 
+        已有账号？ / Already have an account? 
         <a href="{% url 'core:login' %}" class="auth-link">返回登录 / Back to login</a>
     </p>
 </div>
-
 {% endblock %}
 
 {% block extra_scripts %}

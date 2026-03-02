@@ -176,7 +176,7 @@ def update_hr_info(request, user_id):
 
     # 1. 就职状态
     employment_status = data.get('employment_status')
-    if employment_status not in ['active', 'terminated']:
+    if employment_status and employment_status not in ['active', 'terminated']:
         errors['employment_status'] = '无效的状态 / Invalid status'
 
     # 2. 入职时间
@@ -225,6 +225,11 @@ def update_hr_info(request, user_id):
                  errors['official_salary'] = '薪资必须大于等于 0 / Salary must be >= 0'
         except (InvalidOperation, ValueError):
             errors['official_salary'] = '无效的金额 / Invalid amount'
+            
+    # 额外验证：正式薪资不能低于试用期薪资
+    if ps_val is not None and os_val is not None:
+        if os_val < ps_val:
+             errors['official_salary'] = '正式薪资不能低于试用期薪资 / Official salary cannot be lower than probation'
 
     # 6. 离职时间
     resignation_date_str = data.get('resignation_date')

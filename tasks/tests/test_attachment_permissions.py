@@ -96,6 +96,14 @@ class TaskAttachmentPermissionTest(TestCase):
         # I want to ensure it becomes 403.
         # For now, let's see what it returns.
         print(f"Manager delete response: {resp.status_code}")
+        
+        # Reset if it was deleted
+        if resp.status_code == 200:
+             self.att_by_owner = TaskAttachment.objects.create(
+                task=self.task, 
+                user=self.owner, 
+                file=SimpleUploadedFile("test2.txt", b"content")
+            )
 
         # 6. Random user
         c.login(username='other', password='password')

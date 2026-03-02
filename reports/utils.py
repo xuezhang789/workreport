@@ -114,7 +114,12 @@ def can_manage_project(user, project):
     if cached_result is not None:
         return cached_result
 
-    # RBAC 权限检查
+    # 1. 直接关联 (Owner, Managers)
+    if project.owner_id == user.id or project.managers.filter(pk=user.pk).exists():
+        cache.set(cache_key, True, 300)
+        return True
+
+    # 2. RBAC 权限检查
     scope = f"project:{project.id}"
     result = RBACService.has_permission(user, 'project.manage', scope=scope)
     
@@ -134,7 +139,16 @@ def get_manageable_projects(user):
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
 
-    return _get_projects_by_permission(user, 'project.manage')
+    # 1. RBAC 权限
+    rbac_qs = _get_projects_by_permission(user, 'project.manage')
+    
+    # 2. 直接关联 (Owner, Managers)
+    direct_qs = Project.objects.filter(
+        Q(owner=user) | Q(managers=user),
+        is_active=True
+    )
+    
+    return (rbac_qs | direct_qs).distinct()
 
 def get_accessible_tasks(user):
     """

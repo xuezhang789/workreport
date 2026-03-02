@@ -31,7 +31,8 @@ class FileUploadTests(TestCase):
         self.assertIn('不支持的文件类型', response.json()['message'])
 
     def test_upload_valid_file_task(self):
-        f = SimpleUploadedFile("test.pdf", b"content", content_type="application/pdf")
+        # Use valid PDF signature (%PDF)
+        f = SimpleUploadedFile("test.pdf", b"%PDF-1.4 content", content_type="application/pdf")
         response = self.client.post(
             reverse('tasks:task_upload_attachment', args=[self.task.id]),
             {'files': [f]}

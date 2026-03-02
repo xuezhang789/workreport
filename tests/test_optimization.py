@@ -25,27 +25,18 @@ class OptimizationTest(TestCase):
 
     def test_workbench_queries(self):
         self.client.force_login(self.user)
-        # Login triggers session/user updates
-        
-        # Workbench:
+        # Workbench main view only loads skeleton now (HTMX)
+        # Queries:
         # 1. Session
         # 2. User
-        # 3. Stats (counts)
-        # 4. Due today count
-        # 5. Due soon count
-        # 6. Streak
-        # 7. Today report
-        # 8. Projects list (aggregated)
-        # 9. Profile (for role/position)
-        # 10. RoleTemplate
-        # 11. Project Managers (permission)
-        # 12. UserPreference
-        # 13. Managed projects
-        # 14. Recent reports
-        with self.assertNumQueries(13):
+        # 3. Profile
+        # 4. Project Managers (permission)
+        # 5. UserPreference
+        with self.assertNumQueries(5):
             response = self.client.get('/reports/workbench/')
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Test Project')
+        # Content is loaded via HTMX, so 'Test Project' won't be in the initial skeleton
+        # self.assertContains(response, 'Test Project') 
         
     def test_stats_queries(self):
         self.client.force_login(self.admin)

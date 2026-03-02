@@ -1,6 +1,6 @@
 {% extends "base_topbar.html" %}
 {% block title %}项目管理 / Project{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理" nav_subtitle="Project Management" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理 / Project Management" nav_subtitle="Project Management" %}{% endblock %}
 {% block extra_styles %}
     /* --- Design System (Consistent with Admin Pages) --- */
     .page-container {
@@ -980,7 +980,7 @@
         
         // Delete Existing Attachment
         window.deleteExistingAttachment = function(id, url) {
-            if (!confirm('确定删除该附件吗？')) return;
+            if (!confirm('确定删除该附件吗？ / Are you sure you want to delete this attachment?')) return;
             fetch(url, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }

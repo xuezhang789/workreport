@@ -1,8 +1,8 @@
 {% extends "base_topbar.html" %}
 {% load static %}
 {% load tz permission_tags %}
-{% block title %}{{ project.name }} - 项目详情 / Project Detail{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情" nav_subtitle="Project Detail" %}{% endblock %}
+{% block title %}{{ project.name }} - 项目详情 / Project Details{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目详情" nav_subtitle="Project Details" %}{% endblock %}
 {% block extra_styles %}
     /* --- Design System (Consistent with Admin Pages) --- */
     .page-container {
@@ -574,9 +574,9 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表 / Back to List</a>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">返回列表 / Back</a>
                 {% if can_manage %}
-                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目 / Edit Project</a>
+                    <a href="{% url 'projects:project_edit' project.pk %}" class="btn btn-primary">编辑项目 / Edit</a>
                 {% endif %}
             </div>
         </div>

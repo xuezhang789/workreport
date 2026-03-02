@@ -10,10 +10,12 @@ class SecurityTests(TestCase):
         self.client = Client()
 
     def test_username_check_api_permissions(self):
-        # Normal user -> 403
+        # API is public (for registration), so normal users should access it too
+        
+        # Normal user -> 200
         self.client.login(username='user', password='password')
         response = self.client.get(reverse('core:username_check_api'), {'username': 'test'})
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
 
         # Admin -> 200
         self.client.login(username='admin', password='password')

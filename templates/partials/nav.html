@@ -509,7 +509,7 @@
         <a class="nav-link" href="{% url 'projects:project_list' %}">项目 / Projects</a>
         <a class="nav-link" href="{% url 'tasks:task_list' %}">任务 / Tasks</a>
         <a class="nav-link" href="{% url 'reports:my_reports' %}">日报 / Reports</a>
-        <a class="nav-link" href="{% url 'reports:daily_report_create' %}">写日报 / Create Report</a>
+        <a class="nav-link" href="{% url 'reports:daily_report_create' %}">写日报 / New Report</a>
         
         <!-- Admin Section for Mobile -->
         {% if can_view_admin_project or can_view_admin_global %}
@@ -518,10 +518,19 @@
                 {% if can_view_admin_project %}
                     <a class="nav-link" href="{% url 'tasks:admin_task_list' %}">任务管理 / Tasks Admin</a>
                     <a class="nav-link" href="{% url 'reports:admin_reports' %}">日报管理 / Reports Admin</a>
+                    <a class="nav-link" href="{% url 'tasks:admin_task_stats' %}">任务统计 / Task Stats</a>
+                    <a class="nav-link" href="{% url 'reports:teams' %}">团队管理 / Team Management</a>
+                    {% if request.user.is_superuser %}
+                        <a class="nav-link" href="{% url 'reports:personnel_list' %}">人事管理 / Personnel Mgmt</a>
+                    {% endif %}
                 {% endif %}
                 {% if can_view_admin_global %}
                     <a class="nav-link" href="{% url 'reports:performance_board' %}">绩效看板 / Performance</a>
                     <a class="nav-link" href="{% url 'reports:template_center' %}">模板中心 / Templates</a>
+                    <a class="nav-link" href="{% url 'reports:role_template_manage' %}">角色模板 / Role Templates</a>
+                    <a class="nav-link" href="{% url 'core:invitation_list' %}">邀请管理 / Invitations</a>
+                    <a class="nav-link" href="{% url 'reports:audit_logs' %}">审计日志 / Audit Logs</a>
+                    <a class="nav-link" href="{% url 'tasks:sla_settings' %}">SLA 配置 / SLA Settings</a>
                 {% endif %}
             </div>
         {% endif %}

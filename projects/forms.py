@@ -72,13 +72,25 @@ class ProjectForm(forms.ModelForm):
             # Django will validate that the submitted ID exists in the queryset.
             
             if owner_id:
-                self.fields['owner'].queryset = User.objects.filter(pk=owner_id)
+                # Must include both new and old to support disabled fields fallback
+                ids = [owner_id]
+                if self.instance.pk and self.instance.owner_id:
+                    ids.append(self.instance.owner_id)
+                self.fields['owner'].queryset = User.objects.filter(pk__in=ids)
             
             if member_ids:
-                self.fields['members'].queryset = User.objects.filter(pk__in=member_ids)
+                # Union with existing members isn't strictly necessary for M2M unless disabled?
+                # If disabled, Django ignores POST. But we should be safe.
+                qs = User.objects.filter(pk__in=member_ids)
+                if self.instance.pk:
+                    qs = qs | self.instance.members.all()
+                self.fields['members'].queryset = qs.distinct()
                 
             if manager_ids:
-                self.fields['managers'].queryset = User.objects.filter(pk__in=manager_ids)
+                qs = User.objects.filter(pk__in=manager_ids)
+                if self.instance.pk:
+                    qs = qs | self.instance.managers.all()
+                self.fields['managers'].queryset = qs.distinct()
 
         # 显式启用多选并设置易于识别的 id，避免前端样式或组件覆盖成单选
         self.fields['members'].widget.attrs.update({'id': 'members-select', 'multiple': 'multiple'})

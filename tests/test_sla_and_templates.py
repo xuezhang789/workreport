@@ -67,7 +67,7 @@ class CacheAndTemplateTests(TestCase):
         c.login(username='u1', password='pass')
         resp = c.get(reverse('reports:performance_board'))
         self.assertEqual(resp.status_code, 403)
-        self.assertIn(b'Access denied', resp.content)
+        self.assertIn(b'Access Denied', resp.content)
 
     def test_stats_cache_key_invalidated_on_report(self):
         from django.core.cache import cache
@@ -204,9 +204,10 @@ class CacheAndTemplateTests(TestCase):
         t2.refresh_from_db()
         stats = report_views._performance_stats()
         self.assertEqual(stats['overall_sla_on_time_rate'], 50.0)
-        self.assertIsNotNone(stats['overall_lead_p50'])
+        # Optimization: P50 is disabled for performance
+        self.assertIsNone(stats['overall_lead_p50'])
         # 项目指标带上 SLA 和 lead time
         project = next((p for p in stats['project_stats'] if p['project'] == self.project.name), None)
         self.assertIsNotNone(project)
         self.assertIn('sla_on_time_rate', project)
-        self.assertIn('lead_time_p50', project)
+        self.assertIsNone(project['lead_time_p50'])

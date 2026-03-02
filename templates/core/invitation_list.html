@@ -289,12 +289,12 @@
             {% if page_obj.has_previous %}
                 <button type="button" class="page-btn" onclick="changePage({{ page_obj.previous_page_number }})">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    上一页
+                    上一页 / Prev
                 </button>
             {% else %}
                 <button type="button" class="page-btn" disabled>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                    上一页
+                    上一页 / Prev
                 </button>
             {% endif %}
             
@@ -302,12 +302,12 @@
             
             {% if page_obj.has_next %}
                 <button type="button" class="page-btn" onclick="changePage({{ page_obj.next_page_number }})">
-                    下一页
+                    下一页 / Next
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             {% else %}
                 <button type="button" class="page-btn" disabled>
-                    下一页
+                    下一页 / Next
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             {% endif %}
@@ -316,7 +316,7 @@
         <!-- Right: Settings & Jump -->
         <div class="right-actions">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; color: #64748b;">每页</span>
+                <span style="font-size: 13px; color: #64748b;">每页 / Per Page</span>
                 <select id="per-page-select" class="page-select" onchange="changePerPage(this.value)">
                     <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
                     <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
@@ -326,7 +326,7 @@
             </div>
             
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; color: #64748b;">跳转</span>
+                <span style="font-size: 13px; color: #64748b;">跳转 / Jump</span>
                 <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage()">
                 <button type="button" class="btn btn-secondary btn-sm" style="height: 36px; padding: 0 12px; background: #f1f5f9; color: #334155;" onclick="jumpToPage()">GO</button>
             </div>

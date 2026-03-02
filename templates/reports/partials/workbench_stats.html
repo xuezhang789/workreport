@@ -36,14 +36,14 @@
             <div style="position: absolute; right: -10px; top: -10px; width: 40px; height: 40px; background: #ecfdf5; border-radius: 50%; display: grid; place-items: center; color: var(--success); opacity: 0.5;">✅</div>
         {% endif %}
         
-        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500;">今日日报</div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500;">今日日报 / Today's Report</div>
         {% if missing_today %}
             <a href="{% url 'reports:daily_report_create' %}" style="font-size: 14px; font-weight: 700; color: var(--danger); text-decoration: none; display: flex; align-items: center; gap: 4px;">
-                立即提交 <i class="fas fa-arrow-right" style="font-size: 10px;"></i>
+                立即提交 / Submit Now <i class="fas fa-arrow-right" style="font-size: 10px;"></i>
             </a>
         {% else %}
             <div style="font-size: 14px; font-weight: 700; color: var(--success); display: flex; align-items: center; gap: 4px;">
-                <i class="fas fa-check"></i> 已完成
+                <i class="fas fa-check"></i> 已完成 / Completed
             </div>
         {% endif %}
     </div>
@@ -51,7 +51,7 @@
     <!-- Total Tasks -->
     <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <i class="fas fa-clipboard-list" style="color: var(--text-muted);"></i> 任务总数
+            <i class="fas fa-clipboard-list" style="color: var(--text-muted);"></i> 任务总数 / Total Tasks
         </div>
         <div style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.total }}</div>
     </div>
@@ -59,7 +59,7 @@
     <!-- In Progress -->
     <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <i class="fas fa-spinner" style="color: var(--info);"></i> 进行中
+            <i class="fas fa-spinner" style="color: var(--info);"></i> 进行中 / In Progress
         </div>
         <div style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.in_progress }}</div>
     </div>
@@ -67,7 +67,7 @@
     <!-- Overdue -->
     <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> 逾期
+            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> 逾期 / Overdue
         </div>
         <div style="font-size: 20px; font-weight: 700; color: var(--danger);">{{ stats.overdue }}</div>
     </div>
@@ -75,7 +75,7 @@
     <!-- Completion Rate -->
     <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <i class="fas fa-chart-pie" style="color: var(--success);"></i> 完成率
+            <i class="fas fa-chart-pie" style="color: var(--success);"></i> 完成率 / Completion Rate
         </div>
         <div style="display: flex; align-items: baseline; gap: 4px;">
             <span style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ stats.completion_rate|floatformat:0 }}</span>
@@ -86,11 +86,11 @@
     <!-- Streak -->
     <div class="stat-card-compact" style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <i class="fas fa-fire" style="color: #f59e0b;"></i> 连签
+            <i class="fas fa-fire" style="color: #f59e0b;"></i> 连签 / Streak
         </div>
         <div style="display: flex; align-items: baseline; gap: 4px;">
             <span style="font-size: 20px; font-weight: 700; color: var(--text-main);">{{ streak }}</span>
-            <span style="font-size: 12px; color: var(--text-muted);">天</span>
+            <span style="font-size: 12px; color: var(--text-muted);">天 / Days</span>
         </div>
     </div>
 

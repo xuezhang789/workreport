@@ -618,7 +618,7 @@ function renderCalendar(data) {
             
             <!-- Search -->
             <div style="flex: 1; min-width: 240px; position: relative;">
-                <input type="text" name="q" class="form-input" placeholder="搜索姓名、邮箱或用户名..." value="{{ q }}" style="padding-left: 38px; height: 38px;">
+                <input type="text" name="q" class="form-input" placeholder="搜索姓名、邮箱或用户名... / Search name, email..." value="{{ q }}" style="padding-left: 38px; height: 38px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </div>
 
@@ -647,7 +647,7 @@ function renderCalendar(data) {
             <div class="actions-group" style="display: flex; gap: 8px; border-left: 1px solid var(--border-color); padding-left: 12px; margin-left: auto;">
                 <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                    筛选
+                    筛选 / Filter
                 </button>
                 <a href="{% url 'reports:personnel_list' %}" class="btn btn-ghost btn-sm" style="height: 38px;" title="重置 / Reset">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>

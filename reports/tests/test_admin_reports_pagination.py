@@ -30,8 +30,8 @@ class AdminReportsPaginationTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         
-        # Check that we have 28 items on the first page
-        self.assertEqual(len(response.context['page_obj']), 28)
+        # Check that we have 20 items on the first page (Default page size is 20)
+        self.assertEqual(len(response.context['page_obj']), 20)
         
-        # Check that we have 2 pages in total (30 items total, 28 per page -> 1 full page + 2 items)
+        # Check that we have 2 pages in total (30 items total, 20 per page -> 1 full page + 10 items)
         self.assertEqual(response.context['page_obj'].paginator.num_pages, 2)

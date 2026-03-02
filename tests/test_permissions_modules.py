@@ -66,17 +66,17 @@ class ModulePermissionTests(TestCase):
     def test_performance_board_permission(self):
         # Superuser -> 200
         self.client.force_login(self.superuser)
-        resp = self.client.get('/reports/performance/')
+        resp = self.client.get('/reports/performance_board/')
         self.assertEqual(resp.status_code, 200)
         
         # Owner -> 200 (Accessible projects only)
         self.client.force_login(self.u_owner)
-        resp = self.client.get('/reports/performance/')
+        resp = self.client.get('/reports/performance_board/')
         self.assertEqual(resp.status_code, 200)
         
         # Owner accessing restricted project
         p2 = Project.objects.create(name='P2', code='P2')
-        resp = self.client.get('/reports/performance/', {'project': p2.id})
+        resp = self.client.get('/reports/performance_board/', {'project': p2.id})
         # Should be forbidden or show error
         self.assertNotEqual(resp.status_code, 200) 
         

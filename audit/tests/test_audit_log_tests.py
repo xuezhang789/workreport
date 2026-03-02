@@ -232,11 +232,10 @@ class AuditLogTests(TestCase):
         # Call it again with same instance
         log_model_changes(sender=Project, instance=self.project, created=False)
         
-        # Debug
-        with open("/Users/arlo/Downloads/workreport/test_debug.log", "w") as f:
-            f.write(f"Total Logs: {AuditLog.objects.count()}\n")
-            for l in AuditLog.objects.all():
-                f.write(f"Log: {l.action} {l.target_type} {l.details} User:{l.user_id}\n")
+        # Debug (Removed file writing)
+        # print(f"Total Logs: {AuditLog.objects.count()}")
+        # for l in AuditLog.objects.all():
+        #     print(f"Log: {l.action} {l.target_type} {l.details} User:{l.user_id}")
 
         # Should still be 1 because of debounce
         self.assertEqual(AuditLog.objects.count(), 1)

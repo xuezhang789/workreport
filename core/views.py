@@ -406,7 +406,7 @@ def global_search(request):
         Q(title__icontains=q) |
         Q(content__icontains=q) |
         Q(id__icontains=q) # 支持搜 ID
-    ).select_related('project', 'user', 'status').distinct()[:20]
+    ).select_related('project', 'user').distinct()[:20]
     results['tasks'] = tasks
     
     # 3. 搜索日报

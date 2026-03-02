@@ -3,129 +3,29 @@
 {% block title %}已退出 / Logged Out{% endblock %}
 
 {% block extra_styles %}
-<style>
-    .logout-content {
-        text-align: center;
-        padding: 20px 0;
-    }
-    .emoji-icon {
-        font-size: 64px;
-        margin-bottom: 24px;
-        display: block;
-        animation: wave 2s infinite;
-    }
-    @keyframes wave {
-        0%, 100% { transform: rotate(0deg); }
-        25% { transform: rotate(15deg); }
-        75% { transform: rotate(-15deg); }
-    }
-    .timer-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: #f3f4f6;
-        padding: 8px 16px;
-        border-radius: 999px;
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin: 24px 0;
-        font-weight: 500;
-    }
-    .action-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-top: 32px;
-    }
-    .action-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: #f9fafb;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        text-decoration: none;
-        color: var(--text-main);
-        transition: all 0.2s;
-    }
-    .action-btn:hover {
-        border-color: var(--primary);
-        background: #fff;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-    }
-    .action-btn span {
-        font-size: 24px;
-        margin-bottom: 8px;
-    }
-    .action-btn div {
-        font-size: 14px;
-        font-weight: 600;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="logout-content">
-    <div class="emoji-icon">👋</div>
-    
-    <div class="auth-header">
-        <h1 class="auth-title">已安全退出 / Logged Out</h1>
-        <p class="auth-subtitle">Thank you for your hard work today!</p>
-    </div>
-
-    <div class="timer-pill" id="countdown-pill">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        <span id="countdown-text">Redirecting in 30s</span>
-    </div>
-
-    <div class="action-grid">
-        <a href="{% url 'core:login' %}" class="action-btn" id="login-link">
-            <span>🔐</span>
-            <div>重新登录<br>Login Again</div>
-        </a>
-        <a href="{% url 'core:register' %}" class="action-btn">
-            <span>✨</span>
-            <div>注册账号<br>Sign Up</div>
-        </a>
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 text-center">
+                <div class="mb-4 text-success">
+                    <i class="bi bi-check-circle display-1"></i>
+                </div>
+                <h4 class="card-title mb-3">已注销 / Logged Out</h4>
+                <p class="card-text text-muted mb-4">您已成功退出登录。 / You have successfully logged out.</p>
+                
+                <div class="d-grid">
+                    <a href="{% url 'core:login' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>重新登录 / Login Again
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        let countdownTime = 30;
-        const countdownEl = document.getElementById('countdown-text');
-        const pill = document.getElementById('countdown-pill');
-        const loginLink = document.getElementById('login-link');
-        let interval;
-
-        function updateTimer() {
-            countdownEl.innerText = `Redirecting in ${countdownTime}s`;
-            if (countdownTime <= 0) {
-                clearInterval(interval);
-                window.location.href = '{% url "core:login" %}';
-            }
-            countdownTime--;
-        }
-
-        interval = setInterval(updateTimer, 1000);
-
-        function stopTimer() {
-            if (interval) {
-                clearInterval(interval);
-                interval = null;
-                countdownEl.innerText = "Timer Paused";
-                pill.style.opacity = "0.7";
-            }
-        }
-
-        document.addEventListener('mousemove', stopTimer);
-        document.addEventListener('keydown', stopTimer);
-        if (loginLink) loginLink.addEventListener('click', stopTimer);
-    });
-</script>
 {% endblock %}

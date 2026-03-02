@@ -305,7 +305,12 @@
         {% if sections %}
             {% for title, content in sections %}
                 <div class="content-section">
-                    <div class="content-header">{{ title }}</div>
+                    <div class="content-header">
+                        {% if title == "今日工作内容" %}{{ title }} / Today's Work
+                        {% elif title == "明日工作计划" %}{{ title }} / Tomorrow's Plan
+                        {% elif title == "遇到的问题" %}{{ title }} / Issues & Blockers
+                        {% else %}{{ title }}{% endif %}
+                    </div>
                     <div class="content-body">
                         {% if content %}
                             {{ content|safe_md }}
