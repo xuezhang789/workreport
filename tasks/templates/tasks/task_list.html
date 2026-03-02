@@ -192,6 +192,7 @@
         padding-bottom: 20px;
         align-items: flex-start;
         min-height: 60vh;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
     }
 
     .kanban-container.active {
@@ -206,6 +207,13 @@
         display: flex;
         flex-direction: column;
         max-height: 80vh;
+    }
+
+    @media (max-width: 768px) {
+        .kanban-column {
+            flex: 0 0 280px; /* Slightly narrower on mobile */
+            max-height: 70vh;
+        }
     }
 
     .kanban-header {
@@ -469,10 +477,15 @@
             border-radius: 16px;
             padding: 16px;
             gap: 12px;
+            left: 16px;
+            transform: translateY(200%); /* Initial hidden state */
+        }
+        .bulk-toolbar.visible {
+            transform: translateY(0); /* Correct visible state */
         }
         .bulk-info { border-right: none; padding-right: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; width: 100%; justify-content: center; }
         .bulk-actions { width: 100%; justify-content: space-between; }
-        .bulk-btn { flex: 1; justify-content: center; }
+        .bulk-btn { flex: 1; justify-content: center; height: 44px; }
         
         /* Hide complex filters on mobile initially (maybe toggle) */
         .filter-grid {

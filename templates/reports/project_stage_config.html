@@ -11,8 +11,17 @@
         grid-template-columns: 1fr 2fr;
         gap: 24px;
     }
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-top: 16px;
+    }
+    
     @media (max-width: 768px) {
         .config-layout { grid-template-columns: 1fr; }
+        .hero h1 { font-size: 24px; }
+        .actions-row { flex-direction: column-reverse; gap: 12px; }
+        .actions-row .btn { width: 100%; justify-content: center; }
     }
 </style>
 {% endblock %}

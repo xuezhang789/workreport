@@ -45,14 +45,29 @@
     /* Mobile Responsive Table */
     @media (max-width: 1024px) {
         .col-title { min-width: 200px; }
+        .bulk-actions-bar { flex-wrap: wrap; }
     }
 
     @media (max-width: 768px) {
-        .filter-grid { grid-template-columns: 1fr; }
+        .page-container { padding: 16px; }
+        .filter-grid { grid-template-columns: 1fr; gap: 16px; }
         
-        .bulk-actions-bar { flex-direction: column; align-items: stretch !important; gap: 16px; height: auto !important; }
-        .bulk-controls { flex-direction: column; align-items: stretch; width: 100%; }
-        .bulk-select { width: 100%; }
+        /* Stack bulk actions vertically */
+        .bulk-actions-bar { 
+            flex-direction: column; 
+            align-items: stretch !important; 
+            gap: 16px; 
+            height: auto !important; 
+            padding: 16px !important;
+        }
+        .bulk-controls { 
+            flex-direction: column; 
+            align-items: stretch; 
+            width: 100%; 
+            gap: 12px;
+        }
+        .bulk-select { width: 100% !important; max-width: none !important; }
+        .btn { width: 100%; justify-content: center; }
 
         /* Card View for Mobile */
         .table thead { display: none; }
@@ -74,6 +89,7 @@
             text-align: right; 
             padding: 12px 16px; 
             border-bottom: 1px solid #f1f5f9; 
+            min-height: 44px; /* Touch target */
         }
         
         .table td:last-child { border-bottom: none; background: #f8fafc; justify-content: flex-end; }
@@ -96,6 +112,24 @@
         .col-title::before { display: none; }
         
         .col-project, .col-user, .col-status, .col-priority, .col-due { min-width: auto; width: 100%; }
+        
+        /* Pagination Stack */
+        .pagination-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+        }
+        .pagination-toolbar .center-controls {
+            justify-content: center;
+        }
+        .pagination-toolbar .right-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .pagination-toolbar .right-actions > div {
+            justify-content: space-between;
+            width: 100%;
+        }
     }
 
     /* Loading Overlay */

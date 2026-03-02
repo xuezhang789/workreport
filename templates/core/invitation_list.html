@@ -157,6 +157,30 @@
     @media (max-width: 768px) {
         .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
         .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        
+        /* Stack form on mobile */
+        form[action*="invitation_list"] {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        form[action*="invitation_list"] > div {
+            max-width: none !important;
+            width: 100%;
+        }
+        
+        /* Touch targets */
+        .btn, .page-btn, .form-input {
+            min-height: 44px;
+        }
+        
+        .copy-btn {
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            margin-left: 0;
+            display: inline-block;
+            margin-top: 4px;
+        }
     }
 </style>
 {% endblock %}

@@ -40,6 +40,11 @@
         gap: 20px;
         margin-bottom: 24px;
     }
+    
+    @media (max-width: 640px) {
+        .summary-grid { grid-template-columns: 1fr; gap: 12px; }
+        .summary-card { padding: 16px; }
+    }
 
     .summary-card {
         background: var(--bg-card);
@@ -101,6 +106,19 @@
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
         align-items: end;
+    }
+    
+    @media (max-width: 640px) {
+        .filter-section { padding: 16px; }
+        .filter-grid { gap: 16px; }
+        .filter-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+        .filter-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .form-group {
@@ -238,6 +256,7 @@
         height: 500px; /* Fixed height for scroll */
         overflow-y: auto;
         background: #fff;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
     }
 
     .table thead th {
@@ -246,6 +265,14 @@
         z-index: 10;
         background: #f8fafc; /* Ensure header has background when scrolling */
         box-shadow: 0 1px 0 var(--border-color); /* Maintain border look */
+    }
+
+    @media (max-width: 640px) {
+        .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .table-container { height: 400px; } /* Slightly shorter on mobile */
+        
+        .btn { min-height: 44px; }
+        .form-select, .form-input, .search-input { min-height: 44px; }
     }
 
     .table {

@@ -176,6 +176,12 @@
     }
 
     /* --- Table Styling --- */
+    .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .table-card {
         background: var(--bg-card);
         border-radius: var(--radius-lg);
@@ -483,7 +489,7 @@
                     <h3 class="section-title"><i class="fas fa-chart-line" style="color: var(--primary);"></i> 项目进度 / Project Progress</h3>
                     <span class="status-badge badge-neutral">{{ project_burndown|length }} Projects</span>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-container">
                     <table class="table">
                         <thead>
                             <tr>
@@ -535,7 +541,7 @@
                 <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
                     <h3 class="section-title"><i class="fas fa-history" style="color: var(--info);"></i> 近期日报 / Recent Reports</h3>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-container">
                     <table class="table">
                         <thead>
                             <tr>

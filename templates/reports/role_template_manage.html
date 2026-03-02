@@ -241,6 +241,32 @@
         .page-grid { grid-template-columns: 1fr; }
         .form-row { grid-template-columns: 1fr; }
     }
+
+    @media (max-width: 768px) {
+        .filter-section {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+        .filter-section > div {
+            max-width: 100% !important;
+        }
+        .filter-section .form-label {
+            margin-bottom: 4px;
+        }
+        
+        .card-header h2 { font-size: 18px; }
+        
+        .form-group textarea {
+            min-height: 100px;
+        }
+        
+        /* Mobile Toast positioning */
+        .toast {
+            width: 90%;
+            text-align: center;
+        }
+    }
 {% endblock %}
 
 {% block content %}

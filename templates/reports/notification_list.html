@@ -231,7 +231,43 @@
         .notif-item { padding: 16px; }
         .notif-header { flex-direction: column; gap: 4px; }
         .notif-time { margin-left: 0; }
-        .notif-actions { opacity: 1; margin-top: 8px; }
+        .notif-actions { opacity: 1; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 16px; }
+        
+        .filter-bar {
+            padding: 12px 16px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .filter-btn {
+            white-space: nowrap;
+            padding: 8px 16px;
+            min-height: 36px;
+        }
+        
+        .btn-action {
+            padding: 8px 0;
+            min-height: 44px;
+            font-size: 14px;
+        }
+        
+        /* Ensure mark all read button is touch friendly */
+        #mark-all-read-page {
+            width: 100%;
+            justify-content: center;
+            min-height: 44px;
+        }
+        
+        .panel-header {
+            flex-direction: column;
+            gap: 16px;
+            align-items: stretch;
+        }
+        
+        .panel-title h2 {
+            justify-content: center;
+        }
     }
 </style>
 {% endblock %}

@@ -418,11 +418,58 @@
     }
 
     .btn-xs {
-        padding: 4px 8px;
-        font-size: 11px;
-        border-radius: 4px;
+        padding: 8px 12px; /* Increased for touch target */
+        font-size: 12px;
+        border-radius: 6px;
         cursor: pointer;
         border: none;
+        min-height: 32px; /* Touch target hint */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Mobile Optimizations */
+    @media (max-width: 768px) {
+        .page-container {
+            padding: 16px;
+        }
+        .form-card {
+            padding: 20px;
+        }
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .template-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .template-bar > div {
+            width: 100%;
+            min-width: 0 !important;
+        }
+        .btn-toolbar {
+            flex-direction: column-reverse;
+            gap: 16px;
+        }
+        .btn-toolbar .btn {
+            width: 100%;
+        }
+        .role-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .role-header .selected-count {
+            align-self: flex-start;
+        }
+        /* Fix dropdown widths on mobile */
+        .vs-dropdown, .user-dropdown {
+            max-width: 85vw;
+            word-break: break-word;
+        }
     }
 
     .btn-delete {

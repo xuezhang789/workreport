@@ -9,6 +9,44 @@
         padding: 24px;
     }
 
+    @media (max-width: 640px) {
+        .page-container { padding: 16px; }
+        .form-card { padding: 16px !important; }
+        .section-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .btn-toolbar { flex-direction: column-reverse; }
+        .btn-toolbar .btn { width: 100%; }
+        
+        /* Stack date inputs */
+        .date-grid { grid-template-columns: 1fr !important; }
+        
+        /* Stack form grid */
+        .form-grid { grid-template-columns: 1fr !important; }
+        
+        /* Stack details & config */
+        div[style*="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))"] {
+            grid-template-columns: 1fr !important;
+        }
+        
+        /* Team management stack */
+        div[style*="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr))"] {
+            grid-template-columns: 1fr !important;
+        }
+        
+        /* SLA config mobile fix */
+        .form-group > div[style*="display: flex; gap: 12px;"] {
+            flex-direction: column;
+        }
+        .form-group > div > div[style*="display: flex; align-items: center;"] {
+            width: 100%;
+            padding: 12px !important;
+        }
+        
+        /* File upload touch target */
+        .file-upload-container {
+            padding: 32px 16px;
+        }
+    }
+
     .form-card {
         background: #ffffff;
         border: 1px solid var(--border-color);
@@ -600,7 +638,7 @@
                             {% if form.owner.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.owner.errors.0 }}</div>{% endif %}
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="date-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div class="form-group">
                                 <label class="form-label" for="{{ form.start_date.id_for_label }}">开始日期 / Start</label>
                                 {{ form.start_date }}
@@ -783,9 +821,9 @@
 
             </div>
 
-            <div class="btn-toolbar" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
-                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; background: transparent; color: var(--text-secondary);">取消 / Cancel</a>
-                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--primary); color: white;">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
+            <div class="btn-toolbar">
+                <a href="{% url 'projects:project_list' %}" class="btn btn-ghost">取消 / Cancel</a>
+                <button type="submit" class="btn btn-primary">{% if mode == 'edit' %}保存更改 / Save Changes{% else %}创建项目 / Create Project{% endif %}</button>
             </div>
         </form>
     </div>

@@ -336,26 +336,77 @@
         opacity: 0.5;
     }
 
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding-bottom: 40px;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
     @media (max-width: 768px) {
-        .filter-grid { grid-template-columns: 1fr; }
-        .reports-grid { grid-template-columns: 1fr; }
+        .page-container { padding-left: 16px; padding-right: 16px; }
+        .filter-section { padding: 16px; }
+        .filter-grid { grid-template-columns: 1fr; gap: 12px; }
+        .reports-grid { grid-template-columns: 1fr; gap: 16px; }
         
         .filter-actions {
             flex-direction: column;
+            width: 100%;
         }
         
         .filter-actions .btn {
             width: 100%;
             justify-content: center;
+            min-height: 44px; /* Touch target */
+        }
+
+        .header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .header-row .btn {
+            width: 100%;
+            justify-content: center;
+            min-height: 44px;
+        }
+        
+        /* Pagination Mobile */
+        .pagination-container {
+            align-items: stretch;
+        }
+        .pagination-info {
+            flex-direction: column;
+            gap: 8px;
+        }
+        .pagination-controls {
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .page-btn {
+            min-width: 44px;
+            height: 44px;
+        }
+        .jump-to-page {
+            justify-content: center;
+            width: 100%;
+        }
+        
+        /* Form inputs touch friendly */
+        .form-input, .form-select {
+            min-height: 44px;
         }
     }
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
+<div class="page-container">
     
     <!-- Header -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+    <div class="header-row" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
         <div>
             <h1 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">我的日报 / My Reports</h1>
             <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">共 {{ total_count }} 份日报 / Total {{ total_count }} reports</p>

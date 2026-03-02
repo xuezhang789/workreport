@@ -284,12 +284,41 @@
     @media (max-width: 640px) {
         .page-container { padding: 16px; }
         .card { padding: 20px; }
-        .header-content { flex-direction: column; gap: 16px; }
+        .header-content { 
+            flex-direction: column; 
+            gap: 16px; 
+            align-items: stretch; /* Stretch children */
+        }
+        .header-content > div:last-child {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .header-content .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .project-title { 
+            flex-wrap: wrap; 
+            font-size: 20px; 
+        }
+        
         .timeline-container { padding-left: 24px; }
         .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
         .timeline-container::before { left: -25px; }
+        
         .phase-flow { flex-direction: column; align-items: flex-start; gap: 8px; }
         .flow-arrow { transform: rotate(90deg); margin-left: 20px; }
+        
+        /* Ensure table scrolling */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .table-container table { min-width: 400px; } /* Force scroll */
     }
 </style>
 {% endblock %}

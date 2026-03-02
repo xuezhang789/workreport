@@ -278,9 +278,12 @@
     .table-container {
         height: 500px;
         overflow-y: auto;
+        overflow-x: auto; /* Enable horizontal scroll */
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         scrollbar-width: thin;
         scrollbar-color: #cbd5e1 transparent;
     }
+
     .table-container::-webkit-scrollbar { width: 6px; }
     .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
@@ -288,6 +291,58 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
+    }
+
+    /* Mobile Optimizations */
+    @media (max-width: 768px) {
+        .page-container {
+            padding: 16px;
+        }
+        .filter-section {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 16px;
+        }
+        .filter-group {
+            width: 100%;
+            min-width: 0 !important;
+            flex: 1 1 auto !important;
+        }
+        .period-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columns for buttons */
+            gap: 4px;
+            width: 100%;
+        }
+        .period-btn {
+            width: 100%;
+            padding: 8px 4px;
+            font-size: 13px;
+            text-align: center;
+        }
+        /* Custom date inputs stack */
+        #customDateGroup {
+            flex-direction: column !important;
+            gap: 12px !important;
+        }
+        
+        .kpi-row {
+            grid-template-columns: 1fr; /* Stack KPIs */
+        }
+        
+        .chart-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .table-tabs {
+            padding: 0 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-item {
+            margin-right: 24px;
+            white-space: nowrap;
+        }
     }
 
     .data-table th {

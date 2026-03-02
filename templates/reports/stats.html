@@ -1,27 +1,145 @@
 {% extends "base_topbar.html" %}
 {% load tz %}
 
-{% block title %}统计分析 / Statistics{% endblock %}
+{% block extra_styles %}
+<style>
+    :root {
+        --primary: #2563eb;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --text-main: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --bg-card: #ffffff;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --radius-lg: 16px;
+    }
 
-{% block nav_header %}
-{% include "partials/nav.html" with nav_title="统计分析" nav_subtitle="Statistics" %}
+    /* KPI Cards */
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-content { display: flex; flex-direction: column; gap: 8px; }
+    .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-main); line-height: 1; }
+    .kpi-trend { 
+        display: inline-flex; align-items: center; gap: 4px; 
+        font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px; 
+    }
+    .kpi-icon { 
+        width: 48px; height: 48px; border-radius: 12px; 
+        display: flex; align-items: center; justify-content: center; 
+    }
+    .kpi-icon.blue { background: #eff6ff; color: #2563eb; }
+    .kpi-icon.green { background: #dcfce7; color: #16a34a; }
+
+    /* Colors */
+    .bg-blue-subtle { background: #eff6ff; color: #2563eb; }
+    .bg-green-subtle { background: #f0fdf4; color: #16a34a; }
+    .bg-cyan-subtle { background: #ecfeff; color: #06b6d4; }
+    .bg-red-subtle { background: #fef2f2; color: #ef4444; }
+
+    /* Filters */
+    .filter-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .form-input, .form-select {
+        padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px;
+        font-size: 14px; width: 100%; box-sizing: border-box;
+    }
+    .filter-actions { display: flex; gap: 12px; justify-content: flex-end; }
+    
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 24px;
+    }
+    .col-span-6 { grid-column: span 6; }
+    
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Tables */
+    .table-container { overflow-x: auto; width: 100%; }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th { 
+        text-align: left; padding: 12px 16px; font-weight: 600; color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color); white-space: nowrap;
+    }
+    .table td { 
+        padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-main); 
+    }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-danger { background: #fee2e2; color: #ef4444; }
+    .badge-primary { background: #eff6ff; color: #2563eb; }
+    .badge-default { background: #f1f5f9; color: #475569; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+        .card-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .col-span-6 { grid-column: span 1; }
+        .filter-grid { grid-template-columns: 1fr; }
+        .filter-actions { flex-direction: column; }
+        .filter-actions .btn { width: 100%; justify-content: center; height: 44px; }
+        .kpi-card { flex-direction: column-reverse; gap: 16px; }
+        .kpi-icon { align-self: flex-start; }
+    }
+    
+    @media (max-width: 480px) {
+        .card-grid { grid-template-columns: 1fr; }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="page-container">
     <!-- Header -->
-    <div class="page-header">
+    <div class="page-header" style="margin-bottom: 24px;">
         <div>
-            <h1 class="page-title">统计分析 / Statistics</h1>
-            <p class="page-subtitle">项目与任务数据概览 / Project & Task Data Overview</p>
+            <h1 class="page-title" style="font-size: 24px; font-weight: 800; margin: 0 0 4px 0;">统计分析 / Statistics</h1>
+            <p class="page-subtitle" style="color: var(--text-secondary); font-size: 14px; margin: 0;">项目与任务数据概览 / Project & Task Data Overview</p>
         </div>
-        <div class="text-sm text-secondary">
+        <div class="text-sm text-secondary" style="font-size: 12px; margin-top: 8px;">
             生成时间 / Generated at: {{ generated_at|date:"Y-m-d H:i" }}
         </div>
     </div>
 
     <!-- Metrics Cards -->
-    <div class="card-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+    <div class="card-grid">
         <div class="kpi-card">
             <div class="kpi-content">
                 <div class="kpi-label">总日报数 / Total</div>
@@ -78,7 +196,7 @@
 
     <!-- Filters -->
     <div class="filter-section">
-        <form method="get" class="filter-grid" style="align-items: end;">
+        <form method="get" class="filter-grid">
             <div class="form-group">
                 <label class="form-label">日期 / Date</label>
                 <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="form-input">

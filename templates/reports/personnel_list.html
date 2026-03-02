@@ -246,6 +246,38 @@
         .filter-grid { grid-template-columns: 1fr; }
         .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
         .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        
+        /* Stack Filter Toolbar */
+        .filter-toolbar {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        
+        .filter-toolbar input, 
+        .filter-toolbar select, 
+        .filter-toolbar .btn {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 44px; /* Touch target */
+        }
+        
+        .filter-toolbar .actions-group {
+            border-left: none !important;
+            padding-left: 0 !important;
+            margin-left: 0 !important;
+            margin-top: 12px;
+            display: grid !important;
+            grid-template-columns: 1fr 44px; /* Filter btn + Reset btn */
+            gap: 8px;
+        }
+        
+        /* Stats Cards */
+        .stat-card {
+            padding: 16px !important;
+        }
+        .stat-card .val {
+            font-size: 24px !important;
+        }
     }
 {% endblock %}
 
@@ -517,8 +549,8 @@ function renderCalendar(data) {
     </div>
 
     <!-- Filter Toolbar -->
-    <div style="background: white; padding: 12px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 24px; box-shadow: var(--shadow-sm);">
-        <form method="get" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <div class="filter-toolbar" style="background: white; padding: 12px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+        <form method="get" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;" class="filter-toolbar">
             
             <!-- Search -->
             <div style="flex: 1; min-width: 240px; position: relative;">
@@ -548,7 +580,7 @@ function renderCalendar(data) {
             </select>
 
             <!-- Actions -->
-            <div style="display: flex; gap: 8px; border-left: 1px solid var(--border-color); padding-left: 12px; margin-left: auto;">
+            <div class="actions-group" style="display: flex; gap: 8px; border-left: 1px solid var(--border-color); padding-left: 12px; margin-left: auto;">
                 <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     筛选

@@ -425,6 +425,27 @@
     @media (max-width: 640px) {
         .filter-grid { grid-template-columns: 1fr; }
         .team-grid { grid-template-columns: 1fr; }
+        .pagination-toolbar { flex-direction: column; gap: 16px; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
+        
+        /* Mobile Touch Targets */
+        .btn, .page-btn, .form-input, .form-select {
+            min-height: 44px;
+        }
+        
+        .filter-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+        .filter-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            width: 95%;
+            max-height: 90vh;
+        }
     }
 {% endblock %}
 

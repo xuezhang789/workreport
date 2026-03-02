@@ -179,6 +179,32 @@
         
         /* Adjust grid for small screens */
         .project-grid { grid-template-columns: 1fr; }
+        
+        /* Stack Filter */
+        .filter-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .form-group {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .filter-actions {
+            width: 100%;
+            display: flex;
+            gap: 12px;
+        }
+        .filter-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        /* Adjust Layout Padding */
+        .content {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+        }
     }
 {% endblock %}
 

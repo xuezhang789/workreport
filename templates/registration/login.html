@@ -34,9 +34,22 @@
         {% endif %}
     </div>
 
-    <button type="submit" class="btn btn-primary">
+    <button type="submit" class="btn btn-primary" style="min-height: 48px; font-size: 16px;">
         登录 / Sign In
     </button>
+
+    <style>
+        /* Mobile Touch Optimizations */
+        @media (max-width: 640px) {
+            input[type="text"], input[type="password"] {
+                min-height: 48px !important;
+                font-size: 16px !important; /* Prevent zoom */
+            }
+            .btn {
+                min-height: 48px !important;
+            }
+        }
+    </style>
 </form>
 
 <div class="auth-footer">

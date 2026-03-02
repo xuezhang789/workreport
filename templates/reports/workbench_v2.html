@@ -70,6 +70,15 @@
         align-items: center;
         gap: 8px;
     }
+
+    @media (max-width: 640px) {
+        .quick-actions {
+            grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile for better visibility */
+        }
+        .wb-grid {
+            gap: 16px;
+        }
+    }
     
     /* --- Quick Actions (Modern) --- */
     .quick-actions {
@@ -92,6 +101,7 @@
         color: var(--text-main);
         transition: all 0.2s;
         text-align: center;
+        min-height: 80px; /* Ensure sufficient height */
     }
     .qa-btn:hover {
         transform: translateY(-2px);

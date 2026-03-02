@@ -145,8 +145,38 @@
     /* --- Report Grid --- */
     .report-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+        .report-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-actions {
+            justify-content: stretch;
+            flex-direction: column;
+        }
+
+        .filter-actions .btn {
+            width: 100%;
+            justify-content: center;
+            height: 44px; /* Touch target */
+        }
+        
+        .form-input, .form-select {
+            height: 44px; /* Touch target */
+        }
     }
 
     /* --- Report Card --- */
