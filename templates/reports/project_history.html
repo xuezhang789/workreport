@@ -217,6 +217,8 @@
         padding: 2px 6px;
         border-radius: 4px;
         text-decoration: line-through;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
     }
     
     .val-text-new {
@@ -224,6 +226,13 @@
         background: #f0fdf4;
         padding: 2px 6px;
         border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+    }
+    
+    /* Specific style for boolean/null to not strike-through icon or look weird */
+    .val-text-old i, .val-text-new i {
+        margin-right: 4px;
     }
 
     .action-label {
@@ -458,115 +467,233 @@
                     order: 11;
                 }
             }
+
+            @media (max-width: 640px) {
+                .page-container { padding: 16px; }
+                .filter-bar { flex-direction: column; align-items: stretch; padding: 16px; gap: 16px; }
+                .timeline-container { padding-left: 24px; }
+                .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
+                .timeline-container::before { left: -25px; }
+
+                /* Mobile Table to Card View */
+                .change-table { border: none; background: transparent; }
+                .change-table thead { display: none; }
+                .change-table tbody { display: flex; flex-direction: column; gap: 12px; }
+                .change-table tr {
+                    display: flex;
+                    flex-direction: column;
+                    background: #fff;
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 12px;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                }
+                .change-table td {
+                    display: block;
+                    padding: 4px 0;
+                    border: none;
+                    width: 100%;
+                }
+                /* Field Name */
+                .change-table td:first-child {
+                    font-weight: 700;
+                    color: var(--text-main);
+                    border-bottom: 1px solid #f1f5f9;
+                    padding-bottom: 8px;
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                }
+                /* Arrow */
+                .change-table td:nth-child(3) { display: none; }
+                
+                /* Values */
+                .change-table td:nth-child(2),
+                .change-table td:nth-child(4) {
+                    position: relative;
+                    padding-left: 0;
+                }
+                
+                .change-table td:nth-child(2)::before {
+                    content: '变更前';
+                    display: block;
+                    font-size: 11px;
+                    color: var(--text-secondary);
+                    margin-bottom: 2px;
+                }
+                
+                .change-table td:nth-child(4) {
+                    margin-top: 8px;
+                }
+                
+                .change-table td:nth-child(4)::before {
+                    content: '变更后';
+                    display: block;
+                    font-size: 11px;
+                    color: var(--text-secondary);
+                    margin-bottom: 2px;
+                }
+
+                /* Header Adjustments */
+                .timeline-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                .user-badge-right {
+                    align-self: flex-start;
+                    font-size: 11px;
+                }
+                
+                /* Filter Form Adjustments */
+                .date-group .date-inputs {
+                    flex-direction: column;
+                    width: 100%;
+                }
+                .date-separator { display: none; }
+                .filter-actions {
+                    flex-direction: column;
+                    align-items: stretch;
+                    height: auto;
+                    margin-top: 8px;
+                    gap: 8px;
+                }
+                .filter-actions .btn, .filter-actions .divider-vertical {
+                    width: 100%;
+                    justify-content: center;
+                }
+                .divider-vertical { display: none; }
+            }
         </style>
 
         <!-- Timeline -->
-        <div id="timeline-wrapper">
-            {% include "audit/timeline.html" with logs=logs %}
-        </div>
-        
-        <!-- Load More Button -->
-        {% if page_obj.has_next %}
-        <div style="text-align: center; margin-top: 24px;">
-            <button id="load-more-btn" class="btn btn-ghost" data-next-page="{{ page_obj.next_page_number }}" style="width: 100%;">
-                加载更多 / Load More
-            </button>
-        </div>
-        {% endif %}
-        
-        <!-- Pagination Controls (Legacy Fallback) -->
-        <noscript>
-        {% if page_obj.paginator.num_pages > 1 %}
-        <div style="display: flex; justify-content: center; margin-top: 32px;">
-            <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← 上一页 / Prev</a>
-                {% endif %}
+        <div class="timeline-container">
+            {% for log in logs %}
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    {% if log.action == 'create' %}
+                        <i class="fa-solid fa-plus timeline-marker-icon" style="color: var(--success);"></i>
+                    {% elif log.action == 'update' %}
+                        <i class="fa-solid fa-pen timeline-marker-icon" style="color: var(--primary);"></i>
+                    {% elif log.action == 'delete' %}
+                        <i class="fa-solid fa-trash timeline-marker-icon" style="color: var(--danger);"></i>
+                    {% else %}
+                        <i class="fa-solid fa-info timeline-marker-icon"></i>
+                    {% endif %}
+                </div>
                 
-                <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
-                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                </span>
-                
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">下一页 / Next →</a>
-                {% endif %}
+                <div class="timeline-content card" style="padding: 0; border: 1px solid var(--border-color); box-shadow: none;">
+                    <!-- Header -->
+                    <div class="timeline-header" style="background: #f8fafc; padding: 12px 20px; border-bottom: 1px solid var(--border-color); border-radius: 12px 12px 0 0;">
+                        <div class="change-meta">
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 14px; color: var(--text-main);">
+                                    <span style="font-weight: 700;">
+                                        {% if log.user %}
+                                            {{ log.user.get_full_name|default:log.user.username }}
+                                        {% else %}
+                                            {{ log.operator_name }}
+                                        {% endif %}
+                                    </span>
+                                    <span style="color: var(--text-secondary); font-weight: 400;">
+                                        {% if log.action == 'create' %}创建了项目 / Created Project{% endif %}
+                                        {% if log.action == 'update' %}更新了项目 / Updated Project{% endif %}
+                                        {% if log.action == 'delete' %}删除了项目 / Deleted Project{% endif %}
+                                    </span>
+                                </span>
+                                <span style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                    {{ log.created_at|date:"Y-m-d H:i" }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="user-badge-right">
+                            <i class="fa-regular fa-clock"></i> {{ log.created_at|timesince }} ago
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div style="padding: 20px;">
+                        {% if log.changes %}
+                            <table class="change-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">字段 / Field</th>
+                                        <th>变更前 / Old Value</th>
+                                        <th style="width: 24px;"></th>
+                                        <th>变更后 / New Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for field, diff in log.changes.items %}
+                                    <tr>
+                                        <td style="font-weight: 600; color: var(--text-secondary); text-transform: capitalize;">{{ field|title }}</td>
+                                        <td>
+                                            {% with val=diff.0 %}
+                                                {% if val == None or val == "" %}
+                                                    <span class="val-empty">Empty</span>
+                                                {% elif val == True %}
+                                                    <span class="val-text-old"><i class="fa-regular fa-check-circle"></i> True</span>
+                                                {% elif val == False %}
+                                                    <span class="val-text-old"><i class="fa-regular fa-circle-xmark"></i> False</span>
+                                                {% else %}
+                                                    <span class="val-text-old">{{ val }}</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td style="text-align: center; color: var(--text-muted);"><i class="fa-solid fa-arrow-right-long"></i></td>
+                                        <td>
+                                            {% with val=diff.1 %}
+                                                {% if val == None or val == "" %}
+                                                    <span class="val-empty">Empty</span>
+                                                {% elif val == True %}
+                                                    <span class="val-text-new"><i class="fa-solid fa-check-circle"></i> True</span>
+                                                {% elif val == False %}
+                                                    <span class="val-text-new"><i class="fa-solid fa-circle-xmark"></i> False</span>
+                                                {% else %}
+                                                    <span class="val-text-new">{{ val }}</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div style="color: var(--text-secondary); font-size: 13px; font-style: italic;">
+                                没有详细变更记录 / No detailed changes recorded.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
+            {% empty %}
+            <div style="text-align: center; padding: 48px; color: var(--text-secondary);">
+                <i class="fa-regular fa-folder-open" style="font-size: 32px; color: var(--text-muted); margin-bottom: 12px; display: block;"></i>
+                暂无变更记录 / No history found
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="display: flex; justify-content: center; margin-top: 32px; gap: 8px;">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost">
+                    <i class="fa-solid fa-chevron-left"></i> 上一页
+                </a>
+            {% endif %}
+            
+            <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); background: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost">
+                    下一页 <i class="fa-solid fa-chevron-right"></i>
+                </a>
+            {% endif %}
         </div>
         {% endif %}
-        </noscript>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const loadMoreBtn = document.getElementById('load-more-btn');
-        const timelineWrapper = document.getElementById('timeline-container'); // Inner container from include
-        const spinner = document.getElementById('loading-spinner');
-
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', function() {
-                const nextPage = this.dataset.nextPage;
-                const url = new URL(window.location.href);
-                url.searchParams.set('page', nextPage);
-                
-                // Show spinner, hide button
-                this.style.display = 'none';
-                if(spinner) spinner.style.display = 'block';
-
-                fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    // Create a temp container to parse HTML
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newItems = doc.querySelectorAll('.timeline-item');
-                    
-                    // Append new items to timeline
-                    if (timelineWrapper) {
-                        newItems.forEach(item => {
-                            item.classList.add('animate-in'); // Ensure animation
-                            timelineWrapper.appendChild(item);
-                        });
-                    } else {
-                        // Fallback if wrapper id missing
-                        console.error('Timeline container not found');
-                        window.location.href = url;
-                        return;
-                    }
-
-                    // Update button state
-                    const hasMore = doc.querySelector('.timeline-item') !== null && newItems.length > 0; 
-                    // Actually we need to know if there is a next page. 
-                    // The simple fetch above just returns the HTML for the list.
-                    // We need to calculate next page or rely on backend to return "has_next" flag in header or similar.
-                    // Simplified: We assume if we got items, there *might* be more, but how do we know the NEXT page num?
-                    // Better approach: Return JSON with html + has_next, or parse the pagination from response if full page returned (but we returned partial).
-                    
-                    // Fix: We increment page manually or we need backend to tell us.
-                    // Current backend just returns render('audit/timeline.html').
-                    // We can check if the returned count < page_size (20).
-                    
-                    if (newItems.length < 20) {
-                        loadMoreBtn.remove();
-                    } else {
-                        loadMoreBtn.dataset.nextPage = parseInt(nextPage) + 1;
-                        loadMoreBtn.style.display = 'inline-block';
-                    }
-                })
-                .catch(err => {
-                    console.error('Error loading more:', err);
-                    loadMoreBtn.textContent = 'Error loading. Retry?';
-                    loadMoreBtn.style.display = 'inline-block';
-                })
-                .finally(() => {
-                    if(spinner) spinner.style.display = 'none';
-                });
-            });
-        }
-    });
-</script>
 {% endblock %}

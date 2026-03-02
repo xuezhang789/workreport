@@ -45,6 +45,8 @@ class Project(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
             models.Index(fields=['code']),
+            models.Index(fields=['name']),
+            models.Index(fields=['created_at']),
         ]
 
     def __str__(self):

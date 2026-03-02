@@ -6,7 +6,6 @@
 
 {% block extra_styles %}
 <style>
-    /* --- Design System (Consistent with Project Detail) --- */
     :root {
         --primary: #2563eb;
         --primary-hover: #1e40af;
@@ -15,9 +14,6 @@
         --border-color: #e2e8f0;
         --bg-page: #f8fafc;
         --radius-lg: 16px;
-        --timeline-line-color: #e2e8f0;
-        --timeline-dot-color: #cbd5e1;
-        --timeline-dot-active: #3b82f6;
     }
 
     .page-container {
@@ -26,7 +22,6 @@
         padding: 24px;
     }
 
-    /* Card & Header Styles */
     .card {
         background: #ffffff;
         border: 1px solid var(--border-color);
@@ -39,7 +34,7 @@
     .header-content {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         margin-bottom: 32px;
         border-bottom: 1px dashed var(--border-color);
         padding-bottom: 24px;
@@ -49,98 +44,101 @@
         font-size: 24px;
         font-weight: 800;
         color: var(--text-main);
-        margin: 0 0 12px 0;
+        margin: 0;
         display: flex;
         align-items: center;
         gap: 12px;
     }
 
-    .task-id {
-        font-family: 'Space Mono', monospace;
-        background: #f1f5f9;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 13px;
-        color: var(--text-secondary);
+    .task-code {
+        font-size: 14px; 
+        background: #f1f5f9; 
+        padding: 4px 8px; 
+        border-radius: 6px; 
+        color: var(--text-secondary); 
         font-weight: 500;
+        font-family: 'Space Mono', monospace;
     }
 
-    /* Badges */
-    .status-badge {
-        display: inline-flex;
+    .filter-bar {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
         align-items: center;
-        padding: 4px 10px;
-        border-radius: 99px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-    
-    .status-todo { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
-    .status-in-progress { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
-    .status-blocked { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-    .status-in-review { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
-    .status-done { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-    .status-closed { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; text-decoration: line-through; }
-
-    .info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 32px;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
 
-    .info-item {
+    .filter-group {
         display: flex;
         flex-direction: column;
         gap: 6px;
     }
 
-    .info-label {
-        font-size: 12px;
-        color: var(--text-secondary);
+    .filter-label {
+        font-size: 11px;
         font-weight: 700;
+        color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.05em;
-    }
-
-    .info-value {
-        font-size: 15px;
-        color: var(--text-main);
-        font-weight: 500;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+    }
+    
+    .filter-label i { opacity: 0.7; }
+
+    .form-control {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+        min-width: 140px;
+        background: #f8fafc;
+        transition: all 0.2s;
+        color: var(--text-main);
+    }
+    
+    .form-control:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
     .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
         padding: 8px 16px;
         border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
+        border: none;
         text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         transition: all 0.2s;
-        border: 1px solid transparent;
     }
 
-    .btn-ghost {
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .btn-ghost:hover { background: #f8fafc; color: var(--text-main); }
+    .btn-outline-primary {
         background: transparent;
-        color: var(--text-secondary);
+        border: 1px solid var(--primary);
+        color: var(--primary);
     }
+    .btn-outline-primary:hover { background: #eff6ff; }
 
-    .btn-ghost:hover {
-        background: #f8fafc;
-        color: var(--text-main);
-    }
-
-    /* Timeline Styles */
+    /* Timeline */
     .timeline-container {
         position: relative;
         padding-left: 40px;
-        margin-top: 40px;
     }
 
     .timeline-container::before {
@@ -159,10 +157,6 @@
         margin-bottom: 32px;
     }
 
-    .timeline-item:last-child {
-        margin-bottom: 0;
-    }
-
     .timeline-marker {
         position: absolute;
         left: -40px;
@@ -177,7 +171,6 @@
         z-index: 2;
         font-size: 14px;
         color: #94a3b8;
-        transition: all 0.3s ease;
     }
     
     .timeline-marker-icon {
@@ -199,8 +192,10 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
-        padding: 20px 20px 0 20px;
-        border-bottom: none;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 12px 12px 0 0;
+        background: #f8fafc;
     }
 
     .change-meta {
@@ -263,6 +258,8 @@
         padding: 2px 6px;
         border-radius: 4px;
         text-decoration: line-through;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
     }
     
     .val-text-new {
@@ -270,42 +267,159 @@
         background: #f0fdf4;
         padding: 2px 6px;
         border-radius: 4px;
-    }
-
-    .action-label {
-        color: #3b82f6;
-        font-weight: 600;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 12px;
-        padding-left: 20px;
     }
     
-    .action-dot {
-        width: 8px;
-        height: 8px;
-        background: #3b82f6;
-        border-radius: 50%;
-        display: inline-block;
+    .val-text-old i, .val-text-new i {
+        margin-right: 4px;
     }
 
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 60px;
+    .date-group .date-inputs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .date-separator { color: var(--text-secondary); font-size: 12px; }
+
+    .search-group { flex-grow: 1; min-width: 200px; }
+    
+    .search-input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
         color: var(--text-secondary);
+        font-size: 14px;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding-left: 36px;
     }
 
-    /* Responsive */
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        margin-top: auto;
+        height: 40px;
+        padding-bottom: 1px;
+    }
+    
+    .divider-vertical {
+        width: 1px;
+        height: 24px;
+        background: var(--border-color);
+        margin: auto 0;
+    }
+
+    @media (max-width: 1024px) {
+        .filter-bar { gap: 12px; }
+        .search-group { order: 10; width: 100%; flex-basis: 100%; }
+        .filter-actions { width: 100%; justify-content: flex-end; margin-top: 12px; order: 11; }
+    }
+
     @media (max-width: 640px) {
         .page-container { padding: 16px; }
-        .card { padding: 20px; }
-        .header-content { flex-direction: column; gap: 16px; }
+        .filter-bar { flex-direction: column; align-items: stretch; padding: 16px; gap: 16px; }
         .timeline-container { padding-left: 24px; }
         .timeline-marker { left: -36px; width: 24px; height: 24px; font-size: 10px; }
         .timeline-container::before { left: -25px; }
+
+        /* Mobile Table to Card View */
+        .change-table { border: none; background: transparent; }
+        .change-table thead { display: none; }
+        .change-table tbody { display: flex; flex-direction: column; gap: 12px; }
+        .change-table tr {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .change-table td {
+            display: block;
+            padding: 4px 0;
+            border: none;
+            width: 100%;
+        }
+        /* Field Name */
+        .change-table td:first-child {
+            font-weight: 700;
+            color: var(--text-main);
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        /* Arrow */
+        .change-table td:nth-child(3) { display: none; }
+        
+        /* Values */
+        .change-table td:nth-child(2),
+        .change-table td:nth-child(4) {
+            position: relative;
+            padding-left: 0;
+        }
+        
+        .change-table td:nth-child(2)::before {
+            content: '变更前';
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+        
+        .change-table td:nth-child(4) {
+            margin-top: 8px;
+        }
+        
+        .change-table td:nth-child(4)::before {
+            content: '变更后';
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        /* Header Adjustments */
+        .timeline-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .user-badge-right {
+            align-self: flex-start;
+            font-size: 11px;
+        }
+        
+        /* Filter Form Adjustments */
+        .date-group .date-inputs {
+            flex-direction: column;
+            width: 100%;
+        }
+        .date-separator { display: none; }
+        .filter-actions {
+            flex-direction: column;
+            align-items: stretch;
+            height: auto;
+            margin-top: 8px;
+            gap: 8px;
+        }
+        .filter-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .divider-vertical { display: none; }
     }
 </style>
 {% endblock %}
@@ -314,65 +428,12 @@
 <div class="page-container">
     
     <div class="card">
-        <!-- Header Info -->
         <div class="header-content">
-            <div>
-                <h1 class="task-title">
-                    {{ task.title }}
-                    <span class="task-id">TASK-{{ task.id }}</span>
-                    {% if task.status == 'todo' %}
-                        <span class="status-badge status-todo">待处理 / To Do</span>
-                    {% elif task.status == 'in_progress' %}
-                        <span class="status-badge status-in-progress">进行中 / In Progress</span>
-                    {% elif task.status == 'blocked' %}
-                        <span class="status-badge status-blocked">阻塞中 / Blocked</span>
-                    {% elif task.status == 'in_review' %}
-                        <span class="status-badge status-in-review">待评审 / In Review</span>
-                    {% elif task.status == 'done' %}
-                        <span class="status-badge status-done">已完成 / Done</span>
-                    {% elif task.status == 'closed' %}
-                        <span class="status-badge status-closed">已关闭 / Closed</span>
-                    {% else %}
-                        <span class="status-badge status-todo">{{ task.get_status_display }}</span>
-                    {% endif %}
-                </h1>
-            </div>
-            <div style="display: flex; gap: 12px;">
-                <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost">返回详情</a>
-            </div>
-        </div>
-
-        <!-- Meta Grid -->
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">负责人 / OWNER</span>
-                <span class="info-value">
-                    {% include "partials/user_avatar.html" with user=task.user size="24px" font_size="10px" %}
-                    {{ task.user.get_full_name|default:task.user.username }}
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">所属项目 / PROJECT</span>
-                <span class="info-value">
-                    {{ task.project.name }}
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">优先级 / PRIORITY</span>
-                <span class="info-value">
-                    {% if task.priority == 'high' %}
-                        <span style="color: #ef4444; font-weight: 700;">{{ task.get_priority_display }}</span>
-                    {% elif task.priority == 'medium' %}
-                        <span style="color: #f97316; font-weight: 700;">{{ task.get_priority_display }}</span>
-                    {% elif task.priority == 'low' %}
-                        <span style="color: #16a34a; font-weight: 700;">{{ task.get_priority_display }}</span>
-                    {% endif %}
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">创建时间 / CREATED</span>
-                <span class="info-value">{{ task.created_at|date:"Y-m-d H:i" }}</span>
-            </div>
+            <h1 class="task-title">
+                {{ task.title }}
+                <span class="task-code">TASK-{{ task.id }}</span>
+            </h1>
+            <a href="{% url 'tasks:task_view' task.pk %}" class="btn btn-ghost">返回详情 / Back</a>
         </div>
 
         <!-- Filters -->
@@ -430,232 +491,135 @@
             </div>
         </form>
 
-        <style>
-            /* Enhanced Filter Bar Styles */
-            .filter-bar {
-                display: flex;
-                gap: 16px;
-                flex-wrap: wrap;
-                align-items: center;
-                background: #ffffff;
-                padding: 20px;
-                border-radius: 16px;
-                margin-bottom: 32px;
-                border: 1px solid var(--border-color);
-                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            }
-
-            .filter-group {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-
-            .filter-label {
-                font-size: 11px;
-                font-weight: 700;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-            
-            .filter-label i { opacity: 0.7; }
-
-            .form-control {
-                padding: 10px 12px;
-                border: 1px solid var(--border-color);
-                border-radius: 8px;
-                font-size: 13px;
-                outline: none;
-                min-width: 140px;
-                background: #f8fafc;
-                transition: all 0.2s;
-                color: var(--text-main);
-            }
-            
-            .form-control:focus {
-                background: white;
-                border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-            }
-
-            .date-group .date-inputs {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .date-separator { color: var(--text-secondary); font-size: 12px; }
-
-            .search-group { flex-grow: 1; min-width: 200px; }
-            
-            .search-input-wrapper {
-                position: relative;
-                width: 100%;
-            }
-            
-            .search-icon {
-                position: absolute;
-                left: 12px;
-                top: 50%;
-                transform: translateY(-50%);
-                color: var(--text-secondary);
-                font-size: 14px;
-            }
-            
-            .search-input {
-                width: 100%;
-                padding-left: 36px;
-            }
-
-            .filter-actions {
-                display: flex;
-                align-items: flex-end; /* Align with inputs */
-                gap: 12px;
-                margin-top: auto;
-                height: 40px; /* Match input height approx */
-                padding-bottom: 1px;
-            }
-            
-            .divider-vertical {
-                width: 1px;
-                height: 24px;
-                background: var(--border-color);
-                margin: auto 0;
-            }
-
-            .btn-primary {
-                background: var(--primary); 
-                color: white; 
-                border: none;
-            }
-            
-            .btn-primary:hover {
-                background: var(--primary-hover);
-            }
-
-            @media (max-width: 1024px) {
-                .filter-bar {
-                    gap: 12px;
-                }
-                .search-group {
-                    order: 10; /* Move to end on smaller screens */
-                    width: 100%;
-                    flex-basis: 100%;
-                }
-                .filter-actions {
-                    width: 100%;
-                    justify-content: flex-end;
-                    margin-top: 12px;
-                    order: 11;
-                }
-            }
-        </style>
-
-        <!-- Timeline Section -->
-        <div style="margin-top: 48px;">
-            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
-                <span>⏳</span> 变更历史记录 / Change History
-            </h3>
-
-            {% if logs %}
-            
-                <div id="timeline-wrapper">
-                    {% include "audit/timeline.html" with logs=logs %}
-                </div>
-            
-                <!-- Load More Button -->
-                {% if page_obj.has_next %}
-                <div style="text-align: center; margin-top: 24px;">
-                    <button id="load-more-btn" class="btn btn-ghost" data-next-page="{{ page_obj.next_page_number }}" style="width: 100%;">
-                        加载更多 / Load More
-                    </button>
-                </div>
-                {% endif %}
-
-                <!-- Pagination Controls (Bottom) -->
-                <noscript>
-                {% if page_obj.paginator.num_pages > 1 %}
-                <div style="display: flex; justify-content: center; margin-top: 32px;">
-                <div style="display: flex; gap: 4px; background: white; padding: 4px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">← Prev</a>
+        <!-- Timeline -->
+        <div class="timeline-container">
+            {% for log in logs %}
+            <div class="timeline-item">
+                <div class="timeline-marker">
+                    {% if log.action == 'create' %}
+                        <i class="fa-solid fa-plus timeline-marker-icon" style="color: var(--success);"></i>
+                    {% elif log.action == 'update' %}
+                        <i class="fa-solid fa-pen timeline-marker-icon" style="color: var(--primary);"></i>
+                    {% elif log.action == 'delete' %}
+                        <i class="fa-solid fa-trash timeline-marker-icon" style="color: var(--danger);"></i>
+                    {% else %}
+                        <i class="fa-solid fa-info timeline-marker-icon"></i>
                     {% endif %}
-                    
-                    <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">
-                        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                    </span>
-                    
-                    {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost" style="padding: 4px 12px;">Next →</a>
-                    {% endif %}
+                </div>
+                
+                <div class="timeline-content card" style="padding: 0; border: 1px solid var(--border-color); box-shadow: none;">
+                    <!-- Header -->
+                    <div class="timeline-header">
+                        <div class="change-meta">
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 14px; color: var(--text-main);">
+                                    <span style="font-weight: 700;">
+                                        {% if log.user %}
+                                            {{ log.user.get_full_name|default:log.user.username }}
+                                        {% else %}
+                                            {{ log.operator_name }}
+                                        {% endif %}
+                                    </span>
+                                    <span style="color: var(--text-secondary); font-weight: 400;">
+                                        {% if log.action == 'create' %}创建了任务 / Created Task{% endif %}
+                                        {% if log.action == 'update' %}更新了任务 / Updated Task{% endif %}
+                                        {% if log.action == 'delete' %}删除了任务 / Deleted Task{% endif %}
+                                    </span>
+                                </span>
+                                <span style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                    {{ log.created_at|date:"Y-m-d H:i" }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="user-badge-right">
+                            <i class="fa-regular fa-clock"></i> {{ log.created_at|timesince }} ago
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div style="padding: 20px;">
+                        {% if log.changes %}
+                            <table class="change-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">字段 / Field</th>
+                                        <th>变更前 / Old Value</th>
+                                        <th style="width: 24px;"></th>
+                                        <th>变更后 / New Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for field, diff in log.changes.items %}
+                                    <tr>
+                                        <td style="font-weight: 600; color: var(--text-secondary); text-transform: capitalize;">{{ field|title }}</td>
+                                        <td>
+                                            {% with val=diff.0 %}
+                                                {% if val == None or val == "" %}
+                                                    <span class="val-empty">Empty</span>
+                                                {% elif val == True %}
+                                                    <span class="val-text-old"><i class="fa-regular fa-check-circle"></i> True</span>
+                                                {% elif val == False %}
+                                                    <span class="val-text-old"><i class="fa-regular fa-circle-xmark"></i> False</span>
+                                                {% else %}
+                                                    <span class="val-text-old">{{ val }}</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td style="text-align: center; color: var(--text-muted);"><i class="fa-solid fa-arrow-right-long"></i></td>
+                                        <td>
+                                            {% with val=diff.1 %}
+                                                {% if val == None or val == "" %}
+                                                    <span class="val-empty">Empty</span>
+                                                {% elif val == True %}
+                                                    <span class="val-text-new"><i class="fa-solid fa-check-circle"></i> True</span>
+                                                {% elif val == False %}
+                                                    <span class="val-text-new"><i class="fa-solid fa-circle-xmark"></i> False</span>
+                                                {% else %}
+                                                    <span class="val-text-new">{{ val }}</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div style="color: var(--text-secondary); font-size: 13px; font-style: italic;">
+                                没有详细变更记录 / No detailed changes recorded.
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            {% empty %}
+            <div style="text-align: center; padding: 48px; color: var(--text-secondary);">
+                <i class="fa-regular fa-folder-open" style="font-size: 32px; color: var(--text-muted); margin-bottom: 12px; display: block;"></i>
+                暂无变更记录 / No history found
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="display: flex; justify-content: center; margin-top: 32px; gap: 8px;">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost">
+                    <i class="fa-solid fa-chevron-left"></i> 上一页
+                </a>
             {% endif %}
-            </noscript>
-
-            {% else %}
-            <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">📭</div>
-                <p>没有找到符合条件的记录 / No records found</p>
-            </div>
+            
+            <span style="display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--text-secondary); background: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="btn btn-ghost">
+                    下一页 <i class="fa-solid fa-chevron-right"></i>
+                </a>
             {% endif %}
         </div>
+        {% endif %}
     </div>
-
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const loadMoreBtn = document.getElementById('load-more-btn');
-        const timelineWrapper = document.getElementById('timeline-container');
-        const spinner = document.getElementById('loading-spinner');
-
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', function() {
-                const nextPage = this.dataset.nextPage;
-                const url = new URL(window.location.href);
-                url.searchParams.set('page', nextPage);
-                
-                this.style.display = 'none';
-                if(spinner) spinner.style.display = 'block';
-
-                fetch(url, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newItems = doc.querySelectorAll('.timeline-item');
-                    
-                    if (timelineWrapper) {
-                        newItems.forEach(item => {
-                            item.classList.add('animate-in');
-                            timelineWrapper.appendChild(item);
-                        });
-                    }
-
-                    if (newItems.length < 20) {
-                        loadMoreBtn.remove();
-                    } else {
-                        loadMoreBtn.dataset.nextPage = parseInt(nextPage) + 1;
-                        loadMoreBtn.style.display = 'inline-block';
-                    }
-                })
-                .catch(err => {
-                    console.error('Error loading more:', err);
-                    loadMoreBtn.textContent = 'Error loading. Retry?';
-                    loadMoreBtn.style.display = 'inline-block';
-                })
-                .finally(() => {
-                    if(spinner) spinner.style.display = 'none';
-                });
-            });
-        }
-    });
-</script>
 {% endblock %}

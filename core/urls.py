@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/username-check/', views.username_check_api, name='username_check_api'),
     path('api/email-code/', views.send_email_code_api, name='send_email_code_api'),
     path('api/users/', views.user_search_api, name='user_search_api'),
+    path('api/command-search/', views.command_search_api, name='command_search_api'),
     path('search/', views.global_search, name='global_search'),
     path('logout/', views.logout_view, name='logout'),
     path('export/jobs/<int:job_id>/', views.export_job_status, name='export_job_status'),

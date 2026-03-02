@@ -65,58 +65,87 @@ def log_model_changes(sender, instance, created, **kwargs):
             if field in ignored_fields: continue
             
             old_val = old_state.get(field)
-            # ... (keep value comparison logic)
-            # RE-IMPLEMENTING COMPARISON FOR COMPLETENESS OF REPLACEMENT
-            # BUT TO SAVE TOKENS I WILL ASSUME THE DIFF LOGIC IS SAME AS BEFORE
-            # I WILL COPY PASTE THE DIFF LOGIC FROM PREVIOUS READ IF POSSIBLE OR REWRITE IT
             
+            # Normalize for comparison
             c_old = '' if old_val is None else old_val
             c_new = '' if new_val is None else new_val
             
-            if old_val != new_val:
-                if c_old == c_new: continue
+            if c_old != c_new:
+                # Double check for empty string vs None equality if needed
+                if c_old == '' and c_new == '': continue
+                if c_old == c_new: continue # Extra safety
                 
                 v_name = get_field_verbose_name(sender, field)
                 old_display = old_val
                 new_display = new_val
                 
-                field_obj = sender._meta.get_field(field)
-
-                if field_obj.choices:
-                    choices_dict = dict(field_obj.choices)
-                    old_display = choices_dict.get(old_val, old_val)
-                    new_display = choices_dict.get(new_val, new_val)
-                elif field_obj.is_relation and field_obj.many_to_one:
-                    related_model = field_obj.related_model
-                    def get_obj_str(model, pk):
-                        if not pk: return None
-                        try:
-                            obj = model.objects.get(pk=pk)
-                            if isinstance(obj, User):
-                                profile = getattr(obj, 'profile', None)
-                                name = obj.get_full_name() or obj.username
-                                if profile and profile.position:
-                                    return f"{name} ({profile.get_position_display()})"
-                                return name
-                            return str(obj)
-                        except model.DoesNotExist:
-                            return f"Deleted {model._meta.verbose_name} ({pk})"
-                        except Exception:
-                            return str(pk)
-                    if old_val: old_display = get_obj_str(related_model, old_val)
-                    if new_val: new_display = get_obj_str(related_model, new_val)
-                else:
-                    if hasattr(old_display, 'isoformat'): old_display = old_display.isoformat()
-                    if isinstance(old_display, Decimal): old_display = str(old_display)
+                try:
+                    field_obj = sender._meta.get_field(field)
                     
-                    if hasattr(new_display, 'isoformat'): new_display = new_display.isoformat()
-                    if isinstance(new_display, Decimal): new_display = str(new_display)
+                    # Handle Choices
+                    if field_obj.choices:
+                        choices_dict = dict(field_obj.choices)
+                        old_display = choices_dict.get(old_val, old_val)
+                        new_display = choices_dict.get(new_val, new_val)
+                    
+                    # Handle Foreign Keys (Relations)
+                    elif field_obj.is_relation and field_obj.many_to_one:
+                        related_model = field_obj.related_model
+                        def get_obj_str(model, pk):
+                            if not pk: return None
+                            try:
+                                obj = model.objects.get(pk=pk)
+                                if isinstance(obj, User):
+                                    profile = getattr(obj, 'profile', None)
+                                    name = obj.get_full_name() or obj.username
+                                    if profile and profile.position:
+                                        return f"{name} ({profile.get_position_display()})"
+                                    return name
+                                return str(obj)
+                            except model.DoesNotExist:
+                                return f"Deleted {model._meta.verbose_name} ({pk})"
+                            except Exception:
+                                return str(pk)
+                        
+                        if old_val: old_display = get_obj_str(related_model, old_val)
+                        if new_val: new_display = get_obj_str(related_model, new_val)
+                    
+                    # Handle Date/Time/Decimal
+                    else:
+                        if hasattr(old_display, 'isoformat'): old_display = old_display.isoformat()
+                        if isinstance(old_display, Decimal): old_display = str(old_display)
+                        
+                        if hasattr(new_display, 'isoformat'): new_display = new_display.isoformat()
+                        if isinstance(new_display, Decimal): new_display = str(new_display)
+                        
+                except Exception as e:
+                    # Fallback if field lookup fails
+                    pass
 
-                diff[field] = {
-                    'verbose_name': v_name,
-                    'old': old_display,
-                    'new': new_display
-                }
+                # Store as tuple (old, new) to match template expectation or dict?
+                # The template uses `diff.0` and `diff.1`.
+                # Previously logic stored dict: {'verbose_name': v, 'old': o, 'new': n}
+                # But template reads `diff.0`. Wait.
+                # Let's check the template again.
+                # Template: `{% with val=diff.0 %}` -> this implies `diff` is a list/tuple.
+                # BUT my previous SEARCH result of signals.py showed:
+                # diff[field] = {'verbose_name': v_name, 'old': old_display, 'new': new_display}
+                # This is a DICT.
+                # If template uses `diff.0`, it expects a LIST/TUPLE.
+                # Wait, the template loop is: `{% for field, diff in log.changes.items %}`
+                # If `log.changes` is `details['diff']`, then `diff` is the value of the dict item.
+                # If `diff` is a dict `{'old':..., 'new':...}`, then `diff.0` will FAIL or return nothing in DTL?
+                # DTL dictionary lookup by index? No.
+                # `diff.0` usually means index 0 of a list.
+                # Let's check `AuditService` implementation in `reports/services/audit_service.py` to see what IT produces.
+                # The template seems to support `diff.0` (Old) and `diff.1` (New).
+                # So I should probably store `[old_display, new_display]`.
+                # BUT I also want `verbose_name`.
+                # If I store `[old, new]`, I lose `verbose_name` unless key is verbose name? No key is field name.
+                # The template has `{{ field|title }}` so it uses the key as the label.
+                # So I will store `[old_display, new_display]` to match the template's expectation.
+                
+                diff[field] = [old_display, new_display]
 
     operator_name = user.get_full_name() or user.username if user else 'System'
     project = None

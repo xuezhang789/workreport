@@ -29,22 +29,13 @@ def log_action(request, action: str, extra: str = "", data=None):
 
     # Avoid logging redundant update actions if data is empty (likely covered by signals)
     if action == 'update' and not data and not extra:
-         # Optionally skip, but 'extra' often has summary string.
          pass
          
-    # Fix for duplication: log_action should create 'AccessLog' type, but previous code might be creating valid Task logs?
-    # Actually, signals create logs with target_type='Task'.
-    # log_action creates logs with target_type='AccessLog'.
-    # So duplication in History View comes from View querying target_type='Task'.
-    # Wait, the failure shows TWO logs with 'diff'.
-    # Log: update - Details: {'diff': {'status': {'verbose_name': '状态', 'old': '待处理 / To Do', 'new': '进行中 / In Progress'}}}
-    # Log: update - Details: {'diff': {'status': {'old': 'todo', 'new': 'in_progress'}}}
-    
-    # One has verbose_name, one doesn't.
-    # The one with verbose_name looks like AuditService._calculate_diff?
-    # The other one looks like _add_history's replacement?
-    # I removed _add_history call in views.py.
-    # Let's check if signals.py is doing something twice or if there's another hook.
+    # Fix for duplication: 
+    # Signals create logs with target_type='Task'/'Project' and detailed diffs.
+    # Manual log_action creates logs with target_type='AccessLog' (or generic) and context.
+    # To prevent duplication in History views (which query by Task/Project), 
+    # we ensure manual logs use a distinct target_type unless explicitly overriding.
     
     AuditLog.objects.create(
         user=user,
@@ -53,7 +44,7 @@ def log_action(request, action: str, extra: str = "", data=None):
         ip=ip,
         summary=extra[:2000],
         details=details,
-        target_type='AccessLog', # Mark manual logs distinct from Data Changes
+        target_type='AccessLog', # Always use AccessLog for manual/view actions to distinguish from Data Changes
         target_id='0',
         target_label='System Access',
         result='success'

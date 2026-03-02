@@ -579,6 +579,115 @@ def username_check_api(request):
     return JsonResponse({'available': True})
 
 @login_required
+def command_search_api(request):
+    """
+    命令面板搜索 API (Command Palette Search API)
+    返回格式:
+    {
+        "results": [
+            { "category": "项目 / Projects", "title": "Project A", "url": "/projects/1/", "icon": "📂" },
+            ...
+        ]
+    }
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'GET only'}, status=405)
+
+    q = (request.GET.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return JsonResponse({'results': []})
+
+    results = []
+
+    # 1. 搜索项目 (Projects)
+    accessible_projects = get_accessible_projects(request.user)
+    projects = accessible_projects.filter(
+        Q(name__icontains=q) | Q(code__icontains=q)
+    ).select_related('owner')[:5]
+    
+    for p in projects:
+        results.append({
+            'category': '项目 / Projects',
+            'title': f"{p.name} ({p.code})",
+            'url': reverse('projects:project_detail', args=[p.id]),
+            'icon': '📂'
+        })
+
+    # 2. 搜索任务 (Tasks)
+    # 限制搜索范围：可访问的项目中的任务
+    from tasks.models import Task
+    tasks = Task.objects.filter(
+        project__in=accessible_projects
+    ).filter(
+        Q(title__icontains=q) | Q(id__icontains=q)
+    ).select_related('project')[:5]
+
+    for t in tasks:
+        results.append({
+            'category': '任务 / Tasks',
+            'title': f"#{t.id} {t.title}",
+            'url': reverse('tasks:task_view', args=[t.id]),
+            'icon': '✅'
+        })
+
+    # 3. 搜索用户 (Users) - 用于跳转到用户详情或过滤
+    # 简单实现：搜索可见用户
+    User = get_user_model()
+    # 复用 user_search_api 的逻辑简化版
+    can_search_all = (request.user.is_superuser or has_manage_permission(request.user))
+    if can_search_all:
+        user_qs = User.objects.all()
+    else:
+        user_qs = User.objects.filter(
+            Q(project_memberships__in=accessible_projects) |
+            Q(managed_projects__in=accessible_projects) |
+            Q(owned_projects__in=accessible_projects)
+        ).distinct()
+
+    users = user_qs.filter(
+        Q(username__icontains=q) | Q(first_name__icontains=q)
+    )[:3]
+
+    for u in users:
+        # 假设有用户详情页，或者作为筛选条件跳转到任务列表
+        # 这里演示跳转到该用户的任务列表
+        results.append({
+            'category': '用户 / Users',
+            'title': u.get_full_name() or u.username,
+            'url': reverse('tasks:task_list') + f"?owner={u.username}", # 示例：查看该用户的任务
+            'icon': '👤'
+        })
+        
+    # 4. 快捷命令 (Quick Actions) - 基于关键词匹配
+    # 例如输入 "new task" -> 跳转到新建任务
+    if 'new' in q.lower() or 'create' in q.lower() or '新建' in q:
+        if 'task' in q.lower() or '任务' in q:
+             results.append({
+                'category': '操作 / Actions',
+                'title': '新建任务 / New Task',
+                'url': reverse('tasks:admin_task_create'),
+                'icon': '➕'
+            })
+        if 'project' in q.lower() or '项目' in q:
+            # 检查创建权限
+            if has_manage_permission(request.user):
+                results.append({
+                    'category': '操作 / Actions',
+                    'title': '新建项目 / New Project',
+                    'url': reverse('projects:project_create'),
+                    'icon': '➕'
+                })
+        if 'report' in q.lower() or '日报' in q:
+             results.append({
+                'category': '操作 / Actions',
+                'title': '写日报 / New Report',
+                'url': reverse('reports:daily_report_create'),
+                'icon': '📝'
+            })
+
+    return JsonResponse({'results': results})
+
+@login_required
 def export_job_status(request, job_id: int):
     job = get_object_or_404(ExportJob, id=job_id, user=request.user)
     if job.expires_at and job.expires_at < timezone.now():

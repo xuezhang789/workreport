@@ -101,14 +101,15 @@ def workbench_stats(request):
         total=Count('id'),
         completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
         overdue=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
-        in_progress=Count('id', filter=Q(status=TaskStatus.IN_PROGRESS)),
-        pending=Count('id', filter=Q(status=TaskStatus.TODO))
+        in_progress=Count('id', filter=Q(status__in=[TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW])),
+        pending=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.BLOCKED]))
     )
     
     total = stats['total']
     completed = stats['completed']
     
-    completion_rate = (completed / total * 100) if total else 0
+    # Python 3 division is float, so this is correct.
+    completion_rate = (completed / total * 100) if total else 0.0
     
     # 日报连签
     today_date = timezone.localdate()
@@ -183,7 +184,7 @@ def workbench_projects(request):
         total_p=Count('id'),
         completed_p=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED])),
         overdue_p=Count('id', filter=Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW], due_at__lt=timezone.now())),
-        in_progress_p=Count('id', filter=Q(status=TaskStatus.IN_PROGRESS))
+        in_progress_p=Count('id', filter=Q(status__in=[TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW]))
     ).order_by('project__name')
     
     project_burndown = []
@@ -191,7 +192,8 @@ def workbench_projects(request):
         total_p = stat['total_p']
         completed_p = stat['completed_p']
         
-        completion_rate_p = (completed_p / total_p * 100) if total_p else 0
+        # Python 3 division is float
+        completion_rate_p = (completed_p / total_p * 100) if total_p else 0.0
         
         project_burndown.append({
             'project': stat['project__name'],
@@ -223,12 +225,23 @@ def workbench_reports(request):
 def workbench_tasks(request):
     """
     HTMX: 我的待办任务 (Top 5 Urgent)
+    优先级: High > Medium > Low (注意: 字符串排序 h > m > l 是错误的, 需要 Case/When)
     """
+    from django.db.models import Case, When, IntegerField
+    
     my_tasks = Task.objects.filter(
         user=request.user
     ).exclude(
         status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
-    ).select_related('project').order_by('due_at', '-priority')[:5]
+    ).select_related('project').annotate(
+        priority_val=Case(
+            When(priority='high', then=3),
+            When(priority='medium', then=2),
+            When(priority='low', then=1),
+            default=0,
+            output_field=IntegerField(),
+        )
+    ).order_by(F('due_at').asc(nulls_last=True), '-priority_val')[:5]
     
     return render(request, 'reports/partials/workbench_tasks.html', {
         'my_tasks': my_tasks

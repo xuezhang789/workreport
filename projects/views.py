@@ -45,7 +45,8 @@ def _filtered_projects(request):
     # Base QuerySet
     # 基础查询集
     # Optimization: Select related profile for owner avatar
-    qs = Project.objects.select_related('owner', 'owner__preferences', 'owner__profile', 'current_phase').filter(is_active=True)
+    # Optimized: Removed 'owner__preferences' as it's not used. Deferred large text fields.
+    qs = Project.objects.select_related('owner', 'owner__profile', 'current_phase').filter(is_active=True).defer('description', 'progress_note')
     
     # Filter by accessible projects (Superuser check is handled inside)
     # 过滤可访问的项目（超级用户检查在内部处理）
@@ -163,9 +164,17 @@ def project_list(request):
     
     # Get potential owners for filter autocomplete
     # 获取用于筛选自动补全的潜在负责人
-    # Optimization: Only fetch users who own at least one accessible project
-    accessible_projects = get_accessible_projects(request.user).filter(is_active=True)
-    owner_ids = accessible_projects.values_list('owner_id', flat=True).distinct()
+    # Optimization: Cache owner IDs per user to reduce query load
+    from django.core.cache import cache
+    
+    cache_key = f'project_owner_ids_{request.user.id}'
+    owner_ids = cache.get(cache_key)
+    
+    if not owner_ids:
+        accessible_projects = get_accessible_projects(request.user).filter(is_active=True)
+        owner_ids = list(accessible_projects.values_list('owner_id', flat=True).distinct())
+        cache.set(cache_key, owner_ids, 300) # 5 mins
+
     potential_owners = get_user_model().objects.filter(id__in=owner_ids).order_by('username')
     
     context = {

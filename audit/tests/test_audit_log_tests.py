@@ -46,8 +46,8 @@ class AuditLogTests(TestCase):
         self.assertIsNotNone(log)
         self.assertEqual(log.action, 'update')
         self.assertIn('name', log.details['diff'])
-        self.assertEqual(log.details['diff']['name']['old'], "Test Project")
-        self.assertEqual(log.details['diff']['name']['new'], "New Name")
+        self.assertEqual(log.details['diff']['name'][0], "Test Project")
+        self.assertEqual(log.details['diff']['name'][1], "New Name")
 
     def test_none_vs_empty_string_ignored(self):
         self._mock_request_user(self.user)
@@ -59,8 +59,8 @@ class AuditLogTests(TestCase):
         
         log = AuditLog.objects.first()
         self.assertIn('description', log.details['diff'])
-        self.assertEqual(log.details['diff']['description']['old'], "Initial")
-        self.assertEqual(log.details['diff']['description']['new'], "")
+        self.assertEqual(log.details['diff']['description'][0], "Initial")
+        self.assertEqual(log.details['diff']['description'][1], "")
         
         # Now update "" to "" (should be ignored)
         AuditLog.objects.all().delete()
@@ -77,8 +77,8 @@ class AuditLogTests(TestCase):
         log = AuditLog.objects.first()
         self.assertIn('owner', log.details['diff'])
         # Depending on get_full_name empty
-        self.assertEqual(log.details['diff']['owner']['old'], 'tester')
-        self.assertEqual(log.details['diff']['owner']['new'], 'user2')
+        self.assertEqual(log.details['diff']['owner'][0], 'tester')
+        self.assertEqual(log.details['diff']['owner'][1], 'user2')
 
     def test_task_creation_and_update(self):
         self._mock_request_user(self.user)
@@ -102,8 +102,8 @@ class AuditLogTests(TestCase):
         diff = log.details['diff']
         self.assertIn('status', diff)
         # Check Labels
-        self.assertIn('To Do', diff['status']['old']) # Should match "待处理 / To Do"
-        self.assertIn('In Progress', diff['status']['new'])
+        self.assertIn('To Do', diff['status'][0]) # Should match "待处理 / To Do"
+        self.assertIn('In Progress', diff['status'][1])
 
     def test_m2m_changes(self):
         self._mock_request_user(self.user)
@@ -170,32 +170,7 @@ class AuditLogTests(TestCase):
         
         # Reset
         AuditLog.objects.all().delete()
-        # Note: If we call save() again on the same instance, old_state might be updated by signal?
-        # Let's verify: In signal, we do `instance._old_state = model_to_dict(old_instance)`.
-        # If we save() again without changing anything, Django usually optimizes and doesn't save if no change?
-        # We need to force a situation where 'pre_save' sees old, and 'post_save' sees new, same as before.
-        # But if we just call save(), and DB is already updated, `old_instance` will be "Duplicate Check".
-        # So `old_state` == `new_state`, no diff, no log.
-        # This is already handled by "no diff" check.
-        
-        # The idempotency check is for when the *action* happens twice but maybe with different object instances
-        # or somehow race condition? Or maybe `create` action?
-        
-        # Let's test 'create' duplication? (e.g. if signal fires twice?)
-        # Or test a scenario where we manually trigger signal?
-        
-        # Let's assume we have two separate requests/threads trying to do the same update?
-        # Actually, standard Django save() workflow:
-        # 1. pre_save: loads old from DB (Duplicate Check)
-        # 2. update DB
-        # 3. post_save: diff (Duplicate Check vs Duplicate Check) -> No diff.
-        
-        # So for UPDATE, the "No Diff" check already handles idempotency if the DB is consistent.
-        # The only risk is race condition where 2 requests read "Old Name" at same time, and both write "New Name".
-        # Request A: Read "Old", Write "New", Log "Old->New"
-        # Request B: Read "Old" (before A commit), Write "New", Log "Old->New"
-        # In this case, both will produce a log. Our debounce logic should catch the second one.
-        
+
         # Simulation:
         # Create a log manually, then try to save() to trigger signal that would produce same log.
         
@@ -212,19 +187,6 @@ class AuditLogTests(TestCase):
         
         # 2. Simulate Request B (which started earlier but finishes now)
         # It thinks old was "Original" and new is "Changed".
-        # We can simulate this by manually calling the signal handler?
-        # Or by mocking `_old_state`.
-        
-        p_copy = Project.objects.get(id=self.project.id)
-        p_copy._old_state = {'name': 'Original'} # Force it to think it changed
-        p_copy.name = 'Changed'
-        
-        # Trigger post_save manually or just save() (but save will update DB which is fine)
-        # Since DB is already 'Changed', pre_save would load 'Changed'.
-        # We need to bypass pre_save's loading.
-        # But `capture_old_state` receiver runs on pre_save.
-        # If we manually set `_old_state` before save, does pre_save overwrite it?
-        # Yes, `capture_old_state` overwrites `instance._old_state`.
         
         # So to test the debounce, we can just manually invoke the signal handler `log_model_changes`.
         from audit.signals import log_model_changes
@@ -232,17 +194,9 @@ class AuditLogTests(TestCase):
         # Call it again with same instance
         log_model_changes(sender=Project, instance=self.project, created=False)
         
-        # Debug (Removed file writing)
-        # print(f"Total Logs: {AuditLog.objects.count()}")
-        # for l in AuditLog.objects.all():
-        #     print(f"Log: {l.action} {l.target_type} {l.details} User:{l.user_id}")
-
         # Should still be 1 because of debounce
         self.assertEqual(AuditLog.objects.count(), 1)
         
-        # Verify if we wait 6 seconds (mock time?)
-        # mocking timezone.now() is hard without freezegun.
-        # Let's just assume logic works if count is 1.
 
     def test_audit_log_service(self):
         from audit.services import AuditLogService
@@ -269,12 +223,14 @@ class AuditLogTests(TestCase):
         self.assertIsNotNone(update_entry)
         
         # Check items structure
-        name_item = next((i for i in update_entry['items'] if i['field_key'] == 'name'), None)
-        self.assertIsNotNone(name_item)
-        self.assertEqual(name_item['old'], "Test Project") # From setUp
-        self.assertEqual(name_item['new'], "Service Test")
+        # AuditLogService now converts keys to verbose names
+        # Project.name verbose_name is "项目名称"
+        self.assertIn('项目名称', update_entry['changes'])
+        self.assertEqual(update_entry['changes']['项目名称'][0], "Test Project") # From setUp
+        self.assertEqual(update_entry['changes']['项目名称'][1], "Service Test")
         
         # Filter by field
+        # The filter still uses internal field name 'name'
         qs_name = AuditLogService.get_history(self.project, {'field_name': 'name'})
         self.assertTrue(qs_name.exists())
         
@@ -284,13 +240,9 @@ class AuditLogTests(TestCase):
             entry = AuditLogService.format_log_entry(log, field_filter='name')
             if entry: history_name.append(entry)
         self.assertGreaterEqual(len(history_name), 1)
+        # Verify verbose name key is present in filtered result too
+        self.assertIn('项目名称', history_name[0]['changes'])
         
         # Filter by non-existent field
         qs_desc = AuditLogService.get_history(self.project, {'field_name': 'description'})
-        # Should be empty because description didn't change in "Service Test" update
-        # (It was set in setUp, but that's CREATE log usually, unless we didn't log create details?)
-        # setUp uses objects.create, signals might fire if connected.
-        # But description "Initial" -> "Initial" (no change).
-        # "Test Project" -> "Service Test" (Name change).
-        # So no description change log.
         self.assertFalse(qs_desc.exists())

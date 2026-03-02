@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.apps import apps
 from audit.models import AuditLog
 from django.utils.dateparse import parse_date
 
@@ -90,22 +91,10 @@ class AuditLogService:
             'user': log.user,
             'operator_name': log.operator_name,
             'action': log.action,
-            'items': [],
-            'summary_html': '' # 用于简化显示
+            'changes': {},
+            'summary_html': '' 
         }
         
-        # 添加条目的助手函数
-        def add_item(type_, field, old, new, action, desc=None, field_key=None):
-            entry['items'].append({
-                'type': type_,
-                'field': field,
-                'field_key': field_key or field,
-                'action': action,
-                'old': old,
-                'new': new,
-                'description': desc or f"{action} {field}"
-            })
-
         # 5. 仓库 (Repository)
         should_show_repos = not field_filter or field_filter == 'repository'
         if should_show_repos and log.target_type == 'Project':
@@ -138,18 +127,15 @@ class AuditLogService:
                 except (IndexError, ValueError):
                     pass
                 except Exception as e:
-                    # Log unexpected errors during summary parsing
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Failed to parse audit log summary for repository info: {e}")
 
             if repo_name and action_verb:
-                add_item('repository', '代码仓库 / Repository', 
-                         repo_name if action_verb == 'Removed' else None,
-                         repo_name if action_verb == 'Added' else None,
-                         action_verb,
-                         f"{action_verb} repository {repo_name}")
-                return entry
+                if action_verb == 'Added':
+                    entry['changes']['代码仓库'] = [None, repo_name]
+                else:
+                    entry['changes']['代码仓库'] = [repo_name, None]
 
         # 1. 字段变更 (Diff)
         if log.details and 'diff' in log.details:
@@ -162,32 +148,64 @@ class AuditLogService:
                 else:
                     diff = {} 
 
+            # 获取模型类以查找 verbose_name
+            ModelClass = None
+            try:
+                # 尝试根据 target_type 获取模型
+                # 常用模型映射
+                app_map = {
+                    'Project': 'projects',
+                    'Task': 'tasks',
+                    'User': 'auth',
+                    'Profile': 'core',
+                    'ProjectAttachment': 'projects',
+                    'TaskAttachment': 'tasks',
+                }
+                app_label = app_map.get(log.target_type)
+                if app_label:
+                    ModelClass = apps.get_model(app_label, log.target_type)
+            except Exception:
+                pass
+
             for field, change in diff.items():
-                if isinstance(change, dict):
-                    # 处理 M2M 变更
-                    if 'action' in change and 'values' in change:
-                        action_verb = change.get('action')
-                        values = change.get('values', [])
-                        # 如果可能，对值使用徽章样式的 HTML，但目前使用原始字符串
-                        values_str = ", ".join(values)
-                        
-                        add_item('field', change.get('verbose_name', field), 
-                                 values_str if action_verb == 'Removed' else None,
-                                 values_str if action_verb == 'Added' else None,
-                                 action_verb,
-                                 field_key=field)
-                    else:
-                        # 标准字段变更
-                        old_val = change.get('old')
-                        new_val = change.get('new')
-                        add_item('field', change.get('verbose_name', field),
-                                 str(old_val) if old_val is not None else None,
-                                 str(new_val) if new_val is not None else None,
-                                 'Changed',
-                                 field_key=field)
-                else:
-                    # 兼容旧日志
-                    add_item('field', field, str(change), None, 'Changed', field_key=field)
+                val_list = None
+                # Check if change is list [old, new] (New format) or dict (Old format)
+                if isinstance(change, list) and len(change) == 2:
+                    val_list = change
+                elif isinstance(change, dict):
+                    # Handle old format or M2M dict
+                    if 'old' in change and 'new' in change:
+                         val_list = [change['old'], change['new']]
+                    elif 'action' in change and 'values' in change:
+                         # M2M
+                         action_verb = change.get('action')
+                         values = change.get('values', [])
+                         val_str = ", ".join(values)
+                         if action_verb == 'Added':
+                             val_list = [None, val_str]
+                         else:
+                             val_list = [val_str, None]
+                    elif 'verbose_name' in change:
+                         # Old explicit format
+                         val_list = [change.get('old'), change.get('new')]
+                
+                if val_list:
+                    # Resolve verbose name
+                    display_field = field
+                    if ModelClass:
+                        try:
+                            f = ModelClass._meta.get_field(field)
+                            display_field = str(f.verbose_name)
+                        except Exception:
+                            # 可能是 M2M 字段或不存在的字段
+                            pass
+                    
+                    # 特殊字段处理
+                    if field == 'members': display_field = '项目成员'
+                    if field == 'managers': display_field = '项目经理'
+                    if field == 'collaborators': display_field = '协作人'
+
+                    entry['changes'][display_field] = val_list
 
         # 2. 附件
         should_show_attachments = not field_filter or field_filter == 'attachment'
@@ -195,9 +213,9 @@ class AuditLogService:
             if log.action in ['upload', 'delete'] or (log.details and 'attachment_actions' in log.details):
                 filename = log.details.get('filename', 'Unknown File')
                 if log.action == 'upload':
-                    add_item('attachment', '附件 / Attachment', None, filename, 'Uploaded', f"Uploaded {filename}")
+                    entry['changes']['附件'] = [None, filename]
                 elif log.action == 'delete':
-                    add_item('attachment', '附件 / Attachment', filename, None, 'Deleted', f"Deleted {filename}")
+                    entry['changes']['附件'] = [filename, None]
                 elif 'attachment_actions' in log.details:
                     actions = log.details['attachment_actions']
                     for act in actions:
@@ -205,17 +223,19 @@ class AuditLogService:
                             changes = log.details.get('changes', {}).get('rename', {})
                             old_name = changes.get('old', filename)
                             new_name = changes.get('new', filename)
-                            add_item('attachment', '附件 (重命名)', old_name, new_name, 'Renamed', f"Renamed {old_name} to {new_name}")
+                            entry['changes']['附件 (重命名)'] = [old_name, new_name]
                         elif act == 'update_file':
-                            add_item('attachment', '附件 (更新)', f"{filename} (v1)", f"{filename} (v2)", 'Updated', f"Updated content of {filename}")
+                            entry['changes']['附件 (更新内容)'] = [f"{filename} (v1)", f"{filename} (v2)"]
 
         # 3. 评论
         should_show_comments = not field_filter or field_filter == 'comment'
         if should_show_comments and 'comment' in log.summary:
-            add_item('comment', '评论 / Comment', None, 'New Comment', 'Added', 'Added a comment')
+             entry['changes']['评论'] = [None, 'New Comment']
 
         # 4. 创建/通用
-        if not field_filter and log.action == 'create' and not entry['items']:
-             add_item('lifecycle', '生命周期 / Lifecycle', None, 'Created', 'Created', f"Created {log.target_type}")
+        if not field_filter and log.action == 'create' and not entry['changes']:
+             entry['changes']['项目/任务'] = [None, 'Created']
         
-        return entry if entry['items'] else None
+        # Populate items for backward compatibility if needed, but currently template uses changes
+        # Return entry only if it has changes or we want to show it anyway
+        return entry if entry['changes'] else None

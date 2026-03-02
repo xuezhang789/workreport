@@ -130,14 +130,27 @@ def get_manageable_projects(user):
     """
     获取用户可以管理（编辑/更新）的项目查询集。
     
+    该函数使用了缓存机制。
+    缓存键: manageable_projects_ids:{user_id}
+    缓存时间: 300秒
+    
     Args:
         user (User): 用户对象
         
     Returns:
         QuerySet: 用户可管理的 Project 查询集
     """
+    if not user.is_authenticated:
+        return Project.objects.none()
+
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
+
+    cache_key = f"manageable_projects_ids:{user.id}"
+    cached_ids = cache.get(cache_key)
+
+    if cached_ids is not None:
+        return Project.objects.filter(id__in=cached_ids, is_active=True)
 
     # 1. RBAC 权限
     rbac_qs = _get_projects_by_permission(user, 'project.manage')
@@ -148,7 +161,12 @@ def get_manageable_projects(user):
         is_active=True
     )
     
-    return (rbac_qs | direct_qs).distinct()
+    final_qs = (rbac_qs | direct_qs).distinct()
+    
+    ids = list(final_qs.values_list('id', flat=True))
+    cache.set(cache_key, ids, 300)
+    
+    return Project.objects.filter(id__in=ids)
 
 def get_accessible_tasks(user):
     """
@@ -211,6 +229,7 @@ def clear_project_permission_cache(user, project=None):
     # 清除特定项目权限缓存
     if project:
         cache.delete(f"can_manage_project:{user.id}:{project.id}")
+        cache.delete(f"manageable_projects_ids:{user.id}")
     else:
         # 如果未指定项目，仅依靠 TTL 过期或后续特定调用
-        pass
+        cache.delete(f"manageable_projects_ids:{user.id}")

@@ -45,12 +45,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let isOpen = false;
     let selectedIndex = 0;
     let baseCommands = [];
+    let remoteCommands = [];
     let filteredCommands = [];
+    let debounceTimer = null;
 
     // Icon Mapper
     function getIconForTitle(title, url) {
+        if (!title) return '🔗';
         const t = title.toLowerCase();
-        const u = url.toLowerCase();
+        const u = (url || '').toLowerCase();
+        
         if (t.includes('work') || t.includes('工作台')) return '🏠';
         if (t.includes('project') || t.includes('项目')) return '📂';
         if (t.includes('task') || t.includes('任务')) return '✅';
@@ -63,6 +67,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (t.includes('stats') || t.includes('统计') || t.includes('board') || t.includes('看板')) return '📊';
         if (t.includes('template') || t.includes('模板')) return '📋';
         if (t.includes('audit') || t.includes('审计')) return '🛡️';
+        if (t.includes('user') || t.includes('用户')) return '👤';
+        if (t.includes('action') || t.includes('操作')) return '⚡';
         return '🔗';
     }
 
@@ -141,7 +147,34 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleDarkMode() {
         // Simple mock implementation or hook into existing theme logic
         document.documentElement.classList.toggle('dark');
-        alert('Dark mode toggled (implementation depends on CSS)');
+        // Check if user has preferences saved (optional)
+        const isDark = document.documentElement.classList.contains('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+    
+    // Remote Search
+    async function fetchRemoteCommands(query) {
+        if (!query || query.length < 2) {
+            remoteCommands = [];
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/core/api/command-search/?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                const data = await response.json();
+                remoteCommands = data.results || [];
+                // Ensure icons for remote commands if missing
+                remoteCommands.forEach(cmd => {
+                    if (!cmd.icon) cmd.icon = getIconForTitle(cmd.title, cmd.url);
+                });
+            } else {
+                remoteCommands = [];
+            }
+        } catch (error) {
+            console.error('Command Search Error:', error);
+            remoteCommands = [];
+        }
     }
 
     // Functions
@@ -151,6 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isOpen) {
             collectCommands(); // Refresh commands on open to respect current permissions/DOM state
             input.value = '';
+            remoteCommands = [];
             filterCommands('');
             overlay.style.display = 'flex';
             input.focus();
@@ -167,19 +201,46 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = '';
     }
 
-    function filterCommands(query) {
+    async function filterCommands(query) {
         const q = query.toLowerCase();
-        filteredCommands = baseCommands.filter(cmd => 
+        
+        // Local Filter
+        let localFiltered = baseCommands.filter(cmd => 
             cmd.title.toLowerCase().includes(q) || 
             cmd.category.toLowerCase().includes(q)
         );
         
-        // Sort: Category > Title
-        filteredCommands.sort((a, b) => {
-            if (a.category < b.category) return -1;
-            if (a.category > b.category) return 1;
-            return a.title.localeCompare(b.title);
+        // Combine with Remote (if query exists)
+        if (q.length >= 2) {
+            // We rely on the caller to await fetchRemoteCommands before calling this, 
+            // OR we handle it here if we want to be async.
+            // But since this is called on input, we separate fetching and filtering.
+            // Actually, for better UX, we should merge remoteCommands which are updated by the debounce handler.
+        } else {
+            remoteCommands = [];
+        }
+
+        filteredCommands = [...remoteCommands, ...localFiltered];
+        
+        // Remove duplicates again if remote returns same as local (unlikely but possible for navigation)
+        const seen = new Set();
+        filteredCommands = filteredCommands.filter(cmd => {
+            const key = cmd.url || cmd.title;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
         });
+
+        // Sort: Category > Title
+        // Note: Remote results usually come sorted by relevance, maybe keep them at top?
+        // Let's keep remote results (which are usually more specific searches) at top if query exists.
+        if (q.length < 2) {
+            filteredCommands.sort((a, b) => {
+                if (a.category < b.category) return -1;
+                if (a.category > b.category) return 1;
+                return a.title.localeCompare(b.title);
+            });
+        }
 
         selectedIndex = 0;
         renderList();
@@ -308,7 +369,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     input.addEventListener('input', (e) => {
-        filterCommands(e.target.value);
+        const query = e.target.value.trim();
+        
+        // Local filter is immediate
+        filterCommands(query);
+        
+        // Remote filter is debounced
+        clearTimeout(debounceTimer);
+        if (query.length >= 2) {
+            debounceTimer = setTimeout(async () => {
+                await fetchRemoteCommands(query);
+                filterCommands(query); // Re-filter to merge remote results
+            }, 300);
+        }
     });
 
     overlay.addEventListener('click', (e) => {

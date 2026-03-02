@@ -18,11 +18,10 @@ class AuditViewTest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'reports/project_history.html')
-        self.assertTemplateUsed(response, 'audit/timeline.html')
 
     def test_task_history_view(self):
         url = reverse('tasks:task_history', args=[self.task.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'tasks/task_history.html')
-        self.assertTemplateUsed(response, 'audit/timeline.html')
+        # self.assertTemplateUsed(response, 'audit/timeline.html') # Removed as now inlined
