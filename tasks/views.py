@@ -235,7 +235,8 @@ def admin_task_bulk_action(request):
     user_id = request.POST.get('user')
 
     total_requested = len(ids)
-    tasks = Task.objects.filter(id__in=ids)
+    # Optimization: Select related project to avoid N+1 in AuditLog creation
+    tasks = Task.objects.filter(id__in=ids).select_related('project')
     
     # 按可管理项目过滤（也处理超级管理员）
     tasks = tasks.filter(project_id__in=manageable_project_ids)
@@ -263,6 +264,11 @@ def admin_task_bulk_action(request):
             ))
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status=TaskStatus.DONE, completed_at=now)
+        
+        # Trigger progress update for affected projects
+        for pid in tasks.values_list('project_id', flat=True).distinct():
+            Project.objects.get(id=pid).update_progress()
+            
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
@@ -284,6 +290,11 @@ def admin_task_bulk_action(request):
             ))
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status=TaskStatus.TODO, completed_at=None)
+        
+        # Trigger progress update for affected projects
+        for pid in tasks.values_list('project_id', flat=True).distinct():
+            Project.objects.get(id=pid).update_progress()
+
         updated = total_selected
         log_action(request, 'update', f"admin_task_bulk_reopen count={tasks.count()}")
     elif action == 'update' or action in ('assign', 'change_status'): # 支持独立动作或合并更新
@@ -1710,6 +1721,11 @@ def task_bulk_action(request):
             ))
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='done', completed_at=now)
+        
+        # Trigger progress update
+        for pid in tasks.values_list('project_id', flat=True).distinct():
+            Project.objects.get(id=pid).update_progress()
+            
         updated = total_selected
         log_action(request, 'update', f"task_bulk_complete count={tasks.count()}")
     elif action == 'reopen':
@@ -1729,6 +1745,11 @@ def task_bulk_action(request):
             ))
         AuditLog.objects.bulk_create(audit_batch)
         tasks.update(status='todo', completed_at=None)
+        
+        # Trigger progress update
+        for pid in tasks.values_list('project_id', flat=True).distinct():
+            Project.objects.get(id=pid).update_progress()
+            
         updated = total_selected
         log_action(request, 'update', f"task_bulk_reopen count={tasks.count()}")
     elif action == 'delete':
@@ -1752,7 +1773,15 @@ def task_bulk_action(request):
             ))
         AuditLog.objects.bulk_create(audit_batch)
         
+        # Store project IDs before delete
+        project_ids = list(tasks.values_list('project_id', flat=True).distinct())
+        
         tasks.delete()
+        
+        # Trigger progress update
+        for pid in project_ids:
+            Project.objects.get(id=pid).update_progress()
+            
         updated = count
         log_action(request, 'delete', f"task_bulk_delete count={count}")
     elif action == 'update':

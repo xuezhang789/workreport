@@ -356,9 +356,24 @@ def stats(request):
     if request.GET.get('remind') == '1' and missing_projects:
         notified = 0
         usernames = []
+        
+        # Optimization: Collect all user IDs first to avoid N+1 queries
+        all_user_ids = set()
         for item in missing_projects:
-            for u in get_user_model().objects.filter(id__in=item['last_map'].keys()):
-                if u.email:
+             all_user_ids.update(item['last_map'].keys())
+             
+        # Reuse existing users_map if available and complete, otherwise fetch
+        # Since missing_projects was built from users_map, we can try to reuse it, 
+        # but users_map scope might be different (it was built for *all* missing).
+        # Safe approach: Fetch users in one query.
+        remind_users = {u.id: u for u in get_user_model().objects.filter(id__in=all_user_ids)}
+
+        for item in missing_projects:
+            # Filter users for this project from the pre-fetched map
+            project_user_ids = item['last_map'].keys()
+            for uid in project_user_ids:
+                u = remind_users.get(uid)
+                if u and u.email:
                     subject = f"[催报提醒] {target_date} 日报未提交"
                     body = (
                         f"{u.get_full_name() or u.username}，您好：\n\n"
@@ -430,7 +445,24 @@ def stats(request):
     cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
     sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
 
-    for t in Task.objects.select_related('project', 'user', 'sla_timer').exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).iterator():
+    # Optimization: Filter tasks at DB level to reduce loop size
+    # Only check tasks that might be overdue or tight
+    # Logic similar to performance_board optimization
+    
+    max_threshold = (json.loads(sla_thresholds_val) if sla_thresholds_val else {}).get('amber', 4)
+    # Check tasks due within (threshold + buffer) or created long ago (if no due date)
+    cutoff = timezone.now() + timedelta(hours=max_threshold + 1)
+    default_sla = sla_hours_val or 48
+    created_cutoff = cutoff - timedelta(hours=default_sla)
+
+    sla_candidates = Task.objects.select_related('project', 'user', 'sla_timer').exclude(
+        status__in=[TaskStatus.DONE, TaskStatus.CLOSED]
+    ).filter(
+        Q(due_at__lte=cutoff) | 
+        (Q(due_at__isnull=True) & Q(created_at__lte=created_cutoff))
+    )
+
+    for t in sla_candidates.iterator():
         info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
         if info and info.get('status') in ('tight', 'overdue'):
             t.sla_info = info

@@ -49,6 +49,25 @@ class Project(models.Model):
             models.Index(fields=['created_at']),
         ]
 
+    def update_progress(self):
+        """
+        Recalculate and update overall_progress based on tasks.
+        """
+        from django.db.models import Count, Q
+        from core.constants import TaskStatus
+        
+        stats = self.tasks.aggregate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]))
+        )
+        
+        total = stats['total'] or 0
+        completed = stats['completed'] or 0
+        
+        new_progress = (completed / total * 100) if total > 0 else 0.00
+        self.overall_progress = new_progress
+        self.save(update_fields=['overall_progress'])
+
     def __str__(self):
         return f"{self.code} - {self.name}"
 
