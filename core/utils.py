@@ -2,6 +2,7 @@ import time
 import os
 import csv
 import re
+import logging
 from io import StringIO
 from datetime import timedelta
 from django.utils import timezone
@@ -9,6 +10,8 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.conf import settings
 from core.models import ExportJob, Profile
+
+logger = logging.getLogger(__name__)
 
 # File Upload Settings
 UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB (Updated per requirement)
@@ -122,9 +125,10 @@ def _validate_file_content(file):
             if b'\x00' in initial_data:
                 return False, "Text file appears to contain binary data"
             return True, None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error validating text file content: {e}", exc_info=True)
             file.seek(0)
-            return True, None # Fallback
+            return True, None # Fallback, assuming text if read failed but extension matches
             
     # Check binary signatures
     signatures = FILE_SIGNATURES.get(ext)
@@ -139,6 +143,7 @@ def _validate_file_content(file):
             if not is_valid:
                  return False, f"文件内容与扩展名 ({ext}) 不匹配 / File content does not match extension"
         except Exception as e:
+            logger.error(f"Error validating binary file signature: {e}", exc_info=True)
             file.seek(0)
             # Log error but don't block if read fails (shouldn't happen for UploadedFile)
             return False, f"File validation error: {str(e)}"

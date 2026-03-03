@@ -1,6 +1,9 @@
 import json
+import logging
 from django.forms.models import model_to_dict
 from reports.models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 class AuditService:
     @staticmethod
@@ -96,8 +99,6 @@ class AuditService:
                                 }
                              except Exception as e:
                                  # Fallback to string representation of ID if user lookup fails
-                                 import logging
-                                 logger = logging.getLogger(__name__)
                                  logger.debug(f"Audit diff user lookup failed: {e}")
                                  diff[field_name] = {'old': str(old_val), 'new': str(new_val)}
                         else:
@@ -114,7 +115,8 @@ class AuditService:
                         'old': str(old_val),
                         'new': str(new_val)
                     }
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Error calculating diff for field {field_name}: {e}")
                 continue
                 
         return diff
