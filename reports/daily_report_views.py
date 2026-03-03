@@ -623,12 +623,13 @@ def admin_reports(request):
     
     # 权限控制：如果不是超级管理员，仅显示其有权管理的项目的日报
     if not request.user.is_superuser:
-        # 优化：使用 Exists 子查询替代 filter(...).distinct()，避免昂贵的 JOIN 和去重操作
+        # 优化：使用 Exists 子查询，直接使用 QuerySet 而不是 values('id') 列表
+        # 这样可以让数据库优化器处理子查询，避免在 Python 中加载大量 ID
         reports = reports.filter(
             Exists(
                 DailyReport.projects.through.objects.filter(
                     dailyreport_id=OuterRef('pk'),
-                    project_id__in=accessible_projects.values('id')
+                    project_id__in=accessible_projects
                 )
             )
         )
@@ -643,30 +644,34 @@ def admin_reports(request):
         # 对于 MySQL/SQLite，istartswith 比 icontains 更快（如果支持索引前缀）
         # 这里保留 icontains 兼容性，但限制在特定字段组合
         reports = reports.filter(
-            Q(user__username__icontains=username) |
-            Q(user__first_name__icontains=username) |
+            Q(user__username__icontains=username) | 
+            Q(user__first_name__icontains=username) | 
             Q(user__last_name__icontains=username)
         )
-    if project_id and project_id.isdigit():
-        reports = reports.filter(projects__id=int(project_id))
     if user_id and user_id.isdigit():
         reports = reports.filter(user_id=int(user_id))
+    if project_id and project_id.isdigit():
+        reports = reports.filter(projects__id=int(project_id))
     if status in dict(DailyReport.STATUS_CHOICES):
         reports = reports.filter(status=status)
 
-    # 聚合统计数据
-    # 优化：使用单次查询替代三次 count() 查询
-    # 清除排序以避免开销
-    # 注意：如果不需要总数，可以移除 stats['total']
-    stats = reports.order_by().aggregate(
+    # 优化：一次性聚合统计数据，避免多次 count() 查询
+    # 注意：这里的 reports 已经应用了所有过滤器
+    stats = reports.aggregate(
         total=Count('id'),
-        submitted=Count(Case(When(status='submitted', then=1), output_field=IntegerField())),
-        draft=Count(Case(When(status='draft', then=1), output_field=IntegerField()))
+        submitted=Count('id', filter=Q(status='submitted')),
+        draft=Count('id', filter=Q(status='draft'))
     )
     total_count = stats['total']
     submitted_count = stats['submitted']
     draft_count = stats['draft']
 
+    # 排序与 N+1 优化
+    # 注意：_filtered_reports 已经应用了 select_related('user', 'user__profile') 和 prefetch_related(Prefetch('projects', ...))
+    # 这里不需要重复调用，否则可能会覆盖优化的 Prefetch 对象
+    # reports = reports.select_related('user', 'user__profile').prefetch_related('projects').order_by('-date', '-created_at')
+
+    # 分页
     try:
         per_page = int(request.GET.get('per_page', 20))
         if per_page not in [10, 20, 50, 100]:
@@ -679,9 +684,7 @@ def admin_reports(request):
     paginator.count = total_count
     
     page_obj = paginator.get_page(request.GET.get('page'))
-    
-    # 优化：获取项目列表用于筛选下拉框
-    # 仅获取必要的字段，并限制数量或使用 AJAX
+
     # 如果项目数量巨大，建议在前端使用搜索组件，这里只返回前 100 个活跃项目
     projects = accessible_projects.order_by('name').only('id', 'name')[:100]
 
