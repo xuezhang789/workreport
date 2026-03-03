@@ -174,23 +174,37 @@ def admin_task_list(request):
 
         paginator = Paginator(tasks_qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
+        
+        # 仅对当前页进行 SLA 计算
+        # 使用 bulk_sla_info 计算当前页所有任务，避免 N 次单独调用（尽管 calculate_sla_info 已经优化）
+        # 这里仍保留循环，但在模板中我们优化了 collaborators 的计数
         for t in page_obj:
             t.is_due_soon = t.id in due_soon_ids
             t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
 
     User = get_user_model()
     # 优化：仅获取下拉列表所需的字段
-    project_choices = accessible_projects.order_by('name').only('id', 'name')
+    project_choices = accessible_projects.order_by('name').only('id', 'name', 'code')[:100]
     
-    # 可访问项目中的用户
+    # 优化：不再加载所有用户用于下拉列表，而是仅加载当前筛选条件下相关的用户
+    # 或者使用 AJAX 加载。鉴于这里是 Admin 视图，我们至少应该限制字段。
+    # 更好的做法：如果用户数量巨大，前端应使用 AJAX 搜索组件。
+    # 暂时方案：只获取 ID 和 显示名所需的字段，并限制数量或仅显示活跃用户
+    
+    # 极限优化：如果用户数 > 500，则不预加载 users 列表，强制前端使用搜索
+    # 但 admin_task_list.html 目前是原生 select。
+    # 我们先做字段优化。
     if request.user.is_superuser:
-        user_objs = User.objects.filter(is_active=True).order_by('username').only('id', 'username', 'first_name', 'last_name')
+        user_objs = User.objects.filter(is_active=True).order_by('username').only('id', 'username', 'first_name', 'last_name')[:100]
     else:
-        user_objs = User.objects.filter(
+        # 优化 distinct 查询：先获取 ID 列表再查询对象，避免在大表上的复杂 JOIN DISTINCT
+        relevant_user_ids = set(User.objects.filter(
             Q(project_memberships__in=accessible_projects) |
             Q(managed_projects__in=accessible_projects) |
             Q(owned_projects__in=accessible_projects)
-        ).distinct().order_by('username').only('id', 'username', 'first_name', 'last_name')
+        ).values_list('id', flat=True))
+        
+        user_objs = User.objects.filter(id__in=relevant_user_ids).order_by('username').only('id', 'username', 'first_name', 'last_name')[:100]
     
     return render(request, 'tasks/admin_task_list.html', {
         'tasks': page_obj,

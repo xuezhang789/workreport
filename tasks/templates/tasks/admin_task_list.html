@@ -415,9 +415,9 @@
                                         {% for c in t.collaborators.all|slice:":2" %}
                                             {% include "partials/user_avatar.html" with user=c size="28px" font_size="10px" %}
                                         {% endfor %}
-                                        {% if t.collaborators.count > 2 %}
+                                        {% if t.collaborators.all|length > 2 %}
                                             <div class="avatar-component" style="width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid white; margin-left: -8px;">
-                                                +{{ t.collaborators.count|add:"-2" }}
+                                                +{{ t.collaborators.all|length|add:"-2" }}
                                             </div>
                                         {% endif %}
                                     </div>

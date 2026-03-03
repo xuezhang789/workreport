@@ -565,7 +565,7 @@ def performance_board(request):
     }
 
     # 紧急任务计算较慢，增加缓存
-    sla_cache_key = f"perf_board_sla_v2_{request.user.id}_{project_filter}_{sla_hours_val}"
+    sla_cache_key = f"perf_board_sla_v3_{request.user.id}_{project_filter}_{sla_hours_val}"
     sla_urgent_tasks = cache.get(sla_cache_key)
     
     if sla_urgent_tasks is None:
@@ -617,6 +617,12 @@ def performance_board(request):
         
         # 缓存 5 分钟
         cache.set(sla_cache_key, sla_urgent_tasks, 300)
+        
+    # 获取用户分页数据
+    # 优化：user_stats 数据量可能较大，使用 Paginator 进行内存分页（虽不如数据库分页理想，但鉴于数据源结构，这是目前最佳方案）
+    user_stats_list = stats.get('user_stats', [])
+    paginator = Paginator(user_stats_list, 20) # 每页 20 条
+    user_stats_page = paginator.get_page(request.GET.get('upage'))
 
     if request.GET.get('send_weekly') == '1':
         # Send weekly logic... (keep as is)
@@ -644,6 +650,6 @@ def performance_board(request):
         'role_filter': role_filter,
         'projects': projects_qs,
         'report_roles': Profile.ROLE_CHOICES,
-        'user_stats_page': Paginator(stats.get('user_stats', []), 10).get_page(request.GET.get('upage')),
+        'user_stats_page': user_stats_page, # 使用新的分页对象
         'chart_data': json.dumps(chart_data), # 注入 JSON 字符串
     })

@@ -36,14 +36,16 @@
     /* --- Summary Cards --- */
     .summary-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Larger min-width for mobile cards */
         gap: 20px;
         margin-bottom: 24px;
     }
     
     @media (max-width: 640px) {
-        .summary-grid { grid-template-columns: 1fr; gap: 12px; }
-        .summary-card { padding: 16px; }
+        .summary-grid { 
+            grid-template-columns: 1fr; 
+            gap: 16px; 
+        }
     }
 
     .summary-card {
@@ -56,6 +58,10 @@
         gap: 8px;
         box-shadow: var(--shadow-sm);
         transition: var(--transition);
+    }
+
+    @media (max-width: 640px) {
+        .summary-card { padding: 16px; }
     }
     
     .summary-card:hover {
@@ -253,7 +259,8 @@
 
     .table-container {
         overflow-x: auto;
-        height: 500px; /* Fixed height for scroll */
+        /* height: 500px; Remove fixed height for mobile */
+        max-height: 500px; /* Use max-height instead */
         overflow-y: auto;
         background: #fff;
         -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
@@ -269,10 +276,15 @@
 
     @media (max-width: 640px) {
         .card-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-        .table-container { height: 400px; } /* Slightly shorter on mobile */
+        .table-container { max-height: 400px; } /* Slightly shorter on mobile */
         
-        .btn { min-height: 44px; }
-        .form-select, .form-input, .search-input { min-height: 44px; }
+        .btn { min-height: 44px; justify-content: center; width: 100%; }
+        .form-select, .form-input, .search-input { min-height: 44px; font-size: 16px; /* Prevent iOS zoom */ }
+        
+        .table th, .table td { padding: 12px 16px; }
+        .progress-track { width: 60px; }
+        
+        /* Stack table content or simplify on mobile if needed, but horizontal scroll is often better for data tables */
     }
 
     .table {
@@ -299,6 +311,7 @@
         border-bottom: 1px solid var(--border-color);
         color: var(--text-main);
         vertical-align: middle;
+        white-space: nowrap; /* Prevent wrapping in data cells too */
     }
 
     .table tr:last-child td {
@@ -427,6 +440,9 @@
     }
 {% endblock %}
 
+{% block extra_scripts %}
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+{% endblock %}
 {% block content %}
 <div style="max-width: 1600px; margin: 0 auto; padding-bottom: 40px;">
 
@@ -828,7 +844,6 @@
 
 </div>
 
-<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('projectBurndownChart').getContext('2d');

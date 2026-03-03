@@ -644,10 +644,20 @@
                 </div>
 
                 <div class="report-content">
-                    {% if r.summary %}
-                        {{ r.summary }}
+                    {% if r.today_work %}
+                        {{ r.today_work }}
+                    {% elif r.testing_scope %}
+                        {{ r.testing_scope }}
+                    {% elif r.product_today %}
+                        {{ r.product_today }}
+                    {% elif r.ui_today %}
+                        {{ r.ui_today }}
+                    {% elif r.ops_today %}
+                        {{ r.ops_today }}
+                    {% elif r.mgr_progress %}
+                        {{ r.mgr_progress }}
                     {% else %}
-                        <span class="text-muted">无摘要内容 / No summary</span>
+                        <span class="text-muted">无内容 / No content</span>
                     {% endif %}
                 </div>
 

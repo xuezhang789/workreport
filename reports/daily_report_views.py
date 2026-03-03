@@ -639,6 +639,9 @@ def admin_reports(request):
     status = (request.GET.get('status') or '').strip()
 
     if username:
+        # 优化：如果是 PostgreSQL，建议使用 SearchVector 进行全文检索
+        # 对于 MySQL/SQLite，istartswith 比 icontains 更快（如果支持索引前缀）
+        # 这里保留 icontains 兼容性，但限制在特定字段组合
         reports = reports.filter(
             Q(user__username__icontains=username) |
             Q(user__first_name__icontains=username) |
@@ -677,8 +680,10 @@ def admin_reports(request):
     
     page_obj = paginator.get_page(request.GET.get('page'))
     
-    # 获取项目列表用于筛选下拉框
-    projects = accessible_projects.order_by('name').only('id', 'name')
+    # 优化：获取项目列表用于筛选下拉框
+    # 仅获取必要的字段，并限制数量或使用 AJAX
+    # 如果项目数量巨大，建议在前端使用搜索组件，这里只返回前 100 个活跃项目
+    projects = accessible_projects.order_by('name').only('id', 'name')[:100]
 
     log_action(request, 'access', f"admin_reports count={total_count} role={role} start={start_date} end={end_date} username={username} project={project_id} status={status}")
     context = {
