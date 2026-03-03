@@ -307,161 +307,39 @@
         align-items: center;
     }
 
-    /* --- Pagination Styles (Unified) --- */
-    .pagination-bar {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px 0;
-        margin-top: 24px;
-        border-top: 1px solid var(--border-color);
-        font-size: 14px;
-        color: var(--text-secondary);
+    /* --- Pagination Toolbar - Unified Style --- */
+    .pagination-toolbar {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+        margin-top: 24px; padding: 12px 20px; background: white;
+        border: 1px solid var(--border-color); border-radius: 12px;
+        box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;
     }
-
-    .pg-info {
-        font-weight: 500;
-        color: var(--text-main);
-    }
-
-    .pg-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .pg-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 36px;
-        padding: 0 16px;
-        border: 1px solid var(--border-color);
-        background: #fff;
-        border-radius: 6px;
-        color: var(--text-main);
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-        user-select: none;
-    }
-
-    .pg-btn:hover:not(.disabled) {
-        border-color: var(--primary);
-        color: var(--primary);
-        background: var(--primary-light);
-    }
-
-    .pg-btn.disabled {
-        color: #ccc;
-        border-color: #eee;
-        background: #f9f9f9;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-
-    .pg-right {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .pg-select {
-        height: 36px;
-        padding: 0 32px 0 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background-color: #fff;
-        font-size: 14px;
-        color: var(--text-main);
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        transition: border-color 0.2s;
-    }
-
-    .pg-select:hover {
-        border-color: var(--primary);
-    }
-
-    .pg-jump {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .pg-input {
-        width: 60px;
-        height: 36px;
-        padding: 0 8px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        text-align: center;
-        font-size: 14px;
-        transition: border-color 0.2s;
-    }
-
-    .pg-input:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px var(--primary-light);
-    }
+    .pagination-toolbar .left-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; min-width: 140px; }
+    .pagination-toolbar .center-controls { display: flex; align-items: center; gap: 12px; }
+    .pagination-toolbar .right-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     
-    .pg-input.error {
-        border-color: var(--danger);
-        box-shadow: 0 0 0 3px #fee2e2;
+    .page-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 36px; padding: 0 16px; border: 1px solid var(--border-color);
+        border-radius: 8px; background: white; color: var(--text-main);
+        font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        text-decoration: none; gap: 6px; user-select: none;
     }
-
-    .pg-go-btn {
-        height: 36px;
-        padding: 0 12px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+    .page-btn:disabled, .page-btn[disabled], .page-btn.disabled { color: #94a3b8; border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; pointer-events: none; }
+    
+    .page-current {
+        font-size: 13px; font-weight: 600; color: var(--text-main);
+        background: #f1f5f9; padding: 0 12px; height: 36px;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center; min-width: 36px;
     }
-
-    .pg-go-btn:hover {
-        background: var(--primary-hover);
-    }
-
-    .jump-error-msg {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 4px;
-        color: var(--danger);
-        font-size: 12px;
-        white-space: nowrap;
-        background: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid #fee2e2;
-        display: none;
-        z-index: 10;
-    }
+    .page-select { height: 36px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .page-jump-input { width: 48px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; padding: 0; }
+    .page-jump-input:focus { border-color: var(--primary); outline: none; }
 
     @media (max-width: 768px) {
-        .pagination-bar {
-            flex-direction: column;
-            gap: 12px;
-        }
-        .pg-info, .pg-controls, .pg-right {
-            width: 100%;
-            justify-content: center;
-        }
-        .pg-right {
-            flex-wrap: wrap;
-        }
+        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
     }
 
     /* --- Table View --- */

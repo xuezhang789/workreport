@@ -485,161 +485,39 @@
         100% { transform: translateX(100%); }
     }
 
-    /* --- New Pagination Styles --- */
-    .pagination-bar {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px 0;
-        margin-top: 24px;
-        border-top: 1px solid var(--border-color);
-        font-size: 14px;
-        color: var(--text-secondary);
+    /* --- Pagination Toolbar - Unified Style --- */
+    .pagination-toolbar {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+        margin-top: 24px; padding: 12px 20px; background: white;
+        border: 1px solid var(--border-color); border-radius: 12px;
+        box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;
     }
-
-    .pg-info {
-        font-weight: 500;
-        color: var(--text-main);
-    }
-
-    .pg-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .pg-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 36px;
-        padding: 0 16px;
-        border: 1px solid var(--border-color);
-        background: #fff;
-        border-radius: 6px;
-        color: var(--text-main);
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-        user-select: none;
-    }
-
-    .pg-btn:hover:not(.disabled) {
-        border-color: var(--primary);
-        color: var(--primary);
-        background: var(--primary-light);
-    }
-
-    .pg-btn.disabled {
-        color: #ccc;
-        border-color: #eee;
-        background: #f9f9f9;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-
-    .pg-right {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .pg-select {
-        height: 36px;
-        padding: 0 32px 0 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background-color: #fff;
-        font-size: 14px;
-        color: var(--text-main);
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        transition: border-color 0.2s;
-    }
-
-    .pg-select:hover {
-        border-color: var(--primary);
-    }
-
-    .pg-jump {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .pg-input {
-        width: 60px;
-        height: 36px;
-        padding: 0 8px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        text-align: center;
-        font-size: 14px;
-        transition: border-color 0.2s;
-    }
-
-    .pg-input:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px var(--primary-light);
-    }
+    .pagination-toolbar .left-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; min-width: 140px; }
+    .pagination-toolbar .center-controls { display: flex; align-items: center; gap: 12px; }
+    .pagination-toolbar .right-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     
-    .pg-input.error {
-        border-color: var(--danger);
-        box-shadow: 0 0 0 3px #fee2e2;
+    .page-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 36px; padding: 0 16px; border: 1px solid var(--border-color);
+        border-radius: 8px; background: white; color: var(--text-main);
+        font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        text-decoration: none; gap: 6px; user-select: none;
     }
-
-    .pg-go-btn {
-        height: 36px;
-        padding: 0 12px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+    .page-btn:disabled, .page-btn[disabled], .page-btn.disabled { color: #94a3b8; border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; pointer-events: none; }
+    
+    .page-current {
+        font-size: 13px; font-weight: 600; color: var(--text-main);
+        background: #f1f5f9; padding: 0 12px; height: 36px;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center; min-width: 36px;
     }
-
-    .pg-go-btn:hover {
-        background: var(--primary-hover);
-    }
-
-    .jump-error-msg {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 4px;
-        color: var(--danger);
-        font-size: 12px;
-        white-space: nowrap;
-        background: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid #fee2e2;
-        display: none;
-        z-index: 10;
-    }
+    .page-select { height: 36px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .page-jump-input { width: 48px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; padding: 0; }
+    .page-jump-input:focus { border-color: var(--primary); outline: none; }
 
     @media (max-width: 768px) {
-        .pagination-bar {
-            flex-direction: column;
-            gap: 12px;
-        }
-        .pg-info, .pg-controls, .pg-right {
-            width: 100%;
-            justify-content: center;
-        }
-        .pg-right {
-            flex-wrap: wrap;
-        }
+        .pagination-toolbar { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+        .pagination-toolbar .right-actions { justify-content: center; width: 100%; }
     }
 {% endblock %}
 
@@ -783,52 +661,43 @@
                 {% endfor %}
             </div>
 
-            <!-- New Pagination Bar -->
-            <div class="pagination-bar">
-                <!-- 1. Info -->
-                <div class="pg-info">
-                    共 {{ total_count }} 条 / {{ page_obj.paginator.num_pages }} 页
+            <!-- Unified Pagination Toolbar -->
+            <div class="pagination-toolbar">
+                <div class="left-info">
+                    共 <span style="font-weight: 700; color: var(--text-main);">{{ total_count }}</span> 条 / {{ page_obj.paginator.num_pages }} 页
                 </div>
-
-                <!-- 2. Controls -->
-                <div class="pg-controls">
-                    {% if page_obj.has_previous %}
-                        <a href="?{% url_replace page=page_obj.previous_page_number %}" class="pg-btn" onclick="handleNavClick(event, this.href)">
-                            <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> 上一页
-                        </a>
-                    {% else %}
-                        <span class="pg-btn disabled">
-                            <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> 上一页
-                        </span>
-                    {% endif %}
-
-                    {% if page_obj.has_next %}
-                        <a href="?{% url_replace page=page_obj.next_page_number %}" class="pg-btn" onclick="handleNavClick(event, this.href)">
-                            下一页 <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
-                        </a>
-                    {% else %}
-                        <span class="pg-btn disabled">
-                            下一页 <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
-                        </span>
-                    {% endif %}
+        
+                <div class="center-controls">
+                    <button type="button" class="page-btn" {% if not page_obj.has_previous %}disabled{% else %}onclick="changePage('page', {{ page_obj.previous_page_number }})"{% endif %}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        上一页
+                    </button>
+                    
+                    <div class="page-current">
+                        {{ page_obj.number }}
+                    </div>
+                    
+                    <button type="button" class="page-btn" {% if not page_obj.has_next %}disabled{% else %}onclick="changePage('page', {{ page_obj.next_page_number }})"{% endif %}>
+                        下一页
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
                 </div>
-
-                <!-- 3. Right Side: Page Size & Jump -->
-                <div class="pg-right">
-                    <select class="pg-select" id="pageSizeSelect" onchange="handlePageSizeChange(this.value)">
-                        <option value="10">10 条/页</option>
-                        <option value="20">20 条/页</option>
-                        <option value="50">50 条/页</option>
-                        <option value="100">100 条/页</option>
-                    </select>
-
-                    <div class="pg-jump" style="position: relative;">
-                        跳转到
-                        <input type="number" id="jumpInput" class="pg-input" min="1" max="{{ page_obj.paginator.num_pages }}" 
-                               onkeydown="if(event.key === 'Enter') handleJump()">
-                        页
-                        <button type="button" class="pg-go-btn" onclick="handleJump()">GO</button>
-                        <div id="jumpError" class="jump-error-msg"></div>
+        
+                <div class="right-actions">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">每页</span>
+                        <select class="form-select" style="width: auto; padding: 4px 24px 4px 8px; height: 32px; font-size: 13px;" onchange="changePerPage('per_page', this.value)">
+                            <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                            <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">跳转</span>
+                        <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage('page', this.value, {{ page_obj.paginator.num_pages }})">
+                        <button type="button" class="btn btn-secondary btn-sm" style="height: 32px; padding: 0 12px;" onclick="jumpToPage('page', document.getElementById('jump-page-input').value, {{ page_obj.paginator.num_pages }})">GO</button>
                     </div>
                 </div>
             </div>
@@ -842,9 +711,9 @@
                 <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">暂无日报记录 / No reports found</h3>
                 <p style="margin-bottom: 24px;">还没有找到符合条件的日报，您可以尝试调整筛选条件或新建日报。<br>Try adjusting filters or create a new report.</p>
                 
-                <!-- Pagination for 0 items (as per req) -->
-                <div class="pagination-bar" style="justify-content: center; border: none; margin-top: 0;">
-                    <div class="pg-info">共 0 条 / 0 页</div>
+                <!-- Pagination for 0 items -->
+                <div class="pagination-toolbar" style="justify-content: center; border: none; margin-top: 0; box-shadow: none;">
+                    <div class="left-info">共 0 条 / 0 页</div>
                 </div>
                 
                 <a href="{% url 'reports:daily_report_create' %}" class="btn btn-primary" style="margin-top: 16px;">新建日报 / New Report</a>
@@ -865,7 +734,7 @@
     // Constants
     const TOTAL_PAGES = {{ page_obj.paginator.num_pages|default:0 }};
     const CURRENT_PAGE = {{ page_obj.number|default:1 }};
-    const STORAGE_KEY = 'personnel_pageSize';
+    const STORAGE_KEY = 'my_reports_pageSize';
 
     function toggleFilter() {
         const section = document.getElementById('filterSection');
@@ -877,6 +746,48 @@
             section.classList.add('show');
             text.innerText = '隐藏筛选 / Hide Filters';
         }
+    }
+
+    // --- Unified Pagination Logic ---
+    function updateUrl(params) {
+        showSkeleton();
+        const url = new URL(window.location);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, value);
+        }
+        window.location = url;
+    }
+
+    function changePage(paramName, page) {
+        const params = {};
+        params[paramName] = page;
+        updateUrl(params);
+    }
+
+    function changePerPage(paramName, size) {
+        localStorage.setItem(STORAGE_KEY, size);
+        const params = {};
+        params[paramName] = size;
+        params['page'] = 1;
+        updateUrl(params);
+    }
+
+    function jumpToPage(paramName, pageVal, maxPage) {
+        const page = parseInt(pageVal);
+        if (isNaN(page) || page < 1 || page > maxPage) {
+            alert(`请输入 1~${maxPage} 之间的页码`);
+            return;
+        }
+        changePage(paramName, page);
+    }
+
+    // Show Skeleton
+    function showSkeleton() {
+        const container = document.getElementById('reportsContainer');
+        if(container) container.style.display = 'none';
+        const loader = document.getElementById('skeletonLoader');
+        if(loader) loader.style.display = 'grid';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -894,92 +805,15 @@
             form.addEventListener('input', updateExportLink);
         }
 
-        // 2. Initialize Page Size from LocalStorage or URL
+        // 2. Initialize Page Size from LocalStorage if not in URL
         const savedSize = localStorage.getItem(STORAGE_KEY);
         const urlParams = new URLSearchParams(window.location.search);
-        const urlSize = urlParams.get('per_page');
-        const select = document.getElementById('pageSizeSelect');
         
-        if (select) {
-            // Priority: URL > LocalStorage > Default(20)
-            let targetSize = urlSize || savedSize || '20';
-            
-            // Ensure valid option
-            if (!['10','20','50','100'].includes(targetSize)) targetSize = '20';
-            
-            select.value = targetSize;
-
-            // If URL doesn't match saved preference (and URL param missing), auto-reload? 
-            // Better: If URL param is missing, but we have a saved preference different from default, apply it.
-            if (!urlSize && savedSize && savedSize !== '20') {
-                handlePageSizeChange(savedSize);
-            }
+        if (savedSize && !urlParams.get('per_page')) {
+             if (savedSize !== '20') { // Default 20
+                 changePerPage('per_page', savedSize);
+             }
         }
     });
-
-    // 3. Handle Page Size Change
-    function handlePageSizeChange(val) {
-        localStorage.setItem(STORAGE_KEY, val);
-        showSkeleton();
-        
-        const url = new URL(window.location);
-        url.searchParams.set('per_page', val);
-        url.searchParams.set('page', 1); // Reset to page 1
-        
-        // Min timeout 300ms for skeleton demo if network is too fast
-        setTimeout(() => {
-            window.location = url;
-        }, 300);
-    }
-
-    // 4. Handle Navigation Click (Prev/Next)
-    function handleNavClick(event, href) {
-        event.preventDefault();
-        showSkeleton();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        setTimeout(() => {
-            window.location = href;
-        }, 300);
-    }
-
-    // 5. Handle Jump
-    function handleJump() {
-        const input = document.getElementById('jumpInput');
-        const errorMsg = document.getElementById('jumpError');
-        const val = parseInt(input.value);
-
-        // Reset error state
-        input.classList.remove('error');
-        errorMsg.style.display = 'none';
-
-        if (!val || val < 1 || val > TOTAL_PAGES) {
-            input.classList.add('error');
-            errorMsg.textContent = `请输入 1~${TOTAL_PAGES} 之间的页码`;
-            errorMsg.style.display = 'block';
-            input.focus();
-            return;
-        }
-
-        if (val === CURRENT_PAGE) {
-            input.focus();
-            return;
-        }
-
-        showSkeleton();
-        const url = new URL(window.location);
-        url.searchParams.set('page', val);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        setTimeout(() => {
-            window.location = url;
-        }, 300);
-    }
-
-    // 6. Show Skeleton
-    function showSkeleton() {
-        document.getElementById('reportsContainer').style.display = 'none';
-        document.getElementById('skeletonLoader').style.display = 'grid';
-    }
 </script>
 {% endblock %}
