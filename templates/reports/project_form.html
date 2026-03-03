@@ -1,6 +1,6 @@
 {% extends "base_topbar.html" %}
 {% block title %}项目管理 / Project{% endblock %}
-{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理 / Project Management" nav_subtitle="Project Management" %}{% endblock %}
+{% block nav_header %}{% include "partials/nav.html" with nav_title="项目管理" nav_subtitle="Project Management" %}{% endblock %}
 {% block extra_styles %}
     /* --- Design System (Consistent with Admin Pages) --- */
     .page-container {
@@ -201,8 +201,8 @@
     .btn-toolbar {
         display: flex;
         justify-content: flex-end;
-        gap: 12px;
-        margin-top: 32px;
+        gap: 16px;
+        margin-top: 40px;
         padding-top: 24px;
         border-top: 1px solid var(--border-color);
     }
@@ -212,174 +212,171 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 12px 24px;
+        padding: 10px 20px;
         border-radius: 8px;
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
         text-decoration: none;
-        transition: all 0.3s ease-in-out;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         border: 1px solid transparent;
         line-height: 1.5;
+        white-space: nowrap;
+        user-select: none;
+    }
+    
+    .btn:active {
+        transform: translateY(1px);
     }
 
     .btn-primary {
         background: var(--primary);
         color: white;
+        border-color: var(--primary);
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
 
     .btn-primary:hover {
-        background-color: #1e40af;
-        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.3);
-        transform: translateY(-2px);
+        background-color: #1d4ed8;
+        border-color: #1d4ed8;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+    }
+    
+    .btn-primary:focus-visible {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary);
     }
 
     .btn-ghost {
-        background: transparent;
+        background: white;
         color: var(--text-secondary);
+        border-color: #e2e8f0;
     }
 
     .btn-ghost:hover {
-        background: rgba(0,0,0,0.05);
-        color: var(--text-main);
-    }
-
-    /* Multi-select Specific Styles */
-    .multi-select-container {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
         background: #f8fafc;
-        overflow: hidden;
-        transition: all 0.2s;
+        color: var(--text-main);
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
     }
-
-    .multi-select-container:focus-within {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        background: #fff;
-    }
-
-    .search-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
+    
+    .btn-ghost:active {
         background: #f1f5f9;
-        border-bottom: 1px solid var(--border-color);
     }
 
-    .search-input {
-        border: none;
-        background: transparent;
-        font-size: 14px;
-        flex: 1;
-        outline: none;
-        color: var(--text-main);
-    }
-
-    .selected-count {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--primary);
-        background: rgba(37, 99, 235, 0.1);
-        padding: 4px 8px;
-        border-radius: 12px;
-    }
-
-    .multi-select-dropdown {
-        max-height: 240px;
-        overflow-y: auto;
-        background: #fff;
-    }
-
-    .select-all-container {
-        padding: 10px 16px;
-        background: #f8fafc;
-        border-bottom: 1px solid var(--border-color);
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .option-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 16px;
-        cursor: pointer;
-        transition: background 0.2s;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .option-item:hover {
-        background: #f8fafc;
-    }
-
-    .option-item:last-child {
-        border-bottom: none;
-    }
-
-    .checkbox-label {
+    .toggle-switch {
         display: flex;
         align-items: center;
         gap: 12px;
-        width: 100%;
+        padding: 0 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: #f8fafc;
         cursor: pointer;
-    }
-
-    .checkbox-label input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
-        border: 2px solid #cbd5e1;
-        appearance: none;
-        cursor: pointer;
-        position: relative;
         transition: all 0.2s;
+        height: 46px; /* Match standard input height */
+    }
+    
+    .toggle-switch:hover {
+        background: #fff;
+        border-color: #cbd5e1;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
-    .checkbox-label input[type="checkbox"]:checked {
-        background: var(--primary);
-        border-color: var(--primary);
+    .toggle-switch:active {
+        transform: translateY(1px);
     }
-
-    .checkbox-label input[type="checkbox"]:checked::after {
-        content: '✓';
+    
+    .toggle-switch input[type="checkbox"] {
+        appearance: none;
+        width: 44px;
+        height: 24px;
+        background: #e2e8f0;
+        border-radius: 24px;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        flex-shrink: 0;
+        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .toggle-switch input[type="checkbox"]::after {
+        content: '';
         position: absolute;
-        color: white;
-        font-size: 12px;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked {
+        background: var(--primary);
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked::after {
+        transform: translateX(20px);
     }
 
-    .user-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .user-name {
+    .toggle-label {
         font-size: 14px;
         font-weight: 500;
         color: var(--text-main);
+        user-select: none;
+        flex: 1;
     }
 
-    .user-username {
-        font-size: 12px;
-        color: var(--text-secondary);
+    /* --- User Dropdown & Tags (Synced with Task Form) --- */
+    .user-dropdown {
+        position: absolute;
+        z-index: 1050;
+        width: 100%;
+        background: white;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-top: 4px;
+        display: none;
+        overflow-y: auto;
+        max-height: 320px;
     }
+    
+    .user-item {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8fafc;
+    }
+    .user-item:hover { background: #f8fafc; }
+    
+    .user-avatar { 
+        width: 24px; height: 24px; border-radius: 50%; object-fit: cover; 
+        background: #e2e8f0; display: flex; align-items: center; justify-content: center; 
+        font-size: 10px; color: #64748b; font-weight: 600; 
+    }
+    
+    .user-info { display: flex; flex-direction: column; gap: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text-main); }
+    .user-meta { font-size: 11px; color: var(--text-secondary); display: flex; gap: 6px; align-items: center; }
+    
+    .role-tag { padding: 1px 4px; border-radius: 4px; font-size: 10px; }
+    .role-tag.Owner { background: #ffedd5; color: #9a3412; }
+    .role-tag.Admin { background: #dbeafe; color: #1e40af; }
+    .role-tag.Member { background: #f1f5f9; color: #64748b; }
 
-    .selected-tags {
-        padding: 12px;
-        background: #fff;
-        border-top: 1px solid var(--border-color);
+    .tag-container {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        min-height: 46px;
-    }
-    
-    .selected-tags:empty {
-        display: none;
+        margin-top: 12px;
+        min-height: 32px;
     }
 
     .selected-tag {
@@ -395,7 +392,7 @@
         font-weight: 600;
     }
 
-    .remove-btn {
+    .remove-tag-btn {
         width: 16px;
         height: 16px;
         border-radius: 50%;
@@ -409,9 +406,12 @@
         font-size: 10px;
         padding: 0;
     }
-
-    .remove-btn:hover {
+    .remove-tag-btn:hover {
         background: rgba(37, 99, 235, 0.2);
+    }
+
+    .owner-select-container {
+        position: relative;
     }
 
     /* File Upload Styles */
@@ -551,24 +551,44 @@
     }
 
     .btn-xs {
-        padding: 4px 8px;
-        font-size: 11px;
-        border-radius: 4px;
-        text-decoration: none;
-        cursor: pointer;
-        display: inline-block;
-        text-align: center;
-        border: none;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s;
+    }
+    
+    .btn-download {
+        background: #eff6ff;
+        color: var(--primary);
+        border: 1px solid #dbeafe;
+    }
+    
+    .btn-download:hover {
+        background: #dbeafe;
+        color: #1e40af;
     }
 
     .btn-delete {
-        background: #fef2f2;
-        color: #991b1b;
-        width: 100%;
+        background: #fff;
+        color: #ef4444;
+        border: 1px solid #fee2e2;
     }
     
     .btn-delete:hover {
-        background: #fee2e2;
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+
+    @media (max-width: 768px) {
+        .user-dropdown {
+            max-width: 85vw;
+            word-break: break-word;
+        }
     }
 {% endblock %}
 
@@ -658,10 +678,10 @@
                                 <div style="flex: 1;">
                                     {{ form.sla_hours }}
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
+                                <label class="toggle-switch">
+                                    <span class="toggle-label">启用 / Active</span>
                                     {{ form.is_active }}
-                                    <span style="font-size: 14px; font-weight: 500;">启用 / Active</span>
-                                </div>
+                                </label>
                             </div>
                             <p class="help-text">SLA 提醒周期（小时），留空使用系统默认。 / SLA cycle (hours), leave empty for default.</p>
                         </div>
@@ -729,41 +749,26 @@
                             {% if can_edit_managers is False %}
                                 <div class="read-only-list" style="padding: 12px; background: #f8fafc; border-radius: 8px;">
                                     {% for user in project.managers.all %}
-                                        <span class="selected-tag">{{ user.get_full_name|default:user.username }}</span>
+                                        <span class="selected-tag" style="border-radius: 16px; padding: 4px 10px; font-size: 12px;">{{ user.get_full_name|default:user.username }}</span>
                                     {% empty %}
                                         <span style="color: #94a3b8; font-size: 13px;">无管理员 / No managers</span>
                                     {% endfor %}
                                 </div>
                                 <div style="display:none;">{{ form.managers }}</div>
                             {% else %}
-                                <div class="multi-select-container" id="managers-container" style="border: none; background: transparent;">
-                                    <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                                        <input type="text" id="manager-filter" placeholder="搜索... / Search..." class="search-input">
-                                    </div>
-                                    
-                                    <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
-                                        <div class="select-all-container">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="select-all-managers">
-                                                <span>全选 / Select All</span>
-                                            </label>
+                                <div style="position: relative;">
+                                    <input type="text" id="manager-typeahead" class="form-input" placeholder="搜索添加管理员... / Search managers..." autocomplete="off">
+                                    <div id="manager-dropdown" class="user-dropdown"></div>
+                                </div>
+                                
+                                <div id="manager-tags" class="tag-container">
+                                    {% for user in form.managers.field.queryset %}
+                                        <div class="selected-tag" id="manager-tag-{{ user.id }}">
+                                            {{ user.get_full_name|default:user.username }}
+                                            <span class="remove-tag-btn" onclick="window.projectUserManager.removeTag('{{ user.id }}', 'manager')">×</span>
+                                            <input type="hidden" name="managers" value="{{ user.id }}">
                                         </div>
-                                        <div class="options-container">
-                                        {% for user in form.managers.field.queryset %}
-                                            <label class="option-item">
-                                                <div class="checkbox-label">
-                                                    <input type="checkbox" name="managers" value="{{ user.pk }}" class="manager-checkbox" data-name="{{ user.get_full_name|default:user.username }}" checked>
-                                                    <div class="user-info">
-                                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                                        <span class="user-username">@{{ user.username }}</span>
-                                                    </div>
-                                                </div>
-                                            </label>
-                                        {% endfor %}
-                                    </div>
-                                    </div>
-                                    <div class="selected-tags" id="selected-managers-tags" style="border: none; padding: 12px 0;"></div>
+                                    {% endfor %}
                                 </div>
                             {% endif %}
                         </div>
@@ -785,34 +790,19 @@
                         </div>
 
                         <div style="padding: 20px;">
-                            <div class="multi-select-container" id="members-container" style="border: none; background: transparent;">
-                                <div class="search-header" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
-                                    <input type="text" id="member-filter" placeholder="搜索..." class="search-input">
-                                </div>
-                                
-                                <div class="multi-select-dropdown" style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; margin-top: -4px; max-height: 200px;">
-                                    <div class="select-all-container">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="select-all-members">
-                                            <span>全选</span>
-                                        </label>
+                            <div style="position: relative;">
+                                <input type="text" id="member-typeahead" class="form-input" placeholder="搜索添加成员... / Search members..." autocomplete="off">
+                                <div id="member-dropdown" class="user-dropdown"></div>
+                            </div>
+                            
+                            <div id="member-tags" class="tag-container">
+                                {% for user in form.members.field.queryset %}
+                                    <div class="selected-tag" id="member-tag-{{ user.id }}">
+                                        {{ user.get_full_name|default:user.username }}
+                                        <span class="remove-tag-btn" onclick="window.projectUserManager.removeTag('{{ user.id }}', 'member')">×</span>
+                                        <input type="hidden" name="members" value="{{ user.id }}">
                                     </div>
-                                    <div class="options-container">
-                                        {% for user in form.members.field.queryset %}
-                                            <label class="option-item">
-                                <div class="checkbox-label">
-                                    <input type="checkbox" name="members" value="{{ user.pk }}" class="member-checkbox" data-name="{{ user.get_full_name|default:user.username }}" checked>
-                                    <div class="user-info">
-                                        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                                        <span class="user-username">@{{ user.username }}</span>
-                                    </div>
-                                </div>
-                            </label>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <div class="selected-tags" id="selected-members-tags" style="border: none; padding: 12px 0;"></div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -1007,135 +997,146 @@
             }
         });
 
-        // --- Multi-select Logic with AJAX (Updated) ---
-        class MultiSelect {
-            constructor(containerId, filterId, selectAllId, countId, tagsId, checkboxClass, fieldName) {
-                this.container = document.getElementById(containerId);
-                this.filterInput = document.getElementById(filterId);
-                this.selectAll = document.getElementById(selectAllId);
-                this.countDisplay = document.getElementById(countId);
-                this.tagsContainer = document.getElementById(tagsId);
-                this.optionsContainer = this.container ? this.container.querySelector('.options-container') : null;
-                this.checkboxClass = checkboxClass;
-                this.fieldName = fieldName;
+        // --- Project User Manager (New Style) ---
+        class ProjectUserManager {
+            constructor() {
+                this.userApi = "{% url 'core:user_search_api' %}";
+                this.debounceTimer = null;
                 
-                if (!this.container) return;
-
-                // Track existing values to avoid duplicates
-                this.existingValues = new Set();
-                Array.from(document.querySelectorAll(`.${checkboxClass}`)).forEach(cb => {
-                    this.existingValues.add(cb.value);
-                });
-
+                this.types = {
+                    'manager': {
+                        input: document.getElementById('manager-typeahead'),
+                        dropdown: document.getElementById('manager-dropdown'),
+                        tags: document.getElementById('manager-tags'),
+                        count: document.getElementById('manager-count'),
+                        fieldName: 'managers'
+                    },
+                    'member': {
+                        input: document.getElementById('member-typeahead'),
+                        dropdown: document.getElementById('member-dropdown'),
+                        tags: document.getElementById('member-tags'),
+                        count: document.getElementById('member-count'),
+                        fieldName: 'members'
+                    }
+                };
+                
                 this.init();
             }
-
+            
             init() {
-                // Debounced Filter
-                let timeout;
-                this.filterInput.addEventListener('input', (e) => {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => this.filter(e.target.value), 300);
-                });
-
-                // Select All (Only visible items)
-                this.selectAll.addEventListener('change', (e) => {
-                    const visibleCheckboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`)).filter(cb => cb.closest('.option-item').style.display !== 'none');
-                    visibleCheckboxes.forEach(cb => {
-                        cb.checked = e.target.checked;
-                        cb.dispatchEvent(new Event('change'));
-                    });
-                    this.updateState();
-                });
-
-                // Delegate change events
-                this.optionsContainer.addEventListener('change', (e) => {
-                    if (e.target.classList.contains(this.checkboxClass)) {
-                        this.updateState();
+                for (const [type, config] of Object.entries(this.types)) {
+                    if (config.input) {
+                        config.input.addEventListener('input', (e) => this.onInput(e.target.value, type));
+                        config.input.addEventListener('focus', () => {
+                            if (config.input.value.trim()) this.search(config.input.value.trim(), type);
+                        });
+                        config.input.addEventListener('blur', () => setTimeout(() => config.dropdown.style.display = 'none', 200));
                     }
-                });
-
-                this.updateState();
-            }
-
-            async filter(query) {
-                const term = query.trim().toLowerCase();
-
-                // 1. Fetch new data if query is meaningful
-                if (term.length >= 1) {
-                    try {
-                        const res = await fetch(`${userSearchApiUrl}?q=${encodeURIComponent(term)}`);
-                        const data = await res.json();
-                        
-                        if (data.results) {
-                            data.results.forEach(user => {
-                                if (this.existingValues.has(String(user.id))) return;
-                                this.appendOption(user);
-                                this.existingValues.add(String(user.id));
-                            });
-                        }
-                    } catch (err) {
-                        console.error('Search failed', err);
-                    }
+                    this.updateCount(type);
                 }
-
-                // 2. Filter DOM
-                const checkboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`));
-                checkboxes.forEach(cb => {
-                    const item = cb.closest('.option-item');
-                    const text = (cb.dataset.name || item.textContent).toLowerCase();
-                    const matches = text.includes(term);
-                    
-                    if (term.length === 0) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = matches ? '' : 'none';
-                    }
-                });
             }
             
-            appendOption(user) {
-                const label = document.createElement('label');
-                label.className = 'option-item';
-                label.innerHTML = `
-                    <div class="checkbox-label">
-                        <input type="checkbox" name="${this.fieldName}" value="${user.id}" class="${this.checkboxClass}" data-name="${user.text}">
-                        <div class="user-info">
-                            <span class="user-name">${user.text}</span>
-                        </div>
-                    </div>
-                `;
-                this.optionsContainer.appendChild(label);
+            onInput(q, type) {
+                clearTimeout(this.debounceTimer);
+                const config = this.types[type];
+                if (!q.trim()) {
+                    config.dropdown.style.display = 'none';
+                    return;
+                }
+                this.debounceTimer = setTimeout(() => this.search(q, type), 300);
             }
-
-            updateState() {
-                const checkboxes = Array.from(document.querySelectorAll(`.${this.checkboxClass}`));
-                const checked = checkboxes.filter(cb => cb.checked);
-                this.countDisplay.textContent = checked.length;
+            
+            async search(q, type) {
+                const config = this.types[type];
+                config.dropdown.innerHTML = '<div style="padding:12px;color:#94a3b8;text-align:center;">搜索中... / Searching...</div>';
+                config.dropdown.style.display = 'block';
                 
-                this.tagsContainer.innerHTML = '';
-                checked.forEach(cb => {
-                    const name = cb.dataset.name;
-                    const tag = document.createElement('div');
-                    tag.className = 'selected-tag';
-                    tag.innerHTML = `<span>${name}</span><button type="button" class="remove-btn" data-value="${cb.value}">×</button>`;
+                try {
+                    const res = await fetch(`${this.userApi}?q=${encodeURIComponent(q)}`);
+                    const data = await res.json();
                     
-                    tag.querySelector('.remove-btn').addEventListener('click', (e) => {
-                        const val = e.currentTarget.dataset.value;
-                        const targetCb = document.querySelector(`input[value="${val}"].${this.checkboxClass}`);
-                        if (targetCb) {
-                            targetCb.checked = false;
-                            targetCb.dispatchEvent(new Event('change'));
-                            this.updateState();
-                        }
+                    if (!data.results || data.results.length === 0) {
+                        config.dropdown.innerHTML = '<div style="padding:12px;color:#94a3b8;text-align:center;">无匹配用户 / No users found</div>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    const selectedIds = Array.from(config.tags.querySelectorAll(`input[name="${config.fieldName}"]`)).map(i => i.value);
+                    
+                    data.results.forEach(u => {
+                        if (selectedIds.includes(String(u.id))) return;
+                        
+                        // Fallback for name/text fields depending on API response
+                        const displayName = u.name || u.text;
+                        
+                        html += `
+                            <div class="user-item" onmousedown="window.projectUserManager.select('${type}', ${u.id}, '${this.escape(displayName)}', '${this.escape(u.role)}', '${this.escape(u.avatar)}')">
+                                <div class="user-avatar">
+                                    ${u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;border-radius:50%;">` : (displayName || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div class="user-info">
+                                    <div class="user-name">${displayName} <span style="color:#94a3b8;font-weight:normal;">@${u.username || ''}</span></div>
+                                    <div class="user-meta">
+                                        <span class="role-tag ${u.role}">${u.role || 'Member'}</span>
+                                        <span>${u.department || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                     });
-                    this.tagsContainer.appendChild(tag);
-                });
+                    
+                    if (!html) {
+                         config.dropdown.innerHTML = '<div style="padding:12px;color:#94a3b8;text-align:center;">用户已在列表中 / Users already selected</div>';
+                    } else {
+                         config.dropdown.innerHTML = html;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    config.dropdown.innerHTML = '<div style="padding:12px;color:#ef4444;text-align:center;">Error loading data</div>';
+                }
+            }
+            
+            escape(str) { return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+            select(type, id, name, role, avatar) {
+                this.addTag(id, name, type);
+                const config = this.types[type];
+                config.input.value = '';
+                config.dropdown.style.display = 'none';
+            }
+            
+            addTag(id, name, type) {
+                const config = this.types[type];
+                if (document.getElementById(`${type}-tag-${id}`)) return;
+                
+                const div = document.createElement('div');
+                div.className = 'selected-tag';
+                div.id = `${type}-tag-${id}`;
+                div.innerHTML = `
+                    ${name}
+                    <span class="remove-tag-btn" onclick="window.projectUserManager.removeTag('${id}', '${type}')">×</span>
+                    <input type="hidden" name="${config.fieldName}" value="${id}">
+                `;
+                config.tags.appendChild(div);
+                this.updateCount(type);
+            }
+            
+            removeTag(id, type) {
+                const el = document.getElementById(`${type}-tag-${id}`);
+                if (el) el.remove();
+                this.updateCount(type);
+            }
+            
+            updateCount(type) {
+                const config = this.types[type];
+                if (config.count && config.tags) {
+                    const count = config.tags.querySelectorAll('.selected-tag').length;
+                    config.count.textContent = count;
+                }
             }
         }
-
-        new MultiSelect('members-container', 'member-filter', 'select-all-members', 'member-count', 'selected-members-tags', 'member-checkbox', 'members');
-        new MultiSelect('managers-container', 'manager-filter', 'select-all-managers', 'manager-count', 'selected-managers-tags', 'manager-checkbox', 'managers');
+        
+        window.projectUserManager = new ProjectUserManager();
 
         // --- Owner Search Logic (Updated) ---
         const ownerSearch = document.getElementById('owner-search');

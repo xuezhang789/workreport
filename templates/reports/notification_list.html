@@ -350,7 +350,11 @@
                      data-id="{{ n.id }}"
                      data-type="{{ n.notification_type }}"
                      data-read="{{ n.is_read|yesno:'true,false' }}"
-                     onclick="handleItemClick(this, '{{ n.notification_type }}', '{{ n.data.task_id|default:'' }}')">
+                     data-action-url="{{ n.data.action_url|default:'' }}"
+                     data-task-id="{{ n.data.task_id|default:'' }}"
+                     data-project-id="{{ n.data.project_id|default:'' }}"
+                     data-comment-id="{{ n.data.comment_id|default:'' }}"
+                     onclick="handleItemClick(this)">
                     
                     <div class="notif-icon-wrapper">
                         {% if n.priority == 'high' %}
@@ -376,7 +380,7 @@
                         </div>
                         <div class="notif-msg">{{ n.message }}</div>
                         <div class="notif-actions">
-                            {% if n.data.task_id %}
+                            {% if n.data.action_url or n.data.task_id or n.data.project_id or n.data.comment_id %}
                                 <button class="btn-action">查看详情 / View Details</button>
                             {% endif %}
                             {% if not n.is_read %}
@@ -415,16 +419,29 @@
 
 <script>
     // --- Interaction Logic ---
-    window.handleItemClick = function(el, type, targetId) {
+    window.handleItemClick = function(el) {
         const id = el.dataset.id;
+        const actionUrl = el.dataset.actionUrl;
+        const taskId = el.dataset.taskId;
+        const projectId = el.dataset.projectId;
+        const commentId = el.dataset.commentId;
+        
         // If unread, mark read first
         if (el.dataset.read === 'false') {
             markRead(id, el, false);
         }
 
         // Navigate
-        if (targetId && targetId !== 'None') {
-             window.location.href = `/tasks/${targetId}/view/`;
+        if (actionUrl && actionUrl !== 'None' && actionUrl !== '') {
+             window.location.href = actionUrl;
+        } else if (taskId && taskId !== 'None' && taskId !== '') {
+             if (commentId && commentId !== 'None' && commentId !== '') {
+                  window.location.href = `/tasks/${taskId}/view/#comment-${commentId}`;
+             } else {
+                  window.location.href = `/tasks/${taskId}/view/`;
+             }
+        } else if (projectId && projectId !== 'None' && projectId !== '') {
+             window.location.href = `/projects/${projectId}/`;
         }
     };
 

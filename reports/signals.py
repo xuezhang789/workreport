@@ -129,7 +129,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                 message=f"您被分配了新任务：{instance.title}",
                 notification_type='task_assigned',
                 priority='high',
-                data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
+                data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/view/'}
             )
     else:
         # 更新场景
@@ -168,7 +168,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                             message=f"任务 {instance.title} 已从您的列表中移除。",
                             notification_type='task_assigned',
                             priority='normal',
-                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/projects/{instance.project_id}/tasks/'}
+                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/projects/{instance.project_id}/'}
                         )
 
                 # 通知新用户
@@ -179,7 +179,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 已转交给您",
                         notification_type='task_assigned',
                         priority='high',
-                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/view/'}
                     )
             
             # 2. 状态变更
@@ -201,7 +201,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                                 message=f"缺陷 {instance.title} 已修复，请进行验证",
                                 notification_type='task_updated',
                                 priority='high',
-                                data={'task_id': instance.id, 'project_id': instance.project.id, 'action_url': f'/tasks/{instance.id}/'}
+                                data={'task_id': instance.id, 'project_id': instance.project.id, 'action_url': f'/tasks/{instance.id}/view/'}
                             )
 
                 # 通知所有者（如果不是操作员）
@@ -212,7 +212,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 状态从 {old_status} 变更为 {new_status}",
                         notification_type='task_updated',
                         priority='normal',
-                        data={'task_id': instance.id, 'project_id': instance.project_id, 'diff': diff, 'action_url': f'/tasks/{instance.id}/'}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'diff': diff, 'action_url': f'/tasks/{instance.id}/view/'}
                     )
                 
                 # 通知协作者
@@ -224,7 +224,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                             message=f"您协作的任务 {instance.title} 状态更新为 {new_status}",
                             notification_type='task_updated',
                             priority='normal',
-                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
+                            data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/view/'}
                         )
 
             # 3. 优先级变更（高优先级警报）
@@ -237,7 +237,7 @@ def notify_task_assignment(sender, instance, created, **kwargs):
                         message=f"任务 {instance.title} 优先级调整为 高 (High)",
                         notification_type='task_updated',
                         priority='high',
-                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/'}
+                        data={'task_id': instance.id, 'project_id': instance.project_id, 'action_url': f'/tasks/{instance.id}/view/'}
                     )
 
 @receiver(m2m_changed, sender=Task.collaborators.through)
@@ -265,7 +265,7 @@ def notify_task_collaborator_change(sender, instance, action, reverse, model, pk
                             message=f"您已被添加为任务 {task.title} 的协作人。",
                             notification_type='task_collaborator',
                             priority='normal',
-                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/tasks/{task.id}/'}
+                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/tasks/{task.id}/view/'}
                         )
                 except User.DoesNotExist:
                     continue
@@ -281,7 +281,7 @@ def notify_task_collaborator_change(sender, instance, action, reverse, model, pk
                             message=f"您已被移除任务 {task.title} 的协作人身份。",
                             notification_type='task_collaborator',
                             priority='normal',
-                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/projects/{task.project_id}/tasks/'}
+                            data={'task_id': task.id, 'project_id': task.project_id, 'action_url': f'/projects/{task.project_id}/'}
                         )
                 except User.DoesNotExist:
                     continue
@@ -468,7 +468,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
                 message=f"{instance.user.username} 在任务 {instance.task.title} 的评论中提到了您",
                 notification_type='task_mention',
                 priority='high',
-                data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/#comment-{instance.id}'}
+                data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/view/#comment-{instance.id}'}
             )
         except User.DoesNotExist:
             pass
@@ -482,7 +482,7 @@ def notify_comment_mention(sender, instance, created, **kwargs):
             message=f"{instance.user.username} 评论了您的任务 {instance.task.title}",
             notification_type='task_updated',
             priority='normal',
-            data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/#comment-{instance.id}'}
+            data={'task_id': instance.task.id, 'comment_id': instance.id, 'action_url': f'/tasks/{instance.task.id}/view/#comment-{instance.id}'}
         )
 
 @receiver(m2m_changed)

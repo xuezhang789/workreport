@@ -412,6 +412,52 @@
         color: #1e293b;
     }
 
+    /* --- Chip Styles --- */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    /* --- Search Input Styles --- */
+    .search-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 10px 12px 10px 40px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        color: var(--text-main);
+        background: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .search-input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
     /* --- Loading Overlay --- */
     .loading-overlay {
         position: fixed; inset: 0; background: rgba(255,255,255,0.6);
@@ -419,7 +465,7 @@
         display: flex; justify-content: center; align-items: center;
         opacity: 0; pointer-events: none; transition: opacity 0.3s;
     }
-    .loading-overlay.active { opacity: 1; pointer-events: all; }
+    .loading-overlay.active, .loading-overlay.htmx-request { opacity: 1; pointer-events: all; }
     
     /* FAB */
     .fab-create {
@@ -922,11 +968,19 @@
         if (checked.length > 0) {
             toolbar.classList.add('visible');
             countSpan.textContent = checked.length;
-            // Highlight cards
+            
+            // Highlight cards (both Grid and Kanban)
             document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+            
             checked.forEach(cb => {
-                const card = cb.closest('.task-card');
-                if(card) card.classList.add('selected');
+                const taskId = cb.value;
+                // Highlight Grid Card
+                const gridCard = document.getElementById('task-' + taskId);
+                if(gridCard) gridCard.classList.add('selected');
+                
+                // Highlight Kanban Card
+                const kanbanCard = document.getElementById('kanban-task-' + taskId);
+                if(kanbanCard) kanbanCard.classList.add('selected');
             });
         } else {
             toolbar.classList.remove('visible');
@@ -936,37 +990,12 @@
 
     // --- Initialization Logic ---
     function initTaskPage() {
-        // Mobile Filter Optimization
+        /* 
+        // Mobile Filter Optimization (Disabled to prevent layout issues)
         if (window.innerWidth <= 768) {
-            const filterGrid = document.querySelector('.filter-grid');
-            const filterPanel = document.querySelector('.filter-panel');
-            // Check if already wrapped or not needed
-            if (filterGrid && filterPanel && !filterPanel.querySelector('details')) {
-                const details = document.createElement('details');
-                const summary = document.createElement('summary');
-                summary.textContent = '筛选与搜索 / Filter & Search';
-                
-                const content = document.createElement('div');
-                content.className = 'filter-content';
-                
-                // Move filter grid into content
-                content.appendChild(filterGrid);
-                
-                // Move bottom row as well
-                const bottomRow = document.querySelector('.filter-row-bottom');
-                if (bottomRow) content.appendChild(bottomRow);
-                
-                details.appendChild(summary);
-                details.appendChild(content);
-                
-                // Clear panel and append details
-                // We need to keep the form wrapper!
-                const form = document.getElementById('filterForm');
-                if (form) {
-                    form.appendChild(details);
-                }
-            }
+            // ... (Logic removed)
         }
+        */
 
         // Reset kanban flag on re-init
         window.kanbanDistributed = false;

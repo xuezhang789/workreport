@@ -233,7 +233,7 @@ def sync_project_manager_role(sender, instance, action, reverse, model, pk_set, 
                     message=f"{names} 已被添加为项目 {project.name} 的管理员。",
                     notification_type='project_manager_change',
                     priority='normal',
-                    data={'project_id': project.id, 'action_url': f'/projects/{project.id}/settings/'}
+                    data={'project_id': project.id, 'action_url': f'/projects/{project.id}/'}
                 )
                 
         elif action == 'post_remove':
@@ -253,7 +253,7 @@ def sync_project_manager_role(sender, instance, action, reverse, model, pk_set, 
                             message=f"您已被移除项目 {project.name} 的管理员身份。",
                             notification_type='project_manager_change',
                             priority='high',
-                            data={'project_id': project.id}
+                            data={'project_id': project.id, 'action_url': f'/projects/{project.id}/'}
                         )
                 except User.DoesNotExist:
                     continue
@@ -267,7 +267,7 @@ def sync_project_manager_role(sender, instance, action, reverse, model, pk_set, 
                     message=f"{names} 已被移除项目 {project.name} 的管理员身份。",
                     notification_type='project_manager_change',
                     priority='normal',
-                    data={'project_id': project.id, 'action_url': f'/projects/{project.id}/settings/'}
+                    data={'project_id': project.id, 'action_url': f'/projects/{project.id}/'}
                 )
 
         elif action == 'post_clear':

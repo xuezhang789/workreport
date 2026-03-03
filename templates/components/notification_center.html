@@ -240,7 +240,7 @@
                 return;
             }
             list.innerHTML = notifications.map(n => `
-                <div class="notification-item ${n.is_read ? '' : 'unread'} ${n.priority === 'high' ? 'priority-high' : ''}" onclick="handleNotificationClick(${n.id}, '${n.notification_type}', '${n.data?.task_id || ''}')">
+                <div class="notification-item ${n.is_read ? '' : 'unread'} ${n.priority === 'high' ? 'priority-high' : ''}" onclick="handleNotificationClick(${n.id}, '${n.data?.action_url || ''}', '${n.data?.task_id || ''}', '${n.data?.project_id || ''}', '${n.data?.comment_id || ''}')">
                     <div class="notif-icon">
                         ${getIcon(n.notification_type, n.priority)}
                     </div>
@@ -322,7 +322,7 @@
         }
 
         // Global handler for click (needs to be attached to window or handled via event delegation above)
-        window.handleNotificationClick = function(id, type, targetId) {
+        window.handleNotificationClick = function(id, actionUrl, taskId, projectId, commentId) {
             // Mark read
             fetch(`/reports/api/notifications/${id}/mark-read/`, {
                 method: 'POST',
@@ -331,8 +331,16 @@
                 }
             }).then(() => {
                 // Redirect logic
-                if (type.startsWith('task') && targetId) {
-                    window.location.href = `/tasks/${targetId}/view/`;
+                if (actionUrl) {
+                    window.location.href = actionUrl;
+                } else if (taskId) {
+                    if (commentId) {
+                        window.location.href = `/tasks/${taskId}/view/#comment-${commentId}`;
+                    } else {
+                        window.location.href = `/tasks/${taskId}/view/`;
+                    }
+                } else if (projectId) {
+                    window.location.href = `/projects/${projectId}/`;
                 } else {
                     // Default redirect or just refresh
                     fetchNotifications();
