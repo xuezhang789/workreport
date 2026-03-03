@@ -612,10 +612,18 @@
             {% endfor %}
             
             <!-- Add New Project Placeholder -->
-            <a href="{% url 'admin:projects_project_add' %}" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); background: transparent; color: var(--text-muted); text-decoration: none; min-height: 200px; transition: all 0.2s;">
+            {% if can_create_project %}
+            <a href="{% url 'projects:project_create' %}" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); background: transparent; color: var(--text-muted); text-decoration: none; min-height: 200px; transition: all 0.2s;">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span style="font-weight: 600;">创建新项目 / Create Project</span>
             </a>
+            {% else %}
+            <a href="javascript:void(0)" onclick="alert('您没有权限创建项目 (需要项目经理权限) / You do not have permission to create projects (Manager required)')" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-color); background: transparent; color: var(--text-muted); text-decoration: none; min-height: 200px; transition: all 0.2s; opacity: 0.6; cursor: not-allowed;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span style="font-weight: 600;">创建新项目 / Create Project</span>
+                <span style="font-size: 12px; margin-top: 4px;">(无权限 / No Permission)</span>
+            </a>
+            {% endif %}
         </div>
 
         <!-- Pagination for Projects -->

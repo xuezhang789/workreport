@@ -36,6 +36,7 @@ from tasks.services.sla import (
     get_sla_thresholds
 )
 from tasks.services.export import TaskExportService
+from tasks.services.task_service import TaskAdminService
 from reports.utils import get_accessible_projects, can_manage_project, get_manageable_projects
 from reports.signals import _invalidate_stats_cache
 
@@ -46,170 +47,12 @@ EXPORT_CHUNK_SIZE = 500
 
 @login_required
 def admin_task_list(request):
-    # 统一任务列表：超级管理员查看所有，其他用户查看有权限项目中的任务
-    accessible_projects = get_accessible_projects(request.user)
-    if not accessible_projects.exists():
-        return _admin_forbidden(request, "需要相关项目权限 / Project access required")
-
-    status = (request.GET.get('status') or '').strip()
-    category = (request.GET.get('category') or '').strip()
-    priority = (request.GET.get('priority') or '').strip()
-    project_id = request.GET.get('project')
-    user_id = request.GET.get('user')
-    q = (request.GET.get('q') or '').strip()
-    hot = request.GET.get('hot') == '1'
-    sort_by = request.GET.get('sort', '-created_at')
-
-    # 优化：为头像渲染选择关联的 profile 和 preferences
-    tasks_qs = Task.objects.select_related(
-        'project', 'user', 'sla_timer', 'user__profile', 'user__preferences'
-    ).prefetch_related('collaborators', 'collaborators__profile', 'collaborators__preferences')
+    context = TaskAdminService.get_admin_task_list_context(request.user, request.GET, request.get_full_path())
     
-    # 立即按可访问项目过滤，防止未授权访问和减少数据量
-    tasks_qs = tasks_qs.filter(project__in=accessible_projects)
-    
-    # 预取一次 SLA 设置
-    cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
-    sla_hours_val = int(cfg_sla_hours.value) if cfg_sla_hours and cfg_sla_hours.value.isdigit() else None
-    
-    cfg_thresholds = SystemSetting.objects.filter(key='sla_thresholds').first()
-    sla_thresholds_val = cfg_thresholds.value if cfg_thresholds else None
-    
-    now = timezone.now()
-    # 如果没有指定项目，则使用默认 SLA 小时数进行通用查询
-    default_sla_hours = get_sla_hours(system_setting_value=sla_hours_val)
-    
-    # 优化：基于已过滤的查询集计算即将到期的任务
-    due_soon_ids = set(tasks_qs.filter(
-        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.IN_REVIEW],
-        due_at__gt=now,
-        due_at__lte=now + timedelta(hours=default_sla_hours)
-    ).values_list('id', flat=True))
-
-    if status in dict(Task.STATUS_CHOICES):
-        tasks_qs = tasks_qs.filter(status=status)
-    if category in dict(Task.CATEGORY_CHOICES):
-        tasks_qs = tasks_qs.filter(category=category)
-    if priority in dict(Task.PRIORITY_CHOICES):
-        tasks_qs = tasks_qs.filter(priority=priority)
-    if project_id and project_id.isdigit():
-        pid = int(project_id)
-        if accessible_projects.filter(id=pid).exists():
-            tasks_qs = tasks_qs.filter(project_id=pid)
-        else:
-            tasks_qs = tasks_qs.none()
-    if user_id and user_id.isdigit():
-        tasks_qs = tasks_qs.filter(user_id=int(user_id))
-    if q:
-        tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
-
-    if hot:
-        # 优化：在数据库层面过滤以减少内存使用
-        # 'hot' 意味着 '逾期' 或 '紧急' (剩余时间 < amber_threshold)
-        amber_hours = get_sla_thresholds(sla_thresholds_val).get('amber', 4)
-        cutoff_time = now + timedelta(hours=amber_hours)
+    if 'error' in context:
+        return _admin_forbidden(request, context['error'])
         
-        # 优化：避免加载已完成的任务，这些通常不需要紧急关注
-        tasks_qs = tasks_qs.exclude(status__in=[TaskStatus.DONE, TaskStatus.CLOSED]).filter(
-            due_at__isnull=False,
-            due_at__lt=cutoff_time
-        )
-        
-        # 使用数据库排序
-        # 注意：这只是一个近似值，真正的 SLA 排序很复杂。
-        # 但为了分页和速度，我们必须在数据库中进行排序。
-        tasks_qs = tasks_qs.order_by('due_at', '-created_at')
-        
-        # 标准视图的数据库分页（性能优化）
-        try:
-            per_page = int(request.GET.get('per_page', 20))
-            if per_page not in [10, 20, 50, 100]:
-                per_page = 20
-        except (ValueError, TypeError):
-            per_page = 20
-
-        paginator = Paginator(tasks_qs, per_page)
-        page_obj = paginator.get_page(request.GET.get('page'))
-        
-        # 仅对当前页进行 SLA 计算
-        for t in page_obj:
-            t.is_due_soon = True # By definition of hot filter
-            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-            
-    else:
-        # 标准排序
-        allowed_sorts = {
-            'created_at': 'created_at',
-            '-created_at': '-created_at',
-            'priority': 'priority',
-            '-priority': '-priority',
-            'status': 'status',
-            '-status': '-status',
-            'due_at': 'due_at',
-            '-due_at': '-due_at',
-            'title': 'title',
-            '-title': '-title',
-        }
-        sort_field = allowed_sorts.get(sort_by, '-created_at')
-        tasks_qs = tasks_qs.order_by(sort_field)
-
-        # 标准视图的数据库分页（性能优化）
-        try:
-            per_page = int(request.GET.get('per_page', 20))
-            if per_page not in [10, 20, 50, 100]:
-                per_page = 20
-        except (ValueError, TypeError):
-            per_page = 20
-
-        paginator = Paginator(tasks_qs, per_page)
-        page_obj = paginator.get_page(request.GET.get('page'))
-        
-        # 仅对当前页进行 SLA 计算
-        # 使用 bulk_sla_info 计算当前页所有任务，避免 N 次单独调用（尽管 calculate_sla_info 已经优化）
-        # 这里仍保留循环，但在模板中我们优化了 collaborators 的计数
-        for t in page_obj:
-            t.is_due_soon = t.id in due_soon_ids
-            t.sla_info = calculate_sla_info(t, sla_hours_setting=sla_hours_val, sla_thresholds_setting=sla_thresholds_val)
-
-    User = get_user_model()
-    # 优化：仅获取下拉列表所需的字段
-    project_choices = accessible_projects.order_by('name').only('id', 'name', 'code')[:100]
-    
-    # 优化：不再加载所有用户用于下拉列表，而是仅加载当前筛选条件下相关的用户
-    if request.user.is_superuser:
-        user_objs = User.objects.filter(is_active=True).order_by('username').only('id', 'username', 'first_name', 'last_name')[:100]
-    else:
-        # 优化 distinct 查询：先获取 ID 列表再查询对象，避免在大表上的复杂 JOIN DISTINCT
-        relevant_user_ids = set(User.objects.filter(
-            Q(project_memberships__in=accessible_projects) |
-            Q(managed_projects__in=accessible_projects) |
-            Q(owned_projects__in=accessible_projects)
-        ).values_list('id', flat=True))
-        
-        user_objs = User.objects.filter(id__in=relevant_user_ids).order_by('username').only('id', 'username', 'first_name', 'last_name')[:100]
-    
-    return render(request, 'tasks/admin_task_list.html', {
-        'tasks': page_obj,
-        'page_obj': page_obj,
-        'per_page': per_page,
-        'status': status,
-        'category': category,
-        'priority': priority,
-        'q': q,
-        'project_id': int(project_id) if project_id and project_id.isdigit() else '',
-        'user_id': int(user_id) if user_id and user_id.isdigit() else '',
-        'hot': hot,
-        'sort_by': sort_by,
-        'projects': project_choices,
-        'users': user_objs,
-        'task_status_choices': Task.STATUS_CHOICES,
-        'task_category_choices': Task.CATEGORY_CHOICES,
-        'task_priority_choices': Task.PRIORITY_CHOICES,
-        'due_soon_ids': due_soon_ids,
-        'sla_config_hours': default_sla_hours,
-        'redirect_to': request.get_full_path(),
-        'sla_thresholds': get_sla_thresholds(system_setting_value=sla_thresholds_val),
-    })
+    return render(request, 'tasks/admin_task_list.html', context)
 
 
 @login_required

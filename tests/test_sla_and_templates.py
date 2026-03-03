@@ -8,9 +8,10 @@ from django.core.cache import cache
 
 from reports.models import Project, DailyReport, Task, SystemSetting, ReportTemplateVersion
 from reports import views as report_views
-from tasks import views as task_views
-from tasks.services.sla import calculate_sla_info, _ensure_sla_timer
+from tasks.views import user_views
+from tasks.views import admin_views
 
+from tasks.services.sla import calculate_sla_info, _ensure_sla_timer
 
 class CacheAndTemplateTests(TestCase):
     def setUp(self):
@@ -78,8 +79,8 @@ class CacheAndTemplateTests(TestCase):
         self.assertIsNone(cache.get(cache_key))
 
     def test_export_limit_message(self):
-        original = task_views.MAX_EXPORT_ROWS
-        task_views.MAX_EXPORT_ROWS = 1
+        original = user_views.MAX_EXPORT_ROWS
+        user_views.MAX_EXPORT_ROWS = 1
         try:
             # 创建两个任务，导出触发限额
             Task.objects.create(title='t1', user=self.admin, project=self.project)
@@ -90,7 +91,7 @@ class CacheAndTemplateTests(TestCase):
             self.assertIn("数据量过大", content)
             self.assertIn("Data too large", content)
         finally:
-            task_views.MAX_EXPORT_ROWS = original
+            user_views.MAX_EXPORT_ROWS = original
 
     def test_admin_reports_export_limit(self):
         from reports import export_views
@@ -113,8 +114,8 @@ class CacheAndTemplateTests(TestCase):
             export_views.MAX_EXPORT_ROWS = original
 
     def test_admin_task_export_limit(self):
-        original = task_views.MAX_EXPORT_ROWS
-        task_views.MAX_EXPORT_ROWS = 1
+        original = admin_views.MAX_EXPORT_ROWS
+        admin_views.MAX_EXPORT_ROWS = 1
         try:
             Task.objects.create(title='t1', user=self.admin, project=self.project)
             Task.objects.create(title='t2', user=self.admin, project=self.project)
@@ -124,7 +125,7 @@ class CacheAndTemplateTests(TestCase):
             self.assertIn("数据量过大", content)
             self.assertIn("Data too large", content)
         finally:
-            task_views.MAX_EXPORT_ROWS = original
+            admin_views.MAX_EXPORT_ROWS = original
 
     def test_template_center_pagination(self):
         # 创建超过一页的模板

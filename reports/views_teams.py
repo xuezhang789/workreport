@@ -142,8 +142,12 @@ def teams_list(request):
             'manager_count': proj.manager_count,
             'role_stats': stats_map.get(proj.id, [])
         })
+        
+    # Permission Check for Create Button
+    can_create_project = has_manage_permission(request.user)
 
     return render(request, 'reports/teams.html', {
+        'can_create_project': can_create_project,
         'users': page_obj,
         'page_obj': page_obj,
         'member_per_page': member_per_page,

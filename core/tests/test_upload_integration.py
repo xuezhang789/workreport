@@ -1,7 +1,7 @@
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth.models import User
 from django.urls import reverse
-from core.models import ChunkedUpload, Profile
+from core.models import ChunkedUpload, Profile, UserPreference
 from projects.models import Project, ProjectAttachment
 from tasks.models import Task, TaskAttachment
 import json
@@ -21,6 +21,7 @@ class UploadIntegrationTest(TestCase):
         self.project = Project.objects.create(name="Test Project", code="TP01", owner=self.user)
         self.task = Task.objects.create(title="Test Task", project=self.project, user=self.user)
         Profile.objects.create(user=self.user)
+        UserPreference.objects.create(user=self.user, data={'profile': {}})
 
     def tearDown(self):
         if os.path.exists(self.temp_dir):

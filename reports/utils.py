@@ -6,31 +6,33 @@ from tasks.models import Task
 from work_logs.models import DailyReport
 from core.services.rbac import RBACService
 
-def _get_projects_by_permission(user, permission_code):
+def _get_rbac_project_ids(user, permission_code):
     """
-    内部辅助函数：获取用户拥有特定 RBAC 权限的所有项目查询集。
+    内部辅助函数：获取用户拥有特定 RBAC 权限的项目 ID 列表。
     
-    Args:
-        user (User): 用户对象
-        permission_code (str): 权限代码 (如 'project.view')
-        
     Returns:
-        QuerySet: Project 对象的查询集。
-                  如果用户未登录，返回空查询集。
-                  如果用户拥有全局该权限，返回所有活跃项目。
-                  否则返回具有该权限的特定项目集合。
+        tuple: (is_global, project_ids)
+        - is_global (bool): 是否拥有全局权限
+        - project_ids (list): 项目 ID 列表 (当 is_global=False 时)
     """
     if not user.is_authenticated:
-        return Project.objects.none()
+        return False, []
     
     if user.is_superuser:
-        return Project.objects.filter(is_active=True)
+        return True, []
         
+    cache_key = f"rbac_project_ids:{user.id}:{permission_code}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     scopes = RBACService.get_scopes_with_permission(user, permission_code)
     
     # 如果 scopes 中包含 None 或空字符串，表示拥有全局权限
     if None in scopes or '' in scopes:
-        return Project.objects.filter(is_active=True)
+        result = (True, [])
+        cache.set(cache_key, result, 300)
+        return result
         
     # 解析 scope 字符串 (格式: 'project:123') 提取项目 ID
     project_ids = []
@@ -41,16 +43,19 @@ def _get_projects_by_permission(user, permission_code):
                 project_ids.append(pid)
             except (ValueError, IndexError):
                 continue
-                
-    return Project.objects.filter(id__in=project_ids, is_active=True)
+    
+    result = (False, project_ids)
+    cache.set(cache_key, result, 300)
+    return result
 
 def get_accessible_projects(user):
     """
     获取用户有权访问（查看权限）的项目列表。
     
-    该函数使用了缓存机制来提高性能。
-    缓存键: accessible_projects_ids:{user_id}
-    缓存时间: 300秒 (5分钟)
+    优化策略：
+    不再缓存所有可访问项目的 ID 列表（因为可能很大且难以失效）。
+    改为缓存 RBAC 权限计算出的 ID 列表（相对稳定且较小）。
+    返回的 QuerySet 使用 Q 对象组合查询，利用数据库索引进行过滤。
     
     Args:
         user (User): 用户对象
@@ -64,28 +69,21 @@ def get_accessible_projects(user):
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
 
-    cache_key = f"accessible_projects_ids:{user.id}"
-    cached_ids = cache.get(cache_key)
-
-    if cached_ids is not None:
-        return Project.objects.filter(id__in=cached_ids, is_active=True)
-
     # 1. RBAC 权限检查
-    rbac_qs = _get_projects_by_permission(user, 'project.view')
+    is_global, rbac_ids = _get_rbac_project_ids(user, 'project.view')
     
-    # 2. 直接关联 (Members, Owner, Managers)
-    direct_qs = Project.objects.filter(
-        Q(members=user) | Q(owner=user) | Q(managers=user),
+    if is_global:
+        return Project.objects.filter(is_active=True)
+    
+    # 2. 组合查询：RBAC IDs OR 直接关联 (Members, Owner, Managers)
+    # 利用 distinct() 确保不重复
+    return Project.objects.filter(
+        Q(id__in=rbac_ids) | 
+        Q(members=user) | 
+        Q(owner=user) | 
+        Q(managers=user),
         is_active=True
-    )
-    
-    final_qs = (rbac_qs | direct_qs).distinct()
-    
-    # 缓存结果 ID 列表
-    ids = list(final_qs.values_list('id', flat=True))
-    cache.set(cache_key, ids, 300) # 缓存5分钟
-    
-    return Project.objects.filter(id__in=ids)
+    ).distinct()
 
 def can_manage_project(user, project):
     """
@@ -130,9 +128,7 @@ def get_manageable_projects(user):
     """
     获取用户可以管理（编辑/更新）的项目查询集。
     
-    该函数使用了缓存机制。
-    缓存键: manageable_projects_ids:{user_id}
-    缓存时间: 300秒
+    优化：使用 Q 对象组合查询，减少全量 ID 列表的内存占用和缓存压力。
     
     Args:
         user (User): 用户对象
@@ -146,27 +142,19 @@ def get_manageable_projects(user):
     if user.is_superuser:
         return Project.objects.filter(is_active=True)
 
-    cache_key = f"manageable_projects_ids:{user.id}"
-    cached_ids = cache.get(cache_key)
-
-    if cached_ids is not None:
-        return Project.objects.filter(id__in=cached_ids, is_active=True)
-
     # 1. RBAC 权限
-    rbac_qs = _get_projects_by_permission(user, 'project.manage')
+    is_global, rbac_ids = _get_rbac_project_ids(user, 'project.manage')
     
-    # 2. 直接关联 (Owner, Managers)
-    direct_qs = Project.objects.filter(
-        Q(owner=user) | Q(managers=user),
+    if is_global:
+        return Project.objects.filter(is_active=True)
+
+    # 2. 组合查询：RBAC IDs OR 直接关联 (Owner, Managers)
+    return Project.objects.filter(
+        Q(id__in=rbac_ids) | 
+        Q(owner=user) | 
+        Q(managers=user),
         is_active=True
-    )
-    
-    final_qs = (rbac_qs | direct_qs).distinct()
-    
-    ids = list(final_qs.values_list('id', flat=True))
-    cache.set(cache_key, ids, 300)
-    
-    return Project.objects.filter(id__in=ids)
+    ).distinct()
 
 def get_accessible_tasks(user):
     """
@@ -223,13 +211,18 @@ def clear_project_permission_cache(user, project=None):
     if not user:
         return
         
-    # 清除可访问项目列表缓存
+    # 清除 RBAC ID 列表缓存 (无法精确知道是 view 还是 manage，所以可能需要全部清除或依赖 TTL)
+    # 由于 rbac_project_ids 依赖 permission_code，我们这里主要清除 can_manage_project 缓存
+    # RBAC 缓存主要由 RBACService 管理
+    
+    # 清除旧的 ID 列表缓存（为了兼容性）
     cache.delete(f"accessible_projects_ids:{user.id}")
+    cache.delete(f"manageable_projects_ids:{user.id}")
+    
+    # 清除新的 RBAC 缓存 (View 和 Manage)
+    cache.delete(f"rbac_project_ids:{user.id}:project.view")
+    cache.delete(f"rbac_project_ids:{user.id}:project.manage")
     
     # 清除特定项目权限缓存
     if project:
         cache.delete(f"can_manage_project:{user.id}:{project.id}")
-        cache.delete(f"manageable_projects_ids:{user.id}")
-    else:
-        # 如果未指定项目，仅依靠 TTL 过期或后续特定调用
-        cache.delete(f"manageable_projects_ids:{user.id}")

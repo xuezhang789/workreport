@@ -51,7 +51,9 @@ def _filtered_projects(request):
     # Filter by accessible projects (Superuser check is handled inside)
     # 过滤可访问的项目（超级用户检查在内部处理）
     accessible = get_accessible_projects(request.user)
-    qs = qs & accessible
+    
+    # Use filter(id__in=...) instead of & operator to avoid "Cannot combine a unique query with a non-unique query"
+    qs = qs.filter(id__in=accessible.values_list('id', flat=True))
 
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(description__icontains=q))
