@@ -1,6 +1,7 @@
 {% extends "base_topbar.html" %}
 {% load static %}
 {% load tz %}
+{% load core_tags %}
 
 {% block title %}通知中心 / Notification Center{% endblock %}
 
@@ -220,6 +221,47 @@
         opacity: 0.5;
     }
 
+    /* Pagination */
+    .pagination-container {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fff;
+    }
+
+    .page-link {
+        padding: 6px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text-main);
+        text-decoration: none;
+        background: #fff;
+        transition: all 0.2s;
+    }
+    
+    .page-link:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .filter-btn {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        background: transparent;
+        text-decoration: none; /* Ensure link style */
+        display: inline-flex;
+        align-items: center;
+    }
+
     /* Type Specific Colors */
     .type-task .notif-icon-wrapper { color: #2563eb; background: #eff6ff; }
     .type-mention .notif-icon-wrapper { color: #ca8a04; background: #fef9c3; }
@@ -293,12 +335,12 @@
 
         <!-- Filter Bar -->
         <div class="filter-bar">
-            <button class="filter-btn active" data-filter="all">全部 / All</button>
-            <button class="filter-btn" data-filter="unread">未读 / Unread</button>
+            <a href="?filter=all" class="filter-btn {% if current_filter == 'all' or not current_filter %}active{% endif %}">全部 / All</a>
+            <a href="?filter=unread" class="filter-btn {% if current_filter == 'unread' %}active{% endif %}">未读 / Unread</a>
             <div style="width: 1px; height: 16px; background: #cbd5e1; margin: 0 4px;"></div>
-            <button class="filter-btn" data-filter="task">任务 / Task</button>
-            <button class="filter-btn" data-filter="mention">提及 / Mention</button>
-            <button class="filter-btn" data-filter="system">系统 / System</button>
+            <a href="?filter=task" class="filter-btn {% if current_filter == 'task' %}active{% endif %}">任务 / Task</a>
+            <a href="?filter=mention" class="filter-btn {% if current_filter == 'mention' %}active{% endif %}">提及 / Mention</a>
+            <a href="?filter=system" class="filter-btn {% if current_filter == 'system' %}active{% endif %}">系统 / System</a>
         </div>
         
         <!-- List Container -->
@@ -350,39 +392,28 @@
                 </div>
             {% endfor %}
         </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-container">
+            <span style="font-size: 13px; color: var(--text-secondary);">
+                显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }} 条
+            </span>
+            <div style="display: flex; gap: 8px;">
+                {% if page_obj.has_previous %}
+                    <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-link">上一页 / Prev</a>
+                {% endif %}
+                
+                {% if page_obj.has_next %}
+                    <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-link">下一页 / Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
 <script>
-    // --- Filtering Logic ---
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const items = document.querySelectorAll('.notif-item');
-
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Update Active State
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const filter = btn.dataset.filter;
-            let hasVisible = false;
-
-            items.forEach(item => {
-                let show = false;
-                if (filter === 'all') show = true;
-                else if (filter === 'unread') show = item.dataset.read === 'false';
-                else if (filter === 'task') show = item.dataset.type.includes('task');
-                else if (filter === 'mention') show = item.dataset.type.includes('mention');
-                else if (filter === 'system') show = !item.dataset.type.includes('task') && !item.dataset.type.includes('mention');
-
-                item.style.display = show ? 'flex' : 'none';
-                if (show) hasVisible = true;
-            });
-            
-            // Check empty state visibility (optional enhancement)
-        });
-    });
-
     // --- Interaction Logic ---
     window.handleItemClick = function(el, type, targetId) {
         const id = el.dataset.id;

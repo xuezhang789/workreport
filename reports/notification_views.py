@@ -5,21 +5,41 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from reports.models import Notification
 
+from django.core.paginator import Paginator
+
 @login_required
 def notification_list(request):
     """
     通知中心页面视图。
     """
-    notifications = request.user.notifications.all()
+    # 默认按时间倒序
+    notifications = request.user.notifications.all().order_by('-created_at')
     
-    # 如果请求，按类型过滤
-    n_type = request.GET.get('type')
-    if n_type:
-        notifications = notifications.filter(notification_type=n_type)
+    # 过滤参数
+    filter_param = request.GET.get('filter') # all, unread, task, mention, system
+    
+    if filter_param == 'unread':
+        notifications = notifications.filter(is_read=False)
+    elif filter_param == 'task':
+        notifications = notifications.filter(notification_type__contains='task')
+    elif filter_param == 'mention':
+        notifications = notifications.filter(notification_type__contains='mention')
+    elif filter_param == 'system':
+        # 排除 task 和 mention
+        notifications = notifications.exclude(notification_type__contains='task').exclude(notification_type__contains='mention')
+    elif filter_param == 'sla':
+         notifications = notifications.filter(notification_type__contains='sla')
+        
+    # 分页
+    paginator = Paginator(notifications, 20) # 每页 20 条
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
         
     return render(request, 'reports/notification_list.html', {
-        'notifications': notifications[:50], # 限制为最近 50 条
-        'unread_count': notifications.filter(is_read=False).count()
+        'notifications': page_obj,
+        'page_obj': page_obj,
+        'unread_count': request.user.notifications.filter(is_read=False).count(),
+        'current_filter': filter_param or 'all'
     })
 
 @login_required
