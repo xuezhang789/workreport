@@ -1,7 +1,8 @@
+import time
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from core.models import Profile
+from core.models import Profile, UserPreference
 
 class PersonalCenterUITest(TestCase):
     def setUp(self):
@@ -38,3 +39,32 @@ class PersonalCenterUITest(TestCase):
         # Check responsive media query presence
         self.assertIn('@media (max-width: 375px)', content)
         self.assertIn('max-width: 140px;', content)
+
+    def test_email_update_marks_profile_verified(self):
+        session = self.client.session
+        session['email_verification'] = {
+            'email': 'verified@example.com',
+            'code': '123456',
+            'expires_at': time.time() + 300,
+        }
+        session.save()
+
+        response = self.client.post(reverse('core:account_settings'), {
+            'action': 'update_email',
+            'email': 'verified@example.com',
+            'code': '123456',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.email, 'verified@example.com')
+        self.assertTrue(self.user.profile.email_verified)
+
+    def test_profile_avatar_url_reads_from_preferences(self):
+        UserPreference.objects.create(
+            user=self.user,
+            data={'profile': {'avatar_data_url': '/media/avatars/test.png'}},
+        )
+
+        self.assertEqual(self.user.profile.avatar_url, '/media/avatars/test.png')

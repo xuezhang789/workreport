@@ -14,14 +14,15 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 # Check if we are running in a development server environment
 import sys
 IS_DEV_SERVER = 'runserver' in sys.argv
+IS_TEST = 'test' in sys.argv or os.environ.get('DJANGO_TEST_MODE') == '1'
 
 # 默认 DEBUG 设置：如果是开发服务器则为 True，否则为 False (默认为安全)
 # Default DEBUG to True if running via runserver, otherwise False (secure by default)
-DEFAULT_DEBUG = 'True' if IS_DEV_SERVER else 'False'
+DEFAULT_DEBUG = 'True' if (IS_DEV_SERVER or IS_TEST) else 'False'
 DEBUG = os.environ.get('DJANGO_DEBUG', DEFAULT_DEBUG) == 'True'
 
 if not SECRET_KEY:
-    if DEBUG:
+    if DEBUG or IS_TEST:
         # 仅开发环境的回退密钥
         # Fallback for dev only
         SECRET_KEY = 'django-insecure-replace-this-with-a-random-secret-key-for-dev'
@@ -159,7 +160,20 @@ STATICFILES_DIRS = [
 
 # Whitenoise 静态文件存储配置
 # Whitenoise configuration
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE_BACKEND = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if (DEBUG or IS_TEST)
+    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': STATICFILES_STORAGE_BACKEND,
+    },
+}
+WHITENOISE_MANIFEST_STRICT = not (DEBUG or IS_TEST)
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

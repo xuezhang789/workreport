@@ -467,10 +467,10 @@
         </div>
         <div class="page-actions">
             <div class="view-switcher">
-                <button type="button" class="view-btn active" id="btnGrid" onclick="switchView('grid')" title="Grid View">
+                <button type="button" class="view-btn active" id="btnGrid" data-view-switch="grid" title="Grid View">
                     <i class="fas fa-th-large"></i>
                 </button>
-                <button type="button" class="view-btn" id="btnTable" onclick="switchView('table')" title="Table View">
+                <button type="button" class="view-btn" id="btnTable" data-view-switch="table" title="Table View">
                     <i class="fas fa-list"></i>
                 </button>
             </div>
@@ -555,7 +555,7 @@
 
                             <!-- Actions -->
                             <div class="filter-actions">
-                                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" onclick="document.getElementById('loadingOverlay').classList.add('active')" title="重置 / Reset">
+                                <a href="{% url 'projects:project_list' %}" class="btn btn-secondary" id="projectResetBtn" title="重置 / Reset">
                                     <i class="fas fa-undo"></i>
                                 </a>
                                 <button type="submit" class="btn btn-primary" id="filterBtn">
@@ -570,12 +570,22 @@
     </div>
 
     <script>
-        // Handle Details default state on mobile
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.innerWidth <= 640) {
-                const details = document.querySelector('.mobile-filter');
-                if (details) details.removeAttribute('open');
+            const details = document.querySelector('.mobile-filter');
+            if (!details) {
+                return;
             }
+
+            function syncMobileFilterDetails() {
+                if (window.innerWidth <= 640) {
+                    details.removeAttribute('open');
+                } else {
+                    details.setAttribute('open', 'open');
+                }
+            }
+
+            syncMobileFilterDetails();
+            window.addEventListener('resize', syncMobileFilterDetails);
         });
     </script>
 
@@ -591,13 +601,12 @@
 
 {% block extra_scripts %}
 <script>
-    // View Switcher
-    const btnGrid = document.getElementById('btnGrid');
-    const btnTable = document.getElementById('btnTable');
-    const viewGrid = document.getElementById('viewGrid');
-    const viewTable = document.getElementById('viewTable');
+    window.switchView = function(viewName) {
+        const btnGrid = document.getElementById('btnGrid');
+        const btnTable = document.getElementById('btnTable');
+        const viewGrid = document.getElementById('viewGrid');
+        const viewTable = document.getElementById('viewTable');
 
-    function switchView(viewName) {
         if (viewName === 'grid') {
             if(viewGrid) viewGrid.classList.add('active');
             if(viewTable) viewTable.classList.remove('active');
@@ -611,14 +620,15 @@
             if(btnTable) btnTable.classList.add('active');
             localStorage.setItem('project_list_view', 'table');
         }
-    }
+    };
 
     document.addEventListener('DOMContentLoaded', function() {
         const savedView = localStorage.getItem('project_list_view') || 'grid';
-        switchView(savedView);
+        window.switchView(savedView);
         
-        // Loading state
         const filterForm = document.getElementById('filterForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resetBtn = document.getElementById('projectResetBtn');
         if(filterForm) {
             filterForm.addEventListener('submit', function() {
                 const btn = document.getElementById('filterBtn');
@@ -629,7 +639,18 @@
             });
         }
 
-        // Pagination Initialization
+        document.querySelectorAll('[data-view-switch]').forEach((button) => {
+            button.addEventListener('click', () => {
+                window.switchView(button.dataset.viewSwitch);
+            });
+        });
+
+        if (resetBtn && loadingOverlay) {
+            resetBtn.addEventListener('click', () => {
+                loadingOverlay.classList.add('active');
+            });
+        }
+
         const storedSize = localStorage.getItem('project_pageSize');
         const urlSize = getQueryParam('per_page');
         if (storedSize && !urlSize) {
@@ -666,17 +687,13 @@
 
     function jumpToPage() {
         const input = document.getElementById('jump-page-input');
+        if (!input) {
+            return;
+        }
         const errorMsg = document.getElementById('jumpError'); // New error element
         const page = parseInt(input.value);
-        // We need total pages. It was passed as maxPage in previous code, but here we can read it from context if available, 
-        // or just rely on the input max attribute if set.
-        // The old code had: const maxPage = {{ page_obj.paginator.num_pages }}; 
-        // But this JS block is in the main template, so it has access to initial context.
-        // However, after HTMX update, this value might be stale if total pages changed (e.g. filter).
-        // Best way: read 'max' attribute from input which is updated by HTMX.
         const maxPage = parseInt(input.getAttribute('max')) || 1;
         
-        // Reset styles
         input.classList.remove('error');
         if(errorMsg) errorMsg.style.display = 'none';
 
@@ -686,11 +703,35 @@
                 errorMsg.textContent = `1~${maxPage}`;
                 errorMsg.style.display = 'block';
             } else {
-                alert(`请输入 1~${maxPage} 之间的页码`);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('error', '页码无效 / Invalid page', `请输入 1~${maxPage} 之间的页码`);
+                } else {
+                    alert(`请输入 1~${maxPage} 之间的页码`);
+                }
             }
             return;
         }
         changePage(page);
     }
+
+    document.addEventListener('change', function(event) {
+        if (event.target.matches('[data-project-per-page]')) {
+            localStorage.setItem('project_pageSize', event.target.value);
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.target.matches('#jump-page-input') && event.key === 'Enter') {
+            event.preventDefault();
+            jumpToPage();
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        if (event.target.closest('[data-jump-page-trigger]')) {
+            event.preventDefault();
+            jumpToPage();
+        }
+    });
 </script>
 {% endblock %}

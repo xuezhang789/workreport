@@ -22,29 +22,22 @@ class ProjectPaginationUITest(TestCase):
             )
 
     def test_pagination_ui_elements(self):
-        """Test that the new pagination UI structure is present."""
-        # Request page 1 with per_page=10 (should have 3 pages: 10, 10, 5)
+        """Test that the pagination toolbar structure is present."""
         response = self.client.get(reverse('projects:project_list'), {'per_page': 10})
         self.assertEqual(response.status_code, 200)
         
-        # Check main container
-        self.assertContains(response, 'class="pagination-bar"')
-        
-        # Check info section
-        self.assertContains(response, 'class="pg-info"')
-        self.assertContains(response, '共 25 条 / 3 页')
-        
-        # Check controls section
-        self.assertContains(response, 'class="pg-controls"')
-        # Previous button (should be disabled on page 1)
-        self.assertContains(response, 'class="pg-btn disabled"') 
-        # Next button (should be enabled)
+        self.assertContains(response, 'class="pagination-toolbar"')
+        self.assertContains(response, 'class="left-info"')
+        self.assertEqual(response.context['page_obj'].paginator.count, 25)
+        self.assertEqual(response.context['page_obj'].paginator.num_pages, 3)
+
+        self.assertContains(response, 'class="center-controls"')
+        self.assertContains(response, 'disabled')
         self.assertContains(response, 'hx-get="/projects/?page=2')
-        
-        # Check right section (Page size & Jump)
-        self.assertContains(response, 'class="pg-right"')
-        self.assertContains(response, 'class="pg-select"')
-        self.assertContains(response, 'class="pg-jump"')
+
+        self.assertContains(response, 'class="right-actions"')
+        self.assertContains(response, 'data-project-per-page')
+        self.assertContains(response, 'data-jump-page-trigger')
         self.assertContains(response, 'id="jump-page-input"')
         
     def test_pagination_htmx_attributes(self):

@@ -4,19 +4,26 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from core.services.upload_service import UploadService
 import json
+import logging
 
 from core.utils import UPLOAD_MAX_SIZE, UPLOAD_ALLOWED_EXTENSIONS, AVATAR_MAX_SIZE, AVATAR_ALLOWED_EXTENSIONS
+
+logger = logging.getLogger(__name__)
 
 @login_required
 @require_POST
 def upload_init(request):
     try:
         data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    try:
         filename = data.get('filename')
-        size = data.get('size')
+        size = int(data.get('size'))
         upload_type = data.get('type', 'default') # 'project', 'task', 'avatar'
         
-        if not filename or not size:
+        if not filename or size <= 0:
             return JsonResponse({'status': 'error', 'message': 'Missing filename or size'}, status=400)
             
         # Determine constraints based on type
@@ -40,8 +47,11 @@ def upload_init(request):
             'upload_id': str(upload.id),
             'uploaded_size': upload.uploaded_size
         })
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    except (TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid filename or size'}, status=400)
+    except Exception:
+        logger.exception("Upload init failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Upload initialization failed'}, status=500)
 
 @login_required
 @require_POST
@@ -61,8 +71,11 @@ def upload_chunk(request):
             return JsonResponse({'status': 'error', 'message': error}, status=400)
             
         return JsonResponse({'status': 'success'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    except (TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid chunk metadata'}, status=400)
+    except Exception:
+        logger.exception("Upload chunk failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Upload chunk failed'}, status=500)
 
 @login_required
 @require_POST
@@ -87,8 +100,13 @@ def upload_complete(request):
         upload.save()
         
         return JsonResponse({'status': 'success', 'upload_id': upload_id})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except (TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid upload id'}, status=400)
+    except Exception:
+        logger.exception("Upload completion check failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Upload completion failed'}, status=500)
 
 @login_required
 @require_POST
@@ -135,5 +153,10 @@ def upload_avatar_complete(request):
         
         return JsonResponse({'status': 'success', 'url': url})
         
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except (TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid upload id'}, status=400)
+    except Exception:
+        logger.exception("Avatar upload completion failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Avatar upload failed'}, status=500)

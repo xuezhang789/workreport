@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from datetime import timedelta
 
@@ -31,6 +32,7 @@ class Profile(models.Model):
     # Payment Info
     usdt_address = models.CharField(max_length=255, blank=True, null=True, verbose_name="USDT 地址")
     usdt_qr_code = models.ImageField(upload_to='payment_qr/%Y/%m/', blank=True, null=True, verbose_name="USDT 收款二维码")
+    email_verified = models.BooleanField(default=False, verbose_name="邮箱已验证")
 
     intermediary_company = models.CharField(max_length=255, blank=True, null=True, verbose_name="中介公司")
     intermediary_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="中介费用")
@@ -47,6 +49,13 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_position_display()}"
+
+    @property
+    def avatar_url(self):
+        try:
+            return self.user.preferences.data.get('profile', {}).get('avatar_data_url')
+        except (AttributeError, ObjectDoesNotExist, TypeError):
+            return None
 
 
 class SalaryHistory(models.Model):

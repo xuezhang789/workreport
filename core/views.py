@@ -26,7 +26,7 @@ from core.forms import (
 from core.utils import _throttle, _admin_forbidden, _friendly_forbidden
 from core.permissions import has_manage_permission
 from work_logs.models import DailyReport
-from core.models import ExportJob, Invitation
+from core.models import ExportJob, Invitation, Profile
 from projects.models import Project
 from reports.utils import get_accessible_projects, get_manageable_projects
 import uuid
@@ -317,9 +317,10 @@ def account_settings(request):
                     request.session.pop('email_verification', None)
                     request.session.modified = True
                     
-                    if hasattr(user, 'profile'):
-                        user.profile.email_verified = True
-                        user.profile.save()
+                    profile, _ = Profile.objects.get_or_create(user=user)
+                    if not profile.email_verified:
+                        profile.email_verified = True
+                        profile.save(update_fields=['email_verified'])
 
                     messages.success(request, "邮箱已更新并完成验证 / Email updated and verified")
                     log_action(request, 'update', f"email updated to {email}")

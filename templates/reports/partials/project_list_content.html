@@ -184,11 +184,11 @@
                     <span style="font-size: 13px; color: var(--text-secondary);">每页</span>
                     <select class="form-select" style="width: auto; padding: 4px 24px 4px 8px; height: 32px; font-size: 13px;" 
                             name="per_page" 
+                            data-project-per-page
                             hx-get="{% url 'projects:project_list' %}?page=1&q={{ q }}&phase={{ phase_id }}&owner={{ owner }}&sort={{ sort_by }}" 
                             hx-target="#projectListContainer"
                             hx-push-url="true"
-                            hx-indicator="#loadingOverlay"
-                            onchange="localStorage.setItem('project_pageSize', this.value)">
+                            hx-indicator="#loadingOverlay">
                         <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
                         <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
                         <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
@@ -198,8 +198,8 @@
                 
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 13px; color: var(--text-secondary);">跳转</span>
-                    <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage()">
-                    <button type="button" class="btn btn-secondary btn-sm" style="height: 32px; padding: 0 12px;" onclick="jumpToPage()">GO</button>
+                    <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}">
+                    <button type="button" class="btn btn-secondary btn-sm" data-jump-page-trigger style="height: 32px; padding: 0 12px;">GO</button>
                 </div>
             </div>
         </div>

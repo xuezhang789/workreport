@@ -45,6 +45,26 @@
         align-items: center;
         gap: 8px;
     }
+    .panel-meta {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+    .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    .meta-chip strong {
+        color: var(--text-main);
+    }
 
     .filter-bar {
         display: flex;
@@ -94,6 +114,7 @@
         transition: background 0.2s;
         cursor: pointer;
         position: relative;
+        outline: none;
     }
 
     .notif-item:last-child {
@@ -102,6 +123,9 @@
 
     .notif-item:hover {
         background: #f8fafc;
+    }
+    .notif-item:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--primary);
     }
 
     .notif-item.unread {
@@ -189,9 +213,11 @@
         gap: 12px;
         opacity: 0; /* Hide by default */
         transition: opacity 0.2s;
+        flex-wrap: wrap;
     }
 
-    .notif-item:hover .notif-actions {
+    .notif-item:hover .notif-actions,
+    .notif-item:focus-within .notif-actions {
         opacity: 1;
     }
 
@@ -207,6 +233,9 @@
     
     .btn-action:hover {
         text-decoration: underline;
+    }
+    .btn-action.delete {
+        color: #dc2626;
     }
 
     .empty-state {
@@ -229,6 +258,14 @@
         justify-content: space-between;
         align-items: center;
         background: #fff;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .pagination-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     .page-link {
@@ -245,6 +282,14 @@
     .page-link:hover {
         background: #f8fafc;
         border-color: #cbd5e1;
+    }
+    .page-current {
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: #eff6ff;
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 700;
     }
 
     .filter-btn {
@@ -306,8 +351,15 @@
             gap: 16px;
             align-items: stretch;
         }
+        .panel-meta {
+            justify-content: center;
+        }
         
         .panel-title h2 {
+            justify-content: center;
+        }
+        .pagination-container,
+        .pagination-links {
             justify-content: center;
         }
     }
@@ -324,11 +376,19 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                     通知中心 <span style="font-weight: 400; color: var(--text-secondary); font-size: 16px; margin-left: 8px;">/ Notification Center</span>
                 </h2>
+                <div class="panel-meta">
+                    <span class="meta-chip">当前筛选 / Filter <strong>{{ current_filter|default:'all' }}</strong></span>
+                    <span class="meta-chip">结果数 / Results <strong id="notif-total-count">{{ total_count }}</strong></span>
+                    <span class="meta-chip">未读 / Unread <strong id="notif-unread-count">{{ unread_count }}</strong></span>
+                </div>
             </div>
             <div style="display: flex; gap: 12px;">
                 <button id="mark-all-read-page" class="btn btn-secondary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     全部已读 / Mark All Read
+                </button>
+                <button id="clear-read-page" class="btn btn-ghost">
+                    清空已读 / Clear Read
                 </button>
             </div>
         </div>
@@ -346,7 +406,7 @@
         <!-- List Container -->
         <div class="notif-list" id="notification-list-container">
             {% for n in notifications %}
-                <div class="notif-item {% if not n.is_read %}unread{% endif %} priority-{{ n.priority }} type-{% if 'task' in n.notification_type %}task{% elif 'mention' in n.notification_type %}mention{% elif 'sla' in n.notification_type %}sla{% else %}system{% endif %}" 
+                <article class="notif-item {% if not n.is_read %}unread{% endif %} priority-{{ n.priority }} type-{% if 'task' in n.notification_type %}task{% elif 'mention' in n.notification_type %}mention{% elif 'sla' in n.notification_type %}sla{% else %}system{% endif %}"
                      data-id="{{ n.id }}"
                      data-type="{{ n.notification_type }}"
                      data-read="{{ n.is_read|yesno:'true,false' }}"
@@ -354,7 +414,8 @@
                      data-task-id="{{ n.data.task_id|default:'' }}"
                      data-project-id="{{ n.data.project_id|default:'' }}"
                      data-comment-id="{{ n.data.comment_id|default:'' }}"
-                     onclick="handleItemClick(this)">
+                     tabindex="0"
+                     role="button">
                     
                     <div class="notif-icon-wrapper">
                         {% if n.priority == 'high' %}
@@ -381,14 +442,15 @@
                         <div class="notif-msg">{{ n.message }}</div>
                         <div class="notif-actions">
                             {% if n.data.action_url or n.data.task_id or n.data.project_id or n.data.comment_id %}
-                                <button class="btn-action">查看详情 / View Details</button>
+                                <button type="button" class="btn-action" data-notification-action="view">查看详情 / View Details</button>
                             {% endif %}
                             {% if not n.is_read %}
-                                <button class="btn-action" onclick="event.stopPropagation(); markRead({{ n.id }}, this)">标为已读 / Mark Read</button>
+                                <button type="button" class="btn-action" data-notification-action="mark-read">标为已读 / Mark Read</button>
                             {% endif %}
+                            <button type="button" class="btn-action delete" data-notification-action="delete">删除 / Delete</button>
                         </div>
                     </div>
-                </div>
+                </article>
             {% empty %}
                 <div class="empty-state">
                     <div class="empty-icon">📭</div>
@@ -403,13 +465,15 @@
             <span style="font-size: 13px; color: var(--text-secondary);">
                 显示第 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }} 条
             </span>
-            <div style="display: flex; gap: 8px;">
+            <div class="pagination-links">
                 {% if page_obj.has_previous %}
+                    <a href="?{% url_replace page=1 %}" class="page-link">首页 / First</a>
                     <a href="?{% url_replace page=page_obj.previous_page_number %}" class="page-link">上一页 / Prev</a>
                 {% endif %}
-                
+                <span class="page-current">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
                 {% if page_obj.has_next %}
                     <a href="?{% url_replace page=page_obj.next_page_number %}" class="page-link">下一页 / Next</a>
+                    <a href="?{% url_replace page=page_obj.paginator.num_pages %}" class="page-link">末页 / Last</a>
                 {% endif %}
             </div>
         </div>
@@ -418,71 +482,182 @@
 </div>
 
 <script>
-    // --- Interaction Logic ---
-    window.handleItemClick = function(el) {
-        const id = el.dataset.id;
-        const actionUrl = el.dataset.actionUrl;
-        const taskId = el.dataset.taskId;
-        const projectId = el.dataset.projectId;
-        const commentId = el.dataset.commentId;
-        
-        // If unread, mark read first
-        if (el.dataset.read === 'false') {
-            markRead(id, el, false);
-        }
+    (function() {
+        const listContainer = document.getElementById('notification-list-container');
+        const markAllButton = document.getElementById('mark-all-read-page');
+        const clearReadButton = document.getElementById('clear-read-page');
+        const unreadCountNode = document.getElementById('notif-unread-count');
 
-        // Navigate
-        if (actionUrl && actionUrl !== 'None' && actionUrl !== '') {
-             window.location.href = actionUrl;
-        } else if (taskId && taskId !== 'None' && taskId !== '') {
-             if (commentId && commentId !== 'None' && commentId !== '') {
-                  window.location.href = `/tasks/${taskId}/view/#comment-${commentId}`;
-             } else {
-                  window.location.href = `/tasks/${taskId}/view/`;
-             }
-        } else if (projectId && projectId !== 'None' && projectId !== '') {
-             window.location.href = `/projects/${projectId}/`;
-        }
-    };
-
-    window.markRead = function(id, el, stopProp = true) {
-        if (stopProp && event) event.stopPropagation();
-        
-        fetch(`/reports/api/notifications/${id}/mark-read/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+        function updateGlobalUnreadBadge(unreadCount) {
+            if (unreadCountNode) {
+                unreadCountNode.textContent = unreadCount;
             }
-        }).then(res => {
-            if (res.ok) {
-                // Update UI without reload
-                const item = document.querySelector(`.notif-item[data-id="${id}"]`);
-                if (item) {
-                    item.classList.remove('unread');
-                    item.dataset.read = 'true';
-                    // Remove "Mark Read" button
-                    const btn = item.querySelector('button[onclick*="markRead"]');
-                    if (btn) btn.remove();
+
+            const badge = document.getElementById('notification-badge');
+            if (!badge) {
+                return;
+            }
+
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+                badge.textContent = '0';
+            }
+        }
+
+        function getNotificationDestination(item) {
+            const actionUrl = item.dataset.actionUrl;
+            const taskId = item.dataset.taskId;
+            const projectId = item.dataset.projectId;
+            const commentId = item.dataset.commentId;
+
+            if (actionUrl && actionUrl !== 'None') {
+                return actionUrl;
+            }
+            if (taskId && taskId !== 'None') {
+                if (commentId && commentId !== 'None') {
+                    return `/tasks/${taskId}/view/#comment-${commentId}`;
+                }
+                return `/tasks/${taskId}/view/`;
+            }
+            if (projectId && projectId !== 'None') {
+                return `/projects/${projectId}/`;
+            }
+            return '';
+        }
+
+        async function postNotificationAction(url) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Notification action failed');
+            }
+            return response.json();
+        }
+
+        async function markNotificationRead(item) {
+            if (!item || item.dataset.read === 'true') {
+                return;
+            }
+
+            const data = await postNotificationAction(`/reports/api/notifications/${item.dataset.id}/mark-read/`);
+            item.classList.remove('unread');
+            item.dataset.read = 'true';
+            const markButton = item.querySelector('[data-notification-action="mark-read"]');
+            if (markButton) {
+                markButton.remove();
+            }
+            updateGlobalUnreadBadge(Number(data.unread_count || 0));
+        }
+
+        async function deleteNotification(item) {
+            if (!item) {
+                return;
+            }
+            await postNotificationAction(`/reports/api/notifications/${item.dataset.id}/delete/`);
+            window.location.reload();
+        }
+
+        async function handleNotificationOpen(item) {
+            if (!item) {
+                return;
+            }
+
+            const destination = getNotificationDestination(item);
+            if (item.dataset.read === 'false') {
+                try {
+                    await markNotificationRead(item);
+                } catch (error) {
+                    // keep navigation responsive even if marking read fails
                 }
             }
-        });
-    };
 
-    document.getElementById('mark-all-read-page').addEventListener('click', function() {
-        if (!confirm('确定将所有通知标记为已读？\nMark all notifications as read?')) return;
-        
-        const btn = this;
-        btn.disabled = true;
-        btn.innerHTML = 'Processing...';
-
-        fetch("{% url 'reports:mark_all_read_api' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+            if (destination) {
+                window.location.href = destination;
             }
-        }).then(() => {
-            window.location.reload();
+        }
+
+        listContainer.addEventListener('click', async (event) => {
+            const actionButton = event.target.closest('[data-notification-action]');
+            const item = event.target.closest('.notif-item');
+
+            if (actionButton && item) {
+                event.stopPropagation();
+                const action = actionButton.dataset.notificationAction;
+
+                if (action === 'view') {
+                    handleNotificationOpen(item);
+                    return;
+                }
+                if (action === 'mark-read') {
+                    await markNotificationRead(item);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('success', '已标记为已读 / Marked read', '通知状态已更新。');
+                    }
+                    return;
+                }
+                if (action === 'delete') {
+                    await deleteNotification(item);
+                }
+                return;
+            }
+
+            if (item) {
+                handleNotificationOpen(item);
+            }
         });
-    });
+
+        listContainer.addEventListener('keydown', (event) => {
+            const item = event.target.closest('.notif-item');
+            if (!item) {
+                return;
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleNotificationOpen(item);
+            }
+        });
+
+        markAllButton.addEventListener('click', async function() {
+            if (!confirm('确定将所有通知标记为已读？\nMark all notifications as read?')) return;
+
+            const originalText = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = 'Processing...';
+
+            try {
+                const data = await postNotificationAction("{% url 'reports:mark_all_read_api' %}");
+                updateGlobalUnreadBadge(Number(data.unread_count || 0));
+                window.location.reload();
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+
+        clearReadButton.addEventListener('click', async function() {
+            if (!confirm('确定清空所有已读通知？\nClear all read notifications?')) return;
+
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = 'Processing...';
+
+            try {
+                const data = await postNotificationAction("{% url 'reports:delete_read_notifications_api' %}");
+                updateGlobalUnreadBadge(Number(data.unread_count || 0));
+                window.location.reload();
+            } finally {
+                this.disabled = false;
+                this.textContent = originalText;
+            }
+        });
+    })();
 </script>
 {% endblock %}

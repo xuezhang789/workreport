@@ -26,6 +26,8 @@ class UIRenderingTests(TestCase):
         # Check for new CSS classes/structure
         self.assertContains(response, 'team-grid')
         self.assertContains(response, 'team-card')
+        self.assertContains(response, 'id="toastContainer" class="toast-container" aria-live="polite"')
+        self.assertContains(response, 'id="mobile-menu-backdrop"')
         # Check content
         self.assertContains(response, 'Test Project') # Project tag in user card
 

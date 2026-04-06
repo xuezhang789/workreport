@@ -1,5 +1,5 @@
 <div class="notification-center" id="notification-center">
-    <button class="ghost-link icon-btn" id="bell-btn" aria-label="Notifications">
+    <button class="ghost-link icon-btn" id="bell-btn" aria-label="Notifications" aria-expanded="false" aria-controls="notification-dropdown">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -7,15 +7,23 @@
         <span class="badge" id="notification-badge" style="display: none;">0</span>
     </button>
     
-    <div class="notification-dropdown" id="notification-dropdown">
+    <div class="notification-dropdown" id="notification-dropdown" role="dialog" aria-label="通知 / Notifications" aria-hidden="true">
         <div class="dropdown-header">
             <h3>通知 / Notifications</h3>
-            <button class="text-btn" id="mark-all-read">全部已读 / Mark all read</button>
+            <div class="dropdown-actions">
+                <button class="text-btn" id="mark-all-read">全部已读 / Mark all read</button>
+                <button class="text-btn danger-btn" id="clear-read">清空已读 / Clear read</button>
+            </div>
         </div>
-        <div class="notification-list" id="notification-list">
+        <div class="notification-list" id="notification-list" aria-live="polite" aria-busy="true">
             <div class="empty-state">加载中... / Loading...</div>
         </div>
         <div class="dropdown-footer">
+            <div class="dropdown-pagination">
+                <button type="button" class="text-btn" id="notification-prev" disabled>上一页 / Prev</button>
+                <span id="notification-page-info">1 / 1</span>
+                <button type="button" class="text-btn" id="notification-next" disabled>下一页 / Next</button>
+            </div>
             <a href="{% url 'reports:notification_list' %}">查看全部 / View All</a>
         </div>
     </div>
@@ -87,6 +95,13 @@
         font-size: 14px;
         font-weight: 700;
     }
+    .dropdown-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
     .text-btn {
         background: none;
         border: none;
@@ -97,6 +112,14 @@
     }
     .text-btn:hover {
         text-decoration: underline;
+    }
+    .text-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        text-decoration: none;
+    }
+    .danger-btn {
+        color: #dc2626;
     }
     .notification-list {
         overflow-y: auto;
@@ -111,6 +134,15 @@
         display: flex;
         gap: 12px;
         align-items: flex-start;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        border-radius: 0;
+    }
+    .notification-item:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: -2px;
     }
     .notification-item:hover {
         background: #f8fafc;
@@ -154,23 +186,67 @@
         color: #94a3b8;
         margin-top: 4px;
     }
+    .notif-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        flex-wrap: wrap;
+    }
+    .notification-item:hover .notif-actions,
+    .notification-item:focus-within .notif-actions {
+        opacity: 1;
+    }
+    .notif-action-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #3b82f6;
+    }
+    .notif-action-btn.delete-btn {
+        color: #dc2626;
+    }
     .dropdown-footer {
-        padding: 10px;
+        padding: 10px 12px;
         text-align: center;
         border-top: 1px solid #f1f5f9;
         background: #f8fafc;
         border-radius: 0 0 12px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
     }
     .dropdown-footer a {
         font-size: 12px;
         color: #64748b;
         text-decoration: none;
     }
+    .dropdown-pagination {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    #notification-page-info {
+        font-size: 12px;
+        color: #64748b;
+        min-width: 52px;
+        text-align: center;
+    }
     .empty-state {
         padding: 20px;
         text-align: center;
         color: #94a3b8;
         font-size: 13px;
+    }
+
+    .empty-state.error-state {
+        color: #b91c1c;
     }
     
     @media (max-width: 640px) {
@@ -180,6 +256,14 @@
             left: 10px;
             right: 10px;
             width: auto;
+            max-height: min(70vh, 560px);
+        }
+        .notif-actions {
+            opacity: 1;
+        }
+        .dropdown-footer,
+        .dropdown-actions {
+            justify-content: center;
         }
     }
 </style>
@@ -191,161 +275,352 @@
         const list = document.getElementById('notification-list');
         const badge = document.getElementById('notification-badge');
         const markAllBtn = document.getElementById('mark-all-read');
+        const clearReadBtn = document.getElementById('clear-read');
+        const prevBtn = document.getElementById('notification-prev');
+        const nextBtn = document.getElementById('notification-next');
+        const pageInfo = document.getElementById('notification-page-info');
         let socket = null;
         let isOpen = false;
+        let unreadCount = 0;
+        let currentPage = 1;
+        let totalPages = 1;
+        const perPage = 8;
 
-        // Toggle Dropdown
+        function isMobileViewport() {
+            return window.matchMedia('(max-width: 640px)').matches;
+        }
+
+        function setDropdownState(open) {
+            if (isOpen === open) {
+                return;
+            }
+            isOpen = open;
+            dropdown.classList.toggle('open', open);
+            dropdown.setAttribute('aria-hidden', String(!open));
+            bellBtn.setAttribute('aria-expanded', String(open));
+            if (isMobileViewport()) {
+                if (typeof window.setPageScrollLock === 'function') {
+                    window.setPageScrollLock(open);
+                } else {
+                    document.body.classList.toggle('page-scroll-lock', open);
+                }
+            }
+        }
+
+        function setListState(message, extraClass) {
+            list.setAttribute('aria-busy', 'false');
+            list.replaceChildren();
+            const state = document.createElement('div');
+            state.className = extraClass ? `empty-state ${extraClass}` : 'empty-state';
+            state.textContent = message;
+            list.appendChild(state);
+        }
+
+        function updatePagination(page, pageCount) {
+            currentPage = page;
+            totalPages = pageCount || 1;
+            pageInfo.textContent = `${currentPage} / ${totalPages}`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        }
+
         bellBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            isOpen = !isOpen;
-            dropdown.classList.toggle('open', isOpen);
+            setDropdownState(!isOpen);
             if (isOpen) {
-                fetchNotifications();
+                fetchNotifications(currentPage || 1);
             }
         });
 
-        // Close when clicking outside
         document.addEventListener('click', (e) => {
             if (isOpen && !dropdown.contains(e.target) && !bellBtn.contains(e.target)) {
-                isOpen = false;
-                dropdown.classList.remove('open');
+                setDropdownState(false);
             }
         });
 
-        // Fetch Notifications via API
-        function fetchNotifications() {
-            fetch("{% url 'reports:notification_list_api' %}")
-                .then(response => response.json())
-                .then(data => {
-                    renderList(data.notifications);
-                    updateBadge(data.unread_count);
+        async function fetchNotifications(page = 1) {
+            list.setAttribute('aria-busy', 'true');
+            try {
+                const response = await fetch(`{% url 'reports:notification_list_api' %}?page=${page}&per_page=${perPage}`, {
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-store'
                 });
+                if (!response.ok) {
+                    throw new Error('Unable to fetch notifications');
+                }
+                const data = await response.json();
+                unreadCount = Number(data.unread_count || 0);
+                updatePagination(Number(data.page || 1), Number(data.total_pages || 1));
+                renderList(data.notifications || []);
+                updateBadge(unreadCount);
+            } catch (error) {
+                updatePagination(1, 1);
+                setListState('通知加载失败，请稍后重试 / Failed to load notifications.', 'error-state');
+            }
         }
 
         function updateBadge(count) {
+            unreadCount = count;
             if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : count;
+                badge.textContent = count > 99 ? '99+' : String(count);
                 badge.style.display = 'block';
-                // Add pulse animation
                 badge.classList.add('pulse');
                 setTimeout(() => badge.classList.remove('pulse'), 1000);
             } else {
                 badge.style.display = 'none';
+                badge.textContent = '0';
             }
         }
 
+        function getNotificationDestination(notification) {
+            const data = notification.data || {};
+            if (data.action_url) {
+                return data.action_url;
+            }
+            if (data.task_id) {
+                if (data.comment_id) {
+                    return `/tasks/${data.task_id}/view/#comment-${data.comment_id}`;
+                }
+                return `/tasks/${data.task_id}/view/`;
+            }
+            if (data.project_id) {
+                return `/projects/${data.project_id}/`;
+            }
+            return '';
+        }
+
+        function buildNotificationItem(notification) {
+            const item = document.createElement('div');
+            item.className = `notification-item ${notification.is_read ? '' : 'unread'} ${notification.priority === 'high' ? 'priority-high' : ''}`.trim();
+            item.tabIndex = 0;
+            item.setAttribute('role', 'button');
+            item.setAttribute('aria-label', notification.title || '通知 / Notification');
+
+            const icon = document.createElement('div');
+            icon.className = 'notif-icon';
+            icon.textContent = getIcon(notification.notification_type, notification.priority);
+
+            const content = document.createElement('div');
+            content.className = 'notif-content';
+
+            const title = document.createElement('div');
+            title.className = 'notif-title';
+            title.textContent = `${notification.priority === 'high' ? '! ' : ''}${notification.title || '通知 / Notification'}`;
+
+            const message = document.createElement('div');
+            message.className = 'notif-msg';
+            message.textContent = notification.message || '';
+
+            const time = document.createElement('div');
+            time.className = 'notif-time';
+            time.textContent = notification.time_since || '';
+
+            const actions = document.createElement('div');
+            actions.className = 'notif-actions';
+
+            if (!notification.is_read) {
+                const markButton = document.createElement('button');
+                markButton.type = 'button';
+                markButton.className = 'notif-action-btn';
+                markButton.textContent = '标为已读 / Mark read';
+                markButton.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    await markNotificationRead(notification.id);
+                    fetchNotifications(currentPage);
+                });
+                actions.appendChild(markButton);
+            }
+
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'notif-action-btn delete-btn';
+            deleteButton.textContent = '删除 / Delete';
+            deleteButton.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                await deleteNotification(notification.id);
+                fetchNotifications(currentPage);
+            });
+            actions.appendChild(deleteButton);
+
+            content.appendChild(title);
+            content.appendChild(message);
+            content.appendChild(time);
+            content.appendChild(actions);
+            item.appendChild(icon);
+            item.appendChild(content);
+
+            item.addEventListener('click', () => handleNotificationClick(notification));
+            item.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleNotificationClick(notification);
+                }
+            });
+            return item;
+        }
+
         function renderList(notifications) {
-            if (notifications.length === 0) {
-                list.innerHTML = '<div class="empty-state">暂无通知 / No notifications</div>';
+            list.setAttribute('aria-busy', 'false');
+            list.replaceChildren();
+            if (!notifications.length) {
+                setListState('暂无通知 / No notifications');
                 return;
             }
-            list.innerHTML = notifications.map(n => `
-                <div class="notification-item ${n.is_read ? '' : 'unread'} ${n.priority === 'high' ? 'priority-high' : ''}" onclick="handleNotificationClick(${n.id}, '${n.data?.action_url || ''}', '${n.data?.task_id || ''}', '${n.data?.project_id || ''}', '${n.data?.comment_id || ''}')">
-                    <div class="notif-icon">
-                        ${getIcon(n.notification_type, n.priority)}
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">
-                            ${n.priority === 'high' ? '<span style="color:#ef4444;margin-right:2px;">!</span>' : ''}
-                            ${n.title}
-                        </div>
-                        <div class="notif-msg">${n.message}</div>
-                        <div class="notif-time">${n.time_since}</div>
-                    </div>
-                </div>
-            `).join('');
+            notifications.forEach((notification) => {
+                list.appendChild(buildNotificationItem(notification));
+            });
         }
 
         function getIcon(type, priority) {
             if (priority === 'high') return '⚠️';
-            // Simple SVG icons based on type
             if (type === 'task_assigned') return '📋';
             if (type === 'task_mention') return '@';
             if (type === 'task_updated') return '📝';
             return '🔔';
         }
 
-        // WebSocket Connection
+        async function markNotificationRead(notificationId) {
+            const response = await fetch(`/reports/api/notifications/${notificationId}/mark-read/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            updateBadge(Number(data.unread_count || 0));
+            return data;
+        }
+
+        async function deleteNotification(notificationId) {
+            const response = await fetch(`/reports/api/notifications/${notificationId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            updateBadge(Number(data.unread_count || 0));
+            if (typeof window.showToast === 'function') {
+                window.showToast('success', '通知已删除 / Deleted', '通知已从列表中移除。');
+            }
+            return data;
+        }
+
+        async function handleNotificationClick(notification) {
+            const destination = getNotificationDestination(notification);
+            try {
+                if (!notification.is_read) {
+                    await markNotificationRead(notification.id);
+                }
+            } finally {
+                if (destination) {
+                    window.location.href = destination;
+                } else {
+                    fetchNotifications(currentPage);
+                }
+            }
+        }
+
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             socket = new WebSocket(protocol + '//' + window.location.host + '/ws/notifications/');
 
-            socket.onopen = function(e) {
-                // console.log('Notification WebSocket connected');
-            };
-
             socket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
-                // console.log('New notification:', data);
-                
-                // Show badge increment
-                const current = parseInt(badge.textContent) || 0;
-                updateBadge(current + 1);
-                
-                // If open, prepend to list
+                updateBadge(unreadCount + 1);
                 if (isOpen) {
-                    // Re-fetch is easiest to keep sort order and format consistent
-                    fetchNotifications(); 
+                    fetchNotifications(1);
                 }
-                
-                // Optional: Sound or Toast
-                playNotificationSound();
+                playNotificationSound(data);
             };
 
-            socket.onclose = function(e) {
-                console.error('WebSocket closed. Reconnecting in 5s...');
+            socket.onclose = function() {
                 setTimeout(connectWebSocket, 5000);
             };
         }
 
         function playNotificationSound() {
-            // Simple beep or check user preference
-            // Audio context logic here if needed
+            return;
         }
 
-        // Mark All Read
-        markAllBtn.addEventListener('click', () => {
-            fetch("{% url 'reports:mark_all_read_api' %}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+        markAllBtn.addEventListener('click', async () => {
+            if (unreadCount === 0) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('info', '没有未读通知 / No unread notifications', '当前没有需要标记的未读通知。');
                 }
-            }).then(() => {
-                fetchNotifications();
-            });
+                return;
+            }
+            markAllBtn.disabled = true;
+            try {
+                const response = await fetch("{% url 'reports:mark_all_read_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                updateBadge(Number(data.unread_count || 0));
+                fetchNotifications(currentPage);
+            } finally {
+                markAllBtn.disabled = false;
+            }
         });
 
-        // Initialize
+        clearReadBtn.addEventListener('click', async () => {
+            if (!confirm('确定清空所有已读通知？\nClear all read notifications?')) {
+                return;
+            }
+
+            clearReadBtn.disabled = true;
+            try {
+                const response = await fetch("{% url 'reports:delete_read_notifications_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const data = await response.json();
+                updateBadge(Number(data.unread_count || 0));
+                fetchNotifications(currentPage);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('success', '已清空已读通知 / Cleared', `已删除 ${Number(data.deleted_count || 0)} 条已读通知。`);
+                }
+            } finally {
+                clearReadBtn.disabled = false;
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (!prevBtn.disabled) {
+                fetchNotifications(currentPage - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (!nextBtn.disabled) {
+                fetchNotifications(currentPage + 1);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                setDropdownState(false);
+                bellBtn.focus();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (!isOpen) {
+                return;
+            }
+            if (!isMobileViewport()) {
+                setDropdownState(false);
+            }
+        });
+
         if ("{{ request.user.is_authenticated }}" === "True") {
-            fetchNotifications(); // Initial fetch for badge
+            fetchNotifications(1);
             connectWebSocket();
         }
-
-        // Global handler for click (needs to be attached to window or handled via event delegation above)
-        window.handleNotificationClick = function(id, actionUrl, taskId, projectId, commentId) {
-            // Mark read
-            fetch(`/reports/api/notifications/${id}/mark-read/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            }).then(() => {
-                // Redirect logic
-                if (actionUrl) {
-                    window.location.href = actionUrl;
-                } else if (taskId) {
-                    if (commentId) {
-                        window.location.href = `/tasks/${taskId}/view/#comment-${commentId}`;
-                    } else {
-                        window.location.href = `/tasks/${taskId}/view/`;
-                    }
-                } else if (projectId) {
-                    window.location.href = `/projects/${projectId}/`;
-                } else {
-                    // Default redirect or just refresh
-                    fetchNotifications();
-                }
-            });
-        };
     });
 </script>

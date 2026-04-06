@@ -74,3 +74,18 @@ class UploadServiceTest(TestCase):
         import uuid
         success, error = UploadService.process_chunk(uuid.uuid4(), 0, ContentFile(b'test'))
         self.assertFalse(success)
+
+    def test_init_sanitizes_filename(self):
+        upload, error = UploadService.init_chunked_upload(self.user, '../../nested/evil.txt', 10)
+        self.assertIsNone(error)
+        self.assertEqual(upload.filename, 'evil.txt')
+        self.assertTrue(upload.temp_path.startswith('/tmp/django_test_media/temp_uploads/'))
+        self.assertNotIn('..', upload.temp_path)
+
+    def test_process_chunk_rejects_oversized_payload(self):
+        upload, error = UploadService.init_chunked_upload(self.user, 'oversize.txt', 5)
+        self.assertIsNone(error)
+
+        success, error = UploadService.process_chunk(upload.id, 0, ContentFile(b'123456'), offset=0)
+        self.assertFalse(success)
+        self.assertEqual(error, 'Uploaded data exceeds declared file size')

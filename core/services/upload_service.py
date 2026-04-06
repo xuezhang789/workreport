@@ -5,6 +5,7 @@ import uuid
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.utils.text import get_valid_filename
 from core.models import ChunkedUpload
 from core.utils import UPLOAD_MAX_SIZE, UPLOAD_ALLOWED_EXTENSIONS, _validate_file
 from core.services.storage.router import RouterStorage
@@ -12,6 +13,15 @@ from core.services.storage.router import RouterStorage
 logger = logging.getLogger(__name__)
 
 class UploadService:
+    @staticmethod
+    def sanitize_filename(filename):
+        raw_name = (filename or '').replace('\\', '/')
+        base_name = os.path.basename(raw_name).strip()
+        if not base_name:
+            return ''
+        safe_name = get_valid_filename(base_name)
+        return safe_name[:255]
+
     @staticmethod
     def validate_file_request(file_obj, max_size=UPLOAD_MAX_SIZE, allowed_extensions=UPLOAD_ALLOWED_EXTENSIONS):
         """
@@ -25,6 +35,11 @@ class UploadService:
         """
         Initialize a chunked upload session.
         """
+        filename = UploadService.sanitize_filename(filename)
+        if not filename:
+            return None, "Invalid filename"
+        if total_size <= 0:
+            return None, "File size must be greater than 0"
         if total_size > max_size:
             return None, f"File size exceeds limit ({max_size // (1024*1024)}MB)"
             
@@ -61,8 +76,7 @@ class UploadService:
         # Create a unique temp file path
         # We use a dedicated temp directory for uploads
         temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir, exist_ok=True)
+        os.makedirs(temp_dir, exist_ok=True)
             
         upload_id = uuid.uuid4()
         temp_path = os.path.join(temp_dir, f"{upload_id}_{filename}")
@@ -100,12 +114,22 @@ class UploadService:
 
         try:
             with open(upload.temp_path, 'r+b') as f:
+                if offset is not None and offset < 0:
+                    return False, "Invalid upload offset"
                 if offset is not None:
-                    f.seek(offset)
+                    write_offset = offset
+                    f.seek(write_offset)
                 else:
                     # Append mode if no offset (simplistic)
-                    f.seek(0, 2) 
-                f.write(chunk_data.read())
+                    f.seek(0, 2)
+                    write_offset = f.tell()
+
+                chunk_bytes = chunk_data.read()
+                next_size = write_offset + len(chunk_bytes)
+                if next_size > upload.file_size:
+                    return False, "Uploaded data exceeds declared file size"
+
+                f.write(chunk_bytes)
                 
             upload.uploaded_size = os.path.getsize(upload.temp_path)
             upload.chunk_count += 1
@@ -128,12 +152,7 @@ class UploadService:
             return None, "Upload session not found"
 
         if upload.uploaded_size != upload.file_size:
-            # Simple size check. 
-            # Note: For strict check, we might want to check md5, but let's stick to size for now.
-            # If size mismatch, maybe some chunks missing?
-            pass 
-            # We allow it for now, as sometimes sizes might differ slightly due to headers? No, should be exact.
-            # return None, f"Size mismatch: expected {upload.file_size}, got {upload.uploaded_size}"
+            return None, f"Size mismatch: expected {upload.file_size}, got {upload.uploaded_size}"
 
         # Read temp file and save to RouterStorage
         try:

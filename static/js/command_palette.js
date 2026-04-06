@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Inject Command Palette HTML
     const paletteHtml = `
-    <div id="command-palette-overlay" class="cmd-overlay" style="display: none;">
+    <div id="command-palette-overlay" class="cmd-overlay" style="display: none;" role="dialog" aria-modal="true" aria-label="命令面板 / Command Palette">
         <div class="cmd-modal">
             <div class="cmd-header">
                 <div class="cmd-search-icon">
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const input = document.getElementById('cmd-input');
     const list = document.getElementById('cmd-list');
     const emptyState = document.getElementById('cmd-empty');
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
     
     let isOpen = false;
     let selectedIndex = 0;
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let remoteCommands = [];
     let filteredCommands = [];
     let debounceTimer = null;
+    let remoteAbortController = null;
 
     // Icon Mapper
     function getIconForTitle(title, url) {
@@ -75,43 +77,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Collect Commands from DOM
     function collectCommands() {
         const commands = [];
-        
-        // 1. Topbar Links (Main Navigation)
-        const navLinks = document.querySelectorAll('.topbar a:not(.admin-menu a)');
-        navLinks.forEach(link => {
-            if (link.offsetParent === null) return; // Skip hidden
-            const title = link.innerText.trim();
-            const url = link.href;
-            if (title && url && !url.includes('#') && !url.includes('javascript')) {
-                commands.push({
-                    category: '导航 / Navigation',
-                    title: title,
-                    url: url,
-                    icon: getIconForTitle(title, url)
-                });
-            }
-        });
 
-        // 2. Admin Menu Links
-        const adminLinks = document.querySelectorAll('.admin-menu a');
-        adminLinks.forEach(link => {
-            const title = link.innerText.trim();
-            const url = link.href;
-            if (title && url) {
-                commands.push({
-                    category: '管理 / Admin',
-                    title: title,
-                    url: url,
-                    icon: getIconForTitle(title, url)
-                });
-            }
-        });
+        function collectLinkSet(selector, category, { requireVisible = false } = {}) {
+            document.querySelectorAll(selector).forEach((link) => {
+                if (requireVisible && link.offsetParent === null) {
+                    return;
+                }
+                const title = (link.innerText || link.textContent || '').trim();
+                const url = link.href;
+                if (title && url && !url.includes('#') && !url.includes('javascript')) {
+                    commands.push({
+                        category,
+                        title,
+                        url,
+                        icon: getIconForTitle(title, url)
+                    });
+                }
+            });
+        }
 
-        // 3. System / Actions
+        collectLinkSet('.brand[href], nav[aria-label="Main Navigation"] a[href]', '导航 / Navigation', { requireVisible: true });
+        collectLinkSet('#admin-menu a[href]', '管理 / Admin');
+        collectLinkSet('#user-menu a[href]', '账户 / Account');
+        collectLinkSet('#mobile-menu a[href]', '移动端 / Mobile');
+
         commands.push({ category: '系统 / System', title: '切换深色模式 / Toggle Dark Mode', action: toggleDarkMode, icon: '🌓' });
         commands.push({ category: '系统 / System', title: '刷新页面 / Reload Page', action: () => window.location.reload(), icon: '🔄' });
-        
-        // 4. Logout (Special case if not found in links)
+
         const logoutForm = document.getElementById('logout-form');
         if (logoutForm) {
              commands.push({ 
@@ -124,32 +116,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Deduplicate by URL
         const uniqueCommands = [];
-        const seenUrls = new Set();
+        const seenKeys = new Set();
         commands.forEach(cmd => {
-            // Remove 'Advanced Reports' / '高级报表'
             if (cmd.title && (cmd.title.includes('高级报表') || cmd.title.includes('Advanced Reports'))) {
                 return;
             }
 
-            if (cmd.url) {
-                if (!seenUrls.has(cmd.url)) {
-                    seenUrls.add(cmd.url);
-                    uniqueCommands.push(cmd);
-                }
-            } else {
-                uniqueCommands.push(cmd); // Actions always added
+            const key = cmd.url || `${cmd.category}:${cmd.title}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                uniqueCommands.push(cmd);
             }
         });
 
         baseCommands = uniqueCommands;
     }
 
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('theme', theme);
+        if (themeMeta) {
+            themeMeta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#4f46e5');
+        }
+    }
+
     function toggleDarkMode() {
-        // Simple mock implementation or hook into existing theme logic
-        document.documentElement.classList.toggle('dark');
-        // Check if user has preferences saved (optional)
-        const isDark = document.documentElement.classList.contains('dark');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        const currentTheme = document.documentElement.dataset.theme || 'light';
+        applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
     }
     
     // Remote Search
@@ -158,13 +151,22 @@ document.addEventListener('DOMContentLoaded', function() {
             remoteCommands = [];
             return;
         }
+
+        if (remoteAbortController) {
+            remoteAbortController.abort();
+        }
+        const controller = new AbortController();
+        remoteAbortController = controller;
         
         try {
-            const response = await fetch(`/core/api/command-search/?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/core/api/command-search/?q=${encodeURIComponent(query)}`, {
+                signal: controller.signal,
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store'
+            });
             if (response.ok) {
                 const data = await response.json();
                 remoteCommands = data.results || [];
-                // Ensure icons for remote commands if missing
                 remoteCommands.forEach(cmd => {
                     if (!cmd.icon) cmd.icon = getIconForTitle(cmd.title, cmd.url);
                 });
@@ -172,8 +174,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 remoteCommands = [];
             }
         } catch (error) {
-            console.error('Command Search Error:', error);
+            if (error.name !== 'AbortError') {
+                console.error('Command Search Error:', error);
+            }
             remoteCommands = [];
+        } finally {
+            if (remoteAbortController === controller) {
+                remoteAbortController = null;
+            }
         }
     }
 
@@ -186,19 +194,38 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = '';
             remoteCommands = [];
             filterCommands('');
+            overlay.classList.add('open');
             overlay.style.display = 'flex';
+            overlay.setAttribute('aria-hidden', 'false');
             input.focus();
-            document.body.style.overflow = 'hidden';
+            if (typeof window.setPageScrollLock === 'function') {
+                window.setPageScrollLock(true);
+            } else {
+                document.body.classList.add('page-scroll-lock');
+            }
         } else {
-            overlay.style.display = 'none';
-            document.body.style.overflow = '';
+            closePalette();
         }
     }
 
     function closePalette() {
+        if (!isOpen && overlay.style.display === 'none') {
+            return;
+        }
         isOpen = false;
+        clearTimeout(debounceTimer);
+        if (remoteAbortController) {
+            remoteAbortController.abort();
+            remoteAbortController = null;
+        }
+        overlay.classList.remove('open');
         overlay.style.display = 'none';
-        document.body.style.overflow = '';
+        overlay.setAttribute('aria-hidden', 'true');
+        if (typeof window.setPageScrollLock === 'function') {
+            window.setPageScrollLock(false);
+        } else {
+            document.body.classList.remove('page-scroll-lock');
+        }
     }
 
     async function filterCommands(query) {
@@ -210,13 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cmd.category.toLowerCase().includes(q)
         );
         
-        // Combine with Remote (if query exists)
-        if (q.length >= 2) {
-            // We rely on the caller to await fetchRemoteCommands before calling this, 
-            // OR we handle it here if we want to be async.
-            // But since this is called on input, we separate fetching and filtering.
-            // Actually, for better UX, we should merge remoteCommands which are updated by the debounce handler.
-        } else {
+        if (q.length < 2) {
             remoteCommands = [];
         }
 
@@ -231,9 +252,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         });
 
-        // Sort: Category > Title
-        // Note: Remote results usually come sorted by relevance, maybe keep them at top?
-        // Let's keep remote results (which are usually more specific searches) at top if query exists.
         if (q.length < 2) {
             filteredCommands.sort((a, b) => {
                 if (a.category < b.category) return -1;
@@ -247,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderList() {
-        list.innerHTML = '';
+        list.replaceChildren();
         
         if (filteredCommands.length === 0) {
             emptyState.style.display = 'block';
@@ -269,11 +287,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const item = document.createElement('div');
             item.className = `cmd-item ${index === selectedIndex ? 'selected' : ''}`;
-            item.innerHTML = `
-                <span class="cmd-item-icon">${cmd.icon}</span>
-                <span class="cmd-item-title">${cmd.title}</span>
-                ${index === selectedIndex ? '<span class="cmd-enter-hint">↵</span>' : ''}
-            `;
+
+            const icon = document.createElement('span');
+            icon.className = 'cmd-item-icon';
+            icon.textContent = cmd.icon || '🔗';
+
+            const title = document.createElement('span');
+            title.className = 'cmd-item-title';
+            title.textContent = cmd.title;
+
+            item.appendChild(icon);
+            item.appendChild(title);
+
+            if (index === selectedIndex) {
+                const enterHint = document.createElement('span');
+                enterHint.className = 'cmd-enter-hint';
+                enterHint.textContent = '↵';
+                item.appendChild(enterHint);
+            }
             
             item.addEventListener('click', () => {
                 executeCommand(cmd);
@@ -291,7 +322,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedIndex = index;
                 item.classList.add('selected');
                 if (!item.querySelector('.cmd-enter-hint')) {
-                   item.insertAdjacentHTML('beforeend', '<span class="cmd-enter-hint">↵</span>');
+                    const enterHint = document.createElement('span');
+                    enterHint.className = 'cmd-enter-hint';
+                    enterHint.textContent = '↵';
+                    item.appendChild(enterHint);
                 }
             });
             
@@ -302,17 +336,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderSelectionOnly() {
-        // Re-implementing correctly to handle the category headers which disrupt index mapping
-        // Actually, renderList is fast enough for < 100 items. 
-        // But for "Arrow" navigation, we want to update classes.
-        // The issue is `list.children` includes category headers, so index doesn't match `filteredCommands`.
-        // Better to query only .cmd-item
         const items = list.querySelectorAll('.cmd-item');
+        if (!items.length) {
+            return;
+        }
         items.forEach((item, index) => {
             if (index === selectedIndex) {
                 item.classList.add('selected');
                 if (!item.querySelector('.cmd-enter-hint')) {
-                   item.insertAdjacentHTML('beforeend', '<span class="cmd-enter-hint">↵</span>');
+                    const enterHint = document.createElement('span');
+                    enterHint.className = 'cmd-enter-hint';
+                    enterHint.textContent = '↵';
+                    item.appendChild(enterHint);
                 }
                 item.scrollIntoView({ block: 'nearest' });
             } else {
@@ -353,10 +388,12 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             closePalette();
         } else if (e.key === 'ArrowDown') {
+            if (!filteredCommands.length) return;
             e.preventDefault();
             selectedIndex = (selectedIndex + 1) % filteredCommands.length;
             renderSelectionOnly();
         } else if (e.key === 'ArrowUp') {
+            if (!filteredCommands.length) return;
             e.preventDefault();
             selectedIndex = (selectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
             renderSelectionOnly();
@@ -389,4 +426,6 @@ document.addEventListener('DOMContentLoaded', function() {
             closePalette();
         }
     });
+
+    overlay.setAttribute('aria-hidden', 'true');
 });

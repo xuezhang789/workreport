@@ -44,6 +44,11 @@ class ProjectListUITests(TestCase):
         # Check for View Switcher Buttons
         self.assertContains(response, 'id="btnGrid"')
         self.assertContains(response, 'id="btnTable"')
+        self.assertContains(response, 'data-view-switch="grid"')
+        self.assertContains(response, 'data-view-switch="table"')
+        self.assertContains(response, 'id="projectResetBtn"')
+        self.assertContains(response, 'data-project-per-page')
+        self.assertContains(response, 'data-jump-page-trigger')
         
         # Check for Table View Headers (hidden but present)
         self.assertContains(response, '项目名称 / Project Name')

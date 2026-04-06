@@ -57,3 +57,13 @@ class MyReportsPaginationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['page_obj']), 10) # 11-20
         self.assertEqual(response.context['page_obj'].number, 2)
+
+    def test_mobile_and_card_interaction_markup(self):
+        """My reports page should render accessible mobile filter and clickable cards."""
+        response = self.client.get(reverse('reports:my_reports'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="mobileFilterToggle"')
+        self.assertContains(response, 'aria-controls="filterSection"')
+        self.assertContains(response, 'data-report-url=')
+        self.assertContains(response, 'id="perPageSelect"')
+        self.assertContains(response, 'id="jumpPageBtn"')

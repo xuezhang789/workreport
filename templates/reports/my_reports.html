@@ -74,12 +74,18 @@
         display: flex;
         flex-direction: column;
         position: relative;
+        cursor: pointer;
     }
 
     .report-card:hover {
         transform: translateY(-4px);
         box-shadow: var(--shadow-lg);
         border-color: #cbd5e1;
+    }
+
+    .report-card:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 3px;
     }
 
     .card-header {
@@ -540,12 +546,12 @@
     </div>
 
     <!-- Mobile Filter Toggle -->
-    <div class="mobile-filter-toggle" onclick="toggleFilter()">
+    <button type="button" class="mobile-filter-toggle" id="mobileFilterToggle" aria-controls="filterSection" aria-expanded="false">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
         <span id="filterToggleText">显示筛选 / Show Filters</span>
-    </div>
+    </button>
 
     <!-- Filters -->
     <div class="filter-section" id="filterSection">
@@ -627,7 +633,7 @@
         {% if reports %}
             <div class="reports-grid">
                 {% for r in reports %}
-                    <article class="report-card" onclick="location.href='{% url 'reports:report_detail' r.pk %}'" style="cursor: pointer;">
+                    <article class="report-card" data-report-url="{% url 'reports:report_detail' r.pk %}" role="link" tabindex="0">
                         <div class="card-header">
                             <div>
                                 <h3 class="report-date">{{ r.date|date:"Y年m月d日" }}</h3>
@@ -653,7 +659,7 @@
                             {% endif %}
                         </div>
 
-                        <div class="card-footer" onclick="event.stopPropagation()">
+                        <div class="card-footer">
                             <a href="{% url 'reports:report_edit' r.pk %}" class="btn btn-secondary btn-sm">编辑 / Edit</a>
                             <a href="{% url 'reports:report_detail' r.pk %}" class="btn btn-primary btn-sm">查看详情 / Details</a>
                         </div>
@@ -668,7 +674,7 @@
                 </div>
         
                 <div class="center-controls">
-                    <button type="button" class="page-btn" {% if not page_obj.has_previous %}disabled{% else %}onclick="changePage('page', {{ page_obj.previous_page_number }})"{% endif %}>
+                    <button type="button" class="page-btn" {% if not page_obj.has_previous %}disabled{% else %}data-page-target="{{ page_obj.previous_page_number }}"{% endif %}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         上一页
                     </button>
@@ -677,7 +683,7 @@
                         {{ page_obj.number }}
                     </div>
                     
-                    <button type="button" class="page-btn" {% if not page_obj.has_next %}disabled{% else %}onclick="changePage('page', {{ page_obj.next_page_number }})"{% endif %}>
+                    <button type="button" class="page-btn" {% if not page_obj.has_next %}disabled{% else %}data-page-target="{{ page_obj.next_page_number }}"{% endif %}>
                         下一页
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
@@ -686,7 +692,7 @@
                 <div class="right-actions">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 13px; color: var(--text-secondary);">每页</span>
-                        <select class="form-select" style="width: auto; padding: 4px 24px 4px 8px; height: 32px; font-size: 13px;" onchange="changePerPage('per_page', this.value)">
+                        <select class="form-select" id="perPageSelect" style="width: auto; padding: 4px 24px 4px 8px; height: 32px; font-size: 13px;">
                             <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
                             <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
                             <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
@@ -696,8 +702,8 @@
                     
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 13px; color: var(--text-secondary);">跳转</span>
-                        <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" onkeydown="if(event.key === 'Enter') jumpToPage('page', this.value, {{ page_obj.paginator.num_pages }})">
-                        <button type="button" class="btn btn-secondary btn-sm" style="height: 32px; padding: 0 12px;" onclick="jumpToPage('page', document.getElementById('jump-page-input').value, {{ page_obj.paginator.num_pages }})">GO</button>
+                        <input type="number" id="jump-page-input" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}">
+                        <button type="button" class="btn btn-secondary btn-sm" id="jumpPageBtn" style="height: 32px; padding: 0 12px;">GO</button>
                     </div>
                 </div>
             </div>
@@ -736,16 +742,18 @@
     const CURRENT_PAGE = {{ page_obj.number|default:1 }};
     const STORAGE_KEY = 'my_reports_pageSize';
 
-    function toggleFilter() {
+    function setFilterState(visible) {
         const section = document.getElementById('filterSection');
         const text = document.getElementById('filterToggleText');
-        if (section.classList.contains('show')) {
-            section.classList.remove('show');
-            text.innerText = '显示筛选 / Show Filters';
-        } else {
-            section.classList.add('show');
-            text.innerText = '隐藏筛选 / Hide Filters';
+        const toggleBtn = document.getElementById('mobileFilterToggle');
+        if (!section || !text || !toggleBtn) {
+            return;
         }
+
+        section.classList.toggle('show', visible);
+        section.setAttribute('aria-hidden', String(!visible && window.matchMedia('(max-width: 768px)').matches));
+        toggleBtn.setAttribute('aria-expanded', String(visible));
+        text.textContent = visible ? '隐藏筛选 / Hide Filters' : '显示筛选 / Show Filters';
     }
 
     // --- Unified Pagination Logic ---
@@ -775,7 +783,11 @@
     function jumpToPage(paramName, pageVal, maxPage) {
         const page = parseInt(pageVal);
         if (isNaN(page) || page < 1 || page > maxPage) {
-            alert(`请输入 1~${maxPage} 之间的页码`);
+            if (typeof window.showToast === 'function') {
+                window.showToast('error', '页码无效 / Invalid page', `请输入 1~${maxPage} 之间的页码`);
+            } else {
+                alert(`请输入 1~${maxPage} 之间的页码`);
+            }
             return;
         }
         changePage(paramName, page);
@@ -787,13 +799,19 @@
         if(container) container.style.display = 'none';
         const loader = document.getElementById('skeletonLoader');
         if(loader) loader.style.display = 'grid';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. Sync Export Button
         const form = document.getElementById('filterForm');
         const exportBtn = document.getElementById('exportBtn');
+        const filterToggleBtn = document.getElementById('mobileFilterToggle');
+        const filterSection = document.getElementById('filterSection');
+        const perPageSelect = document.getElementById('perPageSelect');
+        const jumpInput = document.getElementById('jump-page-input');
+        const jumpButton = document.getElementById('jumpPageBtn');
+
         if (form && exportBtn) {
             function updateExportLink() {
                 const formData = new FormData(form);
@@ -805,7 +823,74 @@
             form.addEventListener('input', updateExportLink);
         }
 
-        // 2. Initialize Page Size from LocalStorage if not in URL
+        if (filterToggleBtn && filterSection) {
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            setFilterState(!isMobile);
+            filterToggleBtn.addEventListener('click', () => {
+                setFilterState(!filterSection.classList.contains('show'));
+            });
+
+            window.addEventListener('resize', () => {
+                if (!window.matchMedia('(max-width: 768px)').matches) {
+                    filterSection.classList.remove('show');
+                    filterSection.setAttribute('aria-hidden', 'false');
+                    filterToggleBtn.setAttribute('aria-expanded', 'false');
+                    document.getElementById('filterToggleText').textContent = '显示筛选 / Show Filters';
+                } else if (!filterSection.classList.contains('show')) {
+                    filterSection.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+
+        document.querySelectorAll('.report-card[data-report-url]').forEach((card) => {
+            const navigate = () => {
+                const targetUrl = card.dataset.reportUrl;
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            };
+
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('a, button, input, select, textarea, label')) {
+                    return;
+                }
+                navigate();
+            });
+
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate();
+                }
+            });
+        });
+
+        document.querySelectorAll('[data-page-target]').forEach((button) => {
+            button.addEventListener('click', () => {
+                changePage('page', button.dataset.pageTarget);
+            });
+        });
+
+        if (perPageSelect) {
+            perPageSelect.addEventListener('change', (event) => {
+                changePerPage('per_page', event.target.value);
+            });
+        }
+
+        if (jumpInput) {
+            jumpInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    jumpToPage('page', jumpInput.value, TOTAL_PAGES);
+                }
+            });
+        }
+
+        if (jumpButton) {
+            jumpButton.addEventListener('click', () => {
+                jumpToPage('page', jumpInput ? jumpInput.value : '', TOTAL_PAGES);
+            });
+        }
+
         const savedSize = localStorage.getItem(STORAGE_KEY);
         const urlParams = new URLSearchParams(window.location.search);
         

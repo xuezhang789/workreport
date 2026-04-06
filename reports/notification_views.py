@@ -13,7 +13,8 @@ def notification_list(request):
     通知中心页面视图。
     """
     # 默认按时间倒序
-    notifications = request.user.notifications.all().order_by('-created_at')
+    base_notifications = request.user.notifications.all().order_by('-created_at')
+    notifications = base_notifications
     
     # 过滤参数
     filter_param = request.GET.get('filter') # all, unread, task, mention, system
@@ -34,11 +35,15 @@ def notification_list(request):
     paginator = Paginator(notifications, 20) # 每页 20 条
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    unread_count = base_notifications.filter(is_read=False).count()
+    read_count = base_notifications.filter(is_read=True).count()
         
     return render(request, 'reports/notification_list.html', {
         'notifications': page_obj,
         'page_obj': page_obj,
-        'unread_count': request.user.notifications.filter(is_read=False).count(),
+        'unread_count': unread_count,
+        'read_count': read_count,
+        'total_count': paginator.count,
         'current_filter': filter_param or 'all'
     })
 

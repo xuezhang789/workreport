@@ -106,9 +106,18 @@ python manage.py collectstatic --noinput
 # 创建管理员账号
 python manage.py createsuperuser
 
-# 初始化基础数据 (可选，如果有)
-# python manage.py init_roles 
+# 初始化基础数据（建议）
+python manage.py init_project_phases
+python manage.py init_rbac
+
+# 初始化模板（二选一，选定一种长期维护）
+# 方案 A（推荐：YAML 可配置）
+python manage.py init_role_templates
+# 方案 B（内置默认：Python 常量）
+# python manage.py init_standard_templates
 ```
+
+更多初始化数据说明请参考：[INIT_DATA_GUIDE_CN.md](file:///Users/lingchong/Downloads/wwwroot/workreport/docs/INIT_DATA_GUIDE_CN.md)
 
 ---
 

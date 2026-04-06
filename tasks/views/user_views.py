@@ -169,10 +169,18 @@ def task_list(request):
         'collaborators', 'collaborators__profile'
     )
 
-    # 权限检查：显示可访问项目的任务
-    # 现：可访问项目中的所有任务
+    # 权限检查：
+    # - 普通成员仅查看自己负责/协作的任务
+    # - 项目负责人/管理员可查看其可管理项目内的任务
     accessible_projects = get_accessible_projects(request.user)
     tasks_qs = tasks_qs.filter(project__in=accessible_projects)
+    if not request.user.is_superuser:
+        manageable_projects = get_manageable_projects(request.user)
+        tasks_qs = tasks_qs.filter(
+            Q(user=request.user) |
+            Q(collaborators=request.user) |
+            Q(project__in=manageable_projects)
+        ).distinct()
     
     # 优化：移除不必要的 distinct() 调用，它会显著增加查询开销
     tasks_qs = tasks_qs.order_by('-created_at')
@@ -291,12 +299,19 @@ def task_export(request):
     hot = request.GET.get('hot') == '1'
 
     tasks = Task.objects.select_related('project', 'user', 'user__profile', 'sla_timer').prefetch_related('collaborators')
-    
+
     accessible_projects = get_accessible_projects(request.user)
     tasks = tasks.filter(project__in=accessible_projects)
-    
-    tasks = tasks.distinct().order_by('-created_at')
-    
+    if not request.user.is_superuser:
+        manageable_projects = get_manageable_projects(request.user)
+        tasks = tasks.filter(
+            Q(user=request.user) |
+            Q(collaborators=request.user) |
+            Q(project__in=manageable_projects)
+        ).distinct()
+
+    tasks = tasks.order_by('-created_at')
+
     if status in dict(Task.STATUS_CHOICES):
         tasks = tasks.filter(status=status)
     if priority in dict(Task.PRIORITY_CHOICES):

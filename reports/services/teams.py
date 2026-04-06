@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from ..models import Profile, Project
 
 def get_team_members(q=None, role=None, project_id=None):
@@ -7,8 +7,11 @@ def get_team_members(q=None, role=None, project_id=None):
     获取过滤后的团队成员列表。
     """
     User = get_user_model()
-    # Optimized: Add 'preferences' to select_related to avoid N+1 in avatar rendering
-    qs = User.objects.select_related('profile', 'preferences').prefetch_related('project_memberships').order_by('username')
+    project_prefetch = Prefetch(
+        'project_memberships',
+        queryset=Project.objects.only('id', 'name', 'code', 'overall_progress').order_by('name'),
+    )
+    qs = User.objects.select_related('profile', 'preferences').prefetch_related(project_prefetch).order_by('username')
     
     if q:
         qs = qs.filter(
@@ -24,7 +27,7 @@ def get_team_members(q=None, role=None, project_id=None):
     if project_id:
         qs = qs.filter(project_memberships__id=project_id)
         
-    return qs
+    return qs.distinct()
 
 def update_member_role(user_id, new_role, changed_by=None):
     """

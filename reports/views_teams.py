@@ -157,7 +157,7 @@ def teams_list(request):
         'role': role,
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
-        'total_count': qs.count(),
+        'total_count': page_obj.paginator.count,
         'projects': dropdown_projects, # 下拉菜单的轻量级查询
         'project_teams': project_teams, # 卡片的处理数据
         'today_date': timezone.now().strftime('%Y-%m-%d'),

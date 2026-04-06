@@ -1349,11 +1349,21 @@ function renderCalendar(data) {
         // New Fields
         document.getElementById('hr-usdt-address').value = data.usdt_address || '';
         const qrPreview = document.getElementById('hr-usdt-qr-preview');
+        qrPreview.replaceChildren();
         if (data.usdt_qr_code) {
-            qrPreview.innerHTML = `<img src="${data.usdt_qr_code}" style="width:100%; height:100%; object-fit:cover;">`;
+            const img = document.createElement('img');
+            img.src = data.usdt_qr_code;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            qrPreview.appendChild(img);
             qrPreview.dataset.url = data.usdt_qr_code;
         } else {
-            qrPreview.innerHTML = '<span style="font-size: 10px; color: var(--text-secondary);">None</span>';
+            const text = document.createElement('span');
+            text.style.fontSize = '10px';
+            text.style.color = 'var(--text-secondary)';
+            text.textContent = 'None';
+            qrPreview.appendChild(text);
             qrPreview.dataset.url = '';
         }
         document.getElementById('hr-usdt-qr-input').value = '';
