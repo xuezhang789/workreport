@@ -2,14 +2,20 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q, Prefetch
 from ..models import Profile, Project
 
-def get_team_members(q=None, role=None, project_id=None):
+def get_team_members(q=None, role=None, project_id=None, visible_projects=None):
     """
     获取过滤后的团队成员列表。
     """
     User = get_user_model()
+    project_queryset = Project.objects.only(
+        'id', 'name', 'code', 'overall_progress'
+    ).order_by('name')
+    if visible_projects is not None:
+        project_queryset = project_queryset.filter(pk__in=visible_projects.values('pk'))
+
     project_prefetch = Prefetch(
         'project_memberships',
-        queryset=Project.objects.only('id', 'name', 'code', 'overall_progress').order_by('name'),
+        queryset=project_queryset,
     )
     qs = User.objects.select_related('profile', 'preferences').prefetch_related(project_prefetch).order_by('username')
     
@@ -60,10 +66,10 @@ def add_member_to_project(user_id, project_id, changed_by=None):
         project = Project.objects.get(id=project_id)
         
         if project.members.filter(id=user_id).exists():
-            return False, "User already in project"
+            return False, "用户已在该项目中 / User already in project"
             
         project.members.add(user)
-        return True, f"Added {user.username} to {project.name}"
+        return True, f"已将 {user.username} 添加至 {project.name} / Member added"
     except (User.DoesNotExist, Project.DoesNotExist):
         return False, "User or Project not found"
     except Exception as e:
@@ -77,9 +83,12 @@ def remove_member_from_project(user_id, project_id, changed_by=None):
     try:
         user = User.objects.get(id=user_id)
         project = Project.objects.get(id=project_id)
-        
+
+        if not project.members.filter(id=user_id).exists():
+            return False, "用户不在该项目中 / User is not assigned to project"
+
         project.members.remove(user)
-        return True, f"Removed {user.username} from {project.name}"
+        return True, f"已将 {user.username} 移出 {project.name} / Member removed"
     except (User.DoesNotExist, Project.DoesNotExist):
         return False, "User or Project not found"
     except Exception as e:

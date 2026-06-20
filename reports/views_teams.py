@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import JsonResponse, HttpResponseForbidden
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
 from django.db import models
 from core.models import Profile
 from projects.models import Project
@@ -16,6 +16,32 @@ from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.contrib.auth import get_user_model
+from reports.utils import get_manageable_projects
+
+
+def _serialize_project(project):
+    return {
+        'id': project.id,
+        'name': project.name,
+        'code': project.code,
+        'overall_progress': float(project.overall_progress),
+    }
+
+
+def _member_project_payload(operator, target_user):
+    manageable_projects = get_manageable_projects(operator).order_by('name')
+    assigned_projects = list(manageable_projects.filter(members=target_user))
+    assigned_ids = [project.id for project in assigned_projects]
+    available_projects = manageable_projects.exclude(pk__in=assigned_ids)
+    return {
+        'projects': [_serialize_project(project) for project in assigned_projects],
+        'available_projects': [_serialize_project(project) for project in available_projects],
+    }
+
+
+def _team_json_error(message, status):
+    return JsonResponse({'status': 'error', 'message': message}, status=status)
+
 
 @login_required
 def teams_list(request):
@@ -33,7 +59,6 @@ def teams_list(request):
         # 让我们使用 `get_manageable_projects`，理想情况下它应该涵盖 RBAC。
         # 我们还需要包括旧的 `project.managers` 和 `project.owner`。
         
-        from reports.utils import get_manageable_projects
         # 此 RBAC 助手返回用户拥有 'project.manage' 权限的项目。
         # 它还包括基于模型字段的管理（所有者/经理）。
         manageable_projects = get_manageable_projects(request.user)
@@ -48,27 +73,16 @@ def teams_list(request):
     
     project_filter = int(project_id) if project_id and project_id.isdigit() else None
     
-    # 过滤 'qs'（成员目录）
-    # 理想情况下，我们是否应该只显示用户可以管理的项目的成员？
-    # 或者成员目录是全局的？
-    # 需求说“项目所有者……不能查看或操作其他项目”。
-    # 这意味着他们不应该以暴露敏感信息的方式看到其他项目的成员？
-    # 但目录通常允许查找人员以添加。
-    # 让我们暂时保持成员目录原样（可搜索），或者如果严格要求则过滤它。
-    # 需求：“项目所有者……不能访问其他项目”。
-    # 这强烈建议过滤。
-    
-    if request.user.is_superuser:
-        qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
-    else:
-        # 将成员搜索限制在可管理项目 + 也许是可访问项目？
-        # 通常你想从整个公司池中添加新成员。
-        # 所以 'get_team_members' (目录) 可能需要是所有用户，以便你可以找到他们来添加。
-        # 但 'project_teams' (卡片) 必须被过滤。
-        # 让我们保持目录开放（或者如果我们想严格控制可见性，则通过 `get_accessible_projects` 过滤）。
-        # 但对于“团队管理”，通常你需要看看谁可用。
-        # 让我们坚持：目录 = 所有用户（这样你可以添加他们）。
-        qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
+    # 成员目录保持全员可搜索，但项目标签与项目操作只暴露可管理范围。
+    if project_filter and not manageable_projects.filter(pk=project_filter).exists():
+        return _admin_forbidden(request, "您无权查看该项目 / You cannot access this project")
+
+    qs = team_service.get_team_members(
+        q=q,
+        role=role,
+        project_id=project_filter,
+        visible_projects=manageable_projects,
+    )
     
     # --- 成员目录分页 ---
     member_per_page = resolve_page_size(request, request.GET, key='member_per_page')
@@ -102,7 +116,6 @@ def teams_list(request):
     
     # 优化：批量获取角色统计信息，而不是每个项目循环
     # 按 (Project, Position) 分组
-    from django.contrib.auth import get_user_model
     User = get_user_model()
     
     # 仅获取当前页面项目的统计信息
@@ -149,11 +162,26 @@ def teams_list(request):
         'role': role,
         'project_filter': project_filter,
         'roles': Profile.ROLE_CHOICES,
+        'can_update_role': request.user.is_superuser,
         'total_count': page_obj.paginator.count,
         'projects': dropdown_projects, # 下拉菜单的轻量级查询
         'project_teams': project_teams, # 卡片的处理数据
         'today_date': timezone.now().strftime('%Y-%m-%d'),
     })
+
+
+@login_required
+@require_GET
+def team_member_projects(request, user_id):
+    target_user = get_object_or_404(get_user_model(), pk=user_id)
+    manageable_projects = get_manageable_projects(request.user)
+    if not request.user.is_superuser and not manageable_projects.exists():
+        return _team_json_error('无可管理项目 / No manageable projects', 403)
+    return JsonResponse({
+        'status': 'success',
+        **_member_project_payload(request.user, target_user),
+    })
+
 
 @login_required
 @require_POST
@@ -197,30 +225,29 @@ def team_member_update_role(request, user_id):
 @require_POST
 def team_member_add_project(request, user_id):
     project_id = request.POST.get('project_id')
-    if not project_id:
+    if not project_id or not str(project_id).isdigit():
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'status': 'error', 'message': "Please select a project"}, status=400)
+            return _team_json_error('请选择项目 / Please select a project', 400)
         messages.error(request, "Please select a project")
         return redirect('reports:teams')
 
-    # Security Check: Verify if user can manage THIS specific project
-    from reports.utils import can_manage_project
-    project = get_object_or_404(Project, pk=project_id)
-    
-    if not can_manage_project(request.user, project):
-        return JsonResponse({'error': 'Permission denied for this project'}, status=403)
+    try:
+        project = get_manageable_projects(request.user).get(pk=project_id)
+    except Project.DoesNotExist:
+        return _team_json_error('项目不存在、已停用或无管理权限 / Project unavailable or permission denied', 403)
 
     success, message = team_service.add_member_to_project(user_id, project_id, changed_by=request.user)
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
         if success:
-            # Get updated project list
-            User = get_user_model()
-            target_user = get_object_or_404(User, pk=user_id)
-            projects = [{
-                'id': p.id, 'name': p.name, 'code': p.code,
-                'overall_progress': float(p.overall_progress)
-            } for p in target_user.project_memberships.all()]
+            target_user = get_object_or_404(get_user_model(), pk=user_id)
+            payload = _member_project_payload(request.user, target_user)
+            log_action(
+                request,
+                'update',
+                f"user_project_add {user_id} -> {project_id}",
+                data={'user_id': user_id, 'project_id': project.id, 'project_code': project.code},
+            )
             
             # Broadcast
             channel_layer = get_channel_layer()
@@ -230,11 +257,11 @@ def team_member_add_project(request, user_id):
                     "type": "team_update",
                     "user_id": user_id,
                     "action": "add_project",
-                    "data": {'projects': projects},
+                    "data": {'project_id': project.id},
                     "sender_id": request.user.id
                 }
             )
-            return JsonResponse({'status': 'success', 'message': message, 'projects': projects})
+            return JsonResponse({'status': 'success', 'message': message, **payload})
         else:
             return JsonResponse({'status': 'error', 'message': message}, status=400)
 
@@ -249,24 +276,23 @@ def team_member_add_project(request, user_id):
 @login_required
 @require_POST
 def team_member_remove_project(request, user_id, project_id):
-    # Security Check: Verify if user can manage THIS specific project
-    from reports.utils import can_manage_project
-    project = get_object_or_404(Project, pk=project_id)
-    
-    if not can_manage_project(request.user, project):
-        return JsonResponse({'error': 'Permission denied for this project'}, status=403)
+    try:
+        project = get_manageable_projects(request.user).get(pk=project_id)
+    except Project.DoesNotExist:
+        return _team_json_error('项目不存在、已停用或无管理权限 / Project unavailable or permission denied', 403)
         
     success, message = team_service.remove_member_from_project(user_id, project_id, changed_by=request.user)
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.accepts('application/json'):
         if success:
-            # Get updated project list
-            User = get_user_model()
-            target_user = get_object_or_404(User, pk=user_id)
-            projects = [{
-                'id': p.id, 'name': p.name, 'code': p.code,
-                'overall_progress': float(p.overall_progress)
-            } for p in target_user.project_memberships.all()]
+            target_user = get_object_or_404(get_user_model(), pk=user_id)
+            payload = _member_project_payload(request.user, target_user)
+            log_action(
+                request,
+                'update',
+                f"user_project_remove {user_id} -> {project_id}",
+                data={'user_id': user_id, 'project_id': project.id, 'project_code': project.code},
+            )
             
             # Broadcast
             channel_layer = get_channel_layer()
@@ -276,11 +302,11 @@ def team_member_remove_project(request, user_id, project_id):
                     "type": "team_update",
                     "user_id": user_id,
                     "action": "remove_project",
-                    "data": {'projects': projects},
+                    "data": {'project_id': project.id},
                     "sender_id": request.user.id
                 }
             )
-            return JsonResponse({'status': 'success', 'message': message, 'projects': projects})
+            return JsonResponse({'status': 'success', 'message': message, **payload})
         else:
             return JsonResponse({'status': 'error', 'message': message}, status=400)
 

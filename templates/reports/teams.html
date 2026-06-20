@@ -415,6 +415,23 @@
         font-size: 13px; transition: var(--transition);
     }
     .project-item-modal:hover { border-color: #cbd5e1; }
+    .project-item-details { min-width: 0; }
+    .project-item-name {
+        display: block; font-weight: 600; color: var(--text-main);
+        overflow-wrap: anywhere;
+    }
+    .project-item-meta {
+        display: block; margin-top: 2px; color: var(--text-muted); font-size: 11px;
+    }
+    .member-permission-modal { max-width: 620px; }
+    .member-project-add-form { display: flex; gap: 8px; align-items: flex-end; }
+    .member-project-select-wrap { flex: 1; min-width: 0; }
+    .member-project-help {
+        min-height: 18px; margin-top: 6px; color: var(--text-muted); font-size: 12px;
+    }
+    .project-list-loading {
+        padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;
+    }
     .btn-remove {
         color: var(--text-muted); cursor: pointer; padding: 4px;
         border-radius: 4px; background: transparent; border: none;
@@ -512,6 +529,8 @@
         }
         .modal-body { flex: 1; padding: 16px; overflow-y: auto; }
         .modal-header { border-radius: 0; }
+        .member-project-add-form { align-items: stretch; flex-direction: column; }
+        .member-project-add-form .btn { width: 100%; }
         
         /* Tabs Scroll */
         .view-tabs {
@@ -805,8 +824,8 @@
                     </td>
                     <td style="text-align: right;">
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', '{{ user.profile.position }}', JSON.parse('{{ user.project_memberships.all|to_project_json|escapejs }}'))">
-                                权限
+                            <button type="button" class="btn btn-secondary btn-sm" data-role="{{ user.profile.position|default:'dev' }}" onclick="openUserManageModal('{{ user.id }}', '{{ user.get_full_name|default:user.username|escapejs }}', this.dataset.role)">
+                                权限 / Permissions
                             </button>
                         </div>
                     </td>
@@ -1095,7 +1114,7 @@
 
 <!-- Single User Manage Modal -->
 <div id="user-manage-modal" class="modal-overlay" onclick="if(event.target === this) closeUserManageModal()">
-    <div class="modal-content">
+    <div class="modal-content member-permission-modal" role="dialog" aria-modal="true" aria-labelledby="umm-title">
         <div class="modal-header">
             <h3 class="modal-title" id="umm-title">管理成员 / Manage Member</h3>
             <button type="button" class="close-btn" onclick="closeUserManageModal()">
@@ -1104,6 +1123,7 @@
         </div>
         <div class="modal-body">
             <!-- 1. Role Update -->
+            {% if can_update_role %}
             <div class="modal-section">
                 <div class="modal-section-title">角色设置 / Role Settings</div>
                 <form id="umm-role-form" method="post" style="display: flex; gap: 8px;">
@@ -1116,27 +1136,31 @@
                     <button type="submit" class="btn btn-primary">更新 / Update</button>
                 </form>
             </div>
+            {% endif %}
 
             <!-- 2. Project List -->
             <div class="modal-section">
-                <div class="modal-section-title" id="umm-projects-title">参与项目 / Projects (0)</div>
+                <div class="modal-section-title" id="umm-projects-title">已分配项目 / Assigned Projects (0)</div>
                 <div id="umm-project-list" class="project-list-modal">
-                    <!-- Populated via JS -->
+                    <div class="project-list-loading">正在加载... / Loading...</div>
                 </div>
             </div>
 
             <!-- 3. Add Project -->
             <div class="modal-section">
                 <div class="modal-section-title">添加项目 / Add Project</div>
-                <form id="umm-add-project-form" method="post" style="display: flex; gap: 8px;" onsubmit="showAdding(this)">
+                <form id="umm-add-project-form" method="post" class="member-project-add-form">
                     {% csrf_token %}
-                    <select name="project_id" class="form-select" style="flex:1;" required>
-                        <option value="">选择项目... / Select Project...</option>
-                        {% for p in projects %}
-                            <option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-secondary">添加 / Add</button>
+                    <div class="member-project-select-wrap">
+                        <label class="form-label" for="umm-project-select">可添加项目 / Available Project</label>
+                        <select id="umm-project-select" name="project_id" class="form-select" required disabled>
+                            <option value="">正在加载... / Loading...</option>
+                        </select>
+                        <div id="umm-project-help" class="member-project-help" aria-live="polite"></div>
+                    </div>
+                    <button id="umm-add-project-button" type="submit" class="btn btn-primary" disabled>
+                        添加 / Add
+                    </button>
                 </form>
             </div>
         </div>
@@ -1167,7 +1191,7 @@
         if(msg.action === 'update_role') {
             updateRowRole(userId, msg.data.role, msg.data.role_display);
         } else if(msg.action === 'add_project' || msg.action === 'remove_project') {
-            updateRowProjects(userId, msg.data.projects);
+            refreshMemberProjects(userId);
         }
         
         // Update Modal if open for this user
@@ -1177,9 +1201,7 @@
                 showTeamToast(`⚠️ 此用户的权限已被其他管理员修改 / User permissions modified by another admin`, 'warning');
             }
             
-            if(msg.action === 'add_project' || msg.action === 'remove_project') {
-                renderModalProjects(msg.data.projects);
-            } else if(msg.action === 'update_role') {
+            if(msg.action === 'update_role') {
                  // Update select box if not focused? Or just let it be.
                  const select = document.getElementById('umm-role-select');
                  if(select && document.activeElement !== select) {
@@ -1203,7 +1225,9 @@
         else if(type === 'error') toast.style.background = '#ef4444';
         else if(type === 'warning') toast.style.background = '#f59e0b';
         
-        toast.innerHTML = `<span>${message}</span>`;
+        const messageNode = document.createElement('span');
+        messageNode.textContent = message;
+        toast.appendChild(messageNode);
         container.appendChild(toast);
         
         setTimeout(() => {
@@ -1227,92 +1251,156 @@
         const badgeClass = badgeMap[role] || 'badge-default';
         cell.innerHTML = `<span class="role-badge ${badgeClass}">${roleDisplay}</span>`;
         
-        // Update modal trigger data
         const btn = row.cells[row.cells.length-1].querySelector('.btn-secondary');
-        if(btn) {
-            // Update onclick params regex replace
-             const oldOnClick = btn.getAttribute('onclick');
-             // Param 3 is role. 
-             // openUserManageModal('id', 'name', 'ROLE', ...)
-             const newOnClick = oldOnClick.replace(/'[^']+', JSON/, `'${role}', JSON`);
-             btn.setAttribute('onclick', newOnClick);
-        }
+        if(btn) btn.dataset.role = role;
     }
     
     function updateRowProjects(userId, projects) {
         const row = document.getElementById(`row-${userId}`);
         if(!row) return;
-        
+
         const cell = row.cells[2];
-        let html = '<div class="project-tags">';
+        const container = document.createElement('div');
+        container.className = 'project-tags';
         projects.slice(0, 3).forEach(p => {
-            html += `<span class="project-tag">${p.name} <span style="color:var(--text-muted);font-size:10px;margin-left:2px;">${Math.round(p.overall_progress||0)}%</span></span>`;
+            const tag = document.createElement('span');
+            tag.className = 'project-tag';
+            tag.appendChild(document.createTextNode(`${p.name} `));
+            const progress = document.createElement('span');
+            progress.style.cssText = 'color:var(--text-muted);font-size:10px;margin-left:2px;';
+            progress.textContent = `${Math.round(p.overall_progress || 0)}%`;
+            tag.appendChild(progress);
+            container.appendChild(tag);
         });
         if(projects.length > 3) {
-            html += `<span class="project-tag">+${projects.length - 3}</span>`;
+            const overflow = document.createElement('span');
+            overflow.className = 'project-tag';
+            overflow.textContent = `+${projects.length - 3}`;
+            container.appendChild(overflow);
         }
-        html += '</div>';
-        cell.innerHTML = html;
-        
-        // Update modal trigger data
-        const btn = row.cells[row.cells.length-1].querySelector('.btn-secondary');
-        if(btn) {
-            // Param 4 is JSON
-            // We need to replace JSON.parse('...') with new JSON
-            // But replacing complex string in onclick is fragile. 
-            // Better: Store data in data attributes or fetch fresh on open.
-            // For now, let's try to update the attribute carefully or just rely on fetch-on-open if we change strategy.
-            // Given the complexity of replacing JSON in onclick string, we will switch `openUserManageModal` 
-            // to fetch latest data or use the `projects` array passed in if we can.
-            // Hack: Update the attribute by finding the JSON part.
-            // Actually, `projects` is passed as JSON.parse('...').
-            const jsonStr = JSON.stringify(projects).replace(/"/g, '&quot;');
-            // Regex to find the JSON.parse part
-            const newOnClick = btn.getAttribute('onclick').replace(/JSON\.parse\('.*?'\)/, `JSON.parse('${jsonStr}')`);
-            btn.setAttribute('onclick', newOnClick);
-        }
+        cell.replaceChildren(container);
     }
 
     // === User Manage Modal Logic ===
     let currentManageUserId = null;
     const CSRF_TOKEN = '{{ csrf_token }}';
 
-    function openUserManageModal(userId, userName, currentRole, projects) {
-        currentManageUserId = userId;
+    function openUserManageModal(userId, userName, currentRole) {
+        currentManageUserId = Number(userId);
         document.getElementById('umm-title').innerText = `管理成员 / Manage Member: ${userName}`;
-        
+
         // Setup Role Form
         const roleSelect = document.getElementById('umm-role-select');
-        roleSelect.value = currentRole;
-        
-        // Render Projects
-        renderModalProjects(projects);
-        
-        // Reset Add Form
+        if(roleSelect) roleSelect.value = currentRole || 'dev';
+
         document.getElementById('umm-add-project-form').reset();
-        
+        renderProjectLoading();
         openModal('user-manage-modal');
+        refreshMemberProjects(currentManageUserId);
     }
-    
+
+    function renderProjectLoading() {
+        document.getElementById('umm-projects-title').innerText = '已分配项目 / Assigned Projects';
+        document.getElementById('umm-project-list').innerHTML = '<div class="project-list-loading">正在加载... / Loading...</div>';
+        const select = document.getElementById('umm-project-select');
+        const button = document.getElementById('umm-add-project-button');
+        select.replaceChildren(new Option('正在加载... / Loading...', ''));
+        select.disabled = true;
+        button.disabled = true;
+        document.getElementById('umm-project-help').textContent = '';
+    }
+
+    async function refreshMemberProjects(userId) {
+        const requestedUserId = Number(userId);
+        try {
+            const res = await fetch(`/reports/teams/${requestedUserId}/projects/`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if(!res.ok || data.status !== 'success') {
+                throw new Error(data.message || 'Unable to load projects');
+            }
+            updateRowProjects(requestedUserId, data.projects || []);
+            if(currentManageUserId === requestedUserId) {
+                renderModalProjects(data.projects || []);
+                renderAvailableProjects(data.available_projects || []);
+            }
+        } catch(e) {
+            if(currentManageUserId === requestedUserId) {
+                document.getElementById('umm-project-list').innerHTML = '<div class="project-list-loading">加载失败 / Load failed</div>';
+                const select = document.getElementById('umm-project-select');
+                select.replaceChildren(new Option('加载失败 / Load failed', ''));
+                select.disabled = true;
+                document.getElementById('umm-add-project-button').disabled = true;
+                document.getElementById('umm-project-help').textContent = '请关闭弹窗后重试 / Close the dialog and try again.';
+            }
+            showTeamToast(e.message || '加载项目失败 / Failed to load projects', 'error');
+        }
+    }
+
     function renderModalProjects(projects) {
         const projectList = document.getElementById('umm-project-list');
-        projectList.innerHTML = '';
-        document.getElementById('umm-projects-title').innerText = `参与项目 / Projects (${projects.length})`;
-        
+        projectList.replaceChildren();
+        document.getElementById('umm-projects-title').innerText = `已分配项目 / Assigned Projects (${projects.length})`;
+
         if (projects.length === 0) {
-            projectList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">暂未参与任何项目 / No projects assigned</div>';
+            projectList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">暂未分配可管理项目 / No manageable projects assigned</div>';
         } else {
             projects.forEach(p => {
                 const div = document.createElement('div');
                 div.className = 'project-item-modal';
-                div.innerHTML = `
-                    <span style="font-weight: 500;">${p.name} <span style="color: var(--text-muted); font-weight: normal;">(${Math.round(p.overall_progress||0)}%)</span></span>
-                    <button type="button" class="btn-remove" title="移除项目" onclick="handleProjectRemove(${p.id}, this)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                `;
+                const details = document.createElement('div');
+                details.className = 'project-item-details';
+                const name = document.createElement('span');
+                name.className = 'project-item-name';
+                name.textContent = p.name;
+                const meta = document.createElement('span');
+                meta.className = 'project-item-meta';
+                meta.textContent = `${p.code || '-'} · ${Math.round(p.overall_progress || 0)}%`;
+                details.append(name, meta);
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn-remove';
+                removeButton.title = '移除项目 / Remove project';
+                removeButton.setAttribute('aria-label', `移除项目 ${p.name} / Remove ${p.name}`);
+                removeButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                removeButton.addEventListener('click', () => handleProjectRemove(p.id, removeButton));
+                div.append(details, removeButton);
                 projectList.appendChild(div);
             });
+        }
+    }
+
+    function renderAvailableProjects(projects) {
+        const select = document.getElementById('umm-project-select');
+        const button = document.getElementById('umm-add-project-button');
+        const help = document.getElementById('umm-project-help');
+        select.replaceChildren();
+
+        if(projects.length === 0) {
+            select.appendChild(new Option('暂无可添加项目 / No projects available', ''));
+            select.disabled = true;
+            button.disabled = true;
+            help.textContent = '该成员已加入全部可管理项目 / Member is assigned to all manageable projects.';
+            return;
+        }
+
+        select.appendChild(new Option('选择项目... / Select Project...', ''));
+        projects.forEach(project => {
+            select.appendChild(new Option(`${project.name} (${project.code || '-'})`, String(project.id)));
+        });
+        select.disabled = false;
+        button.disabled = false;
+        help.textContent = `可添加 ${projects.length} 个项目 / ${projects.length} projects available`;
+    }
+
+    function applyMemberProjectPayload(userId, data) {
+        const projects = data.projects || [];
+        updateRowProjects(userId, projects);
+        if(currentManageUserId === Number(userId)) {
+            renderModalProjects(projects);
+            renderAvailableProjects(data.available_projects || []);
         }
     }
 
@@ -1324,7 +1412,8 @@
     // === AJAX Handlers ===
     
     // Role Update
-    document.getElementById('umm-role-form').addEventListener('submit', async function(e) {
+    const memberRoleForm = document.getElementById('umm-role-form');
+    if(memberRoleForm) memberRoleForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const btn = this.querySelector('button');
         const originalText = btn.innerText;
@@ -1365,40 +1454,27 @@
         const select = this.querySelector('select');
         const projectId = select.value;
         if(!projectId) return;
-        
+
+        const targetUserId = currentManageUserId;
         const originalText = btn.innerText;
-        btn.innerText = 'Adding...';
+        btn.innerText = '添加中... / Adding...';
         btn.disabled = true;
+        select.disabled = true;
         
         const formData = new FormData();
         formData.append('project_id', projectId);
         
         try {
-            const res = await fetchWithRetry(`/reports/teams/${currentManageUserId}/project/add/`, {
+            const res = await fetchWithRetry(`/reports/teams/${targetUserId}/project/add/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData
             });
             const data = await res.json();
             
-            if(data.status === 'success') {
+            if(res.ok && data.status === 'success') {
                 showTeamToast('项目添加成功 / Project added');
-                // renderModalProjects expects an array of project objects {id, name, code}
-                // The API response might return 'projects' array which is the updated list
-                // OR 'project' object which is the single added project.
-                // Let's check what the API returns. 
-                // Based on views_teams.py: team_member_add_project returns {'status': 'success', 'projects': serialized_projects}
-                // So data.projects should be correct.
-                
-                if (data.projects) {
-                     renderModalProjects(data.projects); 
-                } else {
-                     // Fallback or error handling if API structure changed
-                     console.warn('API did not return projects list', data);
-                     // Ideally we should reload the whole list from server if we are unsure
-                     // But for now let's assume data.projects is there.
-                }
-                select.value = '';
+                applyMemberProjectPayload(targetUserId, data);
             } else {
                 showTeamToast(data.message || 'Error adding project', 'error');
             }
@@ -1406,28 +1482,32 @@
             showTeamToast('Network error', 'error');
         } finally {
             btn.innerText = originalText;
-            btn.disabled = false;
+            if(currentManageUserId === targetUserId && select.options.length > 1) {
+                select.disabled = false;
+                btn.disabled = false;
+            }
         }
     });
     
     // Remove Project
     async function handleProjectRemove(projectId, btn) {
         if(!confirm('确定要移除该项目吗？/ Remove this project?')) return;
-        
+
+        const targetUserId = currentManageUserId;
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
         btn.disabled = true;
         
         try {
-            const res = await fetchWithRetry(`/reports/teams/${currentManageUserId}/project/${projectId}/remove/`, {
+            const res = await fetchWithRetry(`/reports/teams/${targetUserId}/project/${projectId}/remove/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await res.json();
             
-            if(data.status === 'success') {
+            if(res.ok && data.status === 'success') {
                 showTeamToast('项目已移除 / Project removed');
-                renderModalProjects(data.projects);
+                applyMemberProjectPayload(targetUserId, data);
             } else {
                 showTeamToast(data.message || 'Error removing project', 'error');
                 btn.innerHTML = originalHtml;
