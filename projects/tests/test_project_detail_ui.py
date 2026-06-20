@@ -2,7 +2,7 @@
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
-from projects.models import Project, ProjectPhaseConfig
+from projects.models import Project, ProjectPhaseConfig, ProjectRepository
 
 class ProjectDetailFixTests(TestCase):
     def setUp(self):
@@ -60,3 +60,37 @@ class ProjectDetailFixTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Phase & Progress')
         self.assertContains(response, 'update-phase-btn')
+
+    def test_project_detail_repository_links_use_noopener(self):
+        ProjectRepository.objects.create(
+            project=self.project,
+            name='Repo',
+            url='https://example.com/repo',
+        )
+
+        response = self.client.get(reverse('projects:project_detail', args=[self.project.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'rel="noopener"')
+
+    def test_project_add_repository_rejects_invalid_url(self):
+        response = self.client.post(
+            reverse('projects:project_add_repository', args=[self.project.id]),
+            {'name': 'Bad Repo', 'url': 'javascript:alert(1)'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['status'], 'error')
+        self.assertFalse(ProjectRepository.objects.filter(project=self.project).exists())
+
+    def test_project_add_repository_accepts_valid_url(self):
+        response = self.client.post(
+            reverse('projects:project_add_repository', args=[self.project.id]),
+            {'name': 'Good Repo', 'url': 'https://example.com/repo.git'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertTrue(ProjectRepository.objects.filter(project=self.project).exists())

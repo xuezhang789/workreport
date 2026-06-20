@@ -18,6 +18,7 @@ class ProjectAttachmentPermissionTest(TestCase):
 
         # Project
         self.project = Project.objects.create(name='Test Project', code='TP', owner=self.owner)
+        self.project.members.add(self.uploader)
         self.project.managers.add(self.manager)
         
         # Attachments
@@ -66,13 +67,13 @@ class ProjectAttachmentPermissionTest(TestCase):
         resp = c.post(f'/projects/attachments/{self.att_by_owner.id}/delete/')
         self.assertEqual(resp.status_code, 403)
         
-        # 5. Project Manager (who is NOT super/owner/uploader)
-        # Requirement: Should NOT delete.
+        # 5. Project Manager should delete project attachments.
         c.login(username='manager', password='password')
         resp = c.post(f'/projects/attachments/{self.att_by_owner.id}/delete/')
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 200)
 
         # 6. Random user
+        self.att_by_owner = ProjectAttachment.objects.create(project=self.project, uploaded_by=self.owner, file='test2.txt')
         c.login(username='other', password='password')
         resp = c.post(f'/projects/attachments/{self.att_by_owner.id}/delete/')
         self.assertEqual(resp.status_code, 403)

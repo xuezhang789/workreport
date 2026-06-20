@@ -648,7 +648,7 @@
                         <div class="repo-item" id="repo-{{ repo.id }}" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary);"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                                <a href="{{ repo.url }}" target="_blank" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">{{ repo.name }}</a>
+                                <a href="{{ repo.url }}" target="_blank" rel="noopener" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">{{ repo.name }}</a>
                                 <span style="font-size: 12px; color: var(--text-secondary);">{{ repo.url }}</span>
                             </div>
                             {% if can_manage %}
@@ -1005,6 +1005,15 @@
 {% block extra_scripts %}
 <script src="{% static 'js/upload_manager.js' %}"></script>
 <script>
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // --- Mobile Nav Logic ---
     function handleNavClick(event, sectionId) {
         event.preventDefault();
@@ -1109,10 +1118,11 @@
 
             function createProgressItem(file) {
                 const id = 'prog-' + file.name.replace(/[^a-zA-Z0-9]/g, '');
+                const fileName = escapeHtml(file.name);
                 const html = `
                     <div id="${id}" style="margin-bottom: 12px; font-size: 12px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>${file.name}</span>
+                            <span>${fileName}</span>
                             <span class="status-text">0%</span>
                         </div>
                         <div style="background: #eee; height: 4px; border-radius: 2px; overflow: hidden;">
@@ -1137,7 +1147,9 @@
                 const el = document.getElementById(id);
                 if (el) {
                     const color = status === 'error' ? 'red' : 'green';
-                    el.querySelector('.status-text').innerHTML = `<span style="color: ${color}">${msg || status}</span>`;
+                    const statusText = el.querySelector('.status-text');
+                    statusText.style.color = color;
+                    statusText.textContent = msg || status;
                 }
             }
 
@@ -1220,15 +1232,22 @@
                 const list = document.getElementById('repo-list');
                 const noMsg = document.getElementById('no-repo-msg');
                 if (noMsg) noMsg.remove();
+                const repoId = Number.parseInt(data.id, 10);
+                if (!Number.isInteger(repoId)) {
+                    alert('Add failed: invalid repository id');
+                    return;
+                }
+                const repoName = escapeHtml(data.name);
+                const repoUrl = escapeHtml(data.url);
                 
                 const html = `
-                    <div class="repo-item" id="repo-${data.id}" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div class="repo-item" id="repo-${repoId}" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary);"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                            <a href="${data.url}" target="_blank" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">${data.name}</a>
-                            <span style="font-size: 12px; color: var(--text-secondary);">${data.url}</span>
+                            <a href="${repoUrl}" target="_blank" rel="noopener" style="font-weight: 500; color: var(--primary); text-decoration: none; font-size: 14px;">${repoName}</a>
+                            <span style="font-size: 12px; color: var(--text-secondary);">${repoUrl}</span>
                         </div>
-                        <button onclick="deleteRepo(${data.id})" style="border: none; background: transparent; color: #991b1b; cursor: pointer; padding: 4px;">
+                        <button onclick="deleteRepo(${repoId})" style="border: none; background: transparent; color: #991b1b; cursor: pointer; padding: 4px;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>

@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -8,6 +10,8 @@ from django.db import transaction
 from projects.models import Project
 from reports.utils import can_manage_project
 from audit.utils import log_action
+
+logger = logging.getLogger(__name__)
 
 @login_required
 @require_POST
@@ -91,8 +95,12 @@ def project_manage_members_api(request, project_id):
             else:
                 return JsonResponse({'error': 'Invalid action'}, status=400)
                 
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    except Exception:
+        logger.exception(
+            'project_member_manage_failed',
+            extra={'project_id': project_id, 'action': action, 'target_user_id': user_id},
+        )
+        return JsonResponse({'error': 'Project member update failed'}, status=500)
 
 @login_required
 def project_users_api(request, project_id):

@@ -1174,9 +1174,12 @@ function renderCalendar(data) {
                 const errorDiv = document.getElementById('hr-error-msg');
                 errorDiv.style.display = 'block';
                 if (result.errors) {
-                    let msg = '';
-                    for (const [key, val] of Object.entries(result.errors)) { msg += `${val}<br>`; }
-                    errorDiv.innerHTML = msg;
+                    errorDiv.replaceChildren();
+                    Object.values(result.errors).forEach((val) => {
+                        const line = document.createElement('div');
+                        line.textContent = val;
+                        errorDiv.appendChild(line);
+                    });
                 } else {
                     errorDiv.innerText = result.error || 'Failed';
                 }
@@ -1374,6 +1377,15 @@ function renderCalendar(data) {
         switchTab('profile'); // Reset to first tab
     };
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     async function loadSalaryHistory(userId) {
         const container = document.getElementById('salary-history-container');
         container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
@@ -1385,19 +1397,26 @@ function renderCalendar(data) {
             if (json.status === 'success' && json.data.length > 0) {
                 let html = '<table class="table" style="font-size: 12px;"><thead><tr><th>日期 / Date</th><th>原薪资 / Old</th><th>新薪资 / New</th><th>原因 / Reason</th><th>操作人 / By</th></tr></thead><tbody>';
                 json.data.forEach(item => {
+                    const createdAt = escapeHtml(item.created_at);
+                    const oldProbation = escapeHtml(item.old_probation || '--');
+                    const oldOfficial = escapeHtml(item.old_official || '--');
+                    const newProbation = escapeHtml(item.new_probation || '--');
+                    const newOfficial = escapeHtml(item.new_official || '--');
+                    const reason = escapeHtml(item.reason || '--');
+                    const changedBy = escapeHtml(item.changed_by);
                     html += `
                         <tr>
-                            <td>${item.created_at}</td>
+                            <td>${createdAt}</td>
                             <td>
-                                P: ${item.old_probation || '--'}<br>
-                                O: ${item.old_official || '--'}
+                                P: ${oldProbation}<br>
+                                O: ${oldOfficial}
                             </td>
                             <td>
-                                <span style="color: var(--primary);">P: ${item.new_probation || '--'}</span><br>
-                                <span style="color: var(--primary);">O: ${item.new_official || '--'}</span>
+                                <span style="color: var(--primary);">P: ${newProbation}</span><br>
+                                <span style="color: var(--primary);">O: ${newOfficial}</span>
                             </td>
-                            <td>${item.reason || '--'}</td>
-                            <td>${item.changed_by}</td>
+                            <td>${reason}</td>
+                            <td>${changedBy}</td>
                         </tr>
                     `;
                 });
@@ -1422,6 +1441,12 @@ function renderCalendar(data) {
             if (json.status === 'success' && json.data.length > 0) {
                 let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
                 json.data.forEach(item => {
+                    const name = escapeHtml(item.name);
+                    const createdAt = escapeHtml(item.created_at);
+                    const uploadedBy = escapeHtml(item.uploaded_by);
+                    const url = encodeURI(String(item.url || ''));
+                    const id = Number.parseInt(item.id, 10);
+                    if (!Number.isInteger(id)) return;
                     html += `
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: #f8fafc;">
                             <div style="display: flex; align-items: center; gap: 10px;">
@@ -1429,13 +1454,13 @@ function renderCalendar(data) {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                 </div>
                                 <div>
-                                    <div style="font-weight: 500; font-size: 13px;">${item.name}</div>
-                                    <div style="font-size: 11px; color: var(--text-secondary);">${item.created_at} by ${item.uploaded_by}</div>
+                                    <div style="font-weight: 500; font-size: 13px;">${name}</div>
+                                    <div style="font-size: 11px; color: var(--text-secondary);">${createdAt} by ${uploadedBy}</div>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 8px;">
-                                <a href="${item.url}" target="_blank" class="btn btn-sm btn-secondary" style="padding: 4px 8px;">下载 / Download</a>
-                                <button onclick="deleteContract(${item.id})" class="btn btn-sm btn-ghost" style="color: var(--danger); padding: 4px;">✕</button>
+                                <a href="${url}" target="_blank" rel="noopener" class="btn btn-sm btn-secondary" style="padding: 4px 8px;">下载 / Download</a>
+                                <button onclick="deleteContract(${id})" class="btn btn-sm btn-ghost" style="color: var(--danger); padding: 4px;">✕</button>
                             </div>
                         </div>
                     `;

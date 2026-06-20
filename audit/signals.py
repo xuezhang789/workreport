@@ -16,6 +16,19 @@ def get_field_verbose_name(model, field_name):
 from django.core.cache import cache
 import hashlib
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_file_size(field_file):
+    if not field_file:
+        return 0
+    try:
+        return field_file.size
+    except (OSError, ValueError):
+        logger.warning('audit_attachment_size_unavailable', extra={'file_name': getattr(field_file, 'name', '')})
+        return 0
 
 @receiver(pre_save, sender=Project, dispatch_uid="audit_project_pre_save")
 @receiver(pre_save, sender=Task, dispatch_uid="audit_task_pre_save")
@@ -357,7 +370,7 @@ def log_attachment_upload(sender, instance, created, **kwargs):
             target_type=target_type,
             target_id=str(target.pk),
             target_label=str(target),
-            details={'filename': filename, 'size': instance.file.size if instance.file else 0},
+            details={'filename': filename, 'size': _safe_file_size(instance.file)},
             project=project,
             task=task
         )

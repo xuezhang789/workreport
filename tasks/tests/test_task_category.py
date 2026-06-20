@@ -135,13 +135,13 @@ class TaskCategoryTests(TestCase):
         self.assertEqual(task.status, TaskStatus.CONFIRMED)
 
     def test_list_filtering(self):
-        Task.objects.create(title='T1', project=self.project, user=self.user, category=TaskCategory.TASK)
-        Task.objects.create(title='B1', project=self.project, user=self.user, category=TaskCategory.BUG)
+        task = Task.objects.create(title='T1', project=self.project, user=self.user, category=TaskCategory.TASK)
+        bug = Task.objects.create(title='B1', project=self.project, user=self.user, category=TaskCategory.BUG)
         
         response = self.client.get(reverse('tasks:task_list'), {'category': 'BUG'})
-        self.assertContains(response, 'B1')
-        self.assertNotContains(response, 'T1')
+        self.assertContains(response, f'id="task-{bug.id}"')
+        self.assertNotContains(response, f'id="task-{task.id}"')
         
         response = self.client.get(reverse('tasks:task_list'), {'category': 'TASK'})
-        self.assertContains(response, 'T1')
-        self.assertNotContains(response, 'B1')
+        self.assertContains(response, f'id="task-{task.id}"')
+        self.assertNotContains(response, f'id="task-{bug.id}"')

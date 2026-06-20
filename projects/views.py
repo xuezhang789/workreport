@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse, Http404
+from django.core.exceptions import ValidationError
 from django.db.models import Q, Count, F, Case, When, Value, IntegerField
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.core.paginator import Paginator
+from django.core.validators import URLValidator
 from django.contrib import messages
 from django.conf import settings
 from django.core.mail import send_mail
@@ -927,6 +929,11 @@ def project_add_repository(request, project_id):
     
     if not name or not url:
         return JsonResponse({'status': 'error', 'message': 'Name and URL are required'}, status=400)
+
+    try:
+        URLValidator(schemes=['http', 'https', 'ssh', 'git'])(url)
+    except ValidationError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid repository URL'}, status=400)
         
     repo = ProjectRepository.objects.create(project=project, name=name, url=url)
     

@@ -136,6 +136,7 @@ class VirtualProjectSelect {
         this.listContainer.innerHTML = this.projects.map((project, index) => {
             const highlighted = index === this.highlightIndex ? 'highlighted' : '';
             const selected = String(project.id) === String(selectedId) ? 'background:var(--primary-light);' : '';
+            const progress = Number.isFinite(Number(project.progress)) ? Number(project.progress) : 0;
             return `
                 <div class="vs-item ${highlighted}" style="${selected}" role="option"
                      aria-selected="${String(project.id) === String(selectedId)}"
@@ -144,7 +145,7 @@ class VirtualProjectSelect {
                         <span class="name" style="font-weight:500;">${this.highlight(project.name)}</span>
                         <span class="code" style="margin-left:8px;color:var(--text-secondary);">${this.highlight(project.code)}</span>
                     </div>
-                    <div style="font-size:12px;color:var(--text-muted);width:44px;text-align:right;">${project.progress}%</div>
+                    <div style="font-size:12px;color:var(--text-muted);width:44px;text-align:right;">${progress}%</div>
                 </div>`;
         }).join('') + (this.hasMore ? `
             <button type="button" class="btn btn-ghost" style="width:100%;margin-top:4px;"
