@@ -4,6 +4,34 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+TASKCOMMENT_INDEXES = (
+    models.Index(fields=['task'], name='tasks_taskc_task_id_8332b2_idx'),
+    models.Index(fields=['created_at'], name='tasks_taskc_created_23e5ec_idx'),
+)
+
+
+def create_missing_taskcomment_indexes(apps, schema_editor):
+    TaskComment = apps.get_model('tasks', 'TaskComment')
+    table_name = TaskComment._meta.db_table
+    with schema_editor.connection.cursor() as cursor:
+        existing = schema_editor.connection.introspection.get_constraints(cursor, table_name)
+
+    for index in TASKCOMMENT_INDEXES:
+        if index.name not in existing:
+            schema_editor.add_index(TaskComment, index)
+
+
+def drop_taskcomment_indexes(apps, schema_editor):
+    TaskComment = apps.get_model('tasks', 'TaskComment')
+    table_name = TaskComment._meta.db_table
+    with schema_editor.connection.cursor() as cursor:
+        existing = schema_editor.connection.introspection.get_constraints(cursor, table_name)
+
+    for index in reversed(TASKCOMMENT_INDEXES):
+        if index.name in existing:
+            schema_editor.remove_index(TaskComment, index)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,12 +40,22 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='taskcomment',
-            index=models.Index(fields=['task'], name='tasks_taskc_task_id_8332b2_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='taskcomment',
-            index=models.Index(fields=['created_at'], name='tasks_taskc_created_23e5ec_idx'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    create_missing_taskcomment_indexes,
+                    reverse_code=drop_taskcomment_indexes,
+                ),
+            ],
+            state_operations=[
+                migrations.AddIndex(
+                    model_name='taskcomment',
+                    index=TASKCOMMENT_INDEXES[0],
+                ),
+                migrations.AddIndex(
+                    model_name='taskcomment',
+                    index=TASKCOMMENT_INDEXES[1],
+                ),
+            ],
         ),
     ]
