@@ -30,6 +30,7 @@ from core.models import ExportJob, Invitation, Profile
 from projects.models import Project
 from reports.utils import get_accessible_projects, get_manageable_projects
 from core.services.search_index import search_documents
+from core.services.preferences import resolve_page_size
 import uuid
 
 from django.db import transaction, IntegrityError
@@ -151,12 +152,7 @@ def invitation_list(request):
     invitations = Invitation.objects.filter(inviter=request.user).select_related('registered_user', 'registered_user__profile').order_by('-created_at')
     
     # 分页
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(invitations, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))

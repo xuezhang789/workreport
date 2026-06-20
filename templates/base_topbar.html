@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-density="{{ ui_density|default:'comfortable' }}" data-reduce-motion="{{ ui_reduce_motion|yesno:'true,false' }}">
 {% load static %}
 {% load tz %}
 <head>
@@ -39,6 +39,29 @@
     <!-- Select2 JS -->
     <script src="https://cdn.bootcdn.net/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js"></script>
     <style>
+        html[data-density="compact"] .content {
+            padding-top: 16px;
+        }
+        html[data-density="compact"] .btn,
+        html[data-density="compact"] button,
+        html[data-density="compact"] .form-input,
+        html[data-density="compact"] .form-select,
+        html[data-density="compact"] select,
+        html[data-density="compact"] input {
+            min-height: 34px;
+        }
+        html[data-density="compact"] .btn {
+            padding-top: 7px;
+            padding-bottom: 7px;
+        }
+        html[data-reduce-motion="true"] *,
+        html[data-reduce-motion="true"] *::before,
+        html[data-reduce-motion="true"] *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+        }
         {% block extra_styles %}{% endblock %}
     </style>
 </head>

@@ -10,6 +10,7 @@ from projects.models import Project
 from reports.services import teams as team_service
 from core.utils import _admin_forbidden
 from core.permissions import has_manage_permission
+from core.services.preferences import resolve_page_size
 from audit.utils import log_action
 from django.utils import timezone
 from channels.layers import get_channel_layer
@@ -70,12 +71,7 @@ def teams_list(request):
         qs = team_service.get_team_members(q=q, role=role, project_id=project_filter)
     
     # --- 成员目录分页 ---
-    try:
-        member_per_page = int(request.GET.get('member_per_page', 20))
-        if member_per_page not in [10, 20, 50, 100]:
-            member_per_page = 20
-    except (ValueError, TypeError):
-        member_per_page = 20
+    member_per_page = resolve_page_size(request, request.GET, key='member_per_page')
 
     paginator = Paginator(qs, member_per_page)
     page_obj = paginator.get_page(request.GET.get('member_page'))
@@ -98,12 +94,7 @@ def teams_list(request):
     ).select_related('owner').order_by('name')
     
     # --- 项目团队分页 ---
-    try:
-        project_per_page = int(request.GET.get('project_per_page', 20))
-        if project_per_page not in [10, 20, 50, 100]:
-            project_per_page = 20
-    except (ValueError, TypeError):
-        project_per_page = 20
+    project_per_page = resolve_page_size(request, request.GET, key='project_per_page')
 
     project_paginator = Paginator(dashboard_projects_qs, project_per_page)
     project_page_obj = project_paginator.get_page(request.GET.get('project_page'))

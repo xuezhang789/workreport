@@ -48,6 +48,7 @@ from reports.signals import _invalidate_stats_cache
 from reports.services.notification_service import send_notification
 from core.services.upload_service import UploadService
 from core.services.protected_files import protected_file_response
+from core.services.preferences import resolve_page_size
 
 logger = logging.getLogger(__name__)
 
@@ -298,12 +299,7 @@ def task_list(request):
     tasks_qs = tasks_qs.order_by(sort_field)
 
     # 分页
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(tasks_qs, per_page)
     page_number = request.GET.get('page')

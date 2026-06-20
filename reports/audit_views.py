@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from audit.models import AuditLog
 from core.utils import _admin_forbidden
+from core.services.preferences import resolve_page_size
 from audit.utils import log_action
 
 @login_required
@@ -49,12 +50,7 @@ def audit_logs(request):
         qs = qs.filter(ip__icontains=ip)
 
     # Pagination
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))

@@ -159,9 +159,33 @@ class UserPreference(models.Model):
     data = models.JSONField(default=dict, blank=True, verbose_name="偏好数据")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
+    DEFAULT_UI = {
+        'page_size': 20,
+        'density': 'comfortable',
+        'reduce_motion': False,
+    }
+
     class Meta:
         verbose_name = "用户偏好"
         verbose_name_plural = "用户偏好"
+
+    def get_section(self, key, default=None):
+        value = (self.data or {}).get(key)
+        if isinstance(value, dict):
+            return dict(value)
+        return dict(default or {})
+
+    def update_section(self, key, value):
+        data = dict(self.data or {})
+        data[key] = value if isinstance(value, dict) else {}
+        self.data = data
+        self.save(update_fields=['data', 'updated_at'])
+        return data[key]
+
+    def get_ui(self):
+        ui = dict(self.DEFAULT_UI)
+        ui.update(self.get_section('ui'))
+        return ui
 
 
 class NotificationType(models.TextChoices):

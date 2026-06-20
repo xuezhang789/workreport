@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from tasks.models import Task
 from core.models import SystemSetting
 from core.constants import TaskStatus, TaskCategory
+from core.services.preferences import resolve_page_size
 from tasks.services.sla import calculate_sla_info, get_sla_hours, get_sla_thresholds
 from reports.utils import get_accessible_projects
 
@@ -77,13 +78,7 @@ class TaskAdminService:
             tasks_qs = tasks_qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
 
         # 4. 排序与分页 (包含 Hot 逻辑)
-        per_page = 20
-        try:
-            per_page_param = int(params.get('per_page', 20))
-            if per_page_param in [10, 20, 50, 100]:
-                per_page = per_page_param
-        except (ValueError, TypeError):
-            pass
+        per_page = resolve_page_size(user, params)
 
         page_obj = None
         

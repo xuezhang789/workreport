@@ -1,8 +1,10 @@
+from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete
 from django.dispatch import receiver
 
 from core.models import Role, RolePermission, UserRole
 from core.services.permission_cache import invalidate_user_permission_cache
+from core.services.preferences import get_user_ui_preferences, remember_ui_preferences
 from core.services.search_index import delete_instance, schedule_sync_instance
 from projects.models import Project
 from tasks.models import Task
@@ -75,3 +77,8 @@ def search_index_deleted(sender, instance, **kwargs):
 def search_index_daily_report_projects(sender, instance, action, **kwargs):
     if action in {'post_add', 'post_remove', 'post_clear'}:
         schedule_sync_instance(instance)
+
+
+@receiver(user_logged_in, dispatch_uid='core_prime_ui_preferences_session')
+def prime_ui_preferences_session(sender, request, user, **kwargs):
+    remember_ui_preferences(request.session, get_user_ui_preferences(user))

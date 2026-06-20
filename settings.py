@@ -121,6 +121,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'reports.context_processors.admin_flags', # 自定义管理员标志
+                'reports.context_processors.ui_preferences',
             ],
         },
     },

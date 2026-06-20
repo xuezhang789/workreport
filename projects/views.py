@@ -34,6 +34,7 @@ from tasks.services.sla import calculate_sla_info
 from reports.signals import _invalidate_stats_cache
 from reports.services.notification_service import send_notification
 from core.services.cache_registry import cache_set_tracked
+from core.services.preferences import resolve_page_size
 
 MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
@@ -144,12 +145,7 @@ def project_list(request):
     projects = projects.annotate(member_count=Count('members', distinct=True))
     
     # Pagination handling
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(projects, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))

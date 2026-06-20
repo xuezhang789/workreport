@@ -19,6 +19,7 @@ from reports.utils import get_accessible_projects, get_accessible_reports, can_m
 from core.utils import _admin_forbidden, _friendly_forbidden
 from core.permissions import has_manage_permission
 from audit.utils import log_action
+from core.services.preferences import resolve_page_size
 
 def _filtered_reports(request):
     """
@@ -420,12 +421,7 @@ def my_reports(request):
     if q:
         qs = qs.filter(DailyReport.content_search_query(q))
 
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(qs, per_page)
     page_number = request.GET.get('page')
@@ -643,12 +639,7 @@ def admin_reports(request):
     # reports = reports.select_related('user', 'user__profile').prefetch_related('projects').order_by('-date', '-created_at')
 
     # 分页
-    try:
-        per_page = int(request.GET.get('per_page', 20))
-        if per_page not in [10, 20, 50, 100]:
-            per_page = 20
-    except (ValueError, TypeError):
-        per_page = 20
+    per_page = resolve_page_size(request, request.GET)
 
     paginator = Paginator(reports, per_page)
     # 优化：手动设置 count 以避免 Paginator 执行额外的 COUNT(*) 查询

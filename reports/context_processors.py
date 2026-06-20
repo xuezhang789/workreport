@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from core.services.preferences import get_request_ui_preferences
 
 
 def admin_flags(request):
@@ -35,4 +36,13 @@ def admin_flags(request):
     return {
         "can_view_admin_global": can_view_admin_global,
         "can_view_admin_project": can_view_admin_project,
+    }
+
+
+def ui_preferences(request):
+    ui = get_request_ui_preferences(request)
+    return {
+        'ui_density': ui.get('density', 'comfortable'),
+        'ui_reduce_motion': bool(ui.get('reduce_motion')),
+        'ui_page_size': ui.get('page_size', 20),
     }

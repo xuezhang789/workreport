@@ -540,6 +540,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 隐私设置 / Privacy
             </div>
+            <div class="nav-item" onclick="switchTab('ui')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
+                界面偏好 / Interface
+            </div>
             <div class="nav-item" onclick="switchTab('notify')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 通知偏好 / Notifications
@@ -846,6 +850,48 @@
                 </div>
             </div>
 
+            <!-- Tab: Interface -->
+            <div id="tab-ui" class="tab-pane">
+                <div class="section-header">
+                    <h2 class="section-title">界面偏好 / Interface</h2>
+                    <p class="section-desc">调整列表密度、默认分页和动效设置 / Tune list density, page size, and motion.</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="ui-page-size">默认每页条数 / Default Page Size</label>
+                    <select id="ui-page-size" class="form-input">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <div class="help-text">未在 URL 指定分页时，列表页将使用此默认值。</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="ui-density">界面密度 / Display Density</label>
+                    <select id="ui-density" class="form-input">
+                        <option value="comfortable">舒适 / Comfortable</option>
+                        <option value="compact">紧凑 / Compact</option>
+                    </select>
+                    <div class="help-text">紧凑模式会降低按钮与表单控件高度，适合高频操作页面。</div>
+                </div>
+
+                <div class="form-group" style="max-width: 100%;">
+                    <label class="setting-option-card">
+                        <input id="ui-reduce-motion" type="checkbox" class="setting-checkbox">
+                        <div class="setting-text">
+                            <span class="setting-title">减少动效 / Reduce Motion</span>
+                            <span class="setting-desc">减少页面切换、提示和滚动动画，提升长时间使用的舒适度。</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <button type="button" id="ui-save" class="btn btn-primary">保存界面偏好 / Save Interface</button>
+                </div>
+            </div>
+
             <!-- Tab: Notify -->
             <div id="tab-notify" class="tab-pane">
                 <div class="section-header">
@@ -1128,6 +1174,41 @@
                     btn.innerText = originalText;
                     if (r.ok) {
                         showToast('success', '隐私设置已保存 / Privacy Saved', '您的隐私偏好已更新 / Your privacy preferences have been updated.');
+                    } else {
+                        showToast('error', '保存失败 / Failed', '请稍后重试 / Please try again later.');
+                    }
+                });
+            });
+        }
+
+        const uiPageSize = document.getElementById('ui-page-size');
+        const uiDensity = document.getElementById('ui-density');
+        const uiReduceMotion = document.getElementById('ui-reduce-motion');
+        const uiSave = document.getElementById('ui-save');
+        prefGet('ui', (data) => {
+            if (uiPageSize) uiPageSize.value = String(data.page_size || 20);
+            if (uiDensity) uiDensity.value = data.density || 'comfortable';
+            if (uiReduceMotion) uiReduceMotion.checked = !!data.reduce_motion;
+        });
+        if (uiSave) {
+            uiSave.addEventListener('click', () => {
+                const btn = uiSave;
+                const originalText = btn.innerText;
+                btn.disabled = true;
+                btn.innerText = '保存中... / Saving...';
+
+                const payload = {
+                    page_size: parseInt(uiPageSize.value, 10) || 20,
+                    density: uiDensity.value || 'comfortable',
+                    reduce_motion: !!uiReduceMotion.checked
+                };
+                prefSave('ui', payload, (r) => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    if (r.ok) {
+                        document.documentElement.dataset.density = payload.density;
+                        document.documentElement.dataset.reduceMotion = payload.reduce_motion ? 'true' : 'false';
+                        showToast('success', '界面偏好已保存 / Interface Saved', '新的界面偏好已生效 / Your interface preferences are active.');
                     } else {
                         showToast('error', '保存失败 / Failed', '请稍后重试 / Please try again later.');
                     }
