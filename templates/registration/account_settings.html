@@ -293,6 +293,78 @@
     }
     .badge-success { background: #dcfce7; color: #16a34a; }
     .badge-warning { background: #ffedd5; color: #f97316; }
+    .email-status-card {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        max-width: 600px;
+        min-width: 0;
+    }
+    .email-status-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e7ff;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .email-status-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .email-current-line {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+    .email-address-text {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .email-status-badge {
+        padding: 2px 8px;
+        font-size: 11px;
+        max-width: 100%;
+    }
+    .email-pending-alert {
+        max-width: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    .email-pending-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1 1 240px;
+    }
+    .email-pending-text,
+    .email-pending-text strong {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .email-code-row {
+        display: flex;
+        gap: 12px;
+    }
 
     /* Responsive text truncation for very small screens */
     @media (max-width: 375px) {
@@ -482,6 +554,23 @@
             width: 24px;
             height: 24px;
         }
+
+        .email-status-card {
+            align-items: flex-start;
+        }
+        .email-current-line {
+            align-items: flex-start;
+        }
+        .email-code-row {
+            flex-direction: column;
+        }
+        .email-pending-alert {
+            align-items: stretch !important;
+            gap: 12px;
+        }
+        .email-pending-alert .btn {
+            width: 100%;
+        }
         
         /* Quick Actions Grid */
         #tab-overview .section-header + div {
@@ -563,8 +652,8 @@
                 <div class="overview-card" style="align-items: flex-start; gap: 32px;">
                     <div class="avatar-wrapper" onclick="document.getElementById('avatar-input').click()">
                         <div class="user-avatar-lg" id="overview-avatar" style="width: 100px; height: 100px; font-size: 32px;">
-                            {% if user.profile.avatar_url %}
-                            <img src="{{ user.profile.avatar_url }}" alt="Avatar">
+                            {% if profile.avatar_url %}
+                            <img src="{{ profile.avatar_url }}" alt="Avatar">
                             {% else %}
                             {{ user.username|slice:":1"|upper }}
                             {% endif %}
@@ -583,11 +672,11 @@
                         </div>
                         
                         <div class="badge-container">
-                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ user.profile.get_position_display|default:'-' }}">
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-secondary);" title="角色 / Role: {{ profile.get_position_display|default:'-' }}">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                {{ user.profile.get_position_display|default:"暂无角色 / No Role" }}
+                                {{ profile.get_position_display|default:"暂无角色 / No Role" }}
                             </span>
-                            {% if user.profile.email_verified %}
+                            {% if email_verified %}
                             <span class="badge badge-success" title="已验证 / Verified">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 已验证 / Verified
@@ -658,8 +747,8 @@
                     <label class="form-label">头像 / Avatar</label>
                     <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                         <div class="user-avatar-lg" id="avatar-preview" style="width: 80px; height: 80px; font-size: 28px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                            {% if user.profile.avatar_url %}
-                            <img src="{{ user.profile.avatar_url }}" alt="Avatar">
+                            {% if profile.avatar_url %}
+                            <img src="{{ profile.avatar_url }}" alt="Avatar">
                             {% else %}
                             {{ user.username|slice:":1"|upper }}
                             {% endif %}
@@ -759,37 +848,40 @@
                     <p class="section-desc">验证邮箱以接收重要通知和找回密码 / Verify email for notifications.</p>
                 </div>
 
-                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 32px; display: flex; align-items: center; gap: 16px; max-width: 600px;">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #e0e7ff; color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div class="email-status-card">
+                    <div class="email-status-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                     </div>
-                    <div>
+                    <div class="email-status-body">
                         <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">当前绑定邮箱 / Current Email</div>
-                        <div style="font-size: 16px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            {{ user.email }}
-                            {% if user.profile.email_verified %}
-                            <span class="badge badge-success" style="padding: 2px 8px; font-size: 11px;">已验证 / Verified</span>
+                        <div class="email-current-line">
+                            <span class="email-address-text">{{ user.email|default:"未绑定 / Not set" }}</span>
+                            {% if email_verified %}
+                            <span class="badge badge-success email-status-badge" title="已验证 / Verified">已验证 / Verified</span>
                             {% else %}
-                            <span class="badge badge-warning" style="padding: 2px 8px; font-size: 11px;">未验证 / Unverified</span>
+                            <span class="badge badge-warning email-status-badge" title="未验证 / Unverified">未验证 / Unverified</span>
                             {% endif %}
                         </div>
+                        {% if not email_verified %}
+                        <div class="help-text">当前邮箱尚未验证，可保持此邮箱并获取验证码 / Current email is unverified; keep it and request a code.</div>
+                        {% endif %}
                     </div>
                 </div>
 
                 <form method="post" id="email-form">
                     {% csrf_token %}
                     {% if pending_email %}
-                        <div class="alert alert-warning" style="max-width: 600px; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="alert alert-warning email-pending-alert">
+                            <div class="email-pending-content">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                <div>验证码已发送至 / Code sent to <strong>{{ pending_email.email }}</strong></div>
+                                <div class="email-pending-text">验证码已发送至 / Code sent to <strong>{{ pending_email.email }}</strong></div>
                             </div>
                             <button type="submit" name="action" value="cancel_email_change" class="btn btn-link btn-sm" formnovalidate style="color: inherit; text-decoration: underline; padding: 0; border: none; font-size: 13px;">更换 / Change</button>
                         </div>
                         <input type="hidden" name="email" value="{{ pending_email.email }}">
                     {% else %}
                         <div class="form-group" style="max-width: 600px;">
-                            <label for="{{ email_request_form.email.id_for_label }}" class="form-label">新邮箱地址 / New Email</label>
+                            <label for="{{ email_request_form.email.id_for_label }}" class="form-label">{% if email_verified %}新邮箱地址 / New Email{% else %}邮箱地址 / Email{% endif %}</label>
                             {{ email_request_form.email }}
                             {% if email_request_form.email.errors %}
                             <div class="help-text text-danger">{{ email_request_form.email.errors.0 }}</div>
@@ -799,7 +891,7 @@
                     
                     <div class="form-group" style="max-width: 600px;">
                         <label for="{{ email_confirm_form.code.id_for_label }}" class="form-label">验证码 / Verification Code</label>
-                        <div style="display: flex; gap: 12px;">
+                        <div class="email-code-row">
                             <div style="flex: 1;">
                                 {{ email_confirm_form.code }}
                             </div>

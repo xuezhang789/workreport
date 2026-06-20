@@ -204,14 +204,16 @@ def send_email_code_api(request):
         return JsonResponse({'error': '邮箱格式不正确 / Invalid email format'}, status=400)
 
     user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
     UserModel = get_user_model()
+    is_current_email = email.lower() == (user.email or '').lower()
     
     # 检查可用性
     if UserModel.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
         return JsonResponse({'error': '该邮箱已被其他账号使用 / Email already in use'}, status=400)
     
-    if email.lower() == (user.email or '').lower():
-         return JsonResponse({'error': '该邮箱已绑定，无需重复验证 / Email already bound'}, status=400)
+    if is_current_email and profile.email_verified:
+        return JsonResponse({'error': '该邮箱已绑定并验证，无需重复验证 / Email already bound and verified'}, status=400)
 
     # 冷却检查
     cooldown = 60
@@ -262,11 +264,13 @@ def send_email_code_api(request):
 def account_settings(request):
     """个人中心：姓名、密码与邮箱设置。"""
     user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
     UserModel = get_user_model()
     name_form = NameUpdateForm(user=user, initial={'full_name': user.get_full_name()})
     password_form = PasswordUpdateForm(user=user)
     email_request_form = EmailVerificationRequestForm(initial={'email': user.email})
     email_confirm_form = EmailVerificationConfirmForm(initial={'email': user.email})
+    email_verified = bool(profile.email_verified)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -314,7 +318,6 @@ def account_settings(request):
                     request.session.pop('email_verification', None)
                     request.session.modified = True
                     
-                    profile, _ = Profile.objects.get_or_create(user=user)
                     if not profile.email_verified:
                         profile.email_verified = True
                         profile.save(update_fields=['email_verified'])
@@ -361,6 +364,8 @@ def account_settings(request):
         'password_form': password_form,
         'email_request_form': email_request_form,
         'email_confirm_form': email_confirm_form,
+        'profile': profile,
+        'email_verified': email_verified,
         'pending_email': pending_email,
         'password_min_score': getattr(settings, 'PASSWORD_MIN_SCORE', 3),
         # Statistics data

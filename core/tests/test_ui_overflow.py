@@ -1,5 +1,8 @@
+import json
 import time
+from django.core import mail
 from django.test import TestCase, Client
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from core.models import Profile, UserPreference
@@ -39,6 +42,57 @@ class PersonalCenterUITest(TestCase):
         # Check responsive media query presence
         self.assertIn('@media (max-width: 375px)', content)
         self.assertIn('max-width: 140px;', content)
+        self.assertIn('class="badge badge-warning email-status-badge" title="未验证 / Unverified"', content)
+        self.assertIn('Current email is unverified; keep it and request a code.', content)
+        self.assertIn('.email-pending-text strong', content)
+
+    def test_account_settings_supports_legacy_user_without_profile(self):
+        legacy_user = get_user_model().objects.create_user(
+            username='legacyuser',
+            email='legacy@example.com',
+            password='password',
+        )
+        self.client.force_login(legacy_user)
+
+        response = self.client.get(reverse('core:account_settings'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Profile.objects.filter(user=legacy_user).exists())
+        self.assertContains(response, '未验证 / Unverified')
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_unverified_current_email_can_request_code(self):
+        self.user.email = 'current@example.com'
+        self.user.save(update_fields=['email'])
+        self.user.profile.email_verified = False
+        self.user.profile.save(update_fields=['email_verified'])
+
+        response = self.client.post(
+            reverse('core:send_email_code_api'),
+            data=json.dumps({'email': 'current@example.com'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertEqual(self.client.session['email_verification']['email'], 'current@example.com')
+        self.assertEqual(len(mail.outbox), 1)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_verified_current_email_rejects_duplicate_code(self):
+        self.user.email = 'current@example.com'
+        self.user.save(update_fields=['email'])
+        self.user.profile.email_verified = True
+        self.user.profile.save(update_fields=['email_verified'])
+
+        response = self.client.post(
+            reverse('core:send_email_code_api'),
+            data=json.dumps({'email': 'current@example.com'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('already bound and verified', response.json()['error'])
 
     def test_email_update_marks_profile_verified(self):
         session = self.client.session
