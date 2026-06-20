@@ -28,7 +28,7 @@ from core.utils import (
     _validate_file,
     _stream_csv,
     _create_export_job,
-    _generate_export_file
+    _enqueue_export_job,
 )
 from tasks.services.sla import (
     calculate_sla_info, 
@@ -39,6 +39,7 @@ from tasks.services.export import TaskExportService
 from tasks.services.task_service import TaskAdminService
 from reports.utils import get_accessible_projects, can_manage_project, get_manageable_projects
 from reports.signals import _invalidate_stats_cache
+from core.services.cache_registry import cache_set_tracked
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ def admin_task_bulk_action(request):
                 result='success'
             ))
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status=TaskStatus.DONE, completed_at=now)
+        tasks.update(status=TaskStatus.DONE, completed_at=now, version=F('version') + 1)
         
         # Trigger progress update for affected projects
         for pid in tasks.values_list('project_id', flat=True).distinct():
@@ -129,7 +130,7 @@ def admin_task_bulk_action(request):
                 result='success'
             ))
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status=TaskStatus.TODO, completed_at=None)
+        tasks.update(status=TaskStatus.TODO, completed_at=None, version=F('version') + 1)
         
         # Trigger progress update for affected projects
         for pid in tasks.values_list('project_id', flat=True).distinct():
@@ -192,6 +193,8 @@ def admin_task_bulk_action(request):
                 t.user = assign_user
                 update_fields.append('user')
             if update_fields:
+                t.version = (t.version or 1) + 1
+                update_fields.append('version')
                 t.save(update_fields=update_fields)
                 updated += 1
         if updated:
@@ -299,19 +302,18 @@ def admin_task_export(request):
         
         job = _create_export_job(request.user, 'admin_tasks')
         try:
-            # For background job, we might still want iterator to save memory, 
-            # but we need to handle N+1. For now, since it's background, standard iteration is safer for correctness.
-            path = _generate_export_file(
-                job,
-                TaskExportService.get_header(),
-                TaskExportService.get_export_rows(tasks)
-            )
-            return JsonResponse({'queued': True, 'job_id': job.id})
-        except Exception as e:
-            job.status = 'failed'
-            job.message = str(e)
-            job.save(update_fields=['status', 'message', 'updated_at'])
-            return JsonResponse({'error': 'export failed'}, status=500)
+            _enqueue_export_job(job, {
+                'status': status,
+                'priority': priority,
+                'project_id': project_id,
+                'user_id': user_id,
+                'q': q,
+                'hot': hot,
+                'sort': sort_by,
+            })
+            return JsonResponse({'queued': True, 'job_id': job.id}, status=202)
+        except Exception:
+            return JsonResponse({'error': 'export queue unavailable'}, status=503)
 
     # 安全/性能修复：移除 iterator() 以允许 prefetch_related 工作
     rows = TaskExportService.get_export_rows(tasks)
@@ -671,7 +673,7 @@ def admin_task_stats(request):
             'user_stats': user_stats,
         }
         
-        cache.set(cache_key, stats_data, 600)
+        cache_set_tracked(cache_key, stats_data, 600, 'stats')
     
     # Unpack from stats_data
     status_map = dict(Task.STATUS_CHOICES)
@@ -1121,6 +1123,7 @@ def admin_task_edit(request, pk):
         task.status = status
         task.priority = priority
         task.due_at = due_at
+        task.version = (task.version or 1) + 1
         task.save()
         
         task.collaborators.set(collaborators)

@@ -1,4 +1,18 @@
 from core.constants import TaskStatus, TaskCategory
+from django.db import transaction
+from django.utils import timezone
+
+
+class TaskStateError(Exception):
+    """Base class for task state transition errors."""
+
+
+class TaskConflictError(TaskStateError):
+    """Raised when the caller updates a stale task version."""
+
+
+class TaskTransitionError(TaskStateError):
+    """Raised when a requested status change is not allowed."""
 
 class TaskStateService:
     """
@@ -114,3 +128,69 @@ class TaskStateService:
         if category == TaskCategory.BUG:
             return TaskStatus.NEW
         return TaskStatus.TODO
+
+    @classmethod
+    def coerce_expected_version(cls, *raw_values):
+        for raw_value in raw_values:
+            if raw_value in (None, ''):
+                continue
+            value = str(raw_value).strip()
+            if value.startswith('W/'):
+                value = value[2:].strip()
+            value = value.strip('"')
+            if not value:
+                continue
+            try:
+                return int(value)
+            except (TypeError, ValueError) as exc:
+                raise TaskConflictError("任务版本号无效 / Invalid task version") from exc
+        return None
+
+    @classmethod
+    def apply_status_transition(cls, task, new_status, expected_version=None, completed_at=None):
+        """
+        Apply a validated status transition to an already locked Task instance.
+        """
+        from tasks.models import Task
+
+        expected_version = cls.coerce_expected_version(expected_version)
+        if expected_version is not None and task.version != expected_version:
+            raise TaskConflictError("任务已被其他人更新，请刷新后重试 / Task was updated by someone else")
+
+        if new_status not in dict(Task.STATUS_CHOICES):
+            raise TaskTransitionError("请选择有效的状态 / Invalid task status")
+        if not cls.validate_transition(task.category, task.status, new_status):
+            old_label = dict(Task.STATUS_CHOICES).get(task.status, task.status)
+            new_label = dict(Task.STATUS_CHOICES).get(new_status, new_status)
+            raise TaskTransitionError(f"无效的状态流转：无法从 {old_label} 变更为 {new_label}")
+
+        old_status = task.status
+        next_completed_at = task.completed_at
+        if new_status in (TaskStatus.DONE, TaskStatus.CLOSED):
+            next_completed_at = task.completed_at or completed_at or timezone.now()
+        elif task.completed_at:
+            next_completed_at = None
+
+        if task.status != new_status or task.completed_at != next_completed_at:
+            task.status = new_status
+            task.completed_at = next_completed_at
+            task.version = (task.version or 1) + 1
+            task.save(update_fields=['status', 'completed_at', 'version'])
+
+        return task, old_status
+
+    @classmethod
+    def transition_task_status(cls, task_id, new_status, expected_version=None, completed_at=None):
+        """
+        Lock a task row and apply a status transition with optional optimistic version check.
+        """
+        from tasks.models import Task
+
+        with transaction.atomic():
+            task = Task.objects.select_for_update().get(pk=task_id)
+            return cls.apply_status_transition(
+                task,
+                new_status,
+                expected_version=expected_version,
+                completed_at=completed_at,
+            )

@@ -32,6 +32,7 @@ class Task(models.Model):
     overdue_notified_at = models.DateTimeField(null=True, blank=True, verbose_name="逾期通知时间")
     amber_notified_at = models.DateTimeField(null=True, blank=True, verbose_name="即将逾期通知时间")
     red_notified_at = models.DateTimeField(null=True, blank=True, verbose_name="紧急通知时间")
+    version = models.PositiveIntegerField(default=1, verbose_name="版本号")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
     class Meta:
@@ -45,6 +46,7 @@ class Task(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['created_at']),
             models.Index(fields=['due_at']),
+            models.Index(fields=['completed_at'], name='tasks_task_complete_idx'),
         ]
         verbose_name = "任务"
         verbose_name_plural = "任务"

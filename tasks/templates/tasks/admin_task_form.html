@@ -840,7 +840,7 @@
                                                 <span style="font-weight: 500;">{{ attachment.user.get_full_name|default:attachment.user.username }}</span>
                                             </div>
                                             <div class="attachment-actions">
-                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download">下载 / Download</a>
+                                                <a href="{% url 'tasks:task_attachment_file' attachment.id %}?download=1" target="_blank" class="btn-xs btn-download">下载 / Download</a>
                                                 {% if not is_collaborator_only %}
                                                 <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'tasks:task_delete_attachment' attachment.id %}')">删除 / Remove</button>
                                                 {% endif %}

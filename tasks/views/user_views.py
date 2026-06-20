@@ -16,6 +16,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.core.cache import cache
 from django.urls import reverse
+from django.views.decorators.http import require_GET
 
 from projects.models import Project
 from tasks.models import Task, TaskAttachment, TaskTemplateVersion, TaskComment
@@ -23,7 +24,7 @@ from core.constants import TaskStatus, TaskCategory
 from audit.utils import log_action
 from audit.models import AuditLog
 from audit.services import AuditLogService
-from core.models import Profile, SystemSetting, ChunkedUpload
+from core.models import DirectUpload, Profile, SystemSetting, ChunkedUpload
 from work_logs.models import DailyReport
 from core.utils import (
     _admin_forbidden,
@@ -31,7 +32,7 @@ from core.utils import (
     _validate_file,
     _stream_csv,
     _create_export_job,
-    _generate_export_file
+    _enqueue_export_job,
 )
 from tasks.services.sla import (
     calculate_sla_info, 
@@ -41,17 +42,26 @@ from tasks.services.sla import (
     _get_sla_timer_readonly
 )
 from tasks.services.export import TaskExportService
-from tasks.services.state import TaskStateService
+from tasks.services.state import TaskConflictError, TaskStateService, TaskTransitionError
 from reports.utils import get_accessible_projects, can_manage_project, get_manageable_projects
 from reports.signals import _invalidate_stats_cache
 from reports.services.notification_service import send_notification
 from core.services.upload_service import UploadService
+from core.services.protected_files import protected_file_response
 
 logger = logging.getLogger(__name__)
 
 MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
 MENTION_PATTERN = re.compile(r'@([\w.@+-]+)')
+
+
+def _request_expected_task_version(request):
+    return TaskStateService.coerce_expected_version(
+        request.POST.get('expected_version'),
+        request.POST.get('version'),
+        request.headers.get('If-Match'),
+    )
 
 @login_required
 def task_upload_attachment(request, task_id):
@@ -69,17 +79,45 @@ def task_upload_attachment(request, task_id):
     if request.method == 'POST':
         uploaded_files = []
         
-        # 1. Handle Chunked Upload Completion (via upload_id)
-        if request.POST.get('upload_id'):
+        # 1. Handle Direct Upload Completion (via direct_upload_id)
+        if request.POST.get('direct_upload_id'):
+            direct_upload_id = request.POST.get('direct_upload_id')
+            upload, error = UploadService.consume_direct_upload(
+                request.user,
+                direct_upload_id,
+                DirectUpload.UploadType.TASK,
+            )
+            if error:
+                return JsonResponse({'status': 'error', 'message': error}, status=400)
+
+            attachment = TaskAttachment.objects.create(
+                task=task,
+                user=request.user,
+                file=upload.storage_path,
+            )
+            UploadService.mark_direct_upload_attached(upload)
+            uploaded_files.append({
+                'id': attachment.id,
+                'name': upload.filename,
+                'size': upload.file_size,
+                'url': reverse('tasks:task_attachment_file', args=[attachment.id]),
+                'uploaded_by': attachment.user.get_full_name() or attachment.user.username,
+                'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+
+        # 2. Handle Chunked Upload Completion (via upload_id)
+        elif request.POST.get('upload_id'):
             upload_id = request.POST.get('upload_id')
             try:
                 # Verify ownership
-                chunk_upload = ChunkedUpload.objects.get(id=upload_id)
-                if chunk_upload.user != request.user:
-                    return JsonResponse({'status': 'error', 'message': 'Permission denied for this upload'}, status=403)
+                ChunkedUpload.objects.get(id=upload_id, user=request.user)
                 
                 # Finalize
-                content_file, error = UploadService.complete_chunked_upload(upload_id)
+                content_file, error = UploadService.complete_chunked_upload(
+                    request.user,
+                    upload_id,
+                    max_size=50 * 1024 * 1024,
+                )
                 if error:
                     return JsonResponse({'status': 'error', 'message': error}, status=400)
                 
@@ -94,7 +132,7 @@ def task_upload_attachment(request, task_id):
                     'id': attachment.id,
                     'name': attachment.file.name,
                     'size': attachment.file.size,
-                    'url': attachment.file.url,
+                    'url': reverse('tasks:task_attachment_file', args=[attachment.id]),
                     'uploaded_by': attachment.user.get_full_name() or attachment.user.username,
                     'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
                 })
@@ -104,7 +142,7 @@ def task_upload_attachment(request, task_id):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-        # 2. Handle Standard File Upload (via FILES)
+        # 3. Handle Standard File Upload (via FILES)
         elif request.FILES.getlist('files'):
             for file in request.FILES.getlist('files'):
                 is_valid, error_msg = _validate_file(file)
@@ -120,7 +158,7 @@ def task_upload_attachment(request, task_id):
                     'id': attachment.id,
                     'name': attachment.file.name,
                     'size': attachment.file.size,
-                    'url': attachment.file.url,
+                    'url': reverse('tasks:task_attachment_file', args=[attachment.id]),
                     'uploaded_by': attachment.user.get_full_name() or attachment.user.username,
                     'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
                 })
@@ -129,6 +167,22 @@ def task_upload_attachment(request, task_id):
             return JsonResponse({'status': 'success', 'files': uploaded_files})
         
     return JsonResponse({'status': 'error', 'message': 'No files provided'}, status=400)
+
+
+@login_required
+@require_GET
+def task_attachment_file(request, attachment_id):
+    attachment = get_object_or_404(
+        TaskAttachment.objects.select_related('task__project'),
+        pk=attachment_id,
+    )
+    if not get_accessible_projects(request.user).filter(pk=attachment.task.project_id).exists():
+        raise Http404("Attachment not found")
+
+    return protected_file_response(
+        attachment.file,
+        as_attachment=request.GET.get('download') == '1',
+    )
 
 @login_required
 def task_delete_attachment(request, attachment_id):
@@ -339,20 +393,18 @@ def task_export(request):
     if total_count > MAX_EXPORT_ROWS:
         if request.GET.get('queue') != '1':
             return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters. 如需排队导出，请带 queue=1 参数 / Use queue=1 to enqueue export.", status=400)
-        # 走异步导出队列（简化为后台生成 + 轮询）
         job = _create_export_job(request.user, 'my_tasks')
         try:
-            path = _generate_export_file(
-                job,
-                TaskExportService.get_header(),
-                TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else list(tasks))
-            )
-            return JsonResponse({'queued': True, 'job_id': job.id})
-        except Exception as e:
-            job.status = 'failed'
-            job.message = str(e)
-            job.save(update_fields=['status', 'message', 'updated_at'])
-            return JsonResponse({'error': 'export failed'}, status=500)
+            _enqueue_export_job(job, {
+                'status': status,
+                'priority': priority,
+                'project_id': project_id,
+                'q': q,
+                'hot': hot,
+            })
+            return JsonResponse({'queued': True, 'job_id': job.id}, status=202)
+        except Exception:
+            return JsonResponse({'error': 'export queue unavailable'}, status=503)
 
     rows = TaskExportService.get_export_rows(tasks if isinstance(tasks, list) else list(tasks))
     header = TaskExportService.get_header()
@@ -395,16 +447,22 @@ def task_complete(request, pk: int):
     # 完成任务
     try:
         with transaction.atomic():
-            task.status = 'done'
-            task.completed_at = timezone.now()
+            task = Task.objects.select_for_update().select_related('project', 'user').get(pk=pk)
+            TaskStateService.apply_status_transition(
+                task,
+                TaskStatus.DONE,
+                expected_version=_request_expected_task_version(request),
+                completed_at=timezone.now(),
+            )
             timer = _get_sla_timer_readonly(task)
             if timer and timer.paused_at:
                 timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
                 timer.paused_at = None
                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
-            task.save(update_fields=['status', 'completed_at'])
         log_action(request, 'update', f"task_complete {task.id}")
         messages.success(request, "任务已标记完成 / Task marked as completed.")
+    except (TaskConflictError, TaskTransitionError) as exc:
+        messages.error(request, str(exc))
     except Exception as exc:
         messages.error(request, f"任务完成失败，请重试 / Failed to complete task: {exc}")
     
@@ -453,7 +511,7 @@ def task_bulk_action(request):
                 result='success'
             ))
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status='done', completed_at=now)
+        tasks.update(status='done', completed_at=now, version=F('version') + 1)
         
         # Trigger progress update
         for pid in tasks.values_list('project_id', flat=True).distinct():
@@ -477,7 +535,7 @@ def task_bulk_action(request):
                 result='success'
             ))
         AuditLog.objects.bulk_create(audit_batch)
-        tasks.update(status='todo', completed_at=None)
+        tasks.update(status='todo', completed_at=None, version=F('version') + 1)
         
         # Trigger progress update
         for pid in tasks.values_list('project_id', flat=True).distinct():
@@ -547,6 +605,8 @@ def task_bulk_action(request):
                 t.due_at = parsed_due
                 update_fields.append('due_at')
             if update_fields:
+                t.version = (t.version or 1) + 1
+                update_fields.append('version')
                 t.save(update_fields=update_fields)
                 updated += 1
         if updated:
@@ -626,14 +686,19 @@ def task_view(request, pk: int):
         
         elif request.POST.get('action') == 'reopen' and task.status in ('done', 'closed'):
             # 已完成任务支持重新打开
-            task.status = 'todo'
-            if task.category == TaskCategory.BUG:
-                task.status = TaskStatus.NEW
-                
-            task.completed_at = None
-            task.save(update_fields=['status', 'completed_at'])
-            log_action(request, 'update', f"task_reopen {task.id}")
-            messages.success(request, "任务已重新打开 / Task reopened")
+            try:
+                with transaction.atomic():
+                    task = Task.objects.select_for_update().get(pk=task.pk)
+                    new_status = TaskStatus.NEW if task.category == TaskCategory.BUG else TaskStatus.TODO
+                    TaskStateService.apply_status_transition(
+                        task,
+                        new_status,
+                        expected_version=_request_expected_task_version(request),
+                    )
+                log_action(request, 'update', f"task_reopen {task.id}")
+                messages.success(request, "任务已重新打开 / Task reopened")
+            except (TaskConflictError, TaskTransitionError) as exc:
+                messages.error(request, str(exc))
             
         elif request.POST.get('action') == 'pause_timer':
             timer = _ensure_sla_timer(task)
@@ -642,7 +707,8 @@ def task_view(request, pk: int):
                 timer.save(update_fields=['paused_at'])
                 if task.status != 'blocked':
                     task.status = 'blocked'
-                    task.save(update_fields=['status'])
+                    task.version = (task.version or 1) + 1
+                    task.save(update_fields=['status', 'version'])
                 messages.success(request, "计时已暂停 / Timer paused")
                 log_action(request, 'update', f"task_pause {task.id}")
                 
@@ -654,7 +720,8 @@ def task_view(request, pk: int):
                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
                 if task.status == 'blocked':
                     task.status = 'in_progress'
-                    task.save(update_fields=['status'])
+                    task.version = (task.version or 1) + 1
+                    task.save(update_fields=['status', 'version'])
                 messages.success(request, "计时已恢复 / Timer resumed")
                 log_action(request, 'update', f"task_resume {task.id}")
                 
@@ -679,36 +746,43 @@ def task_view(request, pk: int):
             new_status = request.POST.get('status_value')
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
             
-            # 验证流转
-            if not TaskStateService.validate_transition(task.category, task.status, new_status):
-                 msg = f"无效的状态流转：无法从 {task.get_status_display()} 变更为 {dict(Task.STATUS_CHOICES).get(new_status, new_status)}"
-                 if is_ajax:
-                     return JsonResponse({'status': 'error', 'message': msg}, status=400)
-                 messages.error(request, msg)
-                 return redirect('tasks:task_view', pk=pk)
-
             if new_status in dict(Task.STATUS_CHOICES):
                 try:
                     with transaction.atomic():
+                        task = Task.objects.select_for_update().get(pk=task.pk)
+                        TaskStateService.apply_status_transition(
+                            task,
+                            new_status,
+                            expected_version=_request_expected_task_version(request),
+                            completed_at=timezone.now(),
+                        )
                         if new_status in ('done', 'closed'):
-                            task.status = new_status
-                            task.completed_at = timezone.now()
                             timer = _get_sla_timer_readonly(task)
                             if timer and timer.paused_at:
                                 timer.total_paused_seconds += int((timezone.now() - timer.paused_at).total_seconds())
                                 timer.paused_at = None
                                 timer.save(update_fields=['total_paused_seconds', 'paused_at'])
-                        else:
-                            task.status = new_status
-                            if task.completed_at:
-                                task.completed_at = None
-                        task.save(update_fields=['status', 'completed_at'])
                     
                     log_action(request, 'update', f"task_status {task.id} -> {new_status}")
                     
                     if is_ajax:
-                        return JsonResponse({'status': 'success', 'message': '状态已更新 / Status updated'})
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': '状态已更新 / Status updated',
+                            'task_status': task.status,
+                            'task_version': task.version,
+                        })
                     messages.success(request, "状态已更新 / Status updated")
+                except TaskConflictError as exc:
+                    msg = str(exc)
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': msg}, status=409)
+                    messages.error(request, msg)
+                except TaskTransitionError as exc:
+                    msg = str(exc)
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': msg}, status=400)
+                    messages.error(request, msg)
                 except Exception as exc:
                     msg = f"状态更新失败，请重试 / Failed to update status: {exc}"
                     if is_ajax:

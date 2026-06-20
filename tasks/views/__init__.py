@@ -10,6 +10,7 @@ from .admin_views import (
 )
 from .user_views import (
     task_upload_attachment,
+    task_attachment_file,
     task_delete_attachment,
     task_list,
     task_export,

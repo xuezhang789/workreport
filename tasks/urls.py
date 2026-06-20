@@ -19,6 +19,7 @@ urlpatterns = [
     
     # Task Attachments
     path('<int:task_id>/upload-attachment/', views.task_upload_attachment, name='task_upload_attachment'),
+    path('attachments/<int:attachment_id>/file/', views.task_attachment_file, name='task_attachment_file'),
     path('attachments/<int:attachment_id>/delete/', views.task_delete_attachment, name='task_delete_attachment'),
 
     # Admin Task Management
