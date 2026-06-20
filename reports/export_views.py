@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.utils.dateparse import parse_date
 from django.utils import timezone
+from django.urls import reverse
 from django.db import models
 from django.db.models import Q, Count, F, Prefetch
 import json
@@ -13,7 +14,7 @@ from tasks.models import Task
 from projects.models import Project
 from core.models import Profile
 
-from core.utils import _stream_csv, _create_export_job, _generate_export_file, _admin_forbidden
+from core.utils import _stream_csv, _create_export_job, _enqueue_export_job, _admin_forbidden
 from core.permissions import has_manage_permission
 from reports.utils import get_accessible_projects, get_accessible_reports
 from audit.utils import log_action
@@ -48,27 +49,7 @@ def my_reports_export(request):
     if role in dict(DailyReport.ROLE_CHOICES):
         qs = qs.filter(role=role)
     if q:
-        qs = qs.filter(
-            Q(today_work__icontains=q) |
-            Q(progress_issues__icontains=q) |
-            Q(tomorrow_plan__icontains=q) |
-            Q(testing_scope__icontains=q) |
-            Q(testing_progress__icontains=q) |
-            Q(bug_summary__icontains=q) |
-            Q(testing_tomorrow__icontains=q) |
-            Q(product_today__icontains=q) |
-            Q(product_coordination__icontains=q) |
-            Q(product_tomorrow__icontains=q) |
-            Q(ui_today__icontains=q) |
-            Q(ui_feedback__icontains=q) |
-            Q(ui_tomorrow__icontains=q) |
-            Q(ops_today__icontains=q) |
-            Q(ops_monitoring__icontains=q) |
-            Q(ops_tomorrow__icontains=q) |
-            Q(mgr_progress__icontains=q) |
-            Q(mgr_risks__icontains=q) |
-            Q(mgr_tomorrow__icontains=q)
-        )
+        qs = qs.filter(DailyReport.content_search_query(q))
     if qs.count() > MAX_EXPORT_ROWS:
         return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters.", status=400)
 
@@ -128,28 +109,17 @@ def admin_reports_export(request):
             return HttpResponse("数据量过大，请缩小筛选范围后再导出 / Data too large, please narrow filters. 如需排队导出，请带 queue=1 参数 / Use queue=1 to enqueue export.", status=400)
         job = _create_export_job(request.user, 'admin_reports_filtered')
         try:
-            _generate_export_file(
-                job,
-                ["日期", "角色", "项目", "用户", "状态", "摘要", "创建时间"],
-                (
-                    [
-                        str(r.date),
-                        r.get_role_display(),
-                        r.project_names or "",
-                        r.user.get_full_name() or r.user.username,
-                        r.get_status_display(),
-                        r.summary or "",
-                        timezone.localtime(r.created_at).strftime("%Y-%m-%d %H:%M"),
-                    ]
-                    for r in reports.iterator(chunk_size=EXPORT_CHUNK_SIZE)
-                )
-            )
-            return JsonResponse({'queued': True, 'job_id': job.id})
-        except Exception as e:
-            job.status = 'failed'
-            job.message = str(e)
-            job.save(update_fields=['status', 'message', 'updated_at'])
-            return JsonResponse({'error': 'export failed'}, status=500)
+            _enqueue_export_job(job, {
+                'role': role,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'username': username,
+                'project_id': project_id,
+                'status': status,
+            })
+            return JsonResponse({'queued': True, 'job_id': job.id}, status=202)
+        except Exception:
+            return JsonResponse({'error': 'export queue unavailable'}, status=503)
 
     rows = (
         [
@@ -545,7 +515,7 @@ def personnel_export(request):
                 u.profile.official_salary or "",
                 u.profile.salary_currency,
                 u.profile.usdt_address or "",
-                request.build_absolute_uri(u.profile.usdt_qr_code.url) if u.profile.usdt_qr_code else "",
+                request.build_absolute_uri(reverse('reports:api_payment_qr_file', args=[u.id])) if u.profile.usdt_qr_code else "",
                 str(u.profile.resignation_date) if u.profile.resignation_date else "",
                 u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "",
                 u.profile.intermediary_company or "",

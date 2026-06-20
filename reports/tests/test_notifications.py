@@ -1,6 +1,8 @@
 from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import User
-from reports.models import Notification, Task, Project
+from core.models import Notification
+from tasks.models import Task
+from projects.models import Project
 from reports.services.notification_service import send_notification
 from reports.signals import notify_task_assignment
 from core.models import Profile
@@ -49,3 +51,12 @@ class NotificationTest(TestCase):
         notifications = Notification.objects.filter(user=self.user, notification_type='task_assigned')
         self.assertTrue(notifications.exists())
         self.assertEqual(notifications.first().priority, 'high')
+
+    def test_unknown_notification_type_is_rejected(self):
+        with self.assertRaisesMessage(ValueError, 'Unsupported notification type'):
+            send_notification(
+                user=self.user,
+                title='Unknown',
+                message='Unknown type',
+                notification_type='not_registered',
+            )

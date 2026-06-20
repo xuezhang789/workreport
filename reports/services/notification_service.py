@@ -1,15 +1,11 @@
-import json
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-from reports.models import Notification
+from django.db import transaction
+from core.models import Notification, NotificationDelivery, NotificationType
 from core.services.notification_template import NotificationContent, NotificationTemplateService
+from core.services.notification_delivery import publish_delivery_after_commit
 
 import logging
-from reports.tasks import send_email_async_task
-
 logger = logging.getLogger(__name__)
 
 def send_weekly_digest_email(user, stats):
@@ -48,6 +44,7 @@ def send_weekly_digest_email(user, stats):
         message += "\n\n请登录系统查看详情 / Please login to view details."
         
         # 异步发送
+        from reports.tasks import send_email_async_task
         send_email_async_task.delay(
             subject=subject,
             message=message,
@@ -60,13 +57,29 @@ def send_weekly_digest_email(user, stats):
         logger.exception(f"Failed to send weekly digest to {user.email}: {e}")
         return False
 
-def send_notification(user, title, message, notification_type, data=None, priority='normal', content: NotificationContent = None):
+def send_notification(
+    user,
+    title,
+    message,
+    notification_type,
+    data=None,
+    priority='normal',
+    content: NotificationContent = None,
+    idempotency_key=None,
+):
     """
     发送通知：
     1. 写入数据库 Notification
     2. WebSocket 实时推送 (如果用户设置开启 inapp)
     3. 异步发送邮件 (如果提供了 content 且用户设置开启 email_instantly)
     """
+    try:
+        notification_type = NotificationType(notification_type).value
+    except ValueError as exc:
+        raise ValueError(f'Unsupported notification type: {notification_type}') from exc
+    if priority not in dict(Notification.PRIORITY_CHOICES):
+        raise ValueError(f'Unsupported notification priority: {priority}')
+
     # 获取用户偏好
     # 注意：UserPreference 可能不存在，需要安全获取
     allow_inapp = True
@@ -82,57 +95,57 @@ def send_notification(user, title, message, notification_type, data=None, priori
         except Exception:
             pass
 
-    # 1. 创建数据库记录 (始终创建，作为历史记录)
-    notification = Notification.objects.create(
-        user=user,
-        title=title,
-        message=message,
-        notification_type=notification_type,
-        priority=priority,
-        data=data or {},
-        expires_at=timezone.now() + timezone.timedelta(days=30) # Default 30 days
-    )
+    defaults = {
+        'user': user,
+        'title': title,
+        'message': message,
+        'notification_type': notification_type,
+        'priority': priority,
+        'data': data or {},
+        'expires_at': timezone.now() + timezone.timedelta(days=30),
+    }
+    with transaction.atomic():
+        if idempotency_key:
+            notification, created = Notification.objects.get_or_create(
+                user=user,
+                idempotency_key=idempotency_key,
+                defaults={key: value for key, value in defaults.items() if key != 'user'},
+            )
+            if not created:
+                return notification
+        else:
+            notification = Notification.objects.create(**defaults)
 
-    # 2. 推送到 WebSocket（仅限高/普通优先级或特定类型，且用户允许）
-    if allow_inapp and priority in ['high', 'normal']:
-        try:
-            channel_layer = get_channel_layer()
-            group_name = f"user_{user.id}"
-            
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    'type': 'notification_message',
+        deliveries = []
+        if allow_inapp and priority in {'high', 'normal'}:
+            deliveries.append(NotificationDelivery.objects.create(
+                notification=notification,
+                channel=NotificationDelivery.Channel.WEBSOCKET,
+                payload={
                     'notification_type': notification_type,
+                    'id': notification.id,
                     'title': title,
                     'message': message,
                     'priority': priority,
                     'created_at': notification.created_at.isoformat(),
-                    'data': data or {}
-                }
-            )
-            notification.is_pushed = True
-            notification.save(update_fields=['is_pushed'])
-        except Exception as e:
-            logger.error(f"Failed to push notification to {user.username}: {e}")
+                    'data': data or {},
+                },
+            ))
 
-    # 3. 发送电子邮件（异步，且用户允许）
-    if allow_email and content and user.email:
-        try:
-            html_message = NotificationTemplateService.render_email(content)
-            subject = content.email_subject
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
-            
-            # Use Celery task instead of Thread
-            send_email_async_task.delay(
-                subject=subject,
-                message=content.body,
-                from_email=from_email,
-                recipient_list=[user.email],
-                html_message=html_message
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to trigger email to {user.email}: {e}")
-    
+        if allow_email and content and user.email:
+            deliveries.append(NotificationDelivery.objects.create(
+                notification=notification,
+                channel=NotificationDelivery.Channel.EMAIL,
+                payload={
+                    'subject': content.email_subject,
+                    'message': content.body,
+                    'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                    'recipient_list': [user.email],
+                    'html_message': NotificationTemplateService.render_email(content),
+                },
+            ))
+
+        for delivery in deliveries:
+            publish_delivery_after_commit(delivery.id)
+
     return notification

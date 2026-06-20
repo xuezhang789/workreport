@@ -92,6 +92,9 @@ class TemplateGenerator:
         
         # 1. Validate Roles
         valid_roles = dict(Profile.ROLE_CHOICES).keys()
+        valid_placeholder_fields = {
+            field.name for field in DailyReport._meta.get_fields()
+        } | set(DailyReport.CONTENT_FIELD_NAMES)
         for role, tpl in DAILY_REPORT_TEMPLATES.items():
             if role not in valid_roles:
                 errors.append(f"Invalid role '{role}' in DAILY_REPORT_TEMPLATES. Valid choices: {list(valid_roles)}")
@@ -99,10 +102,7 @@ class TemplateGenerator:
             # 2. Validate Placeholders
             placeholders = tpl.get('placeholders', {})
             for key in placeholders.keys():
-                # Check if field exists in DailyReport model
-                try:
-                    DailyReport._meta.get_field(key)
-                except Exception:
+                if key not in valid_placeholder_fields:
                     errors.append(f"Invalid placeholder key '{key}' in template '{role}'. Field does not exist in DailyReport model.")
         
         return errors

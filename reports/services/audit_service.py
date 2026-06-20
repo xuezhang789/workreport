@@ -1,7 +1,7 @@
 import json
 import logging
 from django.forms.models import model_to_dict
-from reports.models import AuditLog
+from audit.models import AuditLog
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count, OuterRef, Subquery
 import json
 
-from work_logs.models import RoleTemplate, ReportTemplateVersion
+from work_logs.models import DailyReport, RoleTemplate, ReportTemplateVersion
 from tasks.models import TaskTemplateVersion
 from core.models import Profile
 from reports.forms import ReportTemplateForm
@@ -18,14 +18,7 @@ from audit.utils import log_action
 from audit.models import AuditLog
 from reports.signals import _invalidate_stats_cache
 
-ROLE_FIELDS_MAPPING = {
-    'dev': ['today_work', 'progress_issues', 'tomorrow_plan'],
-    'qa': ['testing_scope', 'testing_progress', 'bug_summary', 'testing_tomorrow'],
-    'pm': ['product_today', 'product_coordination', 'product_tomorrow'],
-    'ui': ['ui_today', 'ui_feedback', 'ui_tomorrow'],
-    'ops': ['ops_today', 'ops_monitoring', 'ops_tomorrow'],
-    'mgr': ['mgr_progress', 'mgr_risks', 'mgr_tomorrow'],
-}
+ROLE_FIELDS_MAPPING = DailyReport.ROLE_CONTENT_FIELDS
 
 @login_required
 def role_template_manage(request):

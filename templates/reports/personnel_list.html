@@ -754,7 +754,7 @@ function renderCalendar(data) {
                                     intermediary_fee_amount: "{{ user.profile.intermediary_fee_amount|default:"" }}",
                                     intermediary_fee_currency: "{{ user.profile.intermediary_fee_currency|default:"CNY" }}",
                                     usdt_address: "{{ user.profile.usdt_address|default:""|escapejs }}",
-                                    usdt_qr_code: "{% if user.profile.usdt_qr_code %}{{ user.profile.usdt_qr_code.url|escapejs }}{% endif %}"
+                                    usdt_qr_code: "{% if user.profile.usdt_qr_code %}{% url 'reports:api_payment_qr_file' user.id %}{% endif %}"
                                 })'>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                     编辑 / Edit

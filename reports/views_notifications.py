@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
-from reports.models import Notification
+from core.models import Notification
 
 
 DEFAULT_DROPDOWN_PAGE_SIZE = 8

@@ -1,10 +1,7 @@
-# 已弃用：此文件保留是为了与旧迁移向后兼容。
-# 请直接从各自的应用程序导入模型：
-# - core.models
-# - projects.models
-# - tasks.models
-# - work_logs.models
-# - audit.models
+"""Compatibility model exports for legacy callers.
+
+New application code must import models from their owning Django app.
+"""
 
 from core.models import (
     Profile,
@@ -39,3 +36,12 @@ from audit.models import (
     AuditLog,
     TaskHistory
 )
+
+__all__ = [
+    'Profile', 'SystemSetting', 'ExportJob', 'UserPreference', 'Notification',
+    'default_export_expiry', 'ProjectPhaseConfig', 'Project',
+    'ProjectPhaseChangeLog', 'ProjectAttachment', 'ProjectMemberPermission',
+    'Task', 'TaskComment', 'TaskAttachment', 'TaskSlaTimer',
+    'TaskTemplateVersion', 'ReminderRule', 'ReportMiss', 'DailyReport',
+    'RoleTemplate', 'ReportTemplateVersion', 'AuditLog', 'TaskHistory',
+]

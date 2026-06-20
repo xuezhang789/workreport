@@ -67,4 +67,5 @@ def safe_md(value: str):
     if in_list:
         out.append('</ul>')
         
-    return mark_safe(''.join(out))
+    # Input is escaped before limited HTML tags are generated.
+    return mark_safe(''.join(out))  # nosec

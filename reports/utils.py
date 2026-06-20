@@ -5,6 +5,10 @@ from projects.models import Project
 from tasks.models import Task
 from work_logs.models import DailyReport
 from core.services.rbac import RBACService
+from core.services.permission_cache import (
+    invalidate_user_permission_cache,
+    user_permission_cache_key,
+)
 
 def _get_rbac_project_ids(user, permission_code):
     """
@@ -21,7 +25,7 @@ def _get_rbac_project_ids(user, permission_code):
     if user.is_superuser:
         return True, []
         
-    cache_key = f"rbac_project_ids:{user.id}:{permission_code}"
+    cache_key = user_permission_cache_key('rbac_project_ids', user.id, permission_code)
     cached_result = cache.get(cache_key)
     if cached_result is not None:
         return cached_result
@@ -107,7 +111,7 @@ def can_manage_project(user, project):
         return True
         
     # 优先检查缓存
-    cache_key = f"can_manage_project:{user.id}:{project.id}"
+    cache_key = user_permission_cache_key('can_manage_project', user.id, project.id)
     cached_result = cache.get(cache_key)
     if cached_result is not None:
         return cached_result
@@ -211,18 +215,12 @@ def clear_project_permission_cache(user, project=None):
     if not user:
         return
         
-    # 清除 RBAC ID 列表缓存 (无法精确知道是 view 还是 manage，所以可能需要全部清除或依赖 TTL)
-    # 由于 rbac_project_ids 依赖 permission_code，我们这里主要清除 can_manage_project 缓存
-    # RBAC 缓存主要由 RBACService 管理
-    
-    # 清除旧的 ID 列表缓存（为了兼容性）
+    invalidate_user_permission_cache(user.id)
+
+    # Remove pre-version cache keys during rolling deployment.
     cache.delete(f"accessible_projects_ids:{user.id}")
     cache.delete(f"manageable_projects_ids:{user.id}")
-    
-    # 清除新的 RBAC 缓存 (View 和 Manage)
     cache.delete(f"rbac_project_ids:{user.id}:project.view")
     cache.delete(f"rbac_project_ids:{user.id}:project.manage")
-    
-    # 清除特定项目权限缓存
     if project:
         cache.delete(f"can_manage_project:{user.id}:{project.id}")

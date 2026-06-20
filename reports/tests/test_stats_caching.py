@@ -128,3 +128,32 @@ class StatsCachingTests(TestCase):
         # Third request - Should update (6)
         response = self.client.get(url)
         self.assertEqual(response.context['kpi']['new'], 6)
+
+    def test_project_stats_cache_invalidates_when_task_status_changes(self):
+        cache.clear()
+        url = reverse('projects:project_detail', args=[self.project.id])
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['task_stats']['completed'], 0)
+
+        task = Task.objects.first()
+        task.status = TaskStatus.DONE
+        task.completed_at = timezone.now()
+        task.save(update_fields=['status', 'completed_at'])
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['task_stats']['completed'], 1)
+
+    def test_stats_invalidation_does_not_clear_unrelated_cache_entries(self):
+        cache.clear()
+        cache.set('unrelated-cache-key', 'keep-me', 300)
+        self.client.get(reverse('reports:stats'))
+
+        Task.objects.create(
+            title='Invalidates stats only',
+            user=self.user,
+            project=self.project,
+            status=TaskStatus.TODO,
+        )
+
+        self.assertEqual(cache.get('unrelated-cache-key'), 'keep-me')

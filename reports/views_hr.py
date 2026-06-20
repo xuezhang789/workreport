@@ -8,11 +8,13 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.core.paginator import Paginator
+from django.urls import reverse
 from core.models import Profile, SalaryHistory, Contract
-from reports.models import Project
+from projects.models import Project
 from audit.utils import log_action
 from reports.services import teams as team_service
 from core.utils import _admin_forbidden, _validate_file
+from core.services.protected_files import protected_file_response
 
 def is_superuser(user):
     return user.is_superuser
@@ -76,6 +78,7 @@ def personnel_list(request):
     
     # 筛选下拉框使用的项目列表 - 优化：仅获取 ID 和名称
     projects = Project.objects.filter(is_active=True).order_by('name').only('id', 'name')
+    log_action(request, 'access', 'view personnel records')
 
     return render(request, 'reports/personnel_list.html', {
         'users': page_obj,
@@ -364,7 +367,12 @@ def update_hr_info(request, user_id):
     elif old_status != 'terminated' and profile.employment_status == 'terminated':
         action_summary = f"Terminate Employee (离职) for {user.username}"
 
-    log_action(request, 'update', action_summary, data=data)
+    log_action(
+        request,
+        'update',
+        action_summary,
+        data={'changed_fields': sorted(str(key) for key in data.keys())},
+    )
 
     return JsonResponse({
         'status': 'success',
@@ -377,7 +385,7 @@ def update_hr_info(request, user_id):
             'official_salary': str(profile.official_salary) if profile.official_salary else None,
             'salary_currency': profile.salary_currency,
             'usdt_address': profile.usdt_address or '',
-            'usdt_qr_code': profile.usdt_qr_code.url if profile.usdt_qr_code else '',
+            'usdt_qr_code': reverse('reports:api_payment_qr_file', args=[user.id]) if profile.usdt_qr_code else '',
             'intermediary_company': profile.intermediary_company or '',
             'intermediary_fee_amount': str(profile.intermediary_fee_amount) if profile.intermediary_fee_amount else '',
             'intermediary_fee_currency': profile.intermediary_fee_currency,
@@ -391,6 +399,7 @@ def update_hr_info(request, user_id):
 @user_passes_test(is_superuser)
 def salary_history_list(request, user_id):
     user = get_object_or_404(User, pk=user_id)
+    log_action(request, 'access', f'view salary history user_id={user_id}')
     history = user.salary_history.select_related('changed_by').all()
     
     data = []
@@ -419,13 +428,33 @@ def contract_list(request, user_id):
         data.append({
             'id': c.id,
             'name': c.original_filename,
-            'url': c.file.url,
+            'url': reverse('reports:api_contract_file', args=[c.id]) + '?download=1',
             'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else None,
             'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else None,
             'uploaded_by': c.uploaded_by.username if c.uploaded_by else 'System',
             'created_at': c.created_at.strftime('%Y-%m-%d')
         })
     return JsonResponse({'status': 'success', 'data': data})
+
+
+@user_passes_test(is_superuser)
+@require_http_methods(["GET"])
+def contract_file(request, contract_id):
+    contract = get_object_or_404(Contract, pk=contract_id)
+    log_action(request, 'access', f'download contract id={contract_id}')
+    return protected_file_response(
+        contract.file,
+        filename=contract.original_filename,
+        as_attachment=request.GET.get('download') == '1',
+    )
+
+
+@user_passes_test(is_superuser)
+@require_http_methods(["GET"])
+def payment_qr_file(request, user_id):
+    profile = get_object_or_404(Profile, user_id=user_id)
+    log_action(request, 'access', f'view payment qr user_id={user_id}')
+    return protected_file_response(profile.usdt_qr_code)
 
 @user_passes_test(is_superuser)
 @require_http_methods(["POST"])
@@ -462,7 +491,7 @@ def contract_upload(request, user_id):
     return JsonResponse({
         'status': 'success',
         'id': contract.id,
-        'url': contract.file.url,
+        'url': reverse('reports:api_contract_file', args=[contract.id]) + '?download=1',
         'name': contract.original_filename
     })
 

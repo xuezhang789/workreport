@@ -32,7 +32,8 @@ class ProjectSearchApiTests(TestCase):
         
         codes = sorted([r['code'] for r in results])
         self.assertEqual(codes, ['ALPHA', 'BETA'])
-        self.assertIn('pinyin', results[0])
+        self.assertIn('pagination', data)
+        self.assertFalse(data['pagination']['has_more'])
 
     @patch('projects.views.get_accessible_projects')
     def test_search_api_search(self, mock_get_access):
@@ -44,3 +45,14 @@ class ProjectSearchApiTests(TestCase):
         data = response.json()
         self.assertEqual(len(data['results']), 1)
         self.assertEqual(data['results'][0]['name'], 'Alpha Project')
+
+    @patch('projects.views.get_accessible_projects')
+    def test_search_api_enforces_page_size_cap(self, mock_get_access):
+        mock_get_access.return_value = Project.objects.filter(id__in=[self.p1.id, self.p2.id])
+
+        response = self.client.get(self.url, {'limit': 1, 'page': 1})
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['results']), 1)
+        self.assertTrue(data['pagination']['has_more'])

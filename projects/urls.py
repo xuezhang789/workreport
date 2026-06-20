@@ -21,6 +21,7 @@ urlpatterns = [
 
     # Attachments
     path('<int:project_id>/upload-attachment/', views.project_upload_attachment, name='project_upload_attachment'),
+    path('attachments/<int:attachment_id>/file/', views.project_attachment_file, name='project_attachment_file'),
     path('attachments/<int:attachment_id>/delete/', views.project_delete_attachment, name='project_delete_attachment'),
 
     # Repositories

@@ -21,6 +21,7 @@ from core.utils import _admin_forbidden
 from core.permissions import has_manage_permission
 from tasks.services.sla import calculate_sla_info, get_sla_thresholds, get_sla_hours
 from audit.utils import log_action
+from core.services.cache_registry import cache_set_tracked
 from datetime import timedelta
 from core.constants import TaskStatus
 import json
@@ -305,7 +306,7 @@ def stats(request):
                 'last_map': {u.id: last_map.get(u.id) for u in filtered_users} # 如果需要，用于个人提醒
             })
             
-        cache.set(cache_key, (missing_projects, total_missing), 300)
+        cache_set_tracked(cache_key, (missing_projects, total_missing), 300, 'stats')
 
     # 一键催报（立即邮件通知）
     if request.GET.get('remind') == '1' and missing_projects:
@@ -391,7 +392,12 @@ def stats(request):
         }
         role_counts = qs.values_list('role').annotate(c=Count('id')).order_by('-c')
         top_projects = Project.objects.filter(is_active=True).annotate(report_count=Count('reports')).order_by('-report_count')[:5]
-        cache.set(cache_key_metrics, (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at), 600)
+        cache_set_tracked(
+            cache_key_metrics,
+            (metrics, role_counts, top_projects, project_sla_stats, overdue_top, generated_at),
+            600,
+            'stats',
+        )
     
     # 优化：SLA 紧急任务缓存
     sla_cache_key = f"stats_sla_urgent_v1_{target_date}_{project_filter}_{role_filter}"
@@ -444,7 +450,7 @@ def stats(request):
         ))
         
         # 缓存 5 分钟
-        cache.set(sla_cache_key, sla_urgent_tasks, 300)
+        cache_set_tracked(sla_cache_key, sla_urgent_tasks, 300, 'stats')
 
     # 为了模板中获取 SLA 配置用于显示（如果不从缓存加载）
     cfg_sla_hours = SystemSetting.objects.filter(key='sla_hours').first()
@@ -516,7 +522,7 @@ def performance_board(request):
             q=q,
             accessible_projects=accessible_projects
         )
-        cache.set(cache_key, stats, 600) # 缓存 10 分钟
+        cache_set_tracked(cache_key, stats, 600, 'stats')
     
     # 根据权限过滤紧急任务
     # 优化：从 stats 中重用计算好的聚合值，而不是重新查询 DB
@@ -616,7 +622,7 @@ def performance_board(request):
         sla_urgent_tasks = sla_urgent_tasks_list[:50]
         
         # 缓存 5 分钟
-        cache.set(sla_cache_key, sla_urgent_tasks, 300)
+        cache_set_tracked(sla_cache_key, sla_urgent_tasks, 300, 'stats')
         
     # 获取用户分页数据
     # 优化：user_stats 数据量可能较大，使用 Paginator 进行内存分页（虽不如数据库分页理想，但鉴于数据源结构，这是目前最佳方案）

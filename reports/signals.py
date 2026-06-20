@@ -1,4 +1,5 @@
 from django.db.models.signals import pre_save, post_save, post_delete, m2m_changed
+from django.db import transaction
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -15,10 +16,11 @@ from tasks.models import Task, TaskComment
 from work_logs.models import DailyReport
 from audit.models import AuditLog
 from core.models import UserRole
-from reports.middleware import get_current_user, get_current_ip
+from audit.middleware import get_current_user, get_current_ip
 from reports.services.audit_service import AuditService
 from reports.services.notification_service import send_notification
 from core.services.notification_template import NotificationContent, NotificationItem, NotificationAction
+from core.services.cache_registry import invalidate_cache_group
 
 TRACKED_MODELS = [DailyReport, User]
 
@@ -26,28 +28,25 @@ def _invalidate_stats_cache(sender=None, instance=None, **kwargs):
     """
     使统计缓存无效。可以用作信号接收器或助手。
     """
-    try:
-        # 尝试针对特定项目进行精确清除
-        if instance:
-            project_id = None
-            if isinstance(instance, Project):
-                project_id = instance.id
-            elif isinstance(instance, Task):
-                project_id = instance.project_id
-            
-            if project_id:
-                # 清除该特定项目的统计缓存
-                # key 模式: project_stats_{pk}_{count}
-                cache.delete_pattern(f"project_stats_{project_id}_*")
-                return
+    project_id = None
+    if isinstance(instance, Project):
+        project_id = instance.id
+    elif isinstance(instance, Task):
+        project_id = instance.project_id
 
-        # 尝试使用模式删除（例如 django-redis）
-        cache.delete_pattern("stats_*")
-        cache.delete_pattern("project_stats_*")
-        cache.delete_pattern("admin_task_stats_*")
-    except (AttributeError, Exception):
-        # 对于不支持 delete_pattern 的后端的回退（例如测试中的 LocMemCache）
-        cache.clear()
+    def invalidate():
+        invalidate_cache_group('stats')
+        if project_id:
+            invalidate_cache_group(f'project_stats:{project_id}')
+
+        legacy_keys = ['performance_stats_v1_None_None']
+        if isinstance(instance, DailyReport):
+            legacy_keys.append(f'stats_metrics_v1_{instance.date}_None_')
+        cache.delete_many(legacy_keys)
+
+    invalidate()
+    if transaction.get_connection().in_atomic_block:
+        transaction.on_commit(invalidate)
 
 @receiver(pre_save)
 def audit_pre_save(sender, instance, **kwargs):
@@ -489,13 +488,21 @@ def notify_comment_mention(sender, instance, created, **kwargs):
 def audit_m2m_changed(sender, instance, action, **kwargs):
     # 处理 DailyReport.projects 变更
     if isinstance(instance, DailyReport) and action in ["post_add", "post_remove", "post_clear"]:
-        _invalidate_stats_cache()
+        _invalidate_stats_cache(instance=instance)
 
 @receiver(m2m_changed, sender=Project.members.through)
 def project_members_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
     """
     当项目成员变更时，清除相关用户的权限缓存。
     """
+    clear_attr = '_permission_members_clear_ids'
+    if action == 'pre_clear':
+        if reverse:
+            setattr(instance, clear_attr, [instance.pk])
+        else:
+            setattr(instance, clear_attr, list(instance.members.values_list('id', flat=True)))
+        return
+
     if action not in ["post_add", "post_remove", "post_clear"]:
         return
 
@@ -508,23 +515,30 @@ def project_members_changed(sender, instance, action, reverse, model, pk_set, **
     else:
         # instance is Project, pk_set is User IDs
         project = instance
-        if pk_set:
-            for user_id in pk_set:
+        affected_user_ids = pk_set or getattr(instance, clear_attr, [])
+        if affected_user_ids:
+            for user_id in affected_user_ids:
                 try:
                     user = User.objects.get(pk=user_id)
                     clear_project_permission_cache(user, project=project)
                 except User.DoesNotExist:
                     pass
-        elif action == "post_clear":
-            # 难以确定哪些用户被移除，这里可能需要清除所有用户的缓存，或者不做处理依赖 TTL。
-            # 鉴于 clear 操作较少，暂不处理以避免全量清除的性能问题。
-            pass
+        if hasattr(instance, clear_attr):
+            delattr(instance, clear_attr)
 
 @receiver(m2m_changed, sender=Project.managers.through)
 def project_managers_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
     """
     当项目管理员变更时，清除相关用户的权限缓存。
     """
+    clear_attr = '_permission_managers_clear_ids'
+    if action == 'pre_clear':
+        if reverse:
+            setattr(instance, clear_attr, [instance.pk])
+        else:
+            setattr(instance, clear_attr, list(instance.managers.values_list('id', flat=True)))
+        return
+
     if action not in ["post_add", "post_remove", "post_clear"]:
         return
 
@@ -537,13 +551,16 @@ def project_managers_changed(sender, instance, action, reverse, model, pk_set, *
     else:
         # instance is Project, pk_set is User IDs
         project = instance
-        if pk_set:
-            for user_id in pk_set:
+        affected_user_ids = pk_set or getattr(instance, clear_attr, [])
+        if affected_user_ids:
+            for user_id in affected_user_ids:
                 try:
                     user = User.objects.get(pk=user_id)
                     clear_project_permission_cache(user, project=project)
                 except User.DoesNotExist:
                     pass
+        if hasattr(instance, clear_attr):
+            delattr(instance, clear_attr)
 
 @receiver(post_save, sender=Project)
 def project_owner_changed(sender, instance, created, **kwargs):
@@ -556,20 +573,10 @@ def project_owner_changed(sender, instance, created, **kwargs):
             clear_project_permission_cache(instance.owner, project=instance)
         return
 
-    if hasattr(instance, '_audit_diff') and instance._audit_diff and 'owner' in instance._audit_diff:
+    old_owner = getattr(instance, '_old_owner', None)
+    if old_owner != instance.owner:
         from reports.utils import clear_project_permission_cache
-        diff = instance._audit_diff['owner']
-        
-        # Old Owner
-        old_owner_id = diff.get('old') # Might be ID or Username depending on AuditService
-        # AuditService _calculate_diff for FK usually stores ID or str representation.
-        # Assuming it might store ID if configured, but let's be safe.
-        # If AuditService stores username, we need to fetch user.
-        # Let's try to clear for current owner (new) and rely on TTL for old owner if we can't easily get ID.
-        
+        if old_owner:
+            clear_project_permission_cache(old_owner, project=instance)
         if instance.owner:
             clear_project_permission_cache(instance.owner, project=instance)
-            
-        # Try to find old owner if possible (AuditService usually returns user ID for FK if configured, or str)
-        # If we can't get old owner easily, we skip. They will lose access after TTL (5 mins).
-

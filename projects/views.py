@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse, Http404
-from django.db.models import Q, Count, F
+from django.db.models import Q, Count, F, Case, When, Value, IntegerField
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.core.paginator import Paginator
@@ -9,6 +9,8 @@ from django.contrib import messages
 from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from django.views.decorators.http import require_GET
 
 from projects.models import Project, ProjectPhaseConfig, ProjectPhaseChangeLog, ProjectAttachment
 from projects.forms import ProjectForm, ProjectPhaseConfigForm
@@ -31,6 +33,7 @@ from reports.utils import get_accessible_projects, can_manage_project
 from tasks.services.sla import calculate_sla_info
 from reports.signals import _invalidate_stats_cache
 from reports.services.notification_service import send_notification
+from core.services.cache_registry import cache_set_tracked
 
 MAX_EXPORT_ROWS = 5000
 EXPORT_CHUNK_SIZE = 500
@@ -243,7 +246,7 @@ def project_detail(request, pk: int):
     # 2. 聚合计数（缓存）
     from django.core.cache import cache
     
-    stats_cache_key = f'project_stats_{pk}_{tasks_qs.count()}' # Simple invalidation by count or time
+    stats_cache_key = f'project_stats_{pk}'
     stats = cache.get(stats_cache_key)
     
     if not stats:
@@ -258,7 +261,7 @@ def project_detail(request, pk: int):
                 completed_at__lte=F('due_at')
             ))
         )
-        cache.set(stats_cache_key, stats, 300) # 5 mins
+        cache_set_tracked(stats_cache_key, stats, 300, f'project_stats:{pk}')
     
     total = stats['total']
     completed = stats['completed']
@@ -644,7 +647,8 @@ def project_history(request, project_id):
     })
 
 from core.services.upload_service import UploadService
-from core.models import ChunkedUpload
+from core.services.protected_files import protected_file_response
+from core.models import ChunkedUpload, DirectUpload
 
 @login_required
 def project_upload_attachment(request, project_id):
@@ -662,17 +666,43 @@ def project_upload_attachment(request, project_id):
     if request.method == 'POST':
         uploaded_files = []
         
-        # 1. Handle Chunked Upload Completion (via upload_id)
-        if request.POST.get('upload_id'):
+        # 1. Handle Direct Upload Completion (via direct_upload_id)
+        if request.POST.get('direct_upload_id'):
+            direct_upload_id = request.POST.get('direct_upload_id')
+            upload, error = UploadService.consume_direct_upload(
+                request.user,
+                direct_upload_id,
+                DirectUpload.UploadType.PROJECT,
+            )
+            if error:
+                return JsonResponse({'status': 'error', 'message': error}, status=400)
+
+            attachment = ProjectAttachment.objects.create(
+                project=project,
+                uploaded_by=request.user,
+                file=upload.storage_path,
+                original_filename=upload.filename,
+                file_size=upload.file_size,
+            )
+            UploadService.mark_direct_upload_attached(upload)
+            uploaded_files.append({
+                'id': attachment.id,
+                'name': attachment.original_filename,
+                'size': attachment.file_size,
+                'url': reverse('projects:project_attachment_file', args=[attachment.id]),
+                'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
+                'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+
+        # 2. Handle Chunked Upload Completion (via upload_id)
+        elif request.POST.get('upload_id'):
             upload_id = request.POST.get('upload_id')
             try:
                 # Verify ownership
-                chunk_upload = ChunkedUpload.objects.get(id=upload_id)
-                if chunk_upload.user != request.user:
-                    return JsonResponse({'status': 'error', 'message': 'Permission denied for this upload'}, status=403)
+                ChunkedUpload.objects.get(id=upload_id, user=request.user)
                 
                 # Finalize
-                content_file, error = UploadService.complete_chunked_upload(upload_id)
+                content_file, error = UploadService.complete_chunked_upload(request.user, upload_id)
                 if error:
                     return JsonResponse({'status': 'error', 'message': error}, status=400)
                 
@@ -688,7 +718,7 @@ def project_upload_attachment(request, project_id):
                     'id': attachment.id,
                     'name': attachment.original_filename,
                     'size': attachment.file_size,
-                    'url': attachment.file.url,
+                    'url': reverse('projects:project_attachment_file', args=[attachment.id]),
                     'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
                     'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
                 })
@@ -698,7 +728,7 @@ def project_upload_attachment(request, project_id):
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-        # 2. Handle Standard File Upload (via FILES)
+        # 3. Handle Standard File Upload (via FILES)
         elif request.FILES.getlist('files'):
             for file in request.FILES.getlist('files'):
                 is_valid, error_msg = _validate_file(file)
@@ -716,7 +746,7 @@ def project_upload_attachment(request, project_id):
                     'id': attachment.id,
                     'name': attachment.original_filename,
                     'size': attachment.file_size,
-                    'url': attachment.file.url,
+                    'url': reverse('projects:project_attachment_file', args=[attachment.id]),
                     'uploaded_by': attachment.uploaded_by.get_full_name() or attachment.uploaded_by.username,
                     'created_at': attachment.created_at.strftime('%Y-%m-%d %H:%M')
                 })
@@ -725,6 +755,23 @@ def project_upload_attachment(request, project_id):
             return JsonResponse({'status': 'success', 'files': uploaded_files})
         
     return JsonResponse({'status': 'error', 'message': 'No files provided'}, status=400)
+
+
+@login_required
+@require_GET
+def project_attachment_file(request, attachment_id):
+    attachment = get_object_or_404(
+        ProjectAttachment.objects.select_related('project'),
+        pk=attachment_id,
+    )
+    if not get_accessible_projects(request.user).filter(pk=attachment.project_id).exists():
+        raise Http404("Attachment not found")
+
+    return protected_file_response(
+        attachment.file,
+        filename=attachment.original_filename,
+        as_attachment=request.GET.get('download') == '1',
+    )
 
 @login_required
 def project_delete_attachment(request, attachment_id):
@@ -776,10 +823,7 @@ def api_project_detail(request, pk: int):
 
 @login_required
 def project_search_api(request):
-    """
-    Project search API with advanced filtering, sorting, and optimization for large datasets.
-    Supports 'lite' mode for client-side indexing.
-    """
+    """Permission-scoped, relevance-ranked project search with bounded pagination."""
     if request.method != 'GET':
         return _friendly_forbidden(request, "仅允许 GET / GET only")
     
@@ -787,9 +831,12 @@ def project_search_api(request):
     if _throttle(request, 'project_search_ts', min_interval=0.05):
         return JsonResponse({'error': '请求过于频繁'}, status=429)
 
-    q = (request.GET.get('q') or '').strip()
-    mode = request.GET.get('mode', 'normal') # 'normal', 'lite' (id/name/code only)
-    limit = int(request.GET.get('limit', 20))
+    q = (request.GET.get('q') or '').strip()[:100]
+    try:
+        limit = min(max(int(request.GET.get('limit', 30)), 1), 50)
+        page = max(int(request.GET.get('page', 1)), 1)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid pagination parameters'}, status=400)
     
     user = request.user
     project_filter = Q(is_active=True)
@@ -809,91 +856,43 @@ def project_search_api(request):
         accessible_ids = get_accessible_projects(user).values_list('id', flat=True)
         project_filter &= Q(id__in=accessible_ids)
 
-    qs = Project.objects.filter(project_filter).select_related('owner', 'current_phase')
+    qs = Project.objects.filter(project_filter).select_related('owner', 'current_phase').distinct()
 
     if q:
-        # Pinyin match simulation: matches code (often abbr) or name
-        qs = qs.filter(
+        search_filter = (
             Q(name__icontains=q) | 
             Q(code__icontains=q) | 
             Q(description__icontains=q)
         )
-        
-        # Relevance sorting: 
-        # 1. Exact Code Match
-        # 2. Starts with Code
-        # 3. Exact Name Match
-        # 4. Starts with Name
-        # 5. Others
-        # This is hard to do purely in ORM efficiently for all DBs without raw SQL or CASE/WHEN.
-        # For simplicity and performance, we rely on basic ordering but prioritizing 'owner' might be good.
-        # User requested: "Match degree, Recent usage, Activity"
-        # Since we don't have robust "Recent Usage" history in DB for all users easily accessible here without joins,
-        # we'll use 'updated_at' as a proxy for activity.
-        
-        qs = qs.order_by('-created_at') # Proxy for activity/recent
+        if q.isdigit():
+            search_filter |= Q(id=int(q))
+        qs = qs.filter(search_filter).annotate(
+            relevance=Case(
+                When(code__iexact=q, then=Value(0)),
+                When(name__iexact=q, then=Value(1)),
+                When(code__istartswith=q, then=Value(2)),
+                When(name__istartswith=q, then=Value(3)),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
+        ).order_by('relevance', '-created_at')
     else:
-        # Default sort: Recently created
-        qs = qs.order_by('-created_at')
+        selected_id = request.GET.get('selected_id')
+        if selected_id and selected_id.isdigit():
+            qs = qs.annotate(
+                relevance=Case(
+                    When(id=int(selected_id), then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                )
+            ).order_by('relevance', '-created_at')
+        else:
+            qs = qs.order_by('-created_at')
 
-    if mode == 'lite':
-        try:
-            # Lite Mode: Client-side index optimization
-            # Lite 模式：客户端索引优化
-            
-            # 1. Base Query
-            base_qs = Project.objects.filter(is_active=True)
-            
-            # 2. Strict Scope Handling
-            # If scope is 'my_involved', we strictly return only directly involved projects
-            # regardless of superuser status. This is critical for the "Daily Report" dropdown.
-            if request.GET.get('scope') == 'my_involved':
-                 qs = base_qs.filter(
-                     Q(owner=user) | Q(managers=user) | Q(members=user)
-                 ).distinct()
-            else:
-                # Default behavior: Accessible projects (RBAC + Direct)
-                # Superuser sees all active projects
-                if user.is_superuser:
-                    qs = base_qs
-                else:
-                    # Get cached accessible IDs (from RBAC mostly)
-                    cached_accessible_qs = get_accessible_projects(user)
-                    cached_ids = list(cached_accessible_qs.values_list('id', flat=True))
-                    
-                    # Force add direct relations (Owner/Member/Manager) to bypass cache latency
-                    direct_filter = Q(owner=user) | Q(managers=user) | Q(members=user)
-                    qs = base_qs.filter(
-                        Q(id__in=cached_ids) | direct_filter
-                    ).distinct()
-
-            # Limit to 20000 to be safe
-            projects = qs.values('id', 'name', 'code', 'overall_progress', 'end_date', 'is_active').order_by('-created_at')[:20000]
-            
-            # Debug log
-            logger.info(f"Project Search API (Lite) for user {user.username}: Found {projects.count()} projects (Scope: {request.GET.get('scope')})")
-            
-            data = []
-            for p in projects:
-                # Format date and status for lite mode too if needed by frontend, or let frontend handle it.
-                data.append({
-                    'id': p['id'],
-                    'name': p['name'],
-                    'code': p['code'],
-                    'progress': p['overall_progress'],
-                    'end_date': p['end_date'].isoformat() if p['end_date'] else '',
-                    'status': 'active' if p['is_active'] else 'inactive',
-                    # Pinyin support: In a real env with pypinyin, we would generate it here.
-                    'pinyin': '', 
-                })
-            
-            return JsonResponse({'results': data})
-        except Exception as e:
-            logger.error(f"Project Search API Error: {e}", exc_info=True)
-            return JsonResponse({'error': str(e)}, status=500)
-
-    # Normal mode: Detailed results with pagination
-    projects = qs[:limit]
+    offset = (page - 1) * limit
+    projects = list(qs[offset:offset + limit + 1])
+    has_more = len(projects) > limit
+    projects = projects[:limit]
     data = []
     for p in projects:
         data.append({
@@ -906,8 +905,15 @@ def project_search_api(request):
             'end_date': p.end_date.isoformat() if p.end_date else '',
             'status_label': p.current_phase.phase_name if p.current_phase else ('Active' if p.is_active else 'Inactive'),
         })
-        
-    return JsonResponse({'results': data})
+
+    return JsonResponse({
+        'results': data,
+        'pagination': {
+            'page': page,
+            'page_size': limit,
+            'has_more': has_more,
+        },
+    })
 
 from django.views.decorators.http import require_POST
 from .models import ProjectRepository

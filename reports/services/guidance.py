@@ -1,4 +1,4 @@
-from reports.models import RoleTemplate
+from work_logs.models import RoleTemplate
 import json
 
 def generate_workbench_guidance(total, completed, overdue, in_progress, pending, streak, has_today_report, user_role, today_tasks_count, upcoming_tasks_count):

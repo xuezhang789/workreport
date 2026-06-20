@@ -718,7 +718,7 @@
                                                 <span style="font-weight: 500;">{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.username }}</span>
                                             </div>
                                             <div class="attachment-actions">
-                                                <a href="{{ attachment.file.url }}" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载 / Download</a>
+                                                <a href="{% url 'projects:project_attachment_file' attachment.id %}?download=1" target="_blank" class="btn-xs btn-download" style="margin-right: 8px;">下载 / Download</a>
                                                 <button type="button" class="btn-xs btn-delete" onclick="deleteExistingAttachment({{ attachment.id }}, '{% url 'projects:project_delete_attachment' attachment.id %}')">删除 / Remove</button>
                                             </div>
                                         </div>

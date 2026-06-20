@@ -66,7 +66,9 @@ urlpatterns = [
     path('api/admin/members/<int:user_id>/salary-history/', views_hr.salary_history_list, name='api_salary_history_list'),
     path('api/admin/members/<int:user_id>/contracts/', views_hr.contract_list, name='api_contract_list'),
     path('api/admin/members/<int:user_id>/contracts/upload/', views_hr.contract_upload, name='api_contract_upload'),
+    path('api/admin/contracts/<int:contract_id>/file/', views_hr.contract_file, name='api_contract_file'),
     path('api/admin/contracts/<int:contract_id>/delete/', views_hr.contract_delete, name='api_contract_delete'),
+    path('api/admin/members/<int:user_id>/payment-qr/', views_hr.payment_qr_file, name='api_payment_qr_file'),
     path('api/attendance/stats/', views_hr.attendance_stats, name='api_attendance_stats'),
     path('personnel/export/', export_views.personnel_export, name='personnel_export'),
 

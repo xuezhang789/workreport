@@ -6,7 +6,7 @@ from .models import ProjectAttachment, Project
 from core.models import Role, UserRole
 from core.services.rbac import RBACService
 from reports.services.notification_service import send_notification
-from reports.middleware import get_current_user
+from audit.middleware import get_current_user
 
 @receiver(post_delete, sender=ProjectAttachment)
 def delete_project_attachment_file(sender, instance, **kwargs):
@@ -103,11 +103,32 @@ def sync_project_member_role(sender, instance, action, reverse, model, pk_set, *
     """
     M2M 变更信号：当项目成员列表发生变化时，同步 'project_member' 角色并发送通知。
     """
-    if action not in ['post_add', 'post_remove', 'post_clear']:
+    if reverse:
+        member_role = Role.objects.filter(code='project_member').first()
+        clear_attr = '_rbac_member_projects_before_clear'
+        if action == 'pre_clear':
+            setattr(instance, clear_attr, list(instance.project_memberships.values_list('id', flat=True)))
+            return
+        if action not in ['post_add', 'post_remove', 'post_clear']:
+            return
+        project_ids = pk_set or getattr(instance, clear_attr, [])
+        if member_role:
+            if action == 'post_add':
+                for project_id in project_ids:
+                    RBACService.assign_role(instance, member_role, f'project:{project_id}')
+            elif action == 'post_remove':
+                for project_id in project_ids:
+                    RBACService.remove_role(instance, member_role, f'project:{project_id}')
+            else:
+                scopes = [f'project:{project_id}' for project_id in project_ids]
+                UserRole.objects.filter(user=instance, role=member_role, scope__in=scopes).delete()
+                RBACService.clear_user_cache(instance.id)
+        if hasattr(instance, clear_attr):
+            delattr(instance, clear_attr)
         return
 
-    if reverse:
-        pass
+    if action not in ['post_add', 'post_remove', 'post_clear']:
+        return
     else:
         project = instance
         scope = f"project:{project.id}"
@@ -191,11 +212,32 @@ def sync_project_manager_role(sender, instance, action, reverse, model, pk_set, 
     """
     M2M 变更信号：当项目管理员列表发生变化时，同步 'project_manager' 角色并发送通知。
     """
-    if action not in ['post_add', 'post_remove', 'post_clear']:
+    if reverse:
+        manager_role = Role.objects.filter(code='project_manager').first()
+        clear_attr = '_rbac_manager_projects_before_clear'
+        if action == 'pre_clear':
+            setattr(instance, clear_attr, list(instance.managed_projects.values_list('id', flat=True)))
+            return
+        if action not in ['post_add', 'post_remove', 'post_clear']:
+            return
+        project_ids = pk_set or getattr(instance, clear_attr, [])
+        if manager_role:
+            if action == 'post_add':
+                for project_id in project_ids:
+                    RBACService.assign_role(instance, manager_role, f'project:{project_id}')
+            elif action == 'post_remove':
+                for project_id in project_ids:
+                    RBACService.remove_role(instance, manager_role, f'project:{project_id}')
+            else:
+                scopes = [f'project:{project_id}' for project_id in project_ids]
+                UserRole.objects.filter(user=instance, role=manager_role, scope__in=scopes).delete()
+                RBACService.clear_user_cache(instance.id)
+        if hasattr(instance, clear_attr):
+            delattr(instance, clear_attr)
         return
 
-    if reverse:
-        pass
+    if action not in ['post_add', 'post_remove', 'post_clear']:
+        return
     else:
         project = instance
         scope = f"project:{project.id}"

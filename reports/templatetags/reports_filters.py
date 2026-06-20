@@ -1,8 +1,6 @@
 from django import template
 from django.core.exceptions import ObjectDoesNotExist
 import json
-from django.utils.html import escape
-from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -45,7 +43,7 @@ def pretty_json(value):
     try:
         if isinstance(value, str):
             value = json.loads(value)
-        return mark_safe(escape(json.dumps(value, indent=2, ensure_ascii=False)))
+        return json.dumps(value, indent=2, ensure_ascii=False)
     except Exception:
         return value
 
@@ -56,6 +54,6 @@ def to_project_json(projects):
     """
     try:
         data = [{'id': p.id, 'name': p.name, 'code': p.code, 'overall_progress': float(p.overall_progress)} for p in projects]
-        return mark_safe(json.dumps(data, ensure_ascii=False))
+        return json.dumps(data, ensure_ascii=False)
     except Exception:
         return "[]"
