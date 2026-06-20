@@ -38,9 +38,12 @@ def update_member_role(user_id, new_role, changed_by=None):
         user = User.objects.get(id=user_id)
         if new_role not in dict(Profile.ROLE_CHOICES):
             return False, "Invalid role selected"
-            
-        user.profile.position = new_role
-        user.profile.save()
+
+        # Legacy/imported users may not have a Profile row yet.
+        Profile.objects.update_or_create(
+            user=user,
+            defaults={'position': new_role},
+        )
         return True, f"Role updated to {new_role} for {user.username}"
     except User.DoesNotExist:
         return False, "User not found"

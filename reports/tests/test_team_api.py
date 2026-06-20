@@ -40,6 +40,25 @@ class TeamApiTest(TestCase):
 
     @patch('reports.views_teams.get_channel_layer')
     @patch('reports.views_teams.async_to_sync')
+    def test_update_role_api_creates_missing_profile(self, mock_async_to_sync, mock_get_channel_layer):
+        self.user.profile.delete()
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse('reports:team_member_update_role', args=[self.user.id]),
+            {'role': 'qa'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.position, 'qa')
+        mock_get_channel_layer.assert_called_once()
+        mock_async_to_sync.assert_called_once()
+
+    @patch('reports.views_teams.get_channel_layer')
+    @patch('reports.views_teams.async_to_sync')
     def test_add_project_api(self, mock_async_to_sync, mock_get_channel_layer):
         self.client.force_login(self.admin)
         url = reverse('reports:team_member_add_project', args=[self.user.id])
