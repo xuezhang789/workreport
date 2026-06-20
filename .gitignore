@@ -5,8 +5,13 @@ __pycache__/
 # Django
 db.sqlite3
 .env
+.env.*
+!.env.example
 *.log
+.cache/
+backups/
 media/
+collected_static/
 
 # IDE
 .idea/
@@ -14,4 +19,3 @@ media/
 
 # OS
 .DS_Store
-
