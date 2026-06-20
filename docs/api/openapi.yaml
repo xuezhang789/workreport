@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: WorkReport API Contract
+  version: 1.0.0
+  description: Minimal public and internal API contract used by deployment checks.
+servers:
+  - url: /
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      x-django-name: healthz
+      responses:
+        "200":
+          description: Service is alive.
+  /readyz:
+    get:
+      operationId: getReadiness
+      x-django-name: readyz
+      responses:
+        "200":
+          description: Dependencies are ready.
+        "503":
+          description: One or more dependencies are unavailable.
+  /core/api/command-search/:
+    get:
+      operationId: searchCommands
+      x-django-name: core:command_search_api
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results for the command palette.
+  /core/api/upload/direct/init/:
+    post:
+      operationId: initDirectUpload
+      x-django-name: core:upload_direct_init
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectUploadInitRequest"
+      responses:
+        "200":
+          description: Direct upload session and provider upload parameters.
+        "400":
+          description: Invalid upload request.
+  /core/api/upload/direct/complete/:
+    post:
+      operationId: completeDirectUpload
+      x-django-name: core:upload_direct_complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - upload_id
+              properties:
+                upload_id:
+                  type: string
+      responses:
+        "200":
+          description: Direct upload marked complete.
+        "400":
+          description: Invalid completion request.
+  /core/export/jobs/{job_id}/:
+    get:
+      operationId: getExportJobStatus
+      x-django-name: core:export_job_status
+      x-django-kwargs:
+        job_id: 1
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Export job status payload.
+  /projects/api/search/:
+    get:
+      operationId: searchProjects
+      x-django-name: projects:project_search_api
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 50
+      responses:
+        "200":
+          description: Permission-scoped project search results.
+components:
+  schemas:
+    DirectUploadInitRequest:
+      type: object
+      required:
+        - filename
+        - size
+      properties:
+        filename:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+        type:
+          type: string
+          enum:
+            - default
+            - project
+            - task
+            - avatar
+        content_type:
+          type: string

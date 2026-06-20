@@ -3,10 +3,16 @@ from django.test import TestCase, override_settings
 from django.core.files.base import ContentFile
 from django.conf import settings
 from core.services.storage.router import RouterStorage
+from core.services.storage.backends import S3StorageHandler, OSSStorageHandler
 from core.models import SystemSetting
 import os
 import shutil
 import json
+from unittest.mock import Mock, patch
+
+
+class ObjectNotFound(Exception):
+    response = {'Error': {'Code': '404'}}
 
 class StorageRouterTest(TestCase):
     def setUp(self):
@@ -90,7 +96,9 @@ class StorageRouterTest(TestCase):
             )
             
             # 3. Verify router now picks S3
-            with override_settings(MEDIA_ROOT=self.test_media_root):
+            fake_client = Mock()
+            fake_client.head_object.side_effect = ObjectNotFound()
+            with patch.object(S3StorageHandler, '_build_client', return_value=fake_client):
                 handler_name = storage._get_write_handler_name()
                 self.assertEqual(handler_name, 's3')
                 
@@ -100,9 +108,52 @@ class StorageRouterTest(TestCase):
                 # Should be prefixed 's3/s3_file.txt'
                 self.assertEqual(name, 's3/s3_file.txt')
                 
-                # Verify file exists in mock S3 location
-                expected_path = os.path.join(self.test_media_root, 's3_mock', 'test-bucket', 's3', 's3_file.txt')
-                self.assertTrue(os.path.exists(expected_path))
+                fake_client.upload_fileobj.assert_called_once()
+                call = fake_client.upload_fileobj.call_args
+                self.assertEqual(call.args[1:3], ('test-bucket', 's3/s3_file.txt'))
+
+    def test_s3_handler_uses_private_object_operations(self):
+        fake_client = Mock()
+        fake_client.head_object.return_value = {'ContentLength': 42}
+        fake_client.generate_presigned_url.return_value = 'https://signed.example/object'
+        body = ContentFile(b'cloud content')
+        fake_client.get_object.return_value = {'Body': body}
+
+        with patch.object(S3StorageHandler, '_build_client', return_value=fake_client):
+            handler = S3StorageHandler({'bucket': 'private-bucket', 'region': 'us-east-1'})
+            handler.save('s3/report.txt', ContentFile(b'cloud content'))
+
+            self.assertTrue(handler.exists('s3/report.txt'))
+            self.assertEqual(handler.size('s3/report.txt'), 42)
+            self.assertEqual(handler.url('s3/report.txt'), 'https://signed.example/object')
+            self.assertEqual(handler.open('s3/report.txt').read(), b'cloud content')
+            handler.delete('s3/report.txt')
+
+        fake_client.delete_object.assert_called_once_with(Bucket='private-bucket', Key='s3/report.txt')
+
+    def test_oss_handler_uses_private_object_operations(self):
+        fake_bucket = Mock()
+        fake_bucket.object_exists.return_value = True
+        fake_bucket.get_object_meta.return_value.content_length = 21
+        fake_bucket.sign_url.return_value = 'https://signed.oss.example/object'
+        fake_bucket.get_object.return_value = ContentFile(b'oss content')
+
+        with patch.object(OSSStorageHandler, '_build_bucket', return_value=fake_bucket):
+            handler = OSSStorageHandler({
+                'bucket': 'private-bucket',
+                'endpoint': 'oss-cn-hangzhou.aliyuncs.com',
+                'access_key': 'key',
+                'secret_key': 'secret',
+            })
+            handler.save('oss/report.txt', ContentFile(b'oss content'))
+
+            self.assertTrue(handler.exists('oss/report.txt'))
+            self.assertEqual(handler.size('oss/report.txt'), 21)
+            self.assertEqual(handler.url('oss/report.txt'), 'https://signed.oss.example/object')
+            self.assertEqual(handler.open('oss/report.txt').read(), b'oss content')
+            handler.delete('oss/report.txt')
+
+        fake_bucket.delete_object.assert_called_once_with('oss/report.txt')
 
     def test_size_method(self):
         """Test that size() method is implemented and works."""

@@ -1,0 +1,14 @@
+{% extends "registration/auth_base.html" %}
+
+{% block title %}双重验证{% endblock %}
+{% block subtitle %}输入身份验证器验证码或一次性恢复码{% endblock %}
+
+{% block content %}
+<form method="post" class="space-y-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="block text-sm font-medium text-slate-700" for="token">验证码或恢复码</label>
+    <input id="token" name="token" autocomplete="one-time-code" required autofocus class="block w-full px-3 py-2.5 border border-slate-300 rounded-lg">
+    <button type="submit" class="w-full py-2.5 px-4 rounded-lg bg-indigo-600 text-white font-semibold">验证</button>
+</form>
+{% endblock %}

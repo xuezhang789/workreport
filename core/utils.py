@@ -197,7 +197,19 @@ def _stream_csv(rows, header):
 
 def _create_export_job(user, export_type):
     expires = timezone.now() + timedelta(days=3)
-    return ExportJob.objects.create(user=user, export_type=export_type, status='running', progress=10, expires_at=expires)
+    return ExportJob.objects.create(user=user, export_type=export_type, status='pending', progress=0, expires_at=expires)
+
+
+def _enqueue_export_job(job, params):
+    from reports.tasks import generate_export_file_task
+
+    try:
+        return generate_export_file_task.delay(job.id, job.export_type, params)
+    except Exception as exc:
+        job.status = 'failed'
+        job.message = f'Failed to enqueue export: {exc}'
+        job.save(update_fields=['status', 'message', 'updated_at'])
+        raise
 
 def _generate_export_file(job, header, rows_iterable):
     """生成 CSV 临时文件，更新 Job 状态，返回文件路径。 / Generate CSV temp file, update Job status, return file path."""

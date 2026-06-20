@@ -1,0 +1,131 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-workreport}
+      POSTGRES_USER: ${POSTGRES_USER:-workreport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_DEBUG: "False"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${POSTGRES_DB:-workreport}
+      DB_USER: ${POSTGRES_USER:-workreport}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CACHE_BACKEND: redis
+      CACHE_REDIS_URL: redis://redis:6379/2
+      CHANNEL_LAYER_BACKEND: redis
+      CHANNEL_REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - static-data:/app/collected_static
+      - media-data:/app/media
+      - backup-data:/app/backups
+    expose:
+      - "8000"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    command: ["celery", "-A", "celery_app", "worker", "--loglevel=INFO", "-Q", "default,exports,email,notifications"]
+    environment:
+      DJANGO_DEBUG: "False"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${POSTGRES_DB:-workreport}
+      DB_USER: ${POSTGRES_USER:-workreport}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CACHE_BACKEND: redis
+      CACHE_REDIS_URL: redis://redis:6379/2
+      CHANNEL_LAYER_BACKEND: redis
+      CHANNEL_REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      RUN_COLLECTSTATIC_ON_STARTUP: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - media-data:/app/media
+      - backup-data:/app/backups
+
+  beat:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    command: ["celery", "-A", "celery_app", "beat", "--loglevel=INFO"]
+    environment:
+      DJANGO_DEBUG: "False"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${POSTGRES_DB:-workreport}
+      DB_USER: ${POSTGRES_USER:-workreport}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CACHE_BACKEND: redis
+      CACHE_REDIS_URL: redis://redis:6379/2
+      CHANNEL_LAYER_BACKEND: redis
+      CHANNEL_REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      RUN_COLLECTSTATIC_ON_STARTUP: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static-data:/var/www/static:ro
+      - media-data:/var/www/media:ro
+
+volumes:
+  postgres-data:
+  redis-data:
+  static-data:
+  media-data:
+  backup-data:

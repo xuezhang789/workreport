@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from core.api import upload_api
+from core import mfa_views
 
 app_name = 'core'
 
@@ -16,6 +17,9 @@ urlpatterns = [
     path('api/command-search/', views.command_search_api, name='command_search_api'),
     path('search/', views.global_search, name='global_search'),
     path('logout/', views.logout_view, name='logout'),
+    path('mfa/setup/', mfa_views.mfa_setup, name='mfa_setup'),
+    path('mfa/verify/', mfa_views.mfa_verify, name='mfa_verify'),
+    path('mfa/recovery/regenerate/', mfa_views.mfa_regenerate_recovery_codes, name='mfa_regenerate_recovery_codes'),
     path('export/jobs/<int:job_id>/', views.export_job_status, name='export_job_status'),
     path('export/jobs/<int:job_id>/download/', views.export_job_download, name='export_job_download'),
     
@@ -23,5 +27,7 @@ urlpatterns = [
     path('api/upload/init/', upload_api.upload_init, name='upload_init'),
     path('api/upload/chunk/', upload_api.upload_chunk, name='upload_chunk'),
     path('api/upload/complete/', upload_api.upload_complete, name='upload_complete'),
+    path('api/upload/direct/init/', upload_api.upload_direct_init, name='upload_direct_init'),
+    path('api/upload/direct/complete/', upload_api.upload_direct_complete, name='upload_direct_complete'),
     path('api/upload/avatar/complete/', upload_api.upload_avatar_complete, name='upload_avatar_complete'),
 ]

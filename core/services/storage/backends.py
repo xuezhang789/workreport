@@ -1,9 +1,7 @@
 
 import os
-import shutil
 from django.conf import settings
-from django.core.files.storage import Storage
-from django.core.files.base import ContentFile
+from django.core.exceptions import ImproperlyConfigured
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +26,9 @@ class BaseStorageHandler:
         raise NotImplementedError
 
     def path(self, name):
+        raise NotImplementedError
+
+    def create_presigned_upload(self, name, content_type='', expires_in=300, max_size=None):
         raise NotImplementedError
 
 
@@ -80,83 +81,178 @@ class LocalStorageHandler(BaseStorageHandler):
     def path(self, name):
         return self._get_path(name)
 
+    def create_presigned_upload(self, name, content_type='', expires_in=300, max_size=None):
+        raise NotImplementedError('Local storage does not support direct upload')
+
 
 class S3StorageHandler(BaseStorageHandler):
-    """
-    Mock S3 Handler.
-    """
+    """Private Amazon S3-compatible object storage handler."""
     def __init__(self, config):
-        self.bucket = config.get('bucket', 'my-bucket')
+        self.bucket = config.get('bucket')
+        if not self.bucket:
+            raise ImproperlyConfigured('S3 storage requires a bucket name')
         self.region = config.get('region', 'us-east-1')
-        self.mock_location = os.path.join(settings.MEDIA_ROOT, 's3_mock', self.bucket)
-        if not os.path.exists(self.mock_location):
-            os.makedirs(self.mock_location, exist_ok=True)
-        logger.info(f"Initialized S3 Handler for bucket {self.bucket}")
+        self.endpoint_url = config.get('endpoint_url') or None
+        self.access_key = config.get('access_key') or None
+        self.secret_key = config.get('secret_key') or None
+        self.session_token = config.get('session_token') or None
+        self.addressing_style = config.get('addressing_style', 'auto')
+        self.signature_version = config.get('signature_version', 's3v4')
+        self.url_expiry = int(config.get('url_expiry', 300))
+        self.server_side_encryption = config.get('server_side_encryption') or None
+        self.client = self._build_client()
+
+    def _build_client(self):
+        try:
+            import boto3
+            from botocore.config import Config
+        except ImportError as exc:
+            raise ImproperlyConfigured('S3 storage requires the boto3 package') from exc
+
+        kwargs = {
+            'service_name': 's3',
+            'region_name': self.region,
+            'endpoint_url': self.endpoint_url,
+            'config': Config(
+                signature_version=self.signature_version,
+                s3={'addressing_style': self.addressing_style},
+            ),
+        }
+        if self.access_key:
+            kwargs['aws_access_key_id'] = self.access_key
+        if self.secret_key:
+            kwargs['aws_secret_access_key'] = self.secret_key
+        if self.session_token:
+            kwargs['aws_session_token'] = self.session_token
+        return boto3.client(**kwargs)
 
     def save(self, name, content, max_length=None):
-        logger.info(f"Uploading {name} to S3 bucket {self.bucket}...")
-        path = os.path.join(self.mock_location, name)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'wb') as f:
-            for chunk in content.chunks():
-                f.write(chunk)
+        content.seek(0)
+        extra_args = {}
+        content_type = getattr(content, 'content_type', None)
+        if content_type:
+            extra_args['ContentType'] = content_type
+        if self.server_side_encryption:
+            extra_args['ServerSideEncryption'] = self.server_side_encryption
+        self.client.upload_fileobj(
+            content,
+            self.bucket,
+            name,
+            ExtraArgs=extra_args or None,
+        )
         return name
 
     def url(self, name):
-        # name includes 's3/...' prefix from router? 
-        # Yes, router passes 's3/file.jpg'.
-        # S3 URL structure usually doesn't have 's3/' unless it's a folder.
-        # So we construct URL: https://bucket.s3.region.amazonaws.com/s3/file.jpg
-        return f"https://{self.bucket}.s3.{self.region}.amazonaws.com/{name}"
+        return self.client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': self.bucket, 'Key': name},
+            ExpiresIn=self.url_expiry,
+        )
 
     def exists(self, name):
-        return os.path.exists(os.path.join(self.mock_location, name))
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=name)
+            return True
+        except Exception as exc:
+            response = getattr(exc, 'response', {})
+            code = str(response.get('Error', {}).get('Code', ''))
+            if code in {'404', 'NoSuchKey', 'NotFound'}:
+                return False
+            raise
 
     def size(self, name):
-        return os.path.getsize(os.path.join(self.mock_location, name))
+        response = self.client.head_object(Bucket=self.bucket, Key=name)
+        return response['ContentLength']
 
     def open(self, name, mode='rb'):
-        return open(os.path.join(self.mock_location, name), mode)
+        if mode not in {'r', 'rb'}:
+            raise ValueError('S3 objects can only be opened for reading')
+        return self.client.get_object(Bucket=self.bucket, Key=name)['Body']
 
     def delete(self, name):
-        path = os.path.join(self.mock_location, name)
-        if os.path.exists(path):
-            os.remove(path)
+        self.client.delete_object(Bucket=self.bucket, Key=name)
+
+    def create_presigned_upload(self, name, content_type='', expires_in=300, max_size=None):
+        fields = {}
+        conditions = []
+        if content_type:
+            fields['Content-Type'] = content_type
+            conditions.append({'Content-Type': content_type})
+        if max_size:
+            conditions.append(['content-length-range', 1, max_size])
+        if self.server_side_encryption:
+            fields['x-amz-server-side-encryption'] = self.server_side_encryption
+            conditions.append({'x-amz-server-side-encryption': self.server_side_encryption})
+
+        post = self.client.generate_presigned_post(
+            Bucket=self.bucket,
+            Key=name,
+            Fields=fields or None,
+            Conditions=conditions or None,
+            ExpiresIn=expires_in,
+        )
+        return {
+            'method': 'POST',
+            'url': post['url'],
+            'fields': post.get('fields', {}),
+            'headers': {},
+            'object_key': name,
+            'expires_in': expires_in,
+        }
 
 class OSSStorageHandler(BaseStorageHandler):
-    """
-    Mock Aliyun OSS Handler.
-    """
+    """Private Aliyun OSS object storage handler."""
     def __init__(self, config):
-        self.bucket = config.get('bucket', 'my-oss-bucket')
-        self.endpoint = config.get('endpoint', 'oss-cn-hangzhou.aliyuncs.com')
-        self.mock_location = os.path.join(settings.MEDIA_ROOT, 'oss_mock', self.bucket)
-        if not os.path.exists(self.mock_location):
-            os.makedirs(self.mock_location, exist_ok=True)
-        logger.info(f"Initialized OSS Handler for bucket {self.bucket}")
+        self.bucket_name = config.get('bucket')
+        self.endpoint = config.get('endpoint')
+        self.access_key = config.get('access_key')
+        self.secret_key = config.get('secret_key')
+        self.url_expiry = int(config.get('url_expiry', 300))
+        if not all((self.bucket_name, self.endpoint, self.access_key, self.secret_key)):
+            raise ImproperlyConfigured('OSS storage requires bucket, endpoint, access_key, and secret_key')
+        if not self.endpoint.startswith(('http://', 'https://')):
+            self.endpoint = f'https://{self.endpoint}'
+        self.bucket = self._build_bucket()
+
+    def _build_bucket(self):
+        try:
+            import oss2
+        except ImportError as exc:
+            raise ImproperlyConfigured('OSS storage requires the oss2 package') from exc
+        auth = oss2.Auth(self.access_key, self.secret_key)
+        return oss2.Bucket(auth, self.endpoint, self.bucket_name)
 
     def save(self, name, content, max_length=None):
-        logger.info(f"Uploading {name} to Aliyun OSS bucket {self.bucket}...")
-        path = os.path.join(self.mock_location, name)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'wb') as f:
-            for chunk in content.chunks():
-                f.write(chunk)
+        content.seek(0)
+        self.bucket.put_object(name, content)
         return name
 
     def url(self, name):
-        return f"https://{self.bucket}.{self.endpoint}/{name}"
+        return self.bucket.sign_url('GET', name, self.url_expiry)
 
     def exists(self, name):
-        return os.path.exists(os.path.join(self.mock_location, name))
+        return self.bucket.object_exists(name)
 
     def size(self, name):
-        return os.path.getsize(os.path.join(self.mock_location, name))
+        return self.bucket.get_object_meta(name).content_length
 
     def open(self, name, mode='rb'):
-        return open(os.path.join(self.mock_location, name), mode)
+        if mode not in {'r', 'rb'}:
+            raise ValueError('OSS objects can only be opened for reading')
+        return self.bucket.get_object(name)
 
     def delete(self, name):
-        path = os.path.join(self.mock_location, name)
-        if os.path.exists(path):
-            os.remove(path)
+        self.bucket.delete_object(name)
+
+    def create_presigned_upload(self, name, content_type='', expires_in=300, max_size=None):
+        headers = {}
+        if content_type:
+            headers['Content-Type'] = content_type
+        return {
+            'method': 'PUT',
+            'url': self.bucket.sign_url('PUT', name, expires_in, headers=headers),
+            'fields': {},
+            'headers': headers,
+            'object_key': name,
+            'expires_in': expires_in,
+        }

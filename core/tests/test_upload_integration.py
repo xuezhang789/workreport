@@ -1,6 +1,7 @@
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.core.files.base import ContentFile
 from core.models import ChunkedUpload, Profile, UserPreference
 from projects.models import Project, ProjectAttachment
 from tasks.models import Task, TaskAttachment
@@ -69,7 +70,7 @@ class UploadIntegrationTest(TestCase):
         # 2. Chunk
         chunk_url = reverse('core:upload_chunk')
         with open(os.path.join(self.temp_dir, 'chunk1'), 'wb') as f:
-            f.write(b'y' * 200)
+            f.write(b'\xff\xd8\xff' + b'y' * 197)
         with open(os.path.join(self.temp_dir, 'chunk1'), 'rb') as f:
             resp = self.client.post(chunk_url, {'upload_id': upload_id, 'chunk_index': 0, 'offset': 0, 'file': f})
         self.assertEqual(resp.status_code, 200)
@@ -99,7 +100,7 @@ class UploadIntegrationTest(TestCase):
         # 2. Chunk
         chunk_url = reverse('core:upload_chunk')
         with open(os.path.join(self.temp_dir, 'chunk1'), 'wb') as f:
-            f.write(b'z' * 500)
+            f.write(b'\x89PNG\r\n\x1a\n' + b'z' * 492)
         with open(os.path.join(self.temp_dir, 'chunk1'), 'rb') as f:
             resp = self.client.post(chunk_url, {'upload_id': upload_id, 'chunk_index': 0, 'offset': 0, 'file': f})
         
@@ -133,6 +134,31 @@ class UploadIntegrationTest(TestCase):
         resp = self.client.post(init_url, json.dumps(init_data), content_type='application/json')
         self.assertEqual(resp.status_code, 400)
         self.assertIn('Unsupported file type', resp.json()['message'])
+
+    def test_chunk_endpoint_rejects_another_users_upload(self):
+        init_url = reverse('core:upload_init')
+        resp = self.client.post(
+            init_url,
+            json.dumps({'filename': 'private.txt', 'size': 4, 'type': 'project'}),
+            content_type='application/json',
+        )
+        upload_id = resp.json()['upload_id']
+
+        other = User.objects.create_user('other', 'other@example.com', 'password')
+        self.client.force_login(other)
+        resp = self.client.post(
+            reverse('core:upload_chunk'),
+            {
+                'upload_id': upload_id,
+                'chunk_index': 0,
+                'offset': 0,
+                'file': ContentFile(b'test', name='chunk'),
+            },
+        )
+
+        self.assertEqual(resp.status_code, 400)
+        upload = ChunkedUpload.objects.get(id=upload_id)
+        self.assertEqual(upload.uploaded_size, 0)
 
     def test_attachment_deletion(self):
         # Create a real file

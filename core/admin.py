@@ -5,6 +5,7 @@ from .models import (
     ExportJob,
     UserPreference,
     Notification,
+    NotificationDelivery,
 )
 
 @admin.register(Profile)
@@ -33,3 +34,19 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ('notification_type', 'is_read', 'created_at')
     search_fields = ('title', 'message', 'user__username')
 
+
+@admin.register(NotificationDelivery)
+class NotificationDeliveryAdmin(admin.ModelAdmin):
+    list_display = ('notification', 'channel', 'status', 'attempts', 'created_at', 'sent_at')
+    list_filter = ('channel', 'status', 'created_at')
+    search_fields = ('notification__title', 'notification__user__username', 'last_error')
+    readonly_fields = (
+        'notification', 'channel', 'status', 'payload', 'attempts',
+        'next_retry_at', 'last_error', 'sent_at', 'created_at', 'updated_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

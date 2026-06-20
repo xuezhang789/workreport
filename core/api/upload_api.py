@@ -3,8 +3,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from core.services.upload_service import UploadService
+from core.models import ChunkedUpload, DirectUpload
 import json
 import logging
+from django.core.exceptions import ValidationError
 
 from core.utils import UPLOAD_MAX_SIZE, UPLOAD_ALLOWED_EXTENSIONS, AVATAR_MAX_SIZE, AVATAR_ALLOWED_EXTENSIONS
 
@@ -47,7 +49,7 @@ def upload_init(request):
             'upload_id': str(upload.id),
             'uploaded_size': upload.uploaded_size
         })
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, ValidationError):
         return JsonResponse({'status': 'error', 'message': 'Invalid filename or size'}, status=400)
     except Exception:
         logger.exception("Upload init failed for user %s", request.user.pk)
@@ -66,7 +68,7 @@ def upload_chunk(request):
         
     try:
         offset = int(offset) if offset else None
-        success, error = UploadService.process_chunk(upload_id, chunk_index, file, offset)
+        success, error = UploadService.process_chunk(request.user, upload_id, chunk_index, file, offset)
         if not success:
             return JsonResponse({'status': 'error', 'message': error}, status=400)
             
@@ -91,7 +93,6 @@ def upload_complete(request):
         upload_id = data.get('upload_id')
         
         # Verify
-        from core.models import ChunkedUpload
         upload = ChunkedUpload.objects.get(id=upload_id, user=request.user)
         if upload.uploaded_size != upload.file_size:
              return JsonResponse({'status': 'error', 'message': 'Incomplete upload'}, status=400)
@@ -102,11 +103,76 @@ def upload_complete(request):
         return JsonResponse({'status': 'success', 'upload_id': upload_id})
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-    except (TypeError, ValueError):
+    except ChunkedUpload.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Upload session not found'}, status=404)
+    except (TypeError, ValueError, ValidationError):
         return JsonResponse({'status': 'error', 'message': 'Invalid upload id'}, status=400)
     except Exception:
         logger.exception("Upload completion check failed for user %s", request.user.pk)
         return JsonResponse({'status': 'error', 'message': 'Upload completion failed'}, status=500)
+
+
+@login_required
+@require_POST
+def upload_direct_init(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    try:
+        filename = data.get('filename')
+        size = int(data.get('size'))
+        upload_type = data.get('type', DirectUpload.UploadType.DEFAULT)
+        content_type = (data.get('content_type') or '').strip()
+        if upload_type not in DirectUpload.UploadType.values:
+            upload_type = DirectUpload.UploadType.DEFAULT
+
+        upload, presigned, error = UploadService.init_direct_upload(
+            request.user,
+            filename,
+            size,
+            upload_type=upload_type,
+            content_type=content_type,
+        )
+        if error:
+            return JsonResponse({'status': 'error', 'message': error}, status=400)
+
+        return JsonResponse({
+            'status': 'success',
+            'upload_id': str(upload.id),
+            'storage_path': upload.storage_path,
+            'expires_at': upload.expires_at.isoformat(),
+            'upload': presigned,
+        })
+    except (TypeError, ValueError, ValidationError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid filename or size'}, status=400)
+    except Exception:
+        logger.exception("Direct upload init failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Direct upload initialization failed'}, status=500)
+
+
+@login_required
+@require_POST
+def upload_direct_complete(request):
+    try:
+        data = json.loads(request.body)
+        upload_id = data.get('upload_id')
+        upload, error = UploadService.complete_direct_upload(request.user, upload_id)
+        if error:
+            return JsonResponse({'status': 'error', 'message': error}, status=400)
+        return JsonResponse({
+            'status': 'success',
+            'upload_id': str(upload.id),
+            'storage_path': upload.storage_path,
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except (TypeError, ValueError, ValidationError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid upload id'}, status=400)
+    except Exception:
+        logger.exception("Direct upload completion failed for user %s", request.user.pk)
+        return JsonResponse({'status': 'error', 'message': 'Direct upload completion failed'}, status=500)
 
 @login_required
 @require_POST
@@ -118,11 +184,15 @@ def upload_avatar_complete(request):
         data = json.loads(request.body)
         upload_id = data.get('upload_id')
         
-        from core.models import ChunkedUpload
         upload = ChunkedUpload.objects.get(id=upload_id, user=request.user)
         
         # Finalize
-        content_file, error = UploadService.complete_chunked_upload(upload_id)
+        content_file, error = UploadService.complete_chunked_upload(
+            request.user,
+            upload_id,
+            max_size=AVATAR_MAX_SIZE,
+            allowed_extensions=AVATAR_ALLOWED_EXTENSIONS,
+        )
         if error:
             return JsonResponse({'status': 'error', 'message': error}, status=400)
             
@@ -155,7 +225,9 @@ def upload_avatar_complete(request):
         
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-    except (TypeError, ValueError):
+    except ChunkedUpload.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Upload session not found'}, status=404)
+    except (TypeError, ValueError, ValidationError):
         return JsonResponse({'status': 'error', 'message': 'Invalid upload id'}, status=400)
     except Exception:
         logger.exception("Avatar upload completion failed for user %s", request.user.pk)

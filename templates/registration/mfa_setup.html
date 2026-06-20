@@ -1,0 +1,18 @@
+{% extends "registration/auth_base.html" %}
+
+{% block title %}设置双重验证{% endblock %}
+{% block subtitle %}使用身份验证器保护高权限账户{% endblock %}
+
+{% block content %}
+<form method="post" class="space-y-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="flex justify-center">
+        <img src="data:image/png;base64,{{ qr_data }}" alt="TOTP QR code" width="220" height="220" class="border border-slate-200 rounded-lg">
+    </div>
+    <p class="text-sm text-slate-600">扫描二维码后，输入身份验证器显示的 6 位验证码。</p>
+    <label class="block text-sm font-medium text-slate-700" for="token">验证码</label>
+    <input id="token" name="token" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required class="block w-full px-3 py-2.5 border border-slate-300 rounded-lg">
+    <button type="submit" class="w-full py-2.5 px-4 rounded-lg bg-indigo-600 text-white font-semibold">启用双重验证</button>
+</form>
+{% endblock %}

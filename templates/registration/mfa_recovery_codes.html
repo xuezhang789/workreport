@@ -1,0 +1,15 @@
+{% extends "registration/auth_base.html" %}
+
+{% block title %}保存恢复码{% endblock %}
+{% block subtitle %}每个恢复码只能使用一次，离开此页后不再显示{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="grid grid-cols-2 gap-2 font-mono text-sm" aria-label="MFA recovery codes">
+        {% for code in recovery_codes %}
+        <code class="p-2 border border-slate-200 rounded bg-slate-50 text-center">{{ code }}</code>
+        {% endfor %}
+    </div>
+    <a href="{{ next }}" class="block w-full py-2.5 px-4 rounded-lg bg-indigo-600 text-white font-semibold text-center">我已安全保存</a>
+</div>
+{% endblock %}

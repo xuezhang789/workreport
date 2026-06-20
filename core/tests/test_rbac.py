@@ -112,3 +112,47 @@ class RBACServiceTest(TestCase):
         self.assertFalse(can_manage_project(self.user, p2))
         self.assertNotIn(p2, get_accessible_projects(self.user))
 
+    def test_role_changes_invalidate_derived_permission_caches(self):
+        scope = f"project:{self.project.id}"
+        self.assertFalse(can_manage_project(self.user, self.project))
+        self.assertNotIn(self.project, get_accessible_projects(self.user))
+
+        RBACService.assign_role(self.user, self.role_manager, scope)
+        self.assertTrue(can_manage_project(self.user, self.project))
+        self.assertIn(self.project, get_accessible_projects(self.user))
+
+        RBACService.remove_role(self.user, self.role_manager, scope)
+        self.assertFalse(can_manage_project(self.user, self.project))
+        self.assertNotIn(self.project, get_accessible_projects(self.user))
+
+    def test_direct_project_relations_invalidate_permission_caches(self):
+        self.assertFalse(can_manage_project(self.user, self.project))
+        self.project.managers.add(self.user)
+        self.assertTrue(can_manage_project(self.user, self.project))
+
+        self.project.managers.clear()
+        self.assertFalse(can_manage_project(self.user, self.project))
+
+    def test_reverse_project_relations_keep_rbac_in_sync(self):
+        scope = f"project:{self.project.id}"
+        project_manager_role = RBACService.create_role('Project Manager', 'project_manager')
+        RBACService.grant_permission_to_role(project_manager_role, self.perm_view)
+        RBACService.grant_permission_to_role(project_manager_role, self.perm_edit)
+        self.assertFalse(can_manage_project(self.user, self.project))
+
+        self.user.managed_projects.add(self.project)
+        self.assertTrue(RBACService.has_permission(self.user, 'project.manage', scope))
+
+        self.user.managed_projects.remove(self.project)
+        self.assertFalse(RBACService.has_permission(self.user, 'project.manage', scope))
+        self.assertFalse(can_manage_project(self.user, self.project))
+
+    def test_direct_user_role_changes_invalidate_cached_permissions(self):
+        scope = f"project:{self.project.id}"
+        self.assertFalse(RBACService.has_permission(self.user, 'project.manage', scope))
+
+        assignment = UserRole.objects.create(user=self.user, role=self.role_manager, scope=scope)
+        self.assertTrue(RBACService.has_permission(self.user, 'project.manage', scope))
+
+        assignment.delete()
+        self.assertFalse(RBACService.has_permission(self.user, 'project.manage', scope))

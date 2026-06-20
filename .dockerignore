@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+venv
+env
+__pycache__
+*.pyc
+.DS_Store
+.env
+db.sqlite3
+media
+backups
+collected_static
+test_media_storage
+test_lifecycle_media
+node_modules

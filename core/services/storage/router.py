@@ -184,3 +184,20 @@ class RouterStorage(Storage):
         if hasattr(handler, 'path'):
             return handler.path(name)
         raise NotImplementedError("This backend doesn't support absolute paths.")
+
+    def create_direct_upload(self, name, content_type='', expires_in=300, max_size=None):
+        backend_name = self._get_write_handler_name()
+        handler = self._get_handler_by_name(backend_name)
+        available_name = self.get_available_name(name)
+        final_name = f"{backend_name}/{available_name}"
+        if not hasattr(handler, 'create_presigned_upload'):
+            raise NotImplementedError("This backend doesn't support direct upload.")
+        payload = handler.create_presigned_upload(
+            final_name,
+            content_type=content_type,
+            expires_in=expires_in,
+            max_size=max_size,
+        )
+        payload['storage_path'] = final_name
+        payload['backend'] = backend_name
+        return payload

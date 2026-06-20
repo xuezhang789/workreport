@@ -34,13 +34,13 @@ class UploadServiceTest(TestCase):
         
         # Chunk 1
         chunk1 = ContentFile(content[:chunk_size], name='chunk1')
-        success, error = UploadService.process_chunk(upload.id, 0, chunk1, offset=0)
+        success, error = UploadService.process_chunk(self.user, upload.id, 0, chunk1, offset=0)
         self.assertTrue(success)
         self.assertIsNone(error)
         
         # Chunk 2
         chunk2 = ContentFile(content[chunk_size:], name='chunk2')
-        success, error = UploadService.process_chunk(upload.id, 1, chunk2, offset=chunk_size)
+        success, error = UploadService.process_chunk(self.user, upload.id, 1, chunk2, offset=chunk_size)
         self.assertTrue(success)
         self.assertIsNone(error)
         
@@ -49,7 +49,7 @@ class UploadServiceTest(TestCase):
         self.assertEqual(upload.uploaded_size, size)
         
         # 3. Complete
-        final_file, error = UploadService.complete_chunked_upload(upload.id)
+        final_file, error = UploadService.complete_chunked_upload(self.user, upload.id)
         self.assertIsNone(error)
         self.assertIsNotNone(final_file)
         
@@ -72,7 +72,7 @@ class UploadServiceTest(TestCase):
 
     def test_process_chunk_invalid_id(self):
         import uuid
-        success, error = UploadService.process_chunk(uuid.uuid4(), 0, ContentFile(b'test'))
+        success, error = UploadService.process_chunk(self.user, uuid.uuid4(), 0, ContentFile(b'test'))
         self.assertFalse(success)
 
     def test_init_sanitizes_filename(self):
@@ -86,6 +86,46 @@ class UploadServiceTest(TestCase):
         upload, error = UploadService.init_chunked_upload(self.user, 'oversize.txt', 5)
         self.assertIsNone(error)
 
-        success, error = UploadService.process_chunk(upload.id, 0, ContentFile(b'123456'), offset=0)
+        success, error = UploadService.process_chunk(self.user, upload.id, 0, ContentFile(b'123456'), offset=0)
         self.assertFalse(success)
         self.assertEqual(error, 'Uploaded data exceeds declared file size')
+
+    def test_chunk_and_completion_require_upload_owner(self):
+        other_user = User.objects.create_user('other', 'other@example.com', 'password')
+        upload, error = UploadService.init_chunked_upload(self.user, 'private.txt', 4)
+        self.assertIsNone(error)
+
+        success, error = UploadService.process_chunk(
+            other_user,
+            upload.id,
+            0,
+            ContentFile(b'test'),
+            offset=0,
+        )
+        self.assertFalse(success)
+        self.assertEqual(error, 'Upload session not found')
+
+        final_file, error = UploadService.complete_chunked_upload(other_user, upload.id)
+        self.assertIsNone(final_file)
+        self.assertEqual(error, 'Upload session not found')
+
+    def test_completion_rejects_spoofed_file_signature(self):
+        content = b'not-a-real-image'
+        upload, error = UploadService.init_chunked_upload(self.user, 'spoofed.png', len(content))
+        self.assertIsNone(error)
+        success, error = UploadService.process_chunk(
+            self.user,
+            upload.id,
+            0,
+            ContentFile(content),
+            offset=0,
+        )
+        self.assertTrue(success)
+
+        final_file, error = UploadService.complete_chunked_upload(self.user, upload.id)
+
+        self.assertIsNone(final_file)
+        self.assertIn('does not match extension', error)
+        upload.refresh_from_db()
+        self.assertEqual(upload.status, 'failed')
+        self.assertFalse(os.path.exists(upload.temp_path))

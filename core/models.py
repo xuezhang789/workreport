@@ -2,7 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
+from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
 from datetime import timedelta
+from core.fields import EncryptedDecimalField, EncryptedTextField, encrypted_alias
 
 # --- 现有模型 ---
 
@@ -24,26 +27,33 @@ class Profile(models.Model):
     employment_status = models.CharField(max_length=20, choices=EMPLOYMENT_STATUS_CHOICES, default='active', verbose_name="是否在职")
     hire_date = models.DateField(null=True, blank=True, verbose_name="入职时间")
     probation_months = models.PositiveIntegerField(default=3, verbose_name="试用时长(月)") # 1-6
-    probation_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="试用薪资")
-    official_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="正式薪资")
+    probation_salary_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="试用薪资")
+    official_salary_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="正式薪资")
     CURRENCY_CHOICES = [('CNY', 'CNY'), ('USDT', 'USDT')]
     salary_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="货币单位")
 
     # Payment Info
-    usdt_address = models.CharField(max_length=255, blank=True, null=True, verbose_name="USDT 地址")
+    usdt_address_secure = EncryptedTextField(blank=True, null=True, verbose_name="USDT 地址")
     usdt_qr_code = models.ImageField(upload_to='payment_qr/%Y/%m/', blank=True, null=True, verbose_name="USDT 收款二维码")
     email_verified = models.BooleanField(default=False, verbose_name="邮箱已验证")
 
     intermediary_company = models.CharField(max_length=255, blank=True, null=True, verbose_name="中介公司")
-    intermediary_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="中介费用")
+    intermediary_fee_amount_secure = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="中介费用")
     intermediary_fee_currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='CNY', verbose_name="中介费用货币单位")
     resignation_date = models.DateField(null=True, blank=True, verbose_name="离职时间")
-    hr_note = models.CharField(max_length=500, blank=True, verbose_name="备注")
+    hr_note_secure = EncryptedTextField(blank=True, default='', verbose_name="备注")
+
+    probation_salary = encrypted_alias('probation_salary_secure')
+    official_salary = encrypted_alias('official_salary_secure')
+    usdt_address = encrypted_alias('usdt_address_secure')
+    intermediary_fee_amount = encrypted_alias('intermediary_fee_amount_secure')
+    hr_note = encrypted_alias('hr_note_secure')
 
     class Meta:
         verbose_name = "用户资料"
         verbose_name_plural = "用户资料"
         indexes = [
+            models.Index(fields=['position'], name='core_profile_positio_idx'),
             models.Index(fields=['intermediary_company', 'intermediary_fee_currency'], name='idx_intermediary'),
         ]
 
@@ -61,14 +71,19 @@ class Profile(models.Model):
 class SalaryHistory(models.Model):
     """记录员工薪资变更历史"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salary_history', verbose_name="用户")
-    old_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原试用薪资")
-    new_probation = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新试用薪资")
-    old_official = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原正式薪资")
-    new_official = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新正式薪资")
+    old_probation_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原试用薪资")
+    new_probation_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新试用薪资")
+    old_official_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="原正式薪资")
+    new_official_secure = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="新正式薪资")
     currency = models.CharField(max_length=10, default='CNY', verbose_name="货币")
     reason = models.CharField(max_length=255, blank=True, verbose_name="变更原因")
     changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='salary_changes_made', verbose_name="操作人")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="变更时间")
+
+    old_probation = encrypted_alias('old_probation_secure')
+    new_probation = encrypted_alias('new_probation_secure')
+    old_official = encrypted_alias('old_official_secure')
+    new_official = encrypted_alias('new_official_secure')
 
     class Meta:
         ordering = ['-created_at']
@@ -149,15 +164,22 @@ class UserPreference(models.Model):
         verbose_name_plural = "用户偏好"
 
 
+class NotificationType(models.TextChoices):
+    TASK_ASSIGNED = 'task_assigned', '任务分配'
+    TASK_UPDATED = 'task_updated', '任务更新'
+    TASK_MENTION = 'task_mention', '任务提及'
+    TASK_COLLABORATOR = 'task_collaborator', '任务协作人变更'
+    SLA_REMINDER = 'sla_reminder', 'SLA 提醒'
+    PROJECT_UPDATE = 'project_update', '项目更新'
+    PROJECT_ASSIGNMENT = 'project_assignment', '项目负责人任命'
+    PROJECT_MEMBER_CHANGE = 'project_member_change', '项目成员变更'
+    PROJECT_MANAGER_CHANGE = 'project_manager_change', '项目管理员变更'
+    REPORT_REMINDER = 'report_reminder', '日报提醒'
+    SYSTEM = 'system', '系统通知'
+
+
 class Notification(models.Model):
-    NOTIFICATION_TYPES = [
-        ('task_assigned', '任务分配'),
-        ('task_updated', '任务更新'),
-        ('task_mention', '任务提及'),
-        ('sla_reminder', 'SLA提醒'),
-        ('project_update', '项目更新'),
-        ('report_reminder', '日报提醒'),
-    ]
+    NOTIFICATION_TYPES = NotificationType.choices
 
     PRIORITY_CHOICES = [
         ('high', '高 / High'),
@@ -168,12 +190,13 @@ class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', verbose_name="用户")
     title = models.CharField(max_length=200, verbose_name="标题")
     message = models.TextField(verbose_name="内容")
-    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, verbose_name="类型")
+    notification_type = models.CharField(max_length=32, choices=NotificationType.choices, verbose_name="类型")
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal', verbose_name="优先级")
     is_read = models.BooleanField(default=False, verbose_name="是否已读")
     is_pushed = models.BooleanField(default=False, verbose_name="是否已推送")
     expires_at = models.DateTimeField(null=True, blank=True, verbose_name="过期时间")
     data = models.JSONField(default=dict, blank=True, verbose_name="数据")
+    idempotency_key = models.CharField(max_length=128, null=True, blank=True, verbose_name="幂等键")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 
     class Meta:
@@ -185,9 +208,93 @@ class Notification(models.Model):
             models.Index(fields=['created_at']),
             models.Index(fields=['priority']),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'idempotency_key'],
+                condition=models.Q(idempotency_key__isnull=False),
+                name='unique_user_notification_idempotency_key',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.title}"
+
+
+class NotificationDelivery(models.Model):
+    class Channel(models.TextChoices):
+        WEBSOCKET = 'websocket', 'WebSocket'
+        EMAIL = 'email', 'Email'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', '待投递'
+        PROCESSING = 'processing', '投递中'
+        SENT = 'sent', '已投递'
+        FAILED = 'failed', '待重试'
+        DEAD = 'dead', '终止重试'
+
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name='deliveries',
+        verbose_name='通知',
+    )
+    channel = models.CharField(max_length=16, choices=Channel.choices, verbose_name='渠道')
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, verbose_name='状态')
+    payload = models.JSONField(default=dict, verbose_name='投递负载')
+    attempts = models.PositiveIntegerField(default=0, verbose_name='尝试次数')
+    next_retry_at = models.DateTimeField(null=True, blank=True, verbose_name='下次重试时间')
+    last_error = models.TextField(blank=True, verbose_name='最近错误')
+    sent_at = models.DateTimeField(null=True, blank=True, verbose_name='投递时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['notification', 'channel'],
+                name='unique_notification_delivery_channel',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'next_retry_at']),
+            models.Index(fields=['updated_at']),
+        ]
+        verbose_name = '通知投递'
+        verbose_name_plural = '通知投递'
+
+
+class MFARecoveryCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mfa_recovery_codes')
+    code_hash = models.CharField(max_length=255)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'used_at'])]
+        verbose_name = 'MFA 恢复码'
+        verbose_name_plural = 'MFA 恢复码'
+
+    @classmethod
+    def replace_for_user(cls, user, raw_codes):
+        with transaction.atomic():
+            cls.objects.filter(user=user).delete()
+            cls.objects.bulk_create([
+                cls(user=user, code_hash=make_password(code))
+                for code in raw_codes
+            ])
+
+    @classmethod
+    def consume(cls, user, raw_code):
+        normalized = raw_code.strip().upper()
+        with transaction.atomic():
+            codes = list(cls.objects.select_for_update().filter(user=user, used_at__isnull=True))
+            for recovery_code in codes:
+                if check_password(normalized, recovery_code.code_hash):
+                    recovery_code.used_at = timezone.now()
+                    recovery_code.save(update_fields=['used_at'])
+                    return True
+        return False
 
 
 # class PermissionMatrix(models.Model):
@@ -324,6 +431,84 @@ class ChunkedUpload(models.Model):
     class Meta:
         verbose_name = "分片上传"
         verbose_name_plural = "分片上传"
+
+
+class DirectUpload(models.Model):
+    """云存储直传会话。对象先由客户端直传，再由服务端校验并绑定业务附件。"""
+
+    class UploadType(models.TextChoices):
+        PROJECT = 'project', '项目附件'
+        TASK = 'task', '任务附件'
+        AVATAR = 'avatar', '头像'
+        DEFAULT = 'default', '通用'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', '等待直传'
+        COMPLETE = 'complete', '已校验'
+        ATTACHED = 'attached', '已绑定'
+        FAILED = 'failed', '失败'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='direct_uploads')
+    filename = models.CharField(max_length=255)
+    file_size = models.BigIntegerField()
+    content_type = models.CharField(max_length=100, blank=True)
+    upload_type = models.CharField(max_length=20, choices=UploadType.choices, default=UploadType.DEFAULT)
+    biz_type = models.CharField(max_length=50, default='default')
+    storage_path = models.CharField(max_length=512, unique=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    expires_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+    attached_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['expires_at']),
+            models.Index(fields=['biz_type', 'status']),
+        ]
+        verbose_name = "直传会话"
+        verbose_name_plural = "直传会话"
+
+
+class SearchIndex(models.Model):
+    """跨域搜索索引。权限过滤在查询服务中结合真实业务对象完成。"""
+
+    class ObjectType(models.TextChoices):
+        PROJECT = 'project', '项目'
+        TASK = 'task', '任务'
+        DAILY_REPORT = 'daily_report', '日报'
+
+    object_type = models.CharField(max_length=32, choices=ObjectType.choices)
+    object_id = models.PositiveBigIntegerField()
+    title = models.CharField(max_length=255)
+    subtitle = models.CharField(max_length=255, blank=True)
+    body = models.TextField(blank=True)
+    search_text = models.TextField(blank=True)
+    project_ids = models.JSONField(default=list, blank=True)
+    user_id = models.PositiveBigIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    indexed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['object_type', 'object_id'],
+                name='unique_search_index_object',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['object_type', 'object_id']),
+            models.Index(fields=['object_type', 'updated_at']),
+            models.Index(fields=['user_id']),
+        ]
+        verbose_name = "搜索索引"
+        verbose_name_plural = "搜索索引"
+
+    def __str__(self):
+        return f"{self.object_type}:{self.object_id} {self.title}"
 
 
 class Invitation(models.Model):

@@ -2,6 +2,10 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q
 from core.models import Role, Permission, UserRole, RolePermission
+from core.services.permission_cache import (
+    invalidate_user_permission_cache,
+    user_permission_cache_key,
+)
 
 class RBACService:
     """
@@ -25,7 +29,7 @@ class RBACService:
             str: 格式化的缓存键名
         """
         scope_key = scope if scope else "global"
-        return f"{cls.CACHE_PREFIX}:user:{user_id}:scope:{scope_key}"
+        return user_permission_cache_key(cls.CACHE_PREFIX, user_id, 'scope', scope_key)
 
     @classmethod
     def clear_user_cache(cls, user_id, scope=None):
@@ -38,12 +42,7 @@ class RBACService:
                                    如果提供了 scope，除了清除该 scope 的缓存外，
                                    还会强制清除全局缓存，因为全局角色可能影响所有范围。
         """
-        key = cls._get_cache_key(user_id, scope)
-        cache.delete(key)
-        
-        # 如果指定了特定 scope，同时也清除全局缓存，确保数据一致性
-        if scope:
-            cache.delete(cls._get_cache_key(user_id, None))
+        invalidate_user_permission_cache(user_id)
 
     @classmethod
     def get_user_permissions(cls, user, scope=None):
@@ -321,7 +320,4 @@ class RBACService:
         
         注意：这需要查询数据库来找出用户涉及的所有 Scope，以确保清理干净。
         """
-        scopes = UserRole.objects.filter(user_id=user_id).values_list('scope', flat=True).distinct()
-        cls.clear_user_cache(user_id, None) # 清除全局
-        for scope in scopes:
-            cls.clear_user_cache(user_id, scope)
+        invalidate_user_permission_cache(user_id)
