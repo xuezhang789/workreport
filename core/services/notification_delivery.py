@@ -15,6 +15,28 @@ from core.models import NotificationDelivery
 logger = logging.getLogger(__name__)
 
 
+def _enqueue_delivery(delivery_id):
+    from reports.tasks import process_notification_delivery_task
+
+    process_notification_delivery_task.apply_async(
+        (delivery_id,),
+        ignore_result=True,
+        retry=False,
+    )
+
+
+def _mark_publish_deferred(delivery_id, exc):
+    message = f'Publish deferred: {exc}'[:2000]
+    NotificationDelivery.objects.filter(pk=delivery_id).update(
+        last_error=message,
+        updated_at=timezone.now(),
+    )
+    logger.warning(
+        'notification_delivery_publish_deferred',
+        extra={'delivery_id': delivery_id, 'error': str(exc)},
+    )
+
+
 def publish_delivery_after_commit(delivery_id):
     def publish():
         if getattr(settings, 'NOTIFICATION_OUTBOX_SYNC', False):
@@ -24,10 +46,9 @@ def publish_delivery_after_commit(delivery_id):
                 logger.exception('notification_delivery_sync_failed', extra={'delivery_id': delivery_id})
             return
         try:
-            from reports.tasks import process_notification_delivery_task
-            process_notification_delivery_task.delay(delivery_id)
-        except Exception:
-            logger.exception('notification_delivery_publish_failed', extra={'delivery_id': delivery_id})
+            _enqueue_delivery(delivery_id)
+        except Exception as exc:
+            _mark_publish_deferred(delivery_id, exc)
 
     transaction.on_commit(publish)
 
@@ -75,10 +96,9 @@ def dispatch_pending_deliveries(limit=100):
     )
     for delivery_id in ids:
         try:
-            from reports.tasks import process_notification_delivery_task
-            process_notification_delivery_task.delay(delivery_id)
-        except Exception:
-            logger.exception('notification_delivery_publish_failed', extra={'delivery_id': delivery_id})
+            _enqueue_delivery(delivery_id)
+        except Exception as exc:
+            _mark_publish_deferred(delivery_id, exc)
     return len(ids)
 
 

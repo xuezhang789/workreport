@@ -22,13 +22,13 @@ DEFAULT_TASK_KWARGS = {
 LOCK_TIMEOUT = getattr(settings, 'CELERY_TASK_LOCK_TIMEOUT_SECONDS', 600)
 
 
-@shared_task(**DEFAULT_TASK_KWARGS)
+@shared_task(ignore_result=True, **DEFAULT_TASK_KWARGS)
 def process_notification_delivery_task(delivery_id):
     from core.services.notification_delivery import process_delivery
     return process_delivery(delivery_id)
 
 
-@shared_task(**DEFAULT_TASK_KWARGS)
+@shared_task(ignore_result=True, **DEFAULT_TASK_KWARGS)
 def dispatch_pending_notification_deliveries_task(limit=100):
     from core.services.notification_delivery import dispatch_pending_deliveries
     with task_lock('dispatch_pending_notification_deliveries', timeout=55) as acquired:
@@ -69,7 +69,14 @@ def cleanup_old_logs_task(days=180):
             f"older than {days} days."
         )
 
-@shared_task(autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3, **DEFAULT_TASK_KWARGS)
+@shared_task(
+    ignore_result=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+    **DEFAULT_TASK_KWARGS,
+)
 def send_email_async_task(subject, message, from_email, recipient_list, html_message=None):
     """
     异步发送邮件的 Celery 任务。
