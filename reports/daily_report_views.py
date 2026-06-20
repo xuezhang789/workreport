@@ -77,16 +77,7 @@ def _build_sections(report):
 
 
 def _has_role_content(role: str, payload: dict) -> bool:
-    role_fields = {
-        'dev': ['today_work', 'progress_issues', 'tomorrow_plan'],
-        'qa': ['testing_scope', 'testing_progress', 'bug_summary', 'testing_tomorrow'],
-        'pm': ['product_today', 'product_coordination', 'product_tomorrow'],
-        'ui': ['ui_today', 'ui_feedback', 'ui_tomorrow'],
-        'ops': ['ops_today', 'ops_monitoring', 'ops_tomorrow'],
-        'mgr': ['mgr_progress', 'mgr_risks', 'mgr_tomorrow'],
-    }
-    fields = role_fields.get(role, [])
-    return any((payload.get(f, '') or '').strip() for f in fields)
+    return DailyReport.has_role_content(role, payload)
 
 
 def _report_initial(report: DailyReport | None):
@@ -427,27 +418,7 @@ def my_reports(request):
     if role in dict(DailyReport.ROLE_CHOICES):
         qs = qs.filter(role=role)
     if q:
-        qs = qs.filter(
-            Q(today_work__icontains=q) |
-            Q(progress_issues__icontains=q) |
-            Q(tomorrow_plan__icontains=q) |
-            Q(testing_scope__icontains=q) |
-            Q(testing_progress__icontains=q) |
-            Q(bug_summary__icontains=q) |
-            Q(testing_tomorrow__icontains=q) |
-            Q(product_today__icontains=q) |
-            Q(product_coordination__icontains=q) |
-            Q(product_tomorrow__icontains=q) |
-            Q(ui_today__icontains=q) |
-            Q(ui_feedback__icontains=q) |
-            Q(ui_tomorrow__icontains=q) |
-            Q(ops_today__icontains=q) |
-            Q(ops_monitoring__icontains=q) |
-            Q(ops_tomorrow__icontains=q) |
-            Q(mgr_progress__icontains=q) |
-            Q(mgr_risks__icontains=q) |
-            Q(mgr_tomorrow__icontains=q)
-        )
+        qs = qs.filter(DailyReport.content_search_query(q))
 
     try:
         per_page = int(request.GET.get('per_page', 20))

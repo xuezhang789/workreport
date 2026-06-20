@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from audit.models import AuditLog
+from audit.services import archive_old_audit_logs
 from core.models import Notification
 
 class Command(BaseCommand):
@@ -25,11 +25,13 @@ class Command(BaseCommand):
         days = options['days']
         notif_days = options['notification_days']
         
-        # Cleanup Audit Logs
-        # 清理审计日志
-        cutoff = timezone.now() - timedelta(days=days)
-        deleted_count, _ = AuditLog.objects.filter(created_at__lt=cutoff).delete()
-        self.stdout.write(self.style.SUCCESS(f"Deleted {deleted_count} audit logs older than {days} days."))
+        # Archive Audit Logs before deleting hot rows.
+        # 清理审计日志前先归档。
+        audit_result = archive_old_audit_logs(days=days)
+        self.stdout.write(self.style.SUCCESS(
+            f"Archived {audit_result['archived']} audit logs and deleted "
+            f"{audit_result['deleted']} hot rows older than {days} days."
+        ))
         
         # Cleanup Notifications
         # 清理通知

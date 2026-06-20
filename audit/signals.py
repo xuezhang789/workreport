@@ -157,12 +157,6 @@ def log_model_changes(sender, instance, created, **kwargs):
         project = instance.project
 
     if created:
-        # Create Action - Use Cache Lock to prevent duplicates if any
-        lock_key = f"audit_lock_{sender.__name__}_{instance.pk}_create"
-        if cache.get(lock_key):
-            return
-        cache.set(lock_key, "locked", 10) # 10s lock
-
         AuditLog.objects.create(
             user=user if user else None,
             operator_name=operator_name,
@@ -182,9 +176,11 @@ def log_model_changes(sender, instance, created, **kwargs):
         # Concurrency & Idempotency Check using Cache
         # Create a hash of the details to ensure we are locking the EXACT same change
         details_json = json.dumps(details, sort_keys=True)
-        details_hash = hashlib.md5(details_json.encode('utf-8')).hexdigest()
+        details_hash = hashlib.sha256(details_json.encode('utf-8')).hexdigest()
         
-        lock_key = f"audit_lock_{sender.__name__}_{instance.pk}_update_{details_hash}"
+        object_created_at = getattr(instance, 'created_at', None)
+        object_identity = object_created_at.isoformat() if object_created_at else 'unknown'
+        lock_key = f"audit_lock_{sender.__name__}_{instance.pk}_{object_identity}_update_{details_hash}"
         
         # If locked, it means we processed this exact change recently
         if cache.get(lock_key):

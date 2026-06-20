@@ -1,12 +1,11 @@
 import time
+from django.conf import settings
 from audit.models import AuditLog
 
 def log_action(request, action: str, extra: str = "", data=None):
     ip = request.META.get('REMOTE_ADDR')
-    # Handle Proxy
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
+    if getattr(settings, 'TRUST_PROXY_HEADERS', False):
+        ip = request.META.get('HTTP_X_REAL_IP') or ip
         
     ua = request.META.get('HTTP_USER_AGENT', '')[:512]
     elapsed_ms = getattr(request, '_elapsed_ms', None)

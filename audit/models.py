@@ -68,6 +68,41 @@ class AuditLog(models.Model):
         return f"[{self.result.upper()}] {self.action} {self.target_type}#{self.target_id} by {who}"
 
 
+class AuditLogArchive(models.Model):
+    """Immutable snapshot of archived audit logs kept outside the hot AuditLog table."""
+    original_id = models.PositiveIntegerField(unique=True, verbose_name="原审计日志ID")
+    user_id = models.PositiveIntegerField(null=True, blank=True, verbose_name="用户ID快照")
+    operator_name = models.CharField(max_length=150, blank=True, verbose_name="操作人姓名")
+    action = models.CharField(max_length=20, verbose_name="动作")
+    result = models.CharField(max_length=10, default='success', verbose_name="结果")
+    ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP地址")
+    target_type = models.CharField(max_length=100, blank=True, verbose_name="对象类型")
+    target_id = models.CharField(max_length=100, blank=True, verbose_name="对象ID")
+    target_label = models.CharField(max_length=255, blank=True, verbose_name="对象名称")
+    summary = models.TextField(blank=True, verbose_name="摘要")
+    details = models.JSONField(default=dict, blank=True, verbose_name="详情")
+    project_id = models.PositiveIntegerField(null=True, blank=True, verbose_name="关联项目ID快照")
+    task_id = models.PositiveIntegerField(null=True, blank=True, verbose_name="关联任务ID快照")
+    created_at = models.DateTimeField(verbose_name="原记录时间")
+    archived_at = models.DateTimeField(auto_now_add=True, verbose_name="归档时间")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "审计日志归档"
+        verbose_name_plural = "审计日志归档"
+        indexes = [
+            models.Index(fields=['created_at']),
+            models.Index(fields=['archived_at']),
+            models.Index(fields=['action']),
+            models.Index(fields=['target_type', 'target_id']),
+            models.Index(fields=['project_id', 'created_at']),
+            models.Index(fields=['task_id', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"Archived AuditLog#{self.original_id}: {self.action} {self.target_type}#{self.target_id}"
+
+
 class TaskHistory(models.Model):
     """任务变更历史：状态、截止时间、指派人等变更记录。"""
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='histories', verbose_name="任务")

@@ -1,7 +1,78 @@
-from django.db.models import Q
+from datetime import timedelta
+
 from django.apps import apps
-from audit.models import AuditLog
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
 from django.utils.dateparse import parse_date
+
+from audit.models import AuditLog, AuditLogArchive
+
+
+def _archive_snapshot(log):
+    return AuditLogArchive(
+        original_id=log.id,
+        user_id=log.user_id,
+        operator_name=log.operator_name,
+        action=log.action,
+        result=log.result,
+        ip=log.ip,
+        target_type=log.target_type,
+        target_id=log.target_id,
+        target_label=log.target_label,
+        summary=log.summary,
+        details=log.details,
+        project_id=log.project_id,
+        task_id=log.task_id,
+        created_at=log.created_at,
+    )
+
+
+def archive_old_audit_logs(days=365, batch_size=1000, delete_after_archive=True):
+    """
+    Archive old audit logs before removing them from the hot AuditLog table.
+    """
+    if days <= 0:
+        raise ValueError("days must be greater than 0")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be greater than 0")
+
+    cutoff = timezone.now() - timedelta(days=days)
+    last_id = 0
+    archived_count = 0
+    deleted_count = 0
+
+    while True:
+        logs = list(
+            AuditLog.objects
+            .filter(created_at__lt=cutoff, id__gt=last_id)
+            .order_by('id')[:batch_size]
+        )
+        if not logs:
+            break
+
+        ids = [log.id for log in logs]
+        last_id = ids[-1]
+        with transaction.atomic():
+            AuditLogArchive.objects.bulk_create(
+                [_archive_snapshot(log) for log in logs],
+                ignore_conflicts=True,
+            )
+            archived_ids = set(
+                AuditLogArchive.objects
+                .filter(original_id__in=ids)
+                .values_list('original_id', flat=True)
+            )
+            archived_count += len(archived_ids)
+            if delete_after_archive and archived_ids:
+                deleted, _ = AuditLog.objects.filter(id__in=archived_ids).delete()
+                deleted_count += deleted
+
+    return {
+        'cutoff': cutoff,
+        'archived': archived_count,
+        'deleted': deleted_count,
+    }
 
 class AuditLogService:
     @staticmethod

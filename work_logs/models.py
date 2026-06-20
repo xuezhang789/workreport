@@ -1,8 +1,10 @@
 from datetime import time
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from core.models import Profile
 from projects.models import Project
+from django.db.models import Q
 
 class ReminderRule(models.Model):
     """日报提醒规则：按项目/角色配置提醒时间与渠道。"""
@@ -35,44 +37,29 @@ class DailyReport(models.Model):
         ('draft', '草稿 / Draft'),
         ('submitted', '已提交 / Submitted'),
     ]
+    ROLE_CONTENT_FIELDS = {
+        'dev': ('today_work', 'progress_issues', 'tomorrow_plan'),
+        'qa': ('testing_scope', 'testing_progress', 'bug_summary', 'testing_tomorrow'),
+        'pm': ('product_today', 'product_coordination', 'product_tomorrow'),
+        'ui': ('ui_today', 'ui_feedback', 'ui_tomorrow'),
+        'ops': ('ops_today', 'ops_monitoring', 'ops_tomorrow'),
+        'mgr': ('mgr_progress', 'mgr_risks', 'mgr_tomorrow'),
+    }
+    CONTENT_FIELD_NAMES = tuple(
+        field_name
+        for role_fields in ROLE_CONTENT_FIELDS.values()
+        for field_name in role_fields
+    )
+    CURRENT_CONTENT_SCHEMA_VERSION = 2
+    CONTENT_RESERVED_KEYS = ('_legacy_project', '_extra')
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_reports', verbose_name="用户")
     date = models.DateField(verbose_name="日期")
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, verbose_name="角色")
-    project = models.CharField(max_length=200, blank=True, verbose_name="主项目(旧)")
     projects = models.ManyToManyField(Project, blank=True, related_name='reports', verbose_name="关联项目")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted', verbose_name="状态")
-
-    # 通用字段
-    today_work = models.TextField(blank=True, verbose_name="今日工作")
-    progress_issues = models.TextField(blank=True, verbose_name="进度与问题")
-    tomorrow_plan = models.TextField(blank=True, verbose_name="明日计划")
-
-    # QA
-    testing_scope = models.TextField(blank=True, verbose_name="测试范围")
-    testing_progress = models.TextField(blank=True, verbose_name="测试进度")
-    bug_summary = models.TextField(blank=True, verbose_name="缺陷汇总")
-    testing_tomorrow = models.TextField(blank=True, verbose_name="明日测试计划")
-
-    # 产品
-    product_today = models.TextField(blank=True, verbose_name="今日产品工作")
-    product_coordination = models.TextField(blank=True, verbose_name="协调事项")
-    product_tomorrow = models.TextField(blank=True, verbose_name="明日产品计划")
-
-    # UI
-    ui_today = models.TextField(blank=True, verbose_name="今日设计工作")
-    ui_feedback = models.TextField(blank=True, verbose_name="反馈修改")
-    ui_tomorrow = models.TextField(blank=True, verbose_name="明日设计计划")
-
-    # 运维
-    ops_today = models.TextField(blank=True, verbose_name="今日运维工作")
-    ops_monitoring = models.TextField(blank=True, verbose_name="监控状况")
-    ops_tomorrow = models.TextField(blank=True, verbose_name="明日运维计划")
-
-    # 管理
-    mgr_progress = models.TextField(blank=True, verbose_name="整体进度")
-    mgr_risks = models.TextField(blank=True, verbose_name="风险管理")
-    mgr_tomorrow = models.TextField(blank=True, verbose_name="明日管理计划")
+    content = models.JSONField(default=dict, blank=True, verbose_name="结构化日报内容")
+    content_schema_version = models.PositiveSmallIntegerField(default=CURRENT_CONTENT_SCHEMA_VERSION, verbose_name="内容 Schema 版本")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
@@ -92,6 +79,78 @@ class DailyReport(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.date} - {self.get_role_display()}"
+
+    @staticmethod
+    def _normalize_known_content_value(value):
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            return value.strip()
+        return str(value).strip()
+
+    @classmethod
+    def normalize_content(cls, role, content):
+        """
+        Normalize report content into the current JSON contract.
+
+        Known business fields remain at the root for query compatibility.
+        Unknown extension fields are preserved under ``_extra`` so schema drift
+        is explicit and reversible.
+        """
+        if not isinstance(content, dict):
+            return {}
+
+        allowed_root_keys = set(cls.CONTENT_FIELD_NAMES) | {'_legacy_project', '_extra'}
+        normalized = {}
+        extra = {}
+
+        for key, value in content.items():
+            if key == '_extra':
+                if isinstance(value, dict):
+                    for extra_key, extra_value in value.items():
+                        if extra_value not in (None, ''):
+                            extra[extra_key] = extra_value
+                elif value not in (None, ''):
+                    extra['value'] = value
+                continue
+
+            if key in allowed_root_keys:
+                normalized_value = cls._normalize_known_content_value(value)
+                if normalized_value:
+                    normalized[key] = normalized_value
+            elif value not in (None, ''):
+                extra[key] = value
+
+        if extra:
+            normalized['_extra'] = extra
+
+        return normalized
+
+    @classmethod
+    def has_role_content(cls, role, content):
+        normalized = cls.normalize_content(role, content)
+        return any(normalized.get(field_name) for field_name in cls.ROLE_CONTENT_FIELDS.get(role, ()))
+
+    @classmethod
+    def validate_content_payload(cls, role, content, require_role_content=False):
+        errors = []
+        if role not in dict(cls.ROLE_CHOICES):
+            errors.append("请选择有效的角色")
+            return errors
+        if require_role_content and not cls.has_role_content(role, content):
+            errors.append("请填写与角色对应的内容，至少一项")
+        return errors
+
+    @classmethod
+    def content_search_query(cls, query):
+        search = Q()
+        for field_name in cls.CONTENT_FIELD_NAMES:
+            search |= Q(**{f'content__{field_name}__icontains': query})
+        return search
+
+    def role_content(self):
+        fields = self.ROLE_CONTENT_FIELDS.get(self.role, ())
+        return {field_name: getattr(self, field_name) for field_name in fields}
 
     @property
     def summary(self):
@@ -114,6 +173,47 @@ class DailyReport(models.Model):
     @property
     def project_names(self):
         return ", ".join([p.name for p in self.projects.all()])
+
+    def clean(self):
+        super().clean()
+        errors = self.validate_content_payload(
+            self.role,
+            self.content,
+            require_role_content=self.status == 'submitted',
+        )
+        if errors:
+            raise ValidationError({'content': errors})
+
+    def save(self, *args, **kwargs):
+        self.content = self.normalize_content(self.role, self.content)
+        self.content_schema_version = self.CURRENT_CONTENT_SCHEMA_VERSION
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            update_fields.update({'content', 'content_schema_version'})
+            kwargs['update_fields'] = update_fields
+        super().save(*args, **kwargs)
+
+
+def _daily_report_content_property(field_name):
+    def getter(instance):
+        return (instance.content or {}).get(field_name, '')
+
+    def setter(instance, value):
+        content = dict(instance.content or {})
+        if value not in (None, ''):
+            content[field_name] = value
+        else:
+            content.pop(field_name, None)
+        instance.content = content
+
+    return property(getter, setter)
+
+
+for _content_field_name in DailyReport.CONTENT_FIELD_NAMES:
+    setattr(DailyReport, _content_field_name, _daily_report_content_property(_content_field_name))
+
+DailyReport.project = _daily_report_content_property('_legacy_project')
 
 
 class ReportMiss(models.Model):
