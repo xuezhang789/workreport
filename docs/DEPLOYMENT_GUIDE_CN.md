@@ -1,163 +1,159 @@
-# WorkReport 系统部署方案与步骤
+# WorkReport 部署与上线教程
 
-本文档详细说明了如何在 Linux 服务器上部署 WorkReport 系统。
-
----
-
-## 1. 环境要求 (Prerequisites)
-
-- **操作系统**: Ubuntu 20.04+ / CentOS 8+ / Debian 10+
-- **Python**: 3.10 或更高版本
-- **数据库**: MySQL 8.0+ 或 PostgreSQL 13+ (推荐 PostgreSQL)
-- **缓存/消息队列**: Redis 6.0+
-- **Web 服务器**: Nginx
-- **进程管理**: Supervisor 或 Systemd
+本文档基于当前代码仓库整理，适用于 WorkReport 的测试、预发布和生产部署。系统是 Django 5.2 应用，使用 ASGI/Daphne 承载 HTTP 与 WebSocket，Celery 处理异步任务，Redis 用于缓存、Channel Layer 与任务队列，生产环境推荐 PostgreSQL。
 
 ---
 
-## 2. 基础环境安装
+## 1. 架构与运行组件
+
+核心组件：
+
+- Web：`daphne -b 0.0.0.0 -p 8000 workreport.asgi:application`
+- Worker：`celery -A celery_app worker -l info -Q default,exports,email,notifications`
+- Beat：`celery -A celery_app beat -l info`
+- 数据库：PostgreSQL 13+ 推荐；MySQL 8 可用但需单独安装驱动
+- Redis：缓存、WebSocket Channel Layer、Celery Broker/Result Backend
+- Nginx：反向代理、静态文件、上传大小控制、WebSocket Upgrade
+- 可观测性：JSON 日志、`X-Request-ID`、Prometheus `/metrics`、Sentry
+
+关键端点：
+
+- `/healthz`：进程存活检查，不访问外部依赖
+- `/readyz`：数据库与缓存就绪检查，失败返回 503
+- `/metrics`：Prometheus 指标，生产环境必须配置 `METRICS_TOKEN`
+
+---
+
+## 2. 环境要求
+
+推荐版本：
+
+- Linux：Ubuntu 22.04+ / Debian 12+ / CentOS Stream 9+
+- Python：3.12 推荐，CI 与 Dockerfile 均使用 3.12
+- PostgreSQL：13+，Compose 示例使用 16
+- Redis：6+
+- Nginx：1.20+
+
+系统包示例：
 
 ```bash
-# Ubuntu/Debian 示例
 sudo apt update
-sudo apt install -y python3-pip python3-venv python3-dev libmysqlclient-dev libpq-dev redis-server nginx git
-
-# 启动 Redis
-sudo systemctl enable redis-server
-sudo systemctl start redis-server
+sudo apt install -y \
+  git nginx redis-server \
+  python3.12 python3.12-venv python3.12-dev \
+  build-essential pkg-config libpq-dev postgresql-client \
+  default-libmysqlclient-dev default-mysql-client
 ```
+
+数据库驱动说明：
+
+- `requirements.txt` 包含 Django、Daphne、Celery、Redis、Sentry、安全扫描、对象存储等项目依赖。
+- 生产使用 PostgreSQL 时，还需要安装 `psycopg[binary]` 或 `psycopg2-binary`。
+- 生产使用 MySQL 时，还需要安装 `mysqlclient`。
+- 如果基于当前 Dockerfile 构建生产镜像，应把所选数据库驱动纳入镜像依赖，否则容器连接 PostgreSQL/MySQL 时会缺少驱动。
 
 ---
 
-## 3. 代码部署
+## 3. 生产配置
 
-### 3.1 克隆代码
-```bash
-cd /var/www
-sudo git clone <repository_url> workreport
-cd workreport
-```
+复制配置模板：
 
-### 3.2 创建虚拟环境与安装依赖
-```bash
-python3 -m venv venv
-source venv/bin/activate
-
-# 升级 pip
-pip install --upgrade pip
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 安装生产环境服务器
-pip install gunicorn uvicorn[standard]
-# 如果使用 MySQL
-pip install mysqlclient
-# 如果使用 PostgreSQL
-pip install psycopg2-binary
-```
-
----
-
-## 4. 应用配置
-
-### 4.1 环境变量配置
-复制示例配置并修改：
 ```bash
 cp .env.example .env
-nano .env
 ```
 
-**关键配置项**:
+最低生产配置示例：
+
 ```ini
 DJANGO_SECRET_KEY=请生成一个长随机字符串
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=your_domain.com,server_ip
-DJANGO_CSRF_TRUSTED_ORIGINS=https://your_domain.com
+DJANGO_ALLOWED_HOSTS=workreport.example.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://workreport.example.com
 DJANGO_TRUST_PROXY_HEADERS=True
 DJANGO_SECURE_SSL_REDIRECT=True
 DJANGO_SESSION_COOKIE_SECURE=True
 DJANGO_CSRF_COOKIE_SECURE=True
 DJANGO_SECURE_HSTS_SECONDS=31536000
-MFA_REQUIRED_FOR_SUPERUSERS=True
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+DJANGO_SECURE_HSTS_PRELOAD=True
 
-# 生产环境必须显式配置数据库，禁止回退 SQLite
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=workreport
+DB_USER=workreport
+DB_PASSWORD=请使用强密码
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_CONN_MAX_AGE=60
 DJANGO_ALLOW_SQLITE_IN_PRODUCTION=False
 
-# 数据库配置
-DB_ENGINE=django.db.backends.mysql  # 或 django.db.backends.postgresql
-DB_NAME=workreport
-DB_USER=workreport_user
-DB_PASSWORD=your_secure_password
-DB_HOST=127.0.0.1
-DB_PORT=3306 # PGSQL 使用 5432
-DB_CONN_MAX_AGE=60
-DB_ATOMIC_REQUESTS=False
-
-# Redis 配置 (Celery & Cache)
-CELERY_BROKER_URL=redis://127.0.0.1:6379/0
-CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
-CHANNEL_LAYER_BACKEND=redis
-CHANNEL_REDIS_URL=redis://127.0.0.1:6379/1
 CACHE_BACKEND=redis
 CACHE_REDIS_URL=redis://127.0.0.1:6379/2
+CHANNEL_LAYER_BACKEND=redis
+CHANNEL_REDIS_URL=redis://127.0.0.1:6379/1
+CELERY_BROKER_URL=redis://127.0.0.1:6379/0
+CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
 
-# 可观测性
 LOG_FORMAT=json
 LOG_LEVEL=INFO
 METRICS_TOKEN=请生成独立随机令牌
-SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
+SENTRY_DSN=
 SENTRY_ENVIRONMENT=production
-APP_RELEASE=git-commit-sha
+APP_RELEASE=
 
-# 邮件配置 (SMTP) - 用于发送通知
-EMAIL_HOST=smtp.exmail.qq.com
-EMAIL_PORT=465
-EMAIL_HOST_USER=your_email@domain.com
-EMAIL_HOST_PASSWORD=your_email_password
-EMAIL_USE_SSL=True
-DEFAULT_FROM_EMAIL=your_email@domain.com
+FIELD_ENCRYPTION_KEYS=请生成Fernet密钥
+MFA_REQUIRED_FOR_SUPERUSERS=True
+OTP_TOTP_ISSUER=WorkReport
 
-# 通知 Outbox
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_HOST_USER=notice@example.com
+EMAIL_HOST_PASSWORD=SMTP授权码
+DEFAULT_FROM_EMAIL=notice@example.com
+
 NOTIFICATION_OUTBOX_SYNC=False
 NOTIFICATION_OUTBOX_MAX_ATTEMPTS=8
-
-# Celery 任务治理
 CELERY_TASK_ACKS_LATE=True
 CELERY_TASK_REJECT_ON_WORKER_LOST=True
 CELERY_WORKER_PREFETCH_MULTIPLIER=1
 CELERY_WORKER_MAX_TASKS_PER_CHILD=200
 CELERY_TASK_SOFT_TIME_LIMIT=300
 CELERY_TASK_TIME_LIMIT=360
-CELERY_EXPORT_QUEUE=exports
-CELERY_EMAIL_QUEUE=email
-CELERY_NOTIFICATION_QUEUE=notifications
 EXPORT_JOB_STALE_MINUTES=60
 UPLOAD_SESSION_TTL_HOURS=24
 ```
 
-### 4.2 敏感数据密钥与 MFA
-
-生产环境必须配置 `FIELD_ENCRYPTION_KEYS`。使用以下命令生成 Fernet 密钥：
+生成敏感字段加密密钥：
 
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
+密钥轮换方式：
+
 ```ini
-FIELD_ENCRYPTION_KEYS=当前主密钥
-OTP_TOTP_ISSUER=WorkReport
-MFA_REQUIRED_FOR_SUPERUSERS=True
+FIELD_ENCRYPTION_KEYS=新密钥,旧密钥
 ```
 
-密钥轮换时将新密钥放在第一位、旧密钥保留在后，例如 `新密钥,旧密钥`。完成数据重加密和备份验证前不可删除旧密钥。超级管理员首次登录会进入 TOTP 设置页，恢复码只显示一次，应存入组织密码管理器。
+新密钥必须放在第一位。完成数据重加密、备份校验和恢复演练前，不要删除旧密钥。
 
-### 4.3 附件对象存储（可选）
+---
 
-系统支持私有 Amazon S3 兼容存储和阿里云 OSS，下载地址使用短期签名 URL。凭证应通过实例角色、密钥管理服务或环境变量注入，不要写入代码仓库。
+## 4. 附件与对象存储
+
+默认附件策略是本地磁盘：
+
+- 项目附件、任务附件、合同、收款二维码均由 Django 鉴权视图返回。
+- Nginx 不应直接公开 `/media/` 下的业务文件。
+- 开发环境只公开 `/media/avatars/` 头像路径。
+
+生产建议使用 S3 兼容存储或阿里云 OSS，并通过系统设置 `attachment_storage_config` 将 `task_attachment`、`project_attachment` 策略切换为 `s3` 或 `oss`。
+
+S3 / MinIO 示例：
 
 ```ini
-# S3 / MinIO / 其他 S3 兼容服务
 S3_BUCKET=workreport-prod
 S3_REGION=ap-southeast-1
 S3_ENDPOINT_URL=
@@ -167,8 +163,11 @@ S3_URL_EXPIRY=300
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_SESSION_TOKEN=
+```
 
-# 阿里云 OSS
+阿里云 OSS 示例：
+
+```ini
 OSS_BUCKET=workreport-prod
 OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
 OSS_ACCESS_KEY_ID=
@@ -176,109 +175,106 @@ OSS_ACCESS_KEY_SECRET=
 OSS_URL_EXPIRY=300
 ```
 
-通过系统设置 `attachment_storage_config` 将 `task_attachment` 或 `project_attachment` 策略切换到 `s3` / `oss`。首次切换应在预发布环境验证上传、签名下载、删除、重复文件名和旧附件回读。
-
-如需启用浏览器直传对象存储：
+浏览器直传对象存储：
 
 ```ini
 DIRECT_UPLOAD_ENABLED=True
 DIRECT_UPLOAD_EXPIRES_SECONDS=900
 ```
 
-直传只应在默认附件后端为 `s3` 或 `oss` 时开启。流程为：前端调用 `/accounts/api/upload/direct/init/` 获取预签名参数，浏览器直传对象存储，再调用 `/accounts/api/upload/direct/complete/` 校验对象大小，最后由项目/任务附件接口绑定业务记录。对象存储侧建议启用版本控制、服务端加密、未完成分片清理和过期临时对象生命周期策略。
-
-### 4.4 初始化系统
-```bash
-# 数据库迁移
-python manage.py migrate
-
-# 重建跨域搜索索引（首次上线 P1 或大批量导入后执行）
-python manage.py rebuild_search_index
-
-# 收集静态文件
-python manage.py collectstatic --noinput
-
-# 创建管理员账号
-python manage.py createsuperuser
-
-# 初始化基础数据（建议）
-python manage.py init_project_phases
-python manage.py init_rbac
-
-# 初始化模板（二选一，选定一种长期维护）
-# 方案 A（推荐：YAML 可配置）
-python manage.py init_role_templates
-# 方案 B（内置默认：Python 常量）
-# python manage.py init_standard_templates
-```
-
-### 4.5 健康检查与指标
-
-- `GET /healthz`：进程存活检查，不访问外部依赖。
-- `GET /readyz`：数据库与缓存就绪检查；失败返回 HTTP 503。
-- `GET /metrics`：Prometheus 指标，生产环境必须携带 `Authorization: Bearer <METRICS_TOKEN>`。
-
-负载均衡器应使用 `/readyz` 决定是否接收流量。日志使用 JSON 输出并包含 `request_id`，响应头 `X-Request-ID` 可用于关联用户反馈、应用日志和 Sentry 事件。
-
-### 4.6 备份、校验与恢复演练
-
-```bash
-# 每日原生数据库备份，可选同时归档本地媒体
-python manage.py backup_system --include-media --retention-days 30
-
-# 校验文件大小与 SHA-256
-python manage.py verify_backup /backup/workreport-YYYYMMDDTHHMMSSZ
-
-# 仅在隔离环境或维护窗口执行；该命令会覆盖当前数据库
-python manage.py restore_system /backup/workreport-YYYYMMDDTHHMMSSZ \
-  --confirm=RESTORE-WORKREPORT --restore-media
-```
-
-PostgreSQL 需要安装 `pg_dump/pg_restore`，MySQL 需要安装 `mysqldump/mysql`。建议每日自动备份、异地复制、季度隔离恢复演练，并记录 RPO/RTO。对象存储应另外启用版本控制和生命周期策略。
-
-### 4.7 发布前检查、搜索索引与运行时维护
-
-```bash
-python manage.py check --deploy
-python manage.py migrate --check
-python manage.py collectstatic --noinput --dry-run
-python manage.py runtime_maintenance
-```
-
-`runtime_maintenance` 会清理过期上传会话、过期导出文件，并标记长时间卡在 `running` 的导出任务。线上应由 Celery Beat 每小时自动执行；手工发布前执行一次可以提前暴露文件权限和配置问题。
-
-搜索优先使用 `SearchIndex` 表；PostgreSQL 会在迁移时自动创建全文 GIN 索引和 trigram 索引。迁移后执行 `rebuild_search_index` 完成历史数据回填，日常新增/修改由模型信号增量同步。若索引尚未回填，搜索服务会回退到旧查询逻辑，避免发布窗口内搜索完全不可用。
-
-### 4.8 容器化部署
-
-仓库提供 `Dockerfile`、`docker-compose.yml`、`docker/nginx.conf` 和 `docker/entrypoint.sh`。最小启动流程：
-
-```bash
-cp .env.example .env
-# 修改 .env 中的 DJANGO_SECRET_KEY、FIELD_ENCRYPTION_KEYS、METRICS_TOKEN、POSTGRES_PASSWORD 等
-docker compose build
-docker compose run --rm web python manage.py migrate
-docker compose run --rm web python manage.py rebuild_search_index
-docker compose up -d
-```
-
-容器默认使用 Daphne 承载 HTTP 和 WebSocket。`web`、`worker`、`beat` 分离运行，Worker 监听 `default,exports,email,notifications` 队列。生产环境不建议依赖容器启动自动迁移；如确需在受控环境启用，可设置 `RUN_MIGRATIONS_ON_STARTUP=1`。
-
-更多初始化数据说明请参考：[INIT_DATA_GUIDE_CN.md](file:///Users/lingchong/Downloads/wwwroot/workreport/docs/INIT_DATA_GUIDE_CN.md)
+直传只应在默认附件后端为 `s3` 或 `oss` 时开启。上线前必须验证上传、签名下载、删除、重复文件名、超大文件、过期会话和旧附件回读。
 
 ---
 
-## 5. 服务启动配置 (Supervisor 方案)
+## 5. 首次初始化
 
-推荐使用 Supervisor 管理 Django 应用、Celery Worker 和 Celery Beat 进程。
+安装依赖：
 
-### 安装 Supervisor
 ```bash
-sudo apt install supervisor
+python3.12 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip wheel setuptools
+python -m pip install -r requirements.txt
+python -m pip install "psycopg[binary]"
 ```
 
-### 配置文件
-创建 `/etc/supervisor/conf.d/workreport.conf`:
+初始化数据库与基础数据：
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py init_project_phases
+python manage.py init_rbac
+python manage.py init_role_templates
+python manage.py rebuild_search_index
+python manage.py collectstatic --noinput
+```
+
+模板初始化二选一：
+
+- 推荐：`python manage.py init_role_templates`，读取 `reports/data/definitions/roles.yaml`
+- 备选：`python manage.py init_standard_templates`，读取 Python 内置模板
+
+两者都会写入 `RoleTemplate`，后执行的命令会覆盖同角色默认模板。生产环境建议只选择一种长期维护。
+
+更多初始化数据说明见 [INIT_DATA_GUIDE_CN.md](INIT_DATA_GUIDE_CN.md)。
+
+---
+
+## 6. 发布前检查
+
+本仓库提供三类检查脚本。
+
+质量门禁：
+
+```bash
+PYTHON_BIN=venv/bin/python bash scripts/quality_gate.sh
+```
+
+安全扫描：
+
+```bash
+PYTHON_BIN=venv/bin/python bash scripts/security_scan.sh
+```
+
+部署检查：
+
+```bash
+PYTHON_BIN=venv/bin/python bash scripts/deploy_check.sh
+```
+
+检查内容：
+
+- `pip check` 依赖一致性
+- `manage.py check` 与 `check --deploy`
+- 迁移漂移：`makemigrations --check --dry-run`
+- OpenAPI 合约校验：`validate_api_contract`
+- 全量测试集
+- Bandit 静态安全扫描
+- `pip-audit` 依赖漏洞扫描
+- `collectstatic --dry-run`
+- `runtime_maintenance`
+
+发布前必须处理的高风险项：
+
+- `DEBUG=False`
+- 强随机 `DJANGO_SECRET_KEY`
+- HTTPS、Secure Cookie、HSTS 配置正确
+- `FIELD_ENCRYPTION_KEYS` 已配置
+- 超级管理员 MFA 已启用
+- 生产数据库不是 SQLite
+- Redis/Celery 不指向开发机临时实例
+- `/metrics` 已配置令牌保护
+- 邮件发送、通知 Outbox、Celery Worker/Beat 正常
+- 备份可校验且可在隔离环境恢复
+
+---
+
+## 7. 进程管理示例
+
+### 7.1 Supervisor
+
+创建 `/etc/supervisor/conf.d/workreport.conf`：
 
 ```ini
 [program:workreport_web]
@@ -288,41 +284,49 @@ user=www-data
 autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/var/log/workreport_web.log
+stdout_logfile=/var/log/workreport/web.log
+environment=DJANGO_SETTINGS_MODULE="settings"
 
-[program:workreport_celery_worker]
+[program:workreport_worker]
 command=/var/www/workreport/venv/bin/celery -A celery_app worker -l info -Q default,exports,email,notifications
 directory=/var/www/workreport
 user=www-data
 autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/var/log/workreport_worker.log
+stdout_logfile=/var/log/workreport/worker.log
+environment=DJANGO_SETTINGS_MODULE="settings"
 
-[program:workreport_celery_beat]
+[program:workreport_beat]
 command=/var/www/workreport/venv/bin/celery -A celery_app beat -l info
 directory=/var/www/workreport
 user=www-data
 autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/var/log/workreport_beat.log
+stdout_logfile=/var/log/workreport/beat.log
+environment=DJANGO_SETTINGS_MODULE="settings"
 ```
 
-*注意：使用 Daphne 以支持 Django Channels (WebSocket)。如仅部署纯 WSGI HTTP，可改用 `gunicorn -c docker/gunicorn.conf.py wsgi:application`。*
+启动：
 
-### 启动服务
 ```bash
+sudo mkdir -p /var/log/workreport
+sudo chown -R www-data:www-data /var/log/workreport /var/www/workreport/media /var/www/workreport/backups
 sudo supervisorctl reread
 sudo supervisorctl update
 sudo supervisorctl status
 ```
 
+### 7.2 systemd
+
+如果使用 systemd，至少需要拆成 `workreport-web.service`、`workreport-worker.service`、`workreport-beat.service` 三个服务。发布时先停止 Beat，再滚动重启 Worker 与 Web，避免定时任务在迁移窗口重复触发。
+
 ---
 
-## 6. Nginx 反向代理配置
+## 8. Nginx 配置
 
-创建 `/etc/nginx/sites-available/workreport`:
+非容器部署示例：
 
 ```nginx
 upstream workreport_server {
@@ -331,61 +335,216 @@ upstream workreport_server {
 
 server {
     listen 80;
-    server_name your_domain.com;
+    server_name workreport.example.com;
 
-    client_max_body_size 50M; # 允许大文件上传
+    client_max_body_size 64m;
 
     location /static/ {
-        alias /var/www/workreport/staticfiles/;
+        alias /var/www/workreport/collected_static/;
+        access_log off;
+        expires 30d;
     }
 
-    # 仅头像允许公开访问；合同、项目/任务附件和收款码由 Django 鉴权后返回。
     location /media/avatars/ {
         alias /var/www/workreport/media/avatars/;
+        access_log off;
+        expires 7d;
+    }
+
+    location /media/ {
+        return 404;
     }
 
     location / {
         proxy_pass http://workreport_server;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # WebSocket 支持
-        proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }
 }
 ```
 
-启用站点并重启 Nginx:
+启用：
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/workreport /etc/nginx/sites-enabled/
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl reload nginx
 ```
+
+HTTPS 证书建议由负载均衡器或 Certbot 管理。只在 HTTPS 已稳定后启用 HSTS preload。
 
 ---
 
-## 7. 维护与监控
+## 9. Docker Compose 部署
 
-### 查看日志
-- Web 访问日志: `/var/log/nginx/access.log`
-- 应用错误日志: `/var/log/workreport_web.log`
-- Celery 日志: `/var/log/workreport_worker.log`
+仓库提供 `Dockerfile`、`docker-compose.yml`、`docker/entrypoint.sh`、`docker/nginx.conf`、`docker/gunicorn.conf.py`。
 
-### 代码更新
+当前 Compose 包含：
+
+- `postgres`：PostgreSQL 16
+- `redis`：Redis 7
+- `web`：Daphne
+- `worker`：Celery Worker
+- `beat`：Celery Beat
+- `nginx`：反向代理与静态文件
+
+启动流程：
+
+```bash
+cp .env.example .env
+# 修改 .env 中的 DJANGO_SECRET_KEY、FIELD_ENCRYPTION_KEYS、METRICS_TOKEN、POSTGRES_PASSWORD 等
+# 确认镜像依赖中已包含 PostgreSQL 驱动，例如 psycopg[binary]
+docker compose build
+docker compose run --rm web python manage.py migrate
+docker compose run --rm web python manage.py createsuperuser
+docker compose run --rm web python manage.py init_project_phases
+docker compose run --rm web python manage.py init_rbac
+docker compose run --rm web python manage.py init_role_templates
+docker compose run --rm web python manage.py rebuild_search_index
+docker compose up -d
+```
+
+默认端口：
+
+```bash
+HTTP_PORT=8080
+```
+
+入口脚本支持：
+
+- `RUN_COLLECTSTATIC_ON_STARTUP=1`：启动时收集静态文件，默认开启
+- `RUN_MIGRATIONS_ON_STARTUP=1`：启动时自动迁移，默认关闭
+- `RUN_SEARCH_REBUILD_ON_STARTUP=1`：启动时重建搜索索引，默认关闭
+
+生产环境建议把迁移、索引重建放在发布流水线中显式执行，不依赖容器启动自动执行。
+
+---
+
+## 10. 发布流程
+
+推荐发布顺序：
+
 ```bash
 cd /var/www/workreport
 git pull
 source venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m pip install "psycopg[binary]"
+
+python manage.py backup_system --include-media --retention-days 30
+python manage.py verify_backup /var/www/workreport/backups/最近一次备份目录
+
+PYTHON_BIN=venv/bin/python bash scripts/quality_gate.sh
+PYTHON_BIN=venv/bin/python bash scripts/security_scan.sh
+PYTHON_BIN=venv/bin/python bash scripts/deploy_check.sh
+
 python manage.py migrate
+python manage.py rebuild_search_index
 python manage.py collectstatic --noinput
+python manage.py runtime_maintenance
+
 sudo supervisorctl restart workreport_web
-sudo supervisorctl restart workreport_celery_worker
+sudo supervisorctl restart workreport_worker
+sudo supervisorctl restart workreport_beat
 ```
 
-### 备份
-建议定期备份数据库和 `media` 目录。
+发布后验收：
+
+```bash
+curl -fsS https://workreport.example.com/healthz
+curl -fsS https://workreport.example.com/readyz
+curl -fsS -H "Authorization: Bearer <METRICS_TOKEN>" https://workreport.example.com/metrics
+BASE_URL=https://workreport.example.com bash scripts/e2e_smoke.sh
+```
+
+人工冒烟清单：
+
+- 登录、退出、注册邀请码
+- 超级管理员首次登录 MFA 设置与恢复码保存
+- 个人中心：头像、邮箱验证、通知偏好
+- 项目：列表、详情、阶段变更、仓库、附件、成员
+- 任务：创建、状态流转、评论、附件、导出
+- 日报：新建、草稿、提交、我的日报、团队日报
+- 团队管理：角色更新、项目添加/移除、权限校验
+- 人事管理：薪资、合同、收款二维码，仅超级管理员可访问
+- 通知：站内通知、WebSocket 推送、邮件 Outbox 重试
+- 搜索：项目、任务、日报跨域搜索
+- 审计：关键操作有日志，可筛选和导出
+
+---
+
+## 11. 备份与恢复
+
+创建备份：
+
+```bash
+python manage.py backup_system --include-media --retention-days 30
+```
+
+校验备份：
+
+```bash
+python manage.py verify_backup /var/www/workreport/backups/workreport-YYYYMMDDTHHMMSSZ
+```
+
+恢复备份：
+
+```bash
+python manage.py restore_system /var/www/workreport/backups/workreport-YYYYMMDDTHHMMSSZ \
+  --confirm=RESTORE-WORKREPORT --restore-media
+```
+
+恢复命令会覆盖当前数据库，只能在隔离环境或维护窗口执行。建议每日备份、异地复制、对象存储版本控制、季度恢复演练，并记录 RPO/RTO。
+
+---
+
+## 12. 日常运维
+
+常用命令：
+
+```bash
+python manage.py check_task_sla
+python manage.py send_report_reminders
+python manage.py runtime_maintenance
+python manage.py cleanup_logs
+python manage.py archive_audit_logs
+python manage.py audit_quality_check
+python manage.py validate_templates
+python manage.py verify_data_quality
+python manage.py send_test_email --to user@example.com
+```
+
+Celery Beat 已配置：
+
+- 每分钟分发通知 Outbox
+- 每天 03:00 清理旧日志
+- 每小时执行运行时维护
+
+排障入口：
+
+- 应用日志：关注 `request_id`、`workreport.request`、Sentry 事件 ID
+- HTTP 头：`X-Request-ID`
+- 就绪状态：`/readyz`
+- 队列堆积：Celery Worker 日志与 Redis 指标
+- 导出失败：`ExportJob.message` 与 `runtime_maintenance`
+- 附件失败：存储凭证、对象存储签名、业务文件鉴权接口
+
+---
+
+## 13. 回滚原则
+
+优先级：
+
+1. 代码回滚到上一稳定提交并重启服务。
+2. 如果迁移只新增字段/表，通常无需数据库回滚。
+3. 如果迁移修改或删除数据，必须使用发布前备份在维护窗口恢复。
+4. 回滚后执行 `/readyz`、登录、核心业务冒烟和 Celery 队列检查。
+
+禁止在不了解数据状态时直接删除迁移、强制重置数据库或覆盖生产媒体目录。

@@ -14,8 +14,8 @@
 
 对应文件与入口如下：
 
-- 日报模板（YAML）：[roles.yaml](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/data/definitions/roles.yaml) + `python manage.py init_role_templates`
-- 日报/任务标准模板（Python 常量）：[default_templates.py](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/data/default_templates.py) + `python manage.py init_standard_templates`
+- 日报模板（YAML）：[roles.yaml](../reports/data/definitions/roles.yaml) + `python manage.py init_role_templates`
+- 日报/任务标准模板（Python 常量）：[default_templates.py](../reports/data/default_templates.py) + `python manage.py init_standard_templates`
 - 项目阶段：`python manage.py init_project_phases`（硬编码写库）
 - RBAC 角色/权限：`python manage.py init_rbac`（硬编码写库 + 迁移现有项目成员关系）
 - 海量 CSV mock：`python scripts/generate_mock_data.py` + `python manage.py import_mock_data`
@@ -50,12 +50,12 @@
 
 ### 3.1 初始化内容
 
-YAML 文件：[roles.yaml](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/data/definitions/roles.yaml) 的 `templates` 列表中每一项对应一个角色的日报模板，初始化时会写入两类数据：
+YAML 文件：[roles.yaml](../reports/data/definitions/roles.yaml) 的 `templates` 列表中每一项对应一个角色的日报模板，初始化时会写入两类数据：
 
 - `work_logs.RoleTemplate`：作为“按角色的默认表单提示/示例”
 - `work_logs.ReportTemplateVersion`：作为“模板中心（可选模板）的一条版本化模板”
 
-入口命令：[init_role_templates.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/init_role_templates.py)
+入口命令：[init_role_templates.py](../core/management/commands/init_role_templates.py)
 
 ### 3.2 YAML 字段说明（最常用）
 
@@ -95,7 +95,7 @@ python manage.py init_role_templates --config reports/data/definitions/roles.yam
 说明：
 
 - 该命令使用 `update_or_create` 写库，重复执行是幂等的（会更新已有记录）。
-- 本命令依赖 PyYAML（导入 `yaml`），如果你的环境只安装了 `requirements.txt`，可能需要额外安装 `PyYAML`。
+- 本命令依赖 PyYAML（导入 `yaml`），当前 `requirements.txt` 已包含 `PyYAML`，按标准依赖安装即可运行。
 
 ### 3.4 如何新增/修改模板（推荐做法）
 
@@ -107,12 +107,12 @@ python manage.py init_role_templates --config reports/data/definitions/roles.yam
 
 ## 4. 标准模板（Python 常量）
 
-标准模板定义在：[default_templates.py](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/data/default_templates.py)
+标准模板定义在：[default_templates.py](../reports/data/default_templates.py)
 
 - `DAILY_REPORT_TEMPLATES`：按角色提供 `name/role/hint/placeholders/sample_md`
 - `TASK_TEMPLATES`：任务模板列表（`name/title/content`）
 
-加载入口：[init_standard_templates.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/init_standard_templates.py)（内部调用 [TemplateGenerator](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/services/template_generator.py) 写库）
+加载入口：[init_standard_templates.py](../core/management/commands/init_standard_templates.py)（内部调用 [TemplateGenerator](../reports/services/template_generator.py) 写库）
 
 运行：
 
@@ -130,7 +130,7 @@ python manage.py init_standard_templates
 
 ## 5. 项目阶段（ProjectPhaseConfig）
 
-入口命令：[init_project_phases.py](file:///Users/lingchong/Downloads/wwwroot/workreport/projects/management/commands/init_project_phases.py)
+入口命令：[init_project_phases.py](../projects/management/commands/init_project_phases.py)
 
 初始化默认阶段（并会更新已存在阶段的进度与排序）：
 
@@ -152,7 +152,7 @@ python manage.py init_project_phases
 
 ## 6. RBAC 角色与权限（以及对现有项目数据的迁移）
 
-入口命令：[init_rbac.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/init_rbac.py)
+入口命令：[init_rbac.py](../core/management/commands/init_rbac.py)
 
 ### 6.1 初始化内容
 
@@ -181,7 +181,7 @@ python manage.py init_rbac
 
 ### 7.1 CSV 生成脚本
 
-脚本：[generate_mock_data.py](file:///Users/lingchong/Downloads/wwwroot/workreport/scripts/generate_mock_data.py)
+脚本：[generate_mock_data.py](../scripts/generate_mock_data.py)
 
 默认会生成非常大的数据量（用户/项目/任务/日报），输出到 `scripts/mock_data_output/` 目录。
 
@@ -198,7 +198,7 @@ python scripts/generate_mock_data.py
 
 ### 7.2 CSV 导入命令
 
-入口：[import_mock_data.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/import_mock_data.py)
+入口：[import_mock_data.py](../core/management/commands/import_mock_data.py)
 
 运行（默认目录）：
 
@@ -222,7 +222,7 @@ python manage.py import_mock_data --dir scripts/mock_data_output --batch-size 50
 
 ### 8.1 快速测试数据（可登录用户）
 
-命令：[core generate_test_data](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/generate_test_data.py)
+命令：[core generate_test_data](../core/management/commands/generate_test_data.py)
 
 运行：
 
@@ -237,11 +237,11 @@ python manage.py generate_test_data
 
 补充：
 
-- 代码库中还存在一个同名命令 [reports generate_test_data](file:///Users/lingchong/Downloads/wwwroot/workreport/reports/management/commands/generate_test_data.py)，但由于 `INSTALLED_APPS` 顺序（`core` 在 `reports` 之后），实际执行的是 `core` 版本。
+- 代码库中还存在一个同名命令 [reports generate_test_data](../reports/management/commands/generate_test_data.py)，但由于 `INSTALLED_APPS` 顺序（`core` 在 `reports` 之后），实际执行的是 `core` 版本。
 
 ### 8.2 中文拟真大数据
 
-命令：[generate_chinese_data.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/generate_chinese_data.py)
+命令：[generate_chinese_data.py](../core/management/commands/generate_chinese_data.py)
 
 运行示例：
 
@@ -257,7 +257,7 @@ python manage.py generate_chinese_data --users 1000 --projects 5000 --tasks 1000
 
 ### 8.3 性能压测全量数据
 
-命令：[generate_large_scale_data.py](file:///Users/lingchong/Downloads/wwwroot/workreport/core/management/commands/generate_large_scale_data.py)
+命令：[generate_large_scale_data.py](../core/management/commands/generate_large_scale_data.py)
 
 运行示例：
 
@@ -269,4 +269,3 @@ python manage.py generate_large_scale_data --clear --projects 10000 --tasks 1000
 
 - 覆盖模型更全（含审计、附件、模板版本等），适合压测与索引/查询优化验证。
 - 同样会在 `--clear` 时执行大规模清理，请仅在专用环境使用。
-
