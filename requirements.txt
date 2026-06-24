@@ -1,5 +1,5 @@
 asgiref==3.11.0
-distlib==0.4.0
+distlib==0.4.3
 Django==5.2.15
 et_xmlfile==2.0.0
 filelock==3.20.3
